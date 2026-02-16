@@ -54,6 +54,10 @@ keyring = { version = "3", features = ["apple-native", "linux-native"] }
 # Encoding
 base64 = "0.22"
 
+# TUI
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+
 # Utilities
 dirs = "6"
 url = "2"
