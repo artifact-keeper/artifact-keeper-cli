@@ -167,4 +167,4 @@ See the [CI/CD Integration Guide](https://artifactkeeper.com/docs/guides/ci-cd/)
 
 ## License
 
-Apache-2.0
+MIT
