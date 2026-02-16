@@ -6,7 +6,7 @@ use miette::{IntoDiagnostic, Result};
 use super::client::client_for;
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
-use crate::output::{self, OutputFormat};
+use crate::output::{self, OutputFormat, format_bytes};
 
 #[derive(Subcommand)]
 pub enum RepoCommand {
@@ -104,21 +104,6 @@ impl RepoCommand {
             Self::Delete { key, yes } => delete_repo(&key, yes, global).await,
             Self::Browse { key } => browse_repo(&key, global).await,
         }
-    }
-}
-
-fn format_bytes(bytes: i64) -> String {
-    const KB: i64 = 1024;
-    const MB: i64 = KB * 1024;
-    const GB: i64 = MB * 1024;
-    if bytes >= GB {
-        format!("{:.1} GB", bytes as f64 / GB as f64)
-    } else if bytes >= MB {
-        format!("{:.1} MB", bytes as f64 / MB as f64)
-    } else if bytes >= KB {
-        format!("{:.1} KB", bytes as f64 / KB as f64)
-    } else {
-        format!("{bytes} B")
     }
 }
 
