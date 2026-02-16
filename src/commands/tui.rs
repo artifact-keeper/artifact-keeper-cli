@@ -1,6 +1,7 @@
 use std::io;
 
-use artifact_keeper_sdk::ClientRepositoriesExt;
+use artifact_keeper_sdk::types::{FacetsResponse, PaginationInfo, SearchResultItem};
+use artifact_keeper_sdk::{ClientRepositoriesExt, ClientSearchExt};
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -123,6 +124,14 @@ struct App {
     searching: bool,
     /// Cached credentials per instance — avoids repeated keychain prompts.
     credential_cache: std::collections::HashMap<String, StoredCredential>,
+    // Global search state (Meilisearch-powered, cross-repo)
+    global_searching: bool,
+    global_search_query: String,
+    global_search_results: Vec<SearchResultItem>,
+    global_search_facets: Option<FacetsResponse>,
+    global_search_pagination: Option<PaginationInfo>,
+    global_search_state: ListState,
+    global_search_submitted: bool,
 }
 
 impl App {
@@ -158,6 +167,13 @@ impl App {
             search_query: String::new(),
             searching: false,
             credential_cache: std::collections::HashMap::new(),
+            global_searching: false,
+            global_search_query: String::new(),
+            global_search_results: Vec::new(),
+            global_search_facets: None,
+            global_search_pagination: None,
+            global_search_state: ListState::default(),
+            global_search_submitted: false,
         }
     }
 
@@ -378,6 +394,103 @@ impl App {
         }
         self.loading = false;
     }
+
+    fn exit_global_search(&mut self) {
+        self.global_searching = false;
+        self.global_search_submitted = false;
+        self.global_search_query.clear();
+        self.global_search_results.clear();
+        self.global_search_facets = None;
+        self.global_search_pagination = None;
+    }
+
+    async fn global_search(&mut self) {
+        let instance_name = match self.selected_instance() {
+            Some(i) => i.name.clone(),
+            None => return,
+        };
+
+        let client = match self.build_cached_client(&instance_name) {
+            Some(c) => c,
+            None => {
+                self.status_message = format!("Failed to connect to {instance_name}");
+                return;
+            }
+        };
+
+        self.loading = true;
+        self.status_message = format!("Searching '{}'...", self.global_search_query);
+
+        match client
+            .advanced_search()
+            .query(&self.global_search_query)
+            .per_page(50)
+            .send()
+            .await
+        {
+            Ok(resp) => {
+                self.global_search_facets = Some(resp.facets.clone());
+                self.global_search_pagination = Some(resp.pagination.clone());
+                let total = resp.pagination.total;
+                self.global_search_results = resp.items.clone();
+                self.global_search_state = ListState::default();
+                if !self.global_search_results.is_empty() {
+                    self.global_search_state.select(Some(0));
+                }
+                self.status_message = format!(
+                    "{total} results for '{}' on {instance_name}",
+                    self.global_search_query
+                );
+                self.global_search_submitted = true;
+            }
+            Err(e) => {
+                self.status_message = format!("Search failed: {e}");
+                self.global_search_results.clear();
+                self.global_search_facets = None;
+                self.global_search_pagination = None;
+            }
+        }
+        self.loading = false;
+    }
+
+    async fn navigate_to_search_result(&mut self) {
+        let result = match self
+            .global_search_state
+            .selected()
+            .and_then(|i| self.global_search_results.get(i))
+        {
+            Some(r) => r.clone(),
+            None => return,
+        };
+
+        // Find the repo in the loaded repos list
+        let repo_idx = self
+            .repos
+            .iter()
+            .position(|r| r.key == result.repository_key);
+
+        if let Some(idx) = repo_idx {
+            self.repo_state.select(Some(idx));
+            self.search_query = result.name.clone();
+            self.load_artifacts().await;
+
+            // Try to select the matching artifact
+            if let Some(artifact_idx) = self.artifacts.iter().position(|a| {
+                a.path == result.path.as_deref().unwrap_or("") || a.path == result.name
+            }) {
+                self.artifact_state.select(Some(artifact_idx));
+            }
+        } else {
+            self.status_message = format!(
+                "Repo '{}' not in loaded list — select the correct instance",
+                result.repository_key
+            );
+            return;
+        }
+
+        self.exit_global_search();
+        self.active_panel = Panel::Artifacts;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -449,6 +562,48 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
             continue;
         };
 
+        // Global search: typing query
+        if app.global_searching && !app.global_search_submitted {
+            match key.code {
+                KeyCode::Enter => {
+                    if !app.global_search_query.is_empty() {
+                        app.global_search().await;
+                    }
+                }
+                KeyCode::Esc => app.exit_global_search(),
+                KeyCode::Backspace => {
+                    app.global_search_query.pop();
+                }
+                KeyCode::Char(c) => app.global_search_query.push(c),
+                _ => {}
+            }
+            continue;
+        }
+
+        // Global search: navigating results
+        if app.global_searching && app.global_search_submitted {
+            match key.code {
+                KeyCode::Esc => app.exit_global_search(),
+                KeyCode::Char('j') | KeyCode::Down => {
+                    let len = app.global_search_results.len();
+                    list_next(&mut app.global_search_state, len);
+                }
+                KeyCode::Char('k') | KeyCode::Up => {
+                    let len = app.global_search_results.len();
+                    list_prev(&mut app.global_search_state, len);
+                }
+                KeyCode::Enter => app.navigate_to_search_result().await,
+                KeyCode::Char('/') => {
+                    app.global_search_submitted = false;
+                    app.global_search_query.clear();
+                }
+                KeyCode::Char('q') | KeyCode::Char('Q') => app.exit_global_search(),
+                _ => {}
+            }
+            continue;
+        }
+
+        // Per-repo search: typing filter
         if app.searching {
             match key.code {
                 KeyCode::Enter => {
@@ -514,6 +669,11 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                     app.detail_view = !app.detail_view;
                 }
             },
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                app.global_searching = true;
+                app.global_search_submitted = false;
+                app.global_search_query.clear();
+            }
             KeyCode::Char('r') => {
                 app.check_instance_health().await;
                 if app.active_panel == Panel::Repos || app.active_panel == Panel::Artifacts {
@@ -540,7 +700,9 @@ fn draw(f: &mut Frame, app: &mut App) {
         .constraints([Constraint::Min(5), Constraint::Length(1)])
         .split(size);
 
-    if app.detail_view {
+    if app.global_searching {
+        draw_global_search(f, app, main_layout[0]);
+    } else if app.detail_view {
         draw_detail(f, app, main_layout[0]);
     } else {
         draw_panels(f, app, main_layout[0]);
@@ -726,11 +888,24 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
     let loading_indicator = if app.loading { " [loading] " } else { "" };
 
     let mut spans: Vec<Span> = Vec::new();
-    spans.extend(hotkey_span(" q", "uit"));
-    spans.extend(hotkey_span("/", "search"));
-    spans.extend(hotkey_span("i", "nfo"));
-    spans.extend(hotkey_span("r", "efresh"));
-    spans.extend(hotkey_span("?", "help"));
+
+    if app.global_searching && app.global_search_submitted {
+        spans.extend(hotkey_span(" Esc", " back"));
+        spans.extend(hotkey_span("Enter", " go to"));
+        spans.extend(hotkey_span("/", " new search"));
+        spans.extend(hotkey_span("j/k", " navigate"));
+    } else if app.global_searching {
+        spans.extend(hotkey_span(" Enter", " search"));
+        spans.extend(hotkey_span("Esc", " cancel"));
+    } else {
+        spans.extend(hotkey_span(" q", "uit"));
+        spans.extend(hotkey_span("s", " search all"));
+        spans.extend(hotkey_span("/", " filter"));
+        spans.extend(hotkey_span("i", "nfo"));
+        spans.extend(hotkey_span("r", "efresh"));
+        spans.extend(hotkey_span("?", "help"));
+    }
+
     spans.push(Span::raw(" "));
     spans.push(Span::styled(&app.status_message, dim_style()));
     spans.push(Span::styled(loading_indicator, cyan_style()));
@@ -751,7 +926,8 @@ fn draw_help_overlay(f: &mut Frame, area: Rect) {
         Line::from("  Enter       Select / expand"),
         Line::from("  Tab         Cycle panels"),
         Line::from(""),
-        Line::from("  /           Search artifacts"),
+        Line::from("  s           Global search (all repos)"),
+        Line::from("  /           Filter artifacts in repo"),
         Line::from("  i           Toggle detail view"),
         Line::from("  r           Refresh data"),
         Line::from("  ?           Toggle this help"),
@@ -772,6 +948,171 @@ fn draw_help_overlay(f: &mut Frame, area: Rect) {
 
     f.render_widget(Clear, help_area);
     f.render_widget(help, help_area);
+}
+
+// ---------------------------------------------------------------------------
+// Global search drawing
+// ---------------------------------------------------------------------------
+
+fn draw_global_search(f: &mut Frame, app: &mut App, area: Rect) {
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(28), Constraint::Min(40)])
+        .split(area);
+
+    draw_facets_panel(f, app, columns[0]);
+
+    let right = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(5)])
+        .split(columns[1]);
+
+    draw_search_input(f, app, right[0]);
+    draw_search_results(f, app, right[1]);
+}
+
+fn draw_search_input(f: &mut Frame, app: &App, area: Rect) {
+    let cursor = if !app.global_search_submitted {
+        "_"
+    } else {
+        ""
+    };
+    let input_text = format!("{}{cursor}", app.global_search_query);
+
+    let block = Block::default()
+        .title(" Global Search (Esc to close) ")
+        .borders(Borders::ALL)
+        .border_style(cyan_style());
+
+    let paragraph = Paragraph::new(Line::from(vec![
+        Span::styled("Search: ", bold_style()),
+        Span::raw(input_text),
+    ]))
+    .block(block);
+
+    f.render_widget(paragraph, area);
+}
+
+fn draw_search_results(f: &mut Frame, app: &mut App, area: Rect) {
+    if !app.global_search_submitted {
+        let block = Block::default()
+            .title(" Results ")
+            .borders(Borders::ALL)
+            .border_style(dim_style());
+        let msg = Paragraph::new("Type a query and press Enter to search across all repositories.")
+            .block(block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(msg, area);
+        return;
+    }
+
+    if app.global_search_results.is_empty() {
+        let block = Block::default()
+            .title(" Results ")
+            .borders(Borders::ALL)
+            .border_style(dim_style());
+        let msg = Paragraph::new("No results found.")
+            .block(block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(msg, area);
+        return;
+    }
+
+    let total = app
+        .global_search_pagination
+        .as_ref()
+        .map(|p| p.total)
+        .unwrap_or(app.global_search_results.len() as i64);
+
+    let title = format!(" Results ({total} total) ");
+
+    let items: Vec<ListItem> = app
+        .global_search_results
+        .iter()
+        .map(|r| {
+            let format_str = r.format.as_deref().unwrap_or("?");
+            let version_str = r.version.as_deref().unwrap_or("");
+            let size_str = r.size_bytes.map(format_bytes).unwrap_or_default();
+
+            ListItem::new(Line::from(vec![
+                Span::raw(&r.name),
+                Span::raw("  "),
+                Span::styled(&r.repository_key, Style::default().fg(Color::Green)),
+                Span::raw("  "),
+                Span::styled(format_str, Style::default().fg(Color::Magenta)),
+                Span::raw("  "),
+                Span::styled(version_str, Style::default().fg(Color::Yellow)),
+                Span::raw("  "),
+                Span::styled(size_str, dim_style()),
+            ]))
+        })
+        .collect();
+
+    render_panel(
+        f,
+        &title,
+        items,
+        cyan_style(),
+        &mut app.global_search_state,
+        area,
+    );
+}
+
+fn draw_facets_panel(f: &mut Frame, app: &App, area: Rect) {
+    let mut lines: Vec<Line> = Vec::new();
+
+    if let Some(ref facets) = app.global_search_facets {
+        lines.push(Line::from(Span::styled("Formats", bold_style())));
+        for fv in facets.formats.iter().take(8) {
+            lines.push(Line::from(vec![
+                Span::raw("  "),
+                Span::styled(&fv.value, Style::default().fg(Color::Magenta)),
+                Span::raw(" "),
+                Span::styled(format!("({})", fv.count), dim_style()),
+            ]));
+        }
+
+        lines.push(Line::from(""));
+
+        lines.push(Line::from(Span::styled("Repositories", bold_style())));
+        for fv in facets.repositories.iter().take(8) {
+            lines.push(Line::from(vec![
+                Span::raw("  "),
+                Span::styled(&fv.value, Style::default().fg(Color::Green)),
+                Span::raw(" "),
+                Span::styled(format!("({})", fv.count), dim_style()),
+            ]));
+        }
+
+        if !facets.content_types.is_empty() {
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled("Content Types", bold_style())));
+            for fv in facets.content_types.iter().take(5) {
+                lines.push(Line::from(vec![
+                    Span::raw("  "),
+                    Span::raw(&fv.value),
+                    Span::raw(" "),
+                    Span::styled(format!("({})", fv.count), dim_style()),
+                ]));
+            }
+        }
+    } else {
+        lines.push(Line::from(Span::styled(
+            "Facets appear after search",
+            dim_style(),
+        )));
+    }
+
+    let block = Block::default()
+        .title(" Facets ")
+        .borders(Borders::ALL)
+        .border_style(dim_style());
+
+    let paragraph = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
+
+    f.render_widget(paragraph, area);
 }
 
 // ---------------------------------------------------------------------------
