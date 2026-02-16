@@ -390,3 +390,203 @@ fn check_cli(diag: &mut DiagResult) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- DiagResult ----
+
+    #[test]
+    fn diag_result_default() {
+        let diag = DiagResult::default();
+        assert_eq!(diag.passes, 0);
+        assert_eq!(diag.warnings, 0);
+        assert_eq!(diag.failures, 0);
+    }
+
+    #[test]
+    fn diag_result_pass_increments() {
+        let mut diag = DiagResult::default();
+        diag.pass("test pass");
+        assert_eq!(diag.passes, 1);
+        assert_eq!(diag.warnings, 0);
+        assert_eq!(diag.failures, 0);
+    }
+
+    #[test]
+    fn diag_result_warn_increments() {
+        let mut diag = DiagResult::default();
+        diag.warn("test warn");
+        assert_eq!(diag.passes, 0);
+        assert_eq!(diag.warnings, 1);
+        assert_eq!(diag.failures, 0);
+    }
+
+    #[test]
+    fn diag_result_fail_increments() {
+        let mut diag = DiagResult::default();
+        diag.fail("test fail");
+        assert_eq!(diag.passes, 0);
+        assert_eq!(diag.warnings, 0);
+        assert_eq!(diag.failures, 1);
+    }
+
+    #[test]
+    fn diag_result_mixed() {
+        let mut diag = DiagResult::default();
+        diag.pass("p1");
+        diag.pass("p2");
+        diag.warn("w1");
+        diag.fail("f1");
+        diag.fail("f2");
+        diag.fail("f3");
+        assert_eq!(diag.passes, 2);
+        assert_eq!(diag.warnings, 1);
+        assert_eq!(diag.failures, 3);
+    }
+
+    // ---- pluralize ----
+
+    #[test]
+    fn pluralize_zero() {
+        assert_eq!(pluralize(0, "issue", "issues"), "issues");
+    }
+
+    #[test]
+    fn pluralize_one() {
+        assert_eq!(pluralize(1, "issue", "issues"), "issue");
+    }
+
+    #[test]
+    fn pluralize_many() {
+        assert_eq!(pluralize(5, "issue", "issues"), "issues");
+    }
+
+    // ---- classify_connection_error ----
+
+    #[test]
+    fn classify_connection_refused() {
+        assert_eq!(
+            classify_connection_error("Connection refused (os error 61)"),
+            "connection refused"
+        );
+    }
+
+    #[test]
+    fn classify_timeout() {
+        assert_eq!(
+            classify_connection_error("operation timed out"),
+            "connection timed out"
+        );
+    }
+
+    #[test]
+    fn classify_timeout_variant() {
+        assert_eq!(
+            classify_connection_error("request timeout after 10s"),
+            "connection timed out"
+        );
+    }
+
+    #[test]
+    fn classify_dns() {
+        assert_eq!(
+            classify_connection_error("DNS resolution failed for host"),
+            "DNS resolution failed"
+        );
+    }
+
+    #[test]
+    fn classify_dns_resolve() {
+        assert_eq!(
+            classify_connection_error("failed to resolve hostname"),
+            "DNS resolution failed"
+        );
+    }
+
+    #[test]
+    fn classify_tls() {
+        let result = classify_connection_error("SSL certificate problem");
+        assert!(result.starts_with("TLS/certificate error:"));
+    }
+
+    #[test]
+    fn classify_certificate() {
+        let result = classify_connection_error("certificate verify failed");
+        assert!(result.starts_with("TLS/certificate error:"));
+    }
+
+    #[test]
+    fn classify_tls_variant() {
+        let result = classify_connection_error("TLS handshake failed");
+        assert!(result.starts_with("TLS/certificate error:"));
+    }
+
+    #[test]
+    fn classify_unknown() {
+        assert_eq!(
+            classify_connection_error("something else happened"),
+            "something else happened"
+        );
+    }
+
+    // ---- decode_jwt_expiry ----
+
+    #[test]
+    fn decode_jwt_valid() {
+        // JWT payload: {"exp": 1700000000, "sub": "user"}
+        // base64url("{"exp":1700000000,"sub":"user"}") = eyJleHAiOjE3MDAwMDAwMDAsInN1YiI6InVzZXIifQ
+        let token = "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3MDAwMDAwMDAsInN1YiI6InVzZXIifQ.signature";
+        assert_eq!(decode_jwt_expiry(token), Some(1700000000));
+    }
+
+    #[test]
+    fn decode_jwt_no_exp() {
+        // JWT payload: {"sub": "user"} (no exp claim)
+        // base64url("{"sub":"user"}") = eyJzdWIiOiJ1c2VyIn0
+        let token = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.signature";
+        assert_eq!(decode_jwt_expiry(token), None);
+    }
+
+    #[test]
+    fn decode_jwt_invalid_base64() {
+        let token = "header.!!!invalid!!!.signature";
+        assert_eq!(decode_jwt_expiry(token), None);
+    }
+
+    #[test]
+    fn decode_jwt_no_parts() {
+        assert_eq!(decode_jwt_expiry("no-dots-here"), None);
+    }
+
+    #[test]
+    fn decode_jwt_one_part() {
+        assert_eq!(decode_jwt_expiry("header."), None);
+    }
+
+    #[test]
+    fn decode_jwt_invalid_json() {
+        // base64url("not json") = bm90IGpzb24
+        let token = "header.bm90IGpzb24.signature";
+        assert_eq!(decode_jwt_expiry(token), None);
+    }
+
+    // ---- print_summary ----
+
+    #[test]
+    fn print_summary_all_pass() {
+        let mut diag = DiagResult::default();
+        diag.passes = 5;
+        // Just verify it doesn't panic
+        print_summary(&diag);
+    }
+
+    #[test]
+    fn print_summary_with_failures() {
+        let mut diag = DiagResult::default();
+        diag.failures = 2;
+        diag.warnings = 1;
+        print_summary(&diag);
+    }
+}

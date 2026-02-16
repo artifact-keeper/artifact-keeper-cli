@@ -113,3 +113,168 @@ fn delete_from_file(instance: &str) -> Result<()> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::ENV_LOCK;
+
+    fn with_temp_config<F: FnOnce()>(f: F) {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+        f();
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn stored_credential_serialization() {
+        let cred = StoredCredential {
+            access_token: "abc123".into(),
+            refresh_token: Some("refresh456".into()),
+        };
+        let json = serde_json::to_string(&cred).unwrap();
+        let loaded: StoredCredential = serde_json::from_str(&json).unwrap();
+        assert_eq!(loaded.access_token, "abc123");
+        assert_eq!(loaded.refresh_token.as_deref(), Some("refresh456"));
+    }
+
+    #[test]
+    fn stored_credential_without_refresh() {
+        let cred = StoredCredential {
+            access_token: "token".into(),
+            refresh_token: None,
+        };
+        let json = serde_json::to_string(&cred).unwrap();
+        let loaded: StoredCredential = serde_json::from_str(&json).unwrap();
+        assert_eq!(loaded.access_token, "token");
+        assert!(loaded.refresh_token.is_none());
+    }
+
+    #[test]
+    fn file_store_and_load() {
+        with_temp_config(|| {
+            let json = r#"{"access_token":"test-token","refresh_token":null}"#;
+            store_to_file("myinstance", json).unwrap();
+
+            let loaded = load_from_file("myinstance").unwrap();
+            assert_eq!(loaded.as_deref(), Some(json));
+        });
+    }
+
+    #[test]
+    fn file_load_nonexistent_instance() {
+        with_temp_config(|| {
+            let loaded = load_from_file("nonexistent").unwrap();
+            assert!(loaded.is_none());
+        });
+    }
+
+    #[test]
+    fn file_delete() {
+        with_temp_config(|| {
+            let json = r#"{"access_token":"t","refresh_token":null}"#;
+            store_to_file("to-delete", json).unwrap();
+
+            delete_from_file("to-delete").unwrap();
+
+            let loaded = load_from_file("to-delete").unwrap();
+            assert!(loaded.is_none());
+        });
+    }
+
+    #[test]
+    fn file_delete_nonexistent_is_ok() {
+        with_temp_config(|| {
+            // Should not error
+            delete_from_file("nonexistent").unwrap();
+        });
+    }
+
+    #[test]
+    fn file_store_multiple_instances() {
+        with_temp_config(|| {
+            store_to_file("instance-a", r#"{"access_token":"a","refresh_token":null}"#).unwrap();
+            store_to_file("instance-b", r#"{"access_token":"b","refresh_token":null}"#).unwrap();
+
+            let a = load_from_file("instance-a").unwrap().unwrap();
+            let b = load_from_file("instance-b").unwrap().unwrap();
+            assert!(a.contains("\"a\""));
+            assert!(b.contains("\"b\""));
+        });
+    }
+
+    #[test]
+    fn file_overwrite_existing() {
+        with_temp_config(|| {
+            store_to_file("inst", r#"{"access_token":"old","refresh_token":null}"#).unwrap();
+            store_to_file("inst", r#"{"access_token":"new","refresh_token":null}"#).unwrap();
+
+            let loaded = load_from_file("inst").unwrap().unwrap();
+            assert!(loaded.contains("\"new\""));
+            assert!(!loaded.contains("\"old\""));
+        });
+    }
+
+    #[test]
+    fn get_credential_from_env() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::set_var("AK_TOKEN", "env-token-123") };
+
+        let cred = get_credential("any-instance").unwrap();
+        assert_eq!(cred.access_token, "env-token-123");
+        assert!(cred.refresh_token.is_none());
+
+        unsafe { std::env::remove_var("AK_TOKEN") };
+    }
+
+    #[test]
+    fn get_credential_not_found() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var("AK_TOKEN") };
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let result = get_credential("no-such-instance");
+        assert!(result.is_err());
+
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn get_credential_from_file_fallback() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var("AK_TOKEN") };
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let cred = StoredCredential {
+            access_token: "file-token".into(),
+            refresh_token: None,
+        };
+        let json = serde_json::to_string(&cred).unwrap();
+        store_to_file("file-inst", &json).unwrap();
+
+        let loaded = get_credential("file-inst").unwrap();
+        assert_eq!(loaded.access_token, "file-token");
+
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn delete_credential_cleans_file() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let json = r#"{"access_token":"t","refresh_token":null}"#;
+        store_to_file("del-test", json).unwrap();
+
+        delete_credential("del-test").unwrap();
+
+        let loaded = load_from_file("del-test").unwrap();
+        assert!(loaded.is_none());
+
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+}
