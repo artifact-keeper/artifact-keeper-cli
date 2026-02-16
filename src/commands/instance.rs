@@ -1,7 +1,11 @@
 use clap::Subcommand;
+use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use crate::cli::GlobalArgs;
+use crate::config::{AppConfig, InstanceConfig};
+use crate::error::AkError;
+use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
 pub enum InstanceCommand {
@@ -12,6 +16,10 @@ pub enum InstanceCommand {
 
         /// Server URL (e.g., https://registry.company.com)
         url: String,
+
+        /// API version
+        #[arg(long, default_value = "v1")]
+        api_version: String,
     },
 
     /// Remove a configured instance
@@ -37,24 +45,162 @@ pub enum InstanceCommand {
 }
 
 impl InstanceCommand {
-    pub async fn execute(self, _global: &GlobalArgs) -> Result<()> {
+    pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
-            Self::Add { name, url } => {
-                eprintln!("ak instance add: {}={} (not yet implemented)", name, url);
-            }
-            Self::Remove { name } => {
-                eprintln!("ak instance remove: {} (not yet implemented)", name);
-            }
-            Self::List => {
-                eprintln!("ak instance list (not yet implemented)");
-            }
-            Self::Use { name } => {
-                eprintln!("ak instance use: {} (not yet implemented)", name);
-            }
-            Self::Info { name } => {
-                eprintln!("ak instance info: {:?} (not yet implemented)", name);
-            }
+            Self::Add {
+                name,
+                url,
+                api_version,
+            } => add_instance(&name, &url, &api_version),
+            Self::Remove { name } => remove_instance(&name),
+            Self::List => list_instances(&global.format),
+            Self::Use { name } => use_instance(&name),
+            Self::Info { name } => info_instance(name.as_deref(), global),
         }
-        Ok(())
     }
+}
+
+fn add_instance(name: &str, url: &str, api_version: &str) -> Result<()> {
+    let mut config = AppConfig::load()?;
+
+    if config.instances.contains_key(name) {
+        return Err(AkError::ConfigError(format!(
+            "Instance '{name}' already exists. Use `ak instance remove {name}` first."
+        ))
+        .into());
+    }
+
+    let url = url.trim_end_matches('/').to_string();
+    let is_first = config.instances.is_empty();
+
+    config.instances.insert(
+        name.to_string(),
+        InstanceConfig {
+            url: url.clone(),
+            api_version: api_version.to_string(),
+        },
+    );
+
+    if is_first {
+        config.default_instance = Some(name.to_string());
+        eprintln!("Added instance '{name}' at {url} (set as default)");
+    } else {
+        eprintln!("Added instance '{name}' at {url}");
+    }
+
+    config.save()?;
+    Ok(())
+}
+
+fn remove_instance(name: &str) -> Result<()> {
+    let mut config = AppConfig::load()?;
+
+    if config.instances.remove(name).is_none() {
+        return Err(AkError::InstanceNotFound(name.to_string()).into());
+    }
+
+    if config.default_instance.as_deref() == Some(name) {
+        config.default_instance = config.instances.keys().next().cloned();
+        match config.default_instance {
+            Some(ref new_default) => {
+                eprintln!("Removed instance '{name}'. Default switched to '{new_default}'.");
+            }
+            None => eprintln!("Removed instance '{name}'. No instances remaining."),
+        }
+    } else {
+        eprintln!("Removed instance '{name}'.");
+    }
+
+    config.save()?;
+    Ok(())
+}
+
+fn list_instances(format: &OutputFormat) -> Result<()> {
+    let config = AppConfig::load()?;
+
+    if config.instances.is_empty() {
+        eprintln!("No instances configured. Run `ak instance add <name> <url>` to add one.");
+        return Ok(());
+    }
+
+    let is_default = |name: &str| config.default_instance.as_deref() == Some(name);
+
+    if matches!(format, OutputFormat::Quiet) {
+        for name in config.instances.keys() {
+            println!("{name}");
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = config
+        .instances
+        .iter()
+        .map(|(name, inst)| {
+            serde_json::json!({
+                "name": name,
+                "url": inst.url,
+                "api_version": inst.api_version,
+                "default": is_default(name),
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec!["", "NAME", "URL", "API VERSION"]);
+
+        for (name, inst) in &config.instances {
+            let marker = if is_default(name) { "*" } else { " " };
+            table.add_row(vec![marker, name, &inst.url, &inst.api_version]);
+        }
+
+        table.to_string()
+    };
+
+    println!("{}", output::render(&entries, format, Some(table_str)));
+
+    Ok(())
+}
+
+fn use_instance(name: &str) -> Result<()> {
+    let mut config = AppConfig::load()?;
+
+    if !config.instances.contains_key(name) {
+        return Err(AkError::InstanceNotFound(name.to_string()).into());
+    }
+
+    config.default_instance = Some(name.to_string());
+    config.save()?;
+
+    eprintln!("Default instance set to '{name}'.");
+    Ok(())
+}
+
+fn info_instance(name: Option<&str>, global: &GlobalArgs) -> Result<()> {
+    let config = AppConfig::load()?;
+
+    let (resolved_name, instance) = config.resolve_instance(name.or(global.instance.as_deref()))?;
+    let is_default = config.default_instance.as_deref() == Some(resolved_name);
+
+    let info = serde_json::json!({
+        "name": resolved_name,
+        "url": instance.url,
+        "api_version": instance.api_version,
+        "default": is_default,
+    });
+
+    let table_str = format!(
+        "Name:        {}\nURL:         {}\nAPI Version: {}\nDefault:     {}",
+        resolved_name,
+        instance.url,
+        instance.api_version,
+        if is_default { "yes" } else { "no" },
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
 }
