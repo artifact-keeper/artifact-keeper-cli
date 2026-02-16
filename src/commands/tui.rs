@@ -1,6 +1,6 @@
 use std::io;
 
-use artifact_keeper_sdk::{ClientHealthExt, ClientRepositoriesExt};
+use artifact_keeper_sdk::ClientRepositoriesExt;
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -15,6 +15,7 @@ use ratatui::{DefaultTerminal, Frame};
 
 use super::client::build_client;
 use crate::config::AppConfig;
+use crate::config::credentials::{StoredCredential, get_credential};
 use crate::output::format_bytes;
 
 // ---------------------------------------------------------------------------
@@ -120,6 +121,8 @@ struct App {
     config: AppConfig,
     search_query: String,
     searching: bool,
+    /// Cached credentials per instance — avoids repeated keychain prompts.
+    credential_cache: std::collections::HashMap<String, StoredCredential>,
 }
 
 impl App {
@@ -154,6 +157,7 @@ impl App {
             config,
             search_query: String::new(),
             searching: false,
+            credential_cache: std::collections::HashMap::new(),
         }
     }
 
@@ -207,10 +211,43 @@ impl App {
         }
     }
 
+    /// Get a cached credential, loading from keychain/file only once per instance.
+    fn cached_credential(&mut self, instance_name: &str) -> Option<&StoredCredential> {
+        if !self.credential_cache.contains_key(instance_name) {
+            if let Ok(cred) = get_credential(instance_name) {
+                self.credential_cache
+                    .insert(instance_name.to_string(), cred);
+            }
+        }
+        self.credential_cache.get(instance_name)
+    }
+
+    /// Build an SDK client using cached credentials (no repeated keychain prompts).
+    fn build_cached_client(&mut self, instance_name: &str) -> Option<artifact_keeper_sdk::Client> {
+        let instance = self.config.instances.get(instance_name)?.clone();
+        let cred = self.cached_credential(instance_name).cloned();
+        match cred {
+            Some(ref c) => build_client(instance_name, &instance, Some(c)).ok(),
+            None => {
+                // Fall back to unauthenticated client
+                let http_client = reqwest::ClientBuilder::new()
+                    .connect_timeout(std::time::Duration::from_secs(15))
+                    .timeout(std::time::Duration::from_secs(30))
+                    .build()
+                    .ok()?;
+                Some(artifact_keeper_sdk::Client::new_with_client(
+                    &instance.url,
+                    http_client,
+                ))
+            }
+        }
+    }
+
     async fn check_instance_health(&mut self) {
-        for entry in &mut self.instances {
-            let instance = match self.config.instances.get(&entry.name) {
-                Some(i) => i,
+        for i in 0..self.instances.len() {
+            let name = self.instances[i].name.clone();
+            let instance = match self.config.instances.get(&name) {
+                Some(i) => i.clone(),
                 None => continue,
             };
 
@@ -221,20 +258,21 @@ impl App {
             {
                 Ok(c) => c,
                 Err(_) => {
-                    entry.status = "error".to_string();
+                    self.instances[i].status = "error".to_string();
                     continue;
                 }
             };
 
-            let base_url = format!("{}/api/{}", instance.url, instance.api_version);
-            let client = artifact_keeper_sdk::Client::new_with_client(&base_url, http_client);
+            // Use unauthenticated client hitting /api/v1/repositories to check health.
+            // The /health endpoint is at root level and gets intercepted by reverse proxies.
+            let client = artifact_keeper_sdk::Client::new_with_client(&instance.url, http_client);
 
-            match client.health_check().send().await {
+            match client.list_repositories().page(1).per_page(1).send().await {
                 Ok(resp) => {
-                    entry.status = format!("{} v{}", resp.status, resp.version);
+                    self.instances[i].status = format!("online ({} repos)", resp.pagination.total);
                 }
                 Err(_) => {
-                    entry.status = "offline".to_string();
+                    self.instances[i].status = "offline".to_string();
                 }
             }
         }
@@ -246,14 +284,9 @@ impl App {
             None => return,
         };
 
-        let instance = match self.config.instances.get(&instance_name) {
-            Some(i) => i,
-            None => return,
-        };
-
-        let client = match build_client(&instance_name, instance, None) {
-            Ok(c) => c,
-            Err(_) => {
+        let client = match self.build_cached_client(&instance_name) {
+            Some(c) => c,
+            None => {
                 self.status_message = format!("Failed to connect to {instance_name}");
                 return;
             }
@@ -302,14 +335,9 @@ impl App {
             None => return,
         };
 
-        let instance = match self.config.instances.get(&instance_name) {
-            Some(i) => i,
-            None => return,
-        };
-
-        let client = match build_client(&instance_name, instance, None) {
-            Ok(c) => c,
-            Err(_) => {
+        let client = match self.build_cached_client(&instance_name) {
+            Some(c) => c,
+            None => {
                 self.status_message = format!("Failed to connect to {instance_name}");
                 return;
             }
@@ -751,7 +779,7 @@ fn draw_help_overlay(f: &mut Frame, area: Rect) {
 // ---------------------------------------------------------------------------
 
 fn instance_status_color(status: &str) -> Color {
-    if status.starts_with("healthy") {
+    if status.starts_with("online") {
         Color::Green
     } else if status == "offline" || status == "error" {
         Color::Red
