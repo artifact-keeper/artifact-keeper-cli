@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod artifact;
 pub mod auth;
+pub mod client;
 pub mod completion;
 pub mod config;
 pub mod doctor;

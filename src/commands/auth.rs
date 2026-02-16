@@ -1,15 +1,11 @@
-use std::time::Duration;
-
 use artifact_keeper_sdk::{ClientAuthExt, ClientUsersExt};
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
-use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
+use super::client::{authenticated_client, build_client, client_for};
 use crate::cli::GlobalArgs;
-use crate::config::credentials::{
-    StoredCredential, delete_credential, get_credential, store_credential,
-};
+use crate::config::credentials::{StoredCredential, delete_credential, store_credential};
 use crate::config::{AppConfig, InstanceConfig};
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -84,61 +80,25 @@ impl AuthCommand {
     }
 }
 
-/// Build an authenticated SDK client for the resolved instance.
-///
-/// If `cred` is `None`, the credential is loaded from the credential store
-/// using `instance_name`.
-fn build_client(
-    instance_name: &str,
-    instance: &InstanceConfig,
-    cred: Option<&StoredCredential>,
-) -> Result<artifact_keeper_sdk::Client> {
-    let owned_cred;
-    let cred = match cred {
-        Some(c) => c,
-        None => {
-            owned_cred = get_credential(instance_name)?;
-            &owned_cred
-        }
-    };
-
-    let auth_value = format!("Bearer {}", cred.access_token);
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        AUTHORIZATION,
-        HeaderValue::from_str(&auth_value)
-            .map_err(|e| AkError::ConfigError(format!("Invalid token: {e}")))?,
-    );
-
-    let http_client = reqwest::ClientBuilder::new()
-        .default_headers(headers)
-        .connect_timeout(Duration::from_secs(15))
-        .timeout(Duration::from_secs(30))
-        .build()
-        .into_diagnostic()?;
-
-    let base_url = format!("{}/api/{}", instance.url, instance.api_version);
-    Ok(artifact_keeper_sdk::Client::new_with_client(
-        &base_url,
-        http_client,
-    ))
-}
-
 async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Result<()> {
     let config = AppConfig::load()?;
-    let (instance_name, instance) = if let Some(url) = url {
-        let found = config.instances.iter().find(|(_, inst)| inst.url == url);
-        if let Some((name, inst)) = found {
-            (name.as_str().to_string(), inst.clone())
-        } else {
-            return Err(AkError::ConfigError(format!(
-                "No instance configured with URL '{url}'. Run `ak instance add <name> {url}` first."
-            ))
-            .into());
+    let (instance_name, instance) = match url {
+        Some(url) => {
+            let (name, inst) = config
+                .instances
+                .iter()
+                .find(|(_, inst)| inst.url == url)
+                .ok_or_else(|| {
+                    AkError::ConfigError(format!(
+                        "No instance configured with URL '{url}'. Run `ak instance add <name> {url}` first."
+                    ))
+                })?;
+            (name.to_string(), inst.clone())
         }
-    } else {
-        let (name, inst) = config.resolve_instance(global.instance.as_deref())?;
-        (name.to_string(), inst.clone())
+        None => {
+            let (name, inst) = config.resolve_instance(global.instance.as_deref())?;
+            (name.to_string(), inst.clone())
+        }
     };
 
     if global.no_input {
@@ -243,9 +203,7 @@ fn logout(instance: Option<&str>, global: &GlobalArgs) -> Result<()> {
 }
 
 async fn whoami(global: &GlobalArgs) -> Result<()> {
-    let config = AppConfig::load()?;
-    let (instance_name, instance) = config.resolve_instance(global.instance.as_deref())?;
-    let client = build_client(instance_name, instance, None)?;
+    let (instance_name, instance, client) = authenticated_client(global)?;
 
     let user = client
         .get_current_user()
@@ -293,9 +251,7 @@ async fn token_create(
     expires_in: u32,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let config = AppConfig::load()?;
-    let (instance_name, instance) = config.resolve_instance(global.instance.as_deref())?;
-    let client = build_client(instance_name, instance, None)?;
+    let client = client_for(global)?;
 
     let default_name = format!("ak-cli-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"));
     let name = if let Some(desc) = description {
@@ -354,9 +310,7 @@ fn format_optional_date(date: Option<chrono::DateTime<chrono::Utc>>, fmt: &str) 
 }
 
 async fn token_list(global: &GlobalArgs) -> Result<()> {
-    let config = AppConfig::load()?;
-    let (instance_name, instance) = config.resolve_instance(global.instance.as_deref())?;
-    let client = build_client(instance_name, instance, None)?;
+    let client = client_for(global)?;
 
     let user = client
         .get_current_user()
