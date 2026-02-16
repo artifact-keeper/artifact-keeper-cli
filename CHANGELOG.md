@@ -5,6 +5,18 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-02-16
+
+### Added
+
+- **Config commands** — `ak config list`, `get`, `set`, and `path` are now fully implemented with validation and table/json/yaml output (#41)
+
+### Fixed
+
+- **Release CI** — fixed nfpm version, download URL format, and redundant package rename step (#38, #39, #40)
+- **DEB/RPM packages** — added Debian and RPM package builds (amd64, arm64/aarch64) via nfpm to release workflow
+- **Homebrew tap** — automated formula generation and push to `artifact-keeper/homebrew-tap` on release
+
 ## [0.1.0] - 2026-02-16
 
 Initial release of the Artifact Keeper CLI.
@@ -33,4 +45,5 @@ Initial release of the Artifact Keeper CLI.
 - Covers 250+ API endpoints across all backend features
 - OpenAPI 3.1 → 3.0 conversion handled automatically by the xtask
 
+[0.2.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.2.0
 [0.1.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.1.0
