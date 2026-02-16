@@ -24,6 +24,7 @@ artifact-keeper-sdk = { path = "sdk" }
 # CLI framework
 clap = { version = "4", features = ["derive", "env", "wrap_help"] }
 clap_complete = "4"
+clap_mangen = "0.2"
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }

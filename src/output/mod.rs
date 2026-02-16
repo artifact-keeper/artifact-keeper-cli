@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-#[derive(Clone, Debug, clap::ValueEnum)]
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
 pub enum OutputFormat {
     Table,
     Json,
@@ -13,9 +13,9 @@ impl OutputFormat {
     ///
     /// When the user hasn't explicitly set a format (i.e. the default "table" is
     /// in effect) and stdout is not a TTY, switch to JSON for pipe-friendly output.
-    pub fn resolve(&self, explicitly_set: bool) -> &Self {
+    pub fn resolve(self, explicitly_set: bool) -> Self {
         if !explicitly_set && matches!(self, Self::Table) && !console::Term::stdout().is_term() {
-            &Self::Json
+            Self::Json
         } else {
             self
         }

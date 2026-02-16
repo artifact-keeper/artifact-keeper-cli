@@ -82,9 +82,51 @@ jobs:
             ${{ matrix.artifact }}
             ${{ matrix.artifact }}.sha256
 
+  completions:
+    name: Generate Completions & Man Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build CLI
+        run: cargo build --release
+
+      - name: Generate shell completions
+        run: |
+          mkdir -p completions
+          target/release/ak completion bash > completions/ak.bash
+          target/release/ak completion zsh > completions/_ak
+          target/release/ak completion fish > completions/ak.fish
+          target/release/ak completion powershell > completions/_ak.ps1
+
+      - name: Generate man pages
+        run: |
+          mkdir -p man
+          target/release/ak man-pages man/
+
+      - name: Create completions archive
+        run: tar czf ak-completions.tar.gz -C completions .
+
+      - name: Create man pages archive
+        run: tar czf ak-man-pages.tar.gz -C man .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ak-completions
+          path: ak-completions.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ak-man-pages
+          path: ak-man-pages.tar.gz
+
   release:
     name: Create Release
-    needs: build
+    needs: [build, completions]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,3 +142,5 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/ak-*
+            artifacts/ak-completions.tar.gz
+            artifacts/ak-man-pages.tar.gz
