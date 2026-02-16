@@ -94,6 +94,29 @@ pub enum Command {
     /// Diagnose configuration and connectivity issues
     Doctor,
 
+    /// Migrate artifacts between instances in bulk
+    Migrate {
+        /// Source instance name
+        #[arg(long)]
+        from_instance: String,
+
+        /// Source repository key
+        #[arg(long)]
+        from_repo: String,
+
+        /// Destination instance (defaults to current instance)
+        #[arg(long)]
+        to_instance: Option<String>,
+
+        /// Destination repository key
+        #[arg(long)]
+        to_repo: String,
+
+        /// Preview what would be migrated without transferring
+        #[arg(long)]
+        dry_run: bool,
+    },
+
     /// Administrative operations (backup, cleanup, users, plugins)
     Admin {
         #[command(subcommand)]
@@ -149,6 +172,23 @@ impl Cli {
             Command::Setup { command } => command.execute(&global).await,
             Command::Scan { command } => command.execute(&global).await,
             Command::Doctor => commands::doctor::execute(&global).await,
+            Command::Migrate {
+                from_instance,
+                from_repo,
+                to_instance,
+                to_repo,
+                dry_run,
+            } => {
+                commands::migrate::execute(
+                    &from_instance,
+                    &from_repo,
+                    to_instance.as_deref(),
+                    &to_repo,
+                    dry_run,
+                    &global,
+                )
+                .await
+            }
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
             Command::Tui => commands::tui::execute(&global).await,

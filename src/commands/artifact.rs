@@ -6,8 +6,9 @@ use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
-use super::client::client_for;
+use super::client::{build_client, client_for};
 use crate::cli::GlobalArgs;
+use crate::config::AppConfig;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -94,13 +95,21 @@ pub enum ArtifactCommand {
         format: Option<String>,
     },
 
-    /// Copy an artifact between repositories
+    /// Copy an artifact between repositories (same or cross-instance)
     Copy {
         /// Source: repo/path
         source: String,
 
-        /// Destination repository key
+        /// Destination: repo or repo/path
         destination: String,
+
+        /// Source instance (defaults to current instance)
+        #[arg(long)]
+        from_instance: Option<String>,
+
+        /// Destination instance (defaults to current instance)
+        #[arg(long)]
+        to_instance: Option<String>,
     },
 }
 
@@ -127,7 +136,18 @@ impl ArtifactCommand {
             Self::Copy {
                 source,
                 destination,
-            } => copy(&source, &destination, global).await,
+                from_instance,
+                to_instance,
+            } => {
+                copy(
+                    &source,
+                    &destination,
+                    from_instance.as_deref(),
+                    to_instance.as_deref(),
+                    global,
+                )
+                .await
+            }
         }
     }
 }
@@ -247,7 +267,7 @@ async fn pull(
         PathBuf::from(filename)
     });
 
-    let spinner = crate::output::spinner(&format!("Downloading {artifact_path}..."));
+    let spinner = output::spinner(&format!("Downloading {artifact_path}..."));
 
     let resp = client
         .download_artifact()
@@ -290,7 +310,7 @@ async fn list(
 ) -> Result<()> {
     let client = client_for(global)?;
 
-    let spinner = crate::output::spinner("Fetching artifacts...");
+    let spinner = output::spinner("Fetching artifacts...");
 
     let mut req = client
         .list_artifacts()
@@ -473,7 +493,7 @@ async fn search(
 ) -> Result<()> {
     let client = client_for(global)?;
 
-    let spinner = crate::output::spinner("Searching...");
+    let spinner = output::spinner("Searching...");
 
     let mut req = client.advanced_search().query(query);
     if let Some(r) = repo {
@@ -554,12 +574,43 @@ async fn search(
     Ok(())
 }
 
-async fn copy(source: &str, destination: &str, global: &GlobalArgs) -> Result<()> {
+async fn copy(
+    source: &str,
+    destination: &str,
+    from_instance: Option<&str>,
+    to_instance: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let (src_repo, src_path) = source
         .split_once('/')
         .ok_or_else(|| AkError::ConfigError("Source must be in format 'repo/path'".into()))?;
 
+    let is_cross_instance = from_instance.is_some() || to_instance.is_some();
+
+    if is_cross_instance {
+        cross_instance_copy(
+            src_repo,
+            src_path,
+            destination,
+            from_instance,
+            to_instance,
+            global,
+        )
+        .await
+    } else {
+        same_instance_copy(src_repo, src_path, destination, global).await
+    }
+}
+
+async fn same_instance_copy(
+    src_repo: &str,
+    src_path: &str,
+    destination: &str,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
+
+    let spinner = output::spinner("Finding artifact...");
 
     let artifacts = client
         .list_artifacts()
@@ -573,6 +624,8 @@ async fn copy(source: &str, destination: &str, global: &GlobalArgs) -> Result<()
     let artifact = artifacts.items.first().ok_or_else(|| {
         AkError::ServerError(format!("Artifact '{src_path}' not found in '{src_repo}'"))
     })?;
+
+    spinner.set_message("Copying...");
 
     let body = artifact_keeper_sdk::types::PromoteArtifactRequest {
         target_repository: destination.to_string(),
@@ -589,9 +642,76 @@ async fn copy(source: &str, destination: &str, global: &GlobalArgs) -> Result<()
         .await
         .map_err(|e| AkError::ServerError(format!("Copy failed: {e}")))?;
 
+    spinner.finish_and_clear();
+
     eprintln!(
         "Copied '{}' from '{}' to '{}'.",
         src_path, src_repo, destination
+    );
+
+    Ok(())
+}
+
+async fn cross_instance_copy(
+    src_repo: &str,
+    src_path: &str,
+    destination: &str,
+    from_instance: Option<&str>,
+    to_instance: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let config = AppConfig::load()?;
+
+    let (src_name, src_instance) =
+        config.resolve_instance(from_instance.or(global.instance.as_deref()))?;
+    let (dst_name, dst_instance) = config.resolve_instance(to_instance)?;
+
+    let src_client = build_client(src_name, src_instance, None)?;
+    let dst_client = build_client(dst_name, dst_instance, None)?;
+
+    let spinner = output::spinner(&format!(
+        "Downloading from {src_name}:{src_repo}/{src_path}..."
+    ));
+
+    let resp = src_client
+        .download_artifact()
+        .key(src_repo)
+        .path(src_path)
+        .send()
+        .await
+        .map_err(|e| AkError::ServerError(format!("Download from source failed: {e}")))?;
+
+    let mut bytes = Vec::new();
+    let mut stream = resp.into_inner();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.into_diagnostic()?;
+        bytes.extend_from_slice(&chunk);
+    }
+
+    let (dst_repo, dst_path) = match destination.split_once('/') {
+        Some((repo, path)) => (repo, path.to_string()),
+        None => (destination, src_path.to_string()),
+    };
+
+    spinner.set_message(format!("Uploading to {dst_name}:{dst_repo}/{dst_path}..."));
+
+    let size = bytes.len() as i64;
+    let body = reqwest::Body::from(bytes);
+
+    dst_client
+        .upload_artifact()
+        .key(dst_repo)
+        .path(&dst_path)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| AkError::ServerError(format!("Upload to destination failed: {e}")))?;
+
+    spinner.finish_and_clear();
+
+    eprintln!(
+        "Copied {src_name}:{src_repo}/{src_path} -> {dst_name}:{dst_repo}/{dst_path} ({})",
+        format_bytes(size),
     );
 
     Ok(())
