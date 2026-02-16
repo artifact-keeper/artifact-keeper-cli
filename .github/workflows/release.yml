@@ -152,19 +152,10 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Install packaging tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y rpm
-
-      - name: Install cargo-deb and cargo-generate-rpm
-        run: |
-          # We use nfpm instead — simpler, no Rust rebuild needed
-          echo "Using nfpm for packaging"
-
       - name: Install nfpm
         run: |
-          curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_linux_amd64.tar.gz | tar xz -C /usr/local/bin nfpm
+          curl -sfL https://github.com/goreleaser/nfpm/releases/download/v2.45.0/nfpm_2.45.0_linux_amd64.tar.gz -o /tmp/nfpm.tar.gz
+          tar xzf /tmp/nfpm.tar.gz -C /usr/local/bin nfpm
 
       - name: Extract version
         id: version
@@ -172,30 +163,29 @@ jobs:
 
       - name: Prepare package tree
         run: |
-          mkdir -p pkg/usr/bin pkg/usr/share/man/man1 pkg/usr/share/bash-completion/completions pkg/usr/share/zsh/vendor-completions pkg/usr/share/fish/vendor_completions.d pkg/usr/share/doc/ak
+          mkdir -p pkg/usr/bin pkg/usr/share/man/man1 \
+            pkg/usr/share/bash-completion/completions \
+            pkg/usr/share/zsh/vendor-completions \
+            pkg/usr/share/fish/vendor_completions.d \
+            pkg/usr/share/doc/ak \
+            /tmp/completions-staging
 
-          # Binary
           cp artifacts/${{ matrix.binary }} pkg/usr/bin/ak
           chmod 755 pkg/usr/bin/ak
 
-          # Man pages
           tar xzf artifacts/ak-man-pages.tar.gz -C pkg/usr/share/man/man1/
 
-          # Completions
-          tar xzf artifacts/ak-completions.tar.gz -C /tmp/completions-staging/ || true
-          mkdir -p /tmp/completions-staging
           tar xzf artifacts/ak-completions.tar.gz -C /tmp/completions-staging/
           cp /tmp/completions-staging/ak.bash pkg/usr/share/bash-completion/completions/ak
           cp /tmp/completions-staging/_ak pkg/usr/share/zsh/vendor-completions/_ak
           cp /tmp/completions-staging/ak.fish pkg/usr/share/fish/vendor_completions.d/ak.fish
 
-          # License and docs
           cp LICENSE pkg/usr/share/doc/ak/
           cp README.md pkg/usr/share/doc/ak/
 
       - name: Create nfpm config
         run: |
-          cat > nfpm.yaml << 'NFPM'
+          cat > nfpm.yaml <<EOF
           name: ak
           arch: "${{ matrix.arch }}"
           version: "${{ steps.version.outputs.version }}"
@@ -220,11 +210,12 @@ jobs:
             - src: pkg/usr/share/doc/ak/
               dst: /usr/share/doc/ak/
               type: tree
-          NFPM
+          EOF
+          # nfpm is picky about indentation — strip the leading spaces from heredoc
+          sed -i 's/^          //' nfpm.yaml
 
       - name: Build package
-        run: |
-          nfpm pkg --packager ${{ matrix.format }} --target .
+        run: nfpm pkg --packager ${{ matrix.format }} --target .
 
       - name: Rename package
         run: |
@@ -258,7 +249,9 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            artifacts/ak-*
+            artifacts/ak-linux-*
+            artifacts/ak-darwin-*
+            artifacts/ak-windows-*
             artifacts/ak-completions.tar.gz
             artifacts/ak-man-pages.tar.gz
             artifacts/*.deb
@@ -294,7 +287,9 @@ jobs:
           VERSION="${{ steps.version.outputs.version }}"
           TAG="${GITHUB_REF_NAME}"
           BASE="https://github.com/artifact-keeper/artifact-keeper-cli/releases/download/${TAG}"
-          cat > ak.rb << FORMULA
+
+          mkdir -p Formula
+          cat > Formula/ak.rb << FORMULA
           class Ak < Formula
             desc "CLI/TUI tool for Artifact Keeper — an enterprise artifact registry"
             homepage "https://artifactkeeper.com"
@@ -332,13 +327,15 @@ jobs:
           FORMULA
 
       - name: Push to Homebrew tap
-        uses: dmnemec/copy_file_to_another_repo_action@main
+        uses: cpina/github-action-push-to-another-repository@main
         env:
-          API_TOKEN_GITHUB: ${{ secrets.GITHUB_TOKEN }}
+          SSH_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
         with:
-          source_file: ak.rb
-          destination_repo: artifact-keeper/homebrew-tap
-          destination_folder: Formula
-          user_email: "github-actions[bot]@users.noreply.github.com"
-          user_name: "github-actions[bot]"
-          commit_message: "Update ak formula to ${{ steps.version.outputs.version }}"
+          source-directory: Formula
+          destination-github-username: artifact-keeper
+          destination-repository-name: homebrew-tap
+          target-directory: Formula
+          user-email: "github-actions[bot]@users.noreply.github.com"
+          user-name: "github-actions[bot]"
+          commit-message: "Update ak formula to ${{ steps.version.outputs.version }}"
+          target-branch: main
