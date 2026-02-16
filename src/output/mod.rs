@@ -46,6 +46,22 @@ pub fn is_interactive() -> bool {
     console::Term::stdout().is_term()
 }
 
+/// Format a byte count as a human-readable string (e.g., "1.5 MB").
+pub fn format_bytes(bytes: i64) -> String {
+    const KB: i64 = 1024;
+    const MB: i64 = KB * 1024;
+    const GB: i64 = MB * 1024;
+    if bytes >= GB {
+        format!("{:.1} GB", bytes as f64 / GB as f64)
+    } else if bytes >= MB {
+        format!("{:.1} MB", bytes as f64 / MB as f64)
+    } else if bytes >= KB {
+        format!("{:.1} KB", bytes as f64 / KB as f64)
+    } else {
+        format!("{bytes} B")
+    }
+}
+
 /// Create a progress spinner on stderr for long-running operations.
 pub fn spinner(message: &str) -> indicatif::ProgressBar {
     let pb = indicatif::ProgressBar::new_spinner();
