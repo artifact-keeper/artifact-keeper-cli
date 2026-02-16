@@ -1,0 +1,11 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+progenitor = "0.12"
+openapiv3 = "2"
+serde_json = "1"
+anyhow = "1"

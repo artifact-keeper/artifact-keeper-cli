@@ -1,3 +1,6 @@
+[workspace]
+members = ["sdk", "xtask"]
+
 [package]
 name = "artifact-keeper-cli"
 version = "0.1.0"
@@ -15,6 +18,9 @@ name = "ak"
 path = "src/main.rs"
 
 [dependencies]
+# Generated SDK
+artifact-keeper-sdk = { path = "sdk" }
+
 # CLI framework
 clap = { version = "4", features = ["derive", "env", "wrap_help"] }
 clap_complete = "4"
@@ -22,8 +28,8 @@ clap_complete = "4"
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
-# HTTP client
-reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"], default-features = false }
+# HTTP client (must match progenitor-client's reqwest version)
+reqwest = { version = "0.13", features = ["json", "stream"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
