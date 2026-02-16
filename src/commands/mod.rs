@@ -6,6 +6,7 @@ pub mod completion;
 pub mod config;
 pub mod doctor;
 pub mod instance;
+pub mod migrate;
 pub mod repo;
 pub mod scan;
 pub mod setup;
