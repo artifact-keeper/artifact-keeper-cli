@@ -217,14 +217,6 @@ jobs:
       - name: Build package
         run: nfpm pkg --packager ${{ matrix.format }} --target .
 
-      - name: Rename package
-        run: |
-          if [ "${{ matrix.format }}" = "deb" ]; then
-            mv *.deb ak_${{ steps.version.outputs.version }}_${{ matrix.arch }}.deb
-          else
-            mv *.rpm ak-${{ steps.version.outputs.version }}-1.${{ matrix.arch }}.rpm
-          fi
-
       - uses: actions/upload-artifact@v4
         with:
           name: ak-${{ matrix.format }}-${{ matrix.arch }}
