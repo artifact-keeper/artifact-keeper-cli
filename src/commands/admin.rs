@@ -500,7 +500,8 @@ async fn list_users(
                 "email": u.email,
                 "display_name": u.display_name,
                 "is_admin": u.is_admin,
-                "totp_enabled": u.totp_enabled,
+                "is_active": u.is_active,
+                "auth_provider": u.auth_provider,
             })
         })
         .collect();
@@ -516,15 +517,24 @@ async fn list_users(
                 "EMAIL",
                 "DISPLAY NAME",
                 "ADMIN",
-                "TOTP",
+                "ACTIVE",
+                "AUTH",
             ]);
 
         for u in &resp.items {
             let id_short = &u.id.to_string()[..8];
             let display = u.display_name.as_deref().unwrap_or("-");
             let admin = if u.is_admin { "yes" } else { "no" };
-            let totp = if u.totp_enabled { "yes" } else { "no" };
-            table.add_row(vec![id_short, &u.username, &u.email, display, admin, totp]);
+            let active = if u.is_active { "yes" } else { "no" };
+            table.add_row(vec![
+                id_short,
+                &u.username,
+                &u.email,
+                display,
+                admin,
+                active,
+                &u.auth_provider,
+            ]);
         }
 
         table.to_string()
