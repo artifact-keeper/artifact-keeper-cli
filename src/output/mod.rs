@@ -41,11 +41,6 @@ pub fn render<T: Serialize>(data: &T, format: &OutputFormat, table: Option<Strin
     }
 }
 
-/// Detect if stdout is a terminal (interactive context).
-pub fn is_interactive() -> bool {
-    console::Term::stdout().is_term()
-}
-
 /// Format a byte count as a human-readable string (e.g., "1.5 MB").
 pub fn format_bytes(bytes: i64) -> String {
     const KB: i64 = 1024;

@@ -404,8 +404,9 @@ fn parse_severity_filter(filter: Option<&str>) -> Vec<String> {
 
 fn truncate(s: &str, max: usize) -> String {
     if s.chars().count() <= max {
-        return s.to_string();
+        s.to_string()
+    } else {
+        let truncated: String = s.chars().take(max.saturating_sub(3)).collect();
+        format!("{truncated}...")
     }
-    let truncated: String = s.chars().take(max - 3).collect();
-    format!("{truncated}...")
 }

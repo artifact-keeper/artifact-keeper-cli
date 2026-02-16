@@ -63,22 +63,23 @@ pub fn authenticated_client(
 ///
 /// Convenience wrapper for commands that don't need the instance metadata.
 pub fn client_for(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
-    let (_, _, client) = authenticated_client(global)?;
-    Ok(client)
+    let config = AppConfig::load()?;
+    let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    build_client(name, instance, None)
 }
 
-/// Build an unauthenticated SDK client for the resolved instance.
+/// Build an SDK client for the resolved instance.
 ///
-/// Falls back to authenticated if credentials are available.
+/// Tries authenticated first; falls back to unauthenticated if no credentials are available.
 /// Use this for commands that can work without auth (public repos, etc.).
 pub fn client_for_optional_auth(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
+    let config = AppConfig::load()?;
+    let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+
     // Try authenticated first, fall back to unauthenticated
-    if let Ok(client) = client_for(global) {
+    if let Ok(client) = build_client(name, instance, None) {
         return Ok(client);
     }
-
-    let config = AppConfig::load()?;
-    let (_, instance) = config.resolve_instance(global.instance.as_deref())?;
 
     let http_client = reqwest::ClientBuilder::new()
         .connect_timeout(Duration::from_secs(15))

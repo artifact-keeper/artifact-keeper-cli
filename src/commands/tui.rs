@@ -89,7 +89,6 @@ enum Panel {
 
 struct InstanceEntry {
     name: String,
-    url: String,
     status: String,
 }
 
@@ -138,10 +137,9 @@ impl App {
     fn new(config: AppConfig) -> Self {
         let instances: Vec<InstanceEntry> = config
             .instances
-            .iter()
-            .map(|(name, inst)| InstanceEntry {
+            .keys()
+            .map(|name| InstanceEntry {
                 name: name.clone(),
-                url: inst.url.clone(),
                 status: "...".to_string(),
             })
             .collect();
@@ -1120,14 +1118,11 @@ fn draw_facets_panel(f: &mut Frame, app: &App, area: Rect) {
 // ---------------------------------------------------------------------------
 
 fn instance_status_color(status: &str) -> Color {
-    if status.starts_with("online") {
-        Color::Green
-    } else if status == "offline" || status == "error" {
-        Color::Red
-    } else if status == "..." {
-        Color::DarkGray
-    } else {
-        Color::Yellow
+    match status {
+        s if s.starts_with("online") => Color::Green,
+        "offline" | "error" => Color::Red,
+        "..." => Color::DarkGray,
+        _ => Color::Yellow,
     }
 }
 
