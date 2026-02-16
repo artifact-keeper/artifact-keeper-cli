@@ -1,0 +1,23 @@
+name: ak
+version: git
+summary: Artifact Keeper CLI — manage artifacts, repositories, and registries
+description: |
+  The official CLI/TUI for Artifact Keeper, an enterprise artifact registry
+  supporting 45+ package formats. Browse repositories, upload/download artifacts,
+  run security scans, manage users, and more from the command line.
+
+base: core22
+confinement: classic
+grade: stable
+
+parts:
+  ak:
+    plugin: rust
+    source: .
+    build-packages:
+      - pkg-config
+      - libssl-dev
+
+apps:
+  ak:
+    command: bin/ak
