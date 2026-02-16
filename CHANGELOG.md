@@ -5,6 +5,13 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-16
+
+### Fixed
+
+- **TUI server status** — instances now show "online (N repos)" in green instead of incorrectly showing "offline"; health probe switched from broken `/health` endpoint to `list_repositories` (#43)
+- **TUI keychain prompts** — credentials are cached in memory per instance, eliminating repeated macOS Keychain Access password dialogs on every navigation action (#43)
+
 ## [0.2.0] - 2026-02-16
 
 ### Added
@@ -45,5 +52,6 @@ Initial release of the Artifact Keeper CLI.
 - Covers 250+ API endpoints across all backend features
 - OpenAPI 3.1 → 3.0 conversion handled automatically by the xtask
 
+[0.3.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.3.0
 [0.2.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.2.0
 [0.1.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.1.0
