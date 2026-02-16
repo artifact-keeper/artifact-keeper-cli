@@ -406,7 +406,7 @@ async fn setup_npm(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         token = ctx.token,
     );
 
-    let npmrc_path = std::env::current_dir().into_diagnostic()?.join(".npmrc");
+    let npmrc_path = home_dir()?.join(".npmrc");
 
     if !confirm_write(&npmrc_path, &npmrc_content, global.no_input)? {
         eprintln!("Skipped npm configuration.");
@@ -734,9 +734,14 @@ async fn setup_nuget(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         token = ctx.token,
     );
 
-    let config_path = std::env::current_dir()
-        .into_diagnostic()?
-        .join("nuget.config");
+    let config_path = if cfg!(windows) {
+        config_dir()?.join("NuGet").join("NuGet.Config")
+    } else {
+        home_dir()?
+            .join(".nuget")
+            .join("NuGet")
+            .join("NuGet.Config")
+    };
 
     if !confirm_write(&config_path, &nuget_config, global.no_input)? {
         eprintln!("Skipped NuGet configuration.");
