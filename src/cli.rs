@@ -22,9 +22,13 @@ pub struct GlobalArgs {
     propagate_version = true
 )]
 pub struct Cli {
-    /// Output format
+    /// Output format (auto-detects: table for TTY, json for pipes)
     #[arg(long, global = true, default_value = "table", env = "AK_FORMAT")]
     pub format: OutputFormat,
+
+    /// Suppress all output except primary identifiers (shorthand for --format quiet)
+    #[arg(short, long, global = true)]
+    pub quiet: bool,
 
     /// Target instance (overrides default)
     #[arg(long, global = true, env = "AK_INSTANCE")]
@@ -120,8 +124,19 @@ impl Cli {
             console::set_colors_enabled_stderr(false);
         }
 
+        // --quiet flag overrides --format
+        let format = if self.quiet {
+            OutputFormat::Quiet
+        } else {
+            // Auto-detect: when stdout is piped and format wasn't explicitly set
+            // via CLI or env, switch from table to JSON.
+            let explicitly_set = std::env::var("AK_FORMAT").is_ok()
+                || std::env::args().any(|a| a == "--format" || a.starts_with("--format="));
+            self.format.resolve(explicitly_set).clone()
+        };
+
         let global = GlobalArgs {
-            format: self.format,
+            format,
             instance: self.instance,
             no_input: self.no_input,
         };
