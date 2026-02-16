@@ -1,0 +1,11 @@
+pub mod admin;
+pub mod artifact;
+pub mod auth;
+pub mod completion;
+pub mod config;
+pub mod doctor;
+pub mod instance;
+pub mod repo;
+pub mod scan;
+pub mod setup;
+pub mod tui;
