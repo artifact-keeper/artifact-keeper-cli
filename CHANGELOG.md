@@ -5,6 +5,12 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-16
+
+### Added
+
+- **TUI global search** — press `s` to search across all repositories on the selected instance using the Meilisearch-powered `advanced_search` endpoint; results show artifact name, repository, format, version, and size with a faceted sidebar displaying format, repository, and content type distribution; Enter on a result navigates to that artifact in the 3-panel view (#45)
+
 ## [0.3.0] - 2026-02-16
 
 ### Fixed
@@ -52,6 +58,7 @@ Initial release of the Artifact Keeper CLI.
 - Covers 250+ API endpoints across all backend features
 - OpenAPI 3.1 → 3.0 conversion handled automatically by the xtask
 
+[0.4.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.4.0
 [0.3.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.3.0
 [0.2.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.2.0
 [0.1.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.1.0
