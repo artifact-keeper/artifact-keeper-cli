@@ -51,6 +51,9 @@ thiserror = "2"
 # Credential storage
 keyring = { version = "3", features = ["apple-native", "linux-native"] }
 
+# Encoding
+base64 = "0.22"
+
 # Utilities
 dirs = "6"
 url = "2"

@@ -103,6 +103,7 @@ version = "0.1.0"
 dependencies = [
  "artifact-keeper-sdk",
  "assert_cmd",
+ "base64",
  "chrono",
  "clap",
  "clap_complete",
