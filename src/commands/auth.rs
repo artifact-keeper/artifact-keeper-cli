@@ -17,7 +17,7 @@ pub enum AuthCommand {
         /// Instance URL (uses default instance if omitted)
         url: Option<String>,
 
-        /// Authenticate with an API token instead of browser flow
+        /// Skip interactive prompt and go straight to token authentication
         #[arg(long)]
         token: bool,
     },
@@ -73,7 +73,7 @@ impl AuthCommand {
             Self::Whoami => whoami(global).await,
             Self::Switch => {
                 eprintln!("Account switching is not yet implemented.");
-                eprintln!("Use `ak auth login --token` with a different token to switch accounts.");
+                eprintln!("Use `ak auth login` to log in with a different account.");
                 Ok(())
             }
         }
@@ -110,10 +110,29 @@ async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Resul
         return Err(AkError::ConfigError(hint.into()).into());
     }
 
+    // If --token flag was explicitly passed, go straight to token flow
     if use_token {
-        login_with_token(&instance_name, &instance).await
-    } else {
-        login_with_password(&instance_name, &instance).await
+        return login_with_token(&instance_name, &instance).await;
+    }
+
+    // Interactive: let user choose how to authenticate
+    eprintln!("Logging in to '{}' ({})\n", instance_name, instance.url);
+
+    let methods = &[
+        "Login with username and password",
+        "Paste an authentication token",
+    ];
+    let selection = dialoguer::Select::new()
+        .with_prompt("How would you like to authenticate?")
+        .items(methods)
+        .default(0)
+        .interact()
+        .into_diagnostic()?;
+
+    match selection {
+        0 => login_with_password(&instance_name, &instance).await,
+        1 => login_with_token(&instance_name, &instance).await,
+        _ => unreachable!(),
     }
 }
 
@@ -158,8 +177,7 @@ async fn login_with_password(instance_name: &str, instance: &InstanceConfig) -> 
         .interact()
         .into_diagnostic()?;
 
-    let base_url = format!("{}/api/{}", instance.url, instance.api_version);
-    let anon_client = artifact_keeper_sdk::Client::new(&base_url);
+    let anon_client = artifact_keeper_sdk::Client::new(&instance.url);
 
     let body = artifact_keeper_sdk::types::LoginRequest {
         username: username.clone(),
