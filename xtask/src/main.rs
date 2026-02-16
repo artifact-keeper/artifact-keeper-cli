@@ -119,6 +119,10 @@ fn convert_31_to_30(spec: &mut serde_json::Value) {
     // Remove endpoints with unsupported content types (multipart/form-data)
     remove_unsupported_endpoints(spec);
 
+    // Strip error response bodies that cause Progenitor to panic
+    // (assertion `response_types.len() <= 1` when both success and error have different schemas)
+    strip_error_response_bodies(spec);
+
     // Recursively transform the spec
     transform_value(spec);
 }
@@ -176,6 +180,36 @@ fn remove_unsupported_endpoints(spec: &mut serde_json::Value) {
 
         for path in empty_paths {
             paths_obj.remove(&path);
+        }
+    }
+}
+
+/// Strip response bodies from 4xx/5xx error responses.
+///
+/// Progenitor 0.12 panics (`response_types.len() <= 1`) when an operation has
+/// both a success response body and an error response body with a different schema.
+/// Removing error response content lets Progenitor treat them as opaque errors.
+fn strip_error_response_bodies(spec: &mut serde_json::Value) {
+    if let Some(paths) = spec.get_mut("paths")
+        && let Some(paths_obj) = paths.as_object_mut()
+    {
+        for (_path, methods) in paths_obj.iter_mut() {
+            if let Some(methods_obj) = methods.as_object_mut() {
+                for (_method, detail) in methods_obj.iter_mut() {
+                    if let Some(responses) = detail.get_mut("responses")
+                        && let Some(responses_obj) = responses.as_object_mut()
+                    {
+                        for (code, resp) in responses_obj.iter_mut() {
+                            let code_num: u16 = code.parse().unwrap_or(0);
+                            if code_num >= 400
+                                && let Some(obj) = resp.as_object_mut()
+                            {
+                                obj.remove("content");
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

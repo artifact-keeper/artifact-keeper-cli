@@ -153,6 +153,38 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`AddPeerLabelRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"value\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AddPeerLabelRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub value: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for AddPeerLabelRequest {
+        fn default() -> Self {
+            Self {
+                value: Default::default(),
+            }
+        }
+    }
+    impl AddPeerLabelRequest {
+        pub fn builder() -> builder::AddPeerLabelRequest {
+            Default::default()
+        }
+    }
     #[doc = "`AddVirtualMemberRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -186,6 +218,87 @@ pub mod types {
     }
     impl AddVirtualMemberRequest {
         pub fn builder() -> builder::AddVirtualMemberRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`AdminUserResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"auth_provider\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"email\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"is_active\","]
+    #[doc = "    \"is_admin\","]
+    #[doc = "    \"must_change_password\","]
+    #[doc = "    \"username\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"auth_provider\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"display_name\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"email\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_active\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_admin\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"last_login_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"must_change_password\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"username\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AdminUserResponse {
+        pub auth_provider: ::std::string::String,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub display_name: ::std::option::Option<::std::string::String>,
+        pub email: ::std::string::String,
+        pub id: ::uuid::Uuid,
+        pub is_active: bool,
+        pub is_admin: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub last_login_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        pub must_change_password: bool,
+        pub username: ::std::string::String,
+    }
+    impl AdminUserResponse {
+        pub fn builder() -> builder::AdminUserResponse {
             Default::default()
         }
     }
@@ -470,6 +583,493 @@ pub mod types {
     }
     impl ApiTokenResponse {
         pub fn builder() -> builder::ApiTokenResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`ApprovalHistoryQuery`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"page\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"per_page\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"source_repository\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ApprovalHistoryQuery {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub page: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub per_page: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub source_repository: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub status: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for ApprovalHistoryQuery {
+        fn default() -> Self {
+            Self {
+                page: Default::default(),
+                per_page: Default::default(),
+                source_repository: Default::default(),
+                status: Default::default(),
+            }
+        }
+    }
+    impl ApprovalHistoryQuery {
+        pub fn builder() -> builder::ApprovalHistoryQuery {
+            Default::default()
+        }
+    }
+    #[doc = "`ApprovalListResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\","]
+    #[doc = "    \"pagination\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/ApprovalResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"pagination\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/Pagination\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ApprovalListResponse {
+        pub items: ::std::vec::Vec<ApprovalResponse>,
+        pub pagination: Pagination,
+    }
+    impl ApprovalListResponse {
+        pub fn builder() -> builder::ApprovalListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`ApprovalRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"source_repository\","]
+    #[doc = "    \"target_repository\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"description\": \"Artifact ID to promote\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"notes\": {"]
+    #[doc = "      \"description\": \"Free-text justification\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"skip_policy_check\": {"]
+    #[doc = "      \"description\": \"Skip policy evaluation\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"source_repository\": {"]
+    #[doc = "      \"description\": \"Source staging repository key\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"target_repository\": {"]
+    #[doc = "      \"description\": \"Target release repository key\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ApprovalRequest {
+        #[doc = "Artifact ID to promote"]
+        pub artifact_id: ::uuid::Uuid,
+        #[doc = "Free-text justification"]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub notes: ::std::option::Option<::std::string::String>,
+        #[doc = "Skip policy evaluation"]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub skip_policy_check: ::std::option::Option<bool>,
+        #[doc = "Source staging repository key"]
+        pub source_repository: ::std::string::String,
+        #[doc = "Target release repository key"]
+        pub target_repository: ::std::string::String,
+    }
+    impl ApprovalRequest {
+        pub fn builder() -> builder::ApprovalRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`ApprovalResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"requested_at\","]
+    #[doc = "    \"requested_by\","]
+    #[doc = "    \"source_repository\","]
+    #[doc = "    \"status\","]
+    #[doc = "    \"target_repository\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"notes\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"policy_result\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"object\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"requested_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"requested_by\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"review_notes\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"reviewed_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"reviewed_by\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"source_repository\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"target_repository\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ApprovalResponse {
+        pub artifact_id: ::uuid::Uuid,
+        pub id: ::uuid::Uuid,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub notes: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub policy_result:
+            ::std::option::Option<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
+        pub requested_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub requested_by: ::uuid::Uuid,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub review_notes: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub reviewed_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub reviewed_by: ::std::option::Option<::uuid::Uuid>,
+        pub source_repository: ::std::string::String,
+        pub status: ::std::string::String,
+        pub target_repository: ::std::string::String,
+    }
+    impl ApprovalResponse {
+        pub fn builder() -> builder::ApprovalResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`ArtifactEvalEntry`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"passed\","]
+    #[doc = "    \"violations\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"passed\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"violations\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ArtifactEvalEntry {
+        pub artifact_id: ::uuid::Uuid,
+        pub passed: bool,
+        pub violations: ::std::vec::Vec<::std::string::String>,
+    }
+    impl ArtifactEvalEntry {
+        pub fn builder() -> builder::ArtifactEvalEntry {
+            Default::default()
+        }
+    }
+    #[doc = "`ArtifactFilterSchema`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"exclude_paths\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"include_paths\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"max_age_days\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_size_bytes\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ArtifactFilterSchema {
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub exclude_paths: ::std::vec::Vec<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub include_paths: ::std::vec::Vec<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_age_days: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_size_bytes: ::std::option::Option<i64>,
+    }
+    impl ::std::default::Default for ArtifactFilterSchema {
+        fn default() -> Self {
+            Self {
+                exclude_paths: Default::default(),
+                include_paths: Default::default(),
+                max_age_days: Default::default(),
+                max_size_bytes: Default::default(),
+            }
+        }
+    }
+    impl ArtifactFilterSchema {
+        pub fn builder() -> builder::ArtifactFilterSchema {
+            Default::default()
+        }
+    }
+    #[doc = "`ArtifactHealthResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"checks\","]
+    #[doc = "    \"checks_passed\","]
+    #[doc = "    \"checks_total\","]
+    #[doc = "    \"critical_issues\","]
+    #[doc = "    \"health_grade\","]
+    #[doc = "    \"health_score\","]
+    #[doc = "    \"total_issues\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"checks\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/CheckSummary\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"checks_passed\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"checks_total\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"critical_issues\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"health_grade\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"health_score\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"last_checked_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"license_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"metadata_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"quality_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"security_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_issues\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ArtifactHealthResponse {
+        pub artifact_id: ::uuid::Uuid,
+        pub checks: ::std::vec::Vec<CheckSummary>,
+        pub checks_passed: i32,
+        pub checks_total: i32,
+        pub critical_issues: i32,
+        pub health_grade: ::std::string::String,
+        pub health_score: i32,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub last_checked_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub license_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub metadata_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quality_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub security_score: ::std::option::Option<i32>,
+        pub total_issues: i32,
+    }
+    impl ArtifactHealthResponse {
+        pub fn builder() -> builder::ArtifactHealthResponse {
             Default::default()
         }
     }
@@ -1629,6 +2229,65 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`BulkEvaluationResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"failed\","]
+    #[doc = "    \"passed\","]
+    #[doc = "    \"results\","]
+    #[doc = "    \"rule_id\","]
+    #[doc = "    \"rule_name\","]
+    #[doc = "    \"total_artifacts\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"failed\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"passed\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"results\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/ArtifactEvalEntry\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"rule_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"rule_name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_artifacts\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct BulkEvaluationResponse {
+        pub failed: u64,
+        pub passed: u64,
+        pub results: ::std::vec::Vec<ArtifactEvalEntry>,
+        pub rule_id: ::uuid::Uuid,
+        pub rule_name: ::std::string::String,
+        pub total_artifacts: u64,
+    }
+    impl BulkEvaluationResponse {
+        pub fn builder() -> builder::BulkEvaluationResponse {
+            Default::default()
+        }
+    }
     #[doc = "`BulkPromoteRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -1800,6 +2459,158 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`CheckResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"check_type\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"critical_count\","]
+    #[doc = "    \"high_count\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"info_count\","]
+    #[doc = "    \"issues_count\","]
+    #[doc = "    \"low_count\","]
+    #[doc = "    \"medium_count\","]
+    #[doc = "    \"repository_id\","]
+    #[doc = "    \"status\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"check_type\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"checker_version\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"completed_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"critical_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"details\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"object\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"error_message\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"high_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"info_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"issues_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"low_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"medium_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"passed\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"started_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CheckResponse {
+        pub artifact_id: ::uuid::Uuid,
+        pub check_type: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub checker_version: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub completed_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub critical_count: i32,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub details:
+            ::std::option::Option<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub error_message: ::std::option::Option<::std::string::String>,
+        pub high_count: i32,
+        pub id: ::uuid::Uuid,
+        pub info_count: i32,
+        pub issues_count: i32,
+        pub low_count: i32,
+        pub medium_count: i32,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub passed: ::std::option::Option<bool>,
+        pub repository_id: ::uuid::Uuid,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub started_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        pub status: ::std::string::String,
+    }
+    impl CheckResponse {
+        pub fn builder() -> builder::CheckResponse {
+            Default::default()
+        }
+    }
     #[doc = "`CheckStatus`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -1832,6 +2643,70 @@ pub mod types {
     }
     impl CheckStatus {
         pub fn builder() -> builder::CheckStatus {
+            Default::default()
+        }
+    }
+    #[doc = "`CheckSummary`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"check_type\","]
+    #[doc = "    \"issues_count\","]
+    #[doc = "    \"status\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"check_type\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"completed_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"issues_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"passed\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CheckSummary {
+        pub check_type: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub completed_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        pub issues_count: i32,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub passed: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub score: ::std::option::Option<i32>,
+        pub status: ::std::string::String,
+    }
+    impl CheckSummary {
+        pub fn builder() -> builder::CheckSummary {
             Default::default()
         }
     }
@@ -2980,6 +3855,136 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`CreateGateRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"name\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"action\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"enforce_on_download\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"enforce_on_promotion\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_critical_issues\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_high_issues\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_medium_issues\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_health_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_metadata_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_quality_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_security_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"required_checks\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateGateRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub action: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub enforce_on_download: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub enforce_on_promotion: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_critical_issues: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_high_issues: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_medium_issues: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_health_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_metadata_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_quality_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_security_score: ::std::option::Option<i32>,
+        pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub repository_id: ::std::option::Option<::uuid::Uuid>,
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub required_checks: ::std::vec::Vec<::std::string::String>,
+    }
+    impl CreateGateRequest {
+        pub fn builder() -> builder::CreateGateRequest {
+            Default::default()
+        }
+    }
     #[doc = "`CreateGroupRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -3453,8 +4458,22 @@ pub mod types {
     #[doc = "    \"block_unscanned\": {"]
     #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
+    #[doc = "    \"max_artifact_age_days\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
     #[doc = "    \"max_severity\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_staging_hours\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
     #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
@@ -3465,6 +4484,9 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ],"]
     #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"require_signature\": {"]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -3474,10 +4496,16 @@ pub mod types {
     pub struct CreatePolicyRequest {
         pub block_on_fail: bool,
         pub block_unscanned: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_artifact_age_days: ::std::option::Option<i32>,
         pub max_severity: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_staging_hours: ::std::option::Option<i32>,
         pub name: ::std::string::String,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub repository_id: ::std::option::Option<::uuid::Uuid>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub require_signature: ::std::option::Option<bool>,
     }
     impl CreatePolicyRequest {
         pub fn builder() -> builder::CreatePolicyRequest {
@@ -3556,6 +4584,106 @@ pub mod types {
     }
     impl CreateRepositoryRequest {
         pub fn builder() -> builder::CreateRepositoryRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`CreateRuleRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"name\","]
+    #[doc = "    \"source_repo_id\","]
+    #[doc = "    \"target_repo_id\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"allowed_licenses\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"auto_promote\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_artifact_age_days\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_cve_severity\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"min_health_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_staging_hours\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"require_signature\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"source_repo_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"target_repo_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateRuleRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allowed_licenses: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub auto_promote: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub is_enabled: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_artifact_age_days: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_cve_severity: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_health_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_staging_hours: ::std::option::Option<i32>,
+        pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub require_signature: ::std::option::Option<bool>,
+        pub source_repo_id: ::uuid::Uuid,
+        pub target_repo_id: ::uuid::Uuid,
+    }
+    impl CreateRuleRequest {
+        pub fn builder() -> builder::CreateRuleRequest {
             Default::default()
         }
     }
@@ -3663,6 +4791,75 @@ pub mod types {
     }
     impl CreateSamlConfigRequest {
         pub fn builder() -> builder::CreateSamlConfigRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`CreateSyncPolicyPayload`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"name\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_filter\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"peer_selector\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"precedence\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"replication_mode\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repo_selector\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateSyncPolicyPayload {
+        #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
+        pub artifact_filter: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub enabled: ::std::option::Option<bool>,
+        pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
+        pub peer_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub precedence: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub priority: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub replication_mode: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
+        pub repo_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+    }
+    impl CreateSyncPolicyPayload {
+        pub fn builder() -> builder::CreateSyncPolicyPayload {
             Default::default()
         }
     }
@@ -3775,7 +4972,7 @@ pub mod types {
     #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"user\": {"]
-    #[doc = "      \"$ref\": \"#/components/schemas/UserResponse\""]
+    #[doc = "      \"$ref\": \"#/components/schemas/AdminUserResponse\""]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -3785,7 +4982,7 @@ pub mod types {
     pub struct CreateUserResponse {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub generated_password: ::std::option::Option<::std::string::String>,
-        pub user: UserResponse,
+        pub user: AdminUserResponse,
     }
     impl CreateUserResponse {
         pub fn builder() -> builder::CreateUserResponse {
@@ -4499,6 +5696,57 @@ pub mod types {
     }
     impl DateRangeQuery {
         pub fn builder() -> builder::DateRangeQuery {
+            Default::default()
+        }
+    }
+    #[doc = "Database connection pool statistics."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Database connection pool statistics.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"active_connections\","]
+    #[doc = "    \"idle_connections\","]
+    #[doc = "    \"max_connections\","]
+    #[doc = "    \"size\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"active_connections\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"idle_connections\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"max_connections\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"size\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct DbPoolStats {
+        pub active_connections: i32,
+        pub idle_connections: i32,
+        pub max_connections: i32,
+        pub size: i32,
+    }
+    impl DbPoolStats {
+        pub fn builder() -> builder::DbPoolStats {
             Default::default()
         }
     }
@@ -6003,6 +7251,52 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`EvaluationResultResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"created\","]
+    #[doc = "    \"policies_evaluated\","]
+    #[doc = "    \"removed\","]
+    #[doc = "    \"updated\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"created\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"policies_evaluated\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"removed\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"updated\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct EvaluationResultResponse {
+        pub created: u64,
+        pub policies_evaluated: u64,
+        pub removed: u64,
+        pub updated: u64,
+    }
+    impl EvaluationResultResponse {
+        pub fn builder() -> builder::EvaluationResultResponse {
+            Default::default()
+        }
+    }
     #[doc = "`EventsQuery`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -6573,6 +7867,262 @@ pub mod types {
             value.parse()
         }
     }
+    #[doc = "`GateEvaluationResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"action\","]
+    #[doc = "    \"component_scores\","]
+    #[doc = "    \"gate_name\","]
+    #[doc = "    \"health_grade\","]
+    #[doc = "    \"health_score\","]
+    #[doc = "    \"passed\","]
+    #[doc = "    \"violations\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"action\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"component_scores\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"gate_name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"health_grade\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"health_score\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"passed\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"violations\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/GateViolationResponse\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct GateEvaluationResponse {
+        pub action: ::std::string::String,
+        pub component_scores: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        pub gate_name: ::std::string::String,
+        pub health_grade: ::std::string::String,
+        pub health_score: i32,
+        pub passed: bool,
+        pub violations: ::std::vec::Vec<GateViolationResponse>,
+    }
+    impl GateEvaluationResponse {
+        pub fn builder() -> builder::GateEvaluationResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`GateResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"action\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"enforce_on_download\","]
+    #[doc = "    \"enforce_on_promotion\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"is_enabled\","]
+    #[doc = "    \"name\","]
+    #[doc = "    \"required_checks\","]
+    #[doc = "    \"updated_at\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"action\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"enforce_on_download\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"enforce_on_promotion\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_critical_issues\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_high_issues\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_medium_issues\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_health_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_metadata_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_quality_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_security_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"required_checks\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"updated_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct GateResponse {
+        pub action: ::std::string::String,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        pub enforce_on_download: bool,
+        pub enforce_on_promotion: bool,
+        pub id: ::uuid::Uuid,
+        pub is_enabled: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_critical_issues: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_high_issues: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_medium_issues: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_health_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_metadata_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_quality_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_security_score: ::std::option::Option<i32>,
+        pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub repository_id: ::std::option::Option<::uuid::Uuid>,
+        pub required_checks: ::std::vec::Vec<::std::string::String>,
+        pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+    impl GateResponse {
+        pub fn builder() -> builder::GateResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`GateViolationResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"actual\","]
+    #[doc = "    \"expected\","]
+    #[doc = "    \"message\","]
+    #[doc = "    \"rule\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"actual\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"expected\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"message\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"rule\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct GateViolationResponse {
+        pub actual: ::std::string::String,
+        pub expected: ::std::string::String,
+        pub message: ::std::string::String,
+        pub rule: ::std::string::String,
+    }
+    impl GateViolationResponse {
+        pub fn builder() -> builder::GateViolationResponse {
+            Default::default()
+        }
+    }
     #[doc = "`GenerateSbomRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -6935,6 +8485,84 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`HealthDashboardResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"avg_health_score\","]
+    #[doc = "    \"repos_grade_a\","]
+    #[doc = "    \"repos_grade_b\","]
+    #[doc = "    \"repos_grade_c\","]
+    #[doc = "    \"repos_grade_d\","]
+    #[doc = "    \"repos_grade_f\","]
+    #[doc = "    \"repositories\","]
+    #[doc = "    \"total_artifacts_evaluated\","]
+    #[doc = "    \"total_repositories\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"avg_health_score\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"repos_grade_a\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"repos_grade_b\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"repos_grade_c\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"repos_grade_d\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"repos_grade_f\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"repositories\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/RepoHealthResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"total_artifacts_evaluated\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_repositories\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct HealthDashboardResponse {
+        pub avg_health_score: i32,
+        pub repos_grade_a: i64,
+        pub repos_grade_b: i64,
+        pub repos_grade_c: i64,
+        pub repos_grade_d: i64,
+        pub repos_grade_f: i64,
+        pub repositories: ::std::vec::Vec<RepoHealthResponse>,
+        pub total_artifacts_evaluated: i64,
+        pub total_repositories: i64,
+    }
+    impl HealthDashboardResponse {
+        pub fn builder() -> builder::HealthDashboardResponse {
+            Default::default()
+        }
+    }
     #[doc = "`HealthResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -6952,6 +8580,9 @@ pub mod types {
     #[doc = "    \"checks\": {"]
     #[doc = "      \"$ref\": \"#/components/schemas/HealthChecks\""]
     #[doc = "    },"]
+    #[doc = "    \"db_pool\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/DbPoolStats\""]
+    #[doc = "    },"]
     #[doc = "    \"demo_mode\": {"]
     #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
@@ -6968,6 +8599,8 @@ pub mod types {
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct HealthResponse {
         pub checks: HealthChecks,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub db_pool: ::std::option::Option<DbPoolStats>,
         pub demo_mode: bool,
         pub status: ::std::string::String,
         pub version: ::std::string::String,
@@ -7164,6 +8797,114 @@ pub mod types {
     }
     impl InstallFromLocalRequest {
         pub fn builder() -> builder::InstallFromLocalRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`IssueResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"category\","]
+    #[doc = "    \"check_result_id\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"is_suppressed\","]
+    #[doc = "    \"severity\","]
+    #[doc = "    \"title\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"category\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"check_result_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_suppressed\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"location\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"severity\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"suppressed_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"suppressed_by\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"suppressed_reason\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"title\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct IssueResponse {
+        pub artifact_id: ::uuid::Uuid,
+        pub category: ::std::string::String,
+        pub check_result_id: ::uuid::Uuid,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        pub id: ::uuid::Uuid,
+        pub is_suppressed: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub location: ::std::option::Option<::std::string::String>,
+        pub severity: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub suppressed_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub suppressed_by: ::std::option::Option<::uuid::Uuid>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub suppressed_reason: ::std::option::Option<::std::string::String>,
+        pub title: ::std::string::String,
+    }
+    impl IssueResponse {
+        pub fn builder() -> builder::IssueResponse {
             Default::default()
         }
     }
@@ -8328,6 +10069,34 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Lightweight liveness response."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Lightweight liveness response.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"status\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct LivezResponse {
+        pub status: ::std::string::String,
+    }
+    impl LivezResponse {
+        pub fn builder() -> builder::LivezResponse {
+            Default::default()
+        }
+    }
     #[doc = "`LoginRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -8422,6 +10191,85 @@ pub mod types {
     }
     impl LoginResponse {
         pub fn builder() -> builder::LoginResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`MatchedPeerSchema`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"id\","]
+    #[doc = "    \"name\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"region\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct MatchedPeerSchema {
+        pub id: ::uuid::Uuid,
+        pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub region: ::std::option::Option<::std::string::String>,
+    }
+    impl MatchedPeerSchema {
+        pub fn builder() -> builder::MatchedPeerSchema {
+            Default::default()
+        }
+    }
+    #[doc = "`MatchedRepoSchema`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"format\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"format\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct MatchedRepoSchema {
+        pub format: ::std::string::String,
+        pub id: ::uuid::Uuid,
+        pub key: ::std::string::String,
+    }
+    impl MatchedRepoSchema {
+        pub fn builder() -> builder::MatchedRepoSchema {
             Default::default()
         }
     }
@@ -9793,6 +11641,124 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`PeerLabelEntrySchema`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"value\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PeerLabelEntrySchema {
+        pub key: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub value: ::std::option::Option<::std::string::String>,
+    }
+    impl PeerLabelEntrySchema {
+        pub fn builder() -> builder::PeerLabelEntrySchema {
+            Default::default()
+        }
+    }
+    #[doc = "`PeerLabelResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"key\","]
+    #[doc = "    \"peer_instance_id\","]
+    #[doc = "    \"value\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"peer_instance_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"value\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PeerLabelResponse {
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub id: ::uuid::Uuid,
+        pub key: ::std::string::String,
+        pub peer_instance_id: ::uuid::Uuid,
+        pub value: ::std::string::String,
+    }
+    impl PeerLabelResponse {
+        pub fn builder() -> builder::PeerLabelResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`PeerLabelsListResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\","]
+    #[doc = "    \"total\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/PeerLabelResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"total\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PeerLabelsListResponse {
+        pub items: ::std::vec::Vec<PeerLabelResponse>,
+        pub total: u64,
+    }
+    impl PeerLabelsListResponse {
+        pub fn builder() -> builder::PeerLabelsListResponse {
+            Default::default()
+        }
+    }
     #[doc = "`PeerResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -9895,6 +11861,126 @@ pub mod types {
     }
     impl PeerResponse {
         pub fn builder() -> builder::PeerResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`PeerSelectorSchema`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"all\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"match_labels\": {"]
+    #[doc = "      \"type\": \"object\","]
+    #[doc = "      \"additionalProperties\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"match_peers\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\","]
+    #[doc = "        \"format\": \"uuid\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"match_region\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PeerSelectorSchema {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub all: ::std::option::Option<bool>,
+        #[serde(
+            default,
+            skip_serializing_if = ":: std :: collections :: HashMap::is_empty"
+        )]
+        pub match_labels: ::std::collections::HashMap<::std::string::String, ::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub match_peers: ::std::vec::Vec<::uuid::Uuid>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub match_region: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for PeerSelectorSchema {
+        fn default() -> Self {
+            Self {
+                all: Default::default(),
+                match_labels: Default::default(),
+                match_peers: Default::default(),
+                match_region: Default::default(),
+            }
+        }
+    }
+    impl PeerSelectorSchema {
+        pub fn builder() -> builder::PeerSelectorSchema {
+            Default::default()
+        }
+    }
+    #[doc = "`PendingQuery`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"page\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"per_page\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"source_repository\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PendingQuery {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub page: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub per_page: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub source_repository: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for PendingQuery {
+        fn default() -> Self {
+            Self {
+                page: Default::default(),
+                per_page: Default::default(),
+                source_repository: Default::default(),
+            }
+        }
+    }
+    impl PendingQuery {
+        pub fn builder() -> builder::PendingQuery {
             Default::default()
         }
     }
@@ -10570,6 +12656,7 @@ pub mod types {
     #[doc = "    \"is_enabled\","]
     #[doc = "    \"max_severity\","]
     #[doc = "    \"name\","]
+    #[doc = "    \"require_signature\","]
     #[doc = "    \"updated_at\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
@@ -10590,8 +12677,22 @@ pub mod types {
     #[doc = "    \"is_enabled\": {"]
     #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
+    #[doc = "    \"max_artifact_age_days\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
     #[doc = "    \"max_severity\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_staging_hours\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
     #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
@@ -10602,6 +12703,9 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ],"]
     #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"require_signature\": {"]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
     #[doc = "    \"updated_at\": {"]
     #[doc = "      \"type\": \"string\","]
@@ -10618,10 +12722,15 @@ pub mod types {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub id: ::uuid::Uuid,
         pub is_enabled: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_artifact_age_days: ::std::option::Option<i32>,
         pub max_severity: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_staging_hours: ::std::option::Option<i32>,
         pub name: ::std::string::String,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub repository_id: ::std::option::Option<::uuid::Uuid>,
+        pub require_signature: bool,
         pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
     }
     impl PolicyResponse {
@@ -10663,6 +12772,119 @@ pub mod types {
     }
     impl PolicyViolation {
         pub fn builder() -> builder::PolicyViolation {
+            Default::default()
+        }
+    }
+    #[doc = "`PreviewPolicyPayload`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"name\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_filter\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"peer_selector\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"precedence\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"replication_mode\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repo_selector\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PreviewPolicyPayload {
+        #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
+        pub artifact_filter: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub enabled: ::std::option::Option<bool>,
+        pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
+        pub peer_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub precedence: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub priority: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub replication_mode: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
+        pub repo_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+    }
+    impl PreviewPolicyPayload {
+        pub fn builder() -> builder::PreviewPolicyPayload {
+            Default::default()
+        }
+    }
+    #[doc = "`PreviewResultResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"matched_peers\","]
+    #[doc = "    \"matched_repositories\","]
+    #[doc = "    \"subscription_count\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"matched_peers\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/MatchedPeerSchema\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"matched_repositories\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/MatchedRepoSchema\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"subscription_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PreviewResultResponse {
+        pub matched_peers: ::std::vec::Vec<MatchedPeerSchema>,
+        pub matched_repositories: ::std::vec::Vec<MatchedRepoSchema>,
+        pub subscription_count: u64,
+    }
+    impl PreviewResultResponse {
+        pub fn builder() -> builder::PreviewResultResponse {
             Default::default()
         }
     }
@@ -10762,6 +12984,7 @@ pub mod types {
     #[doc = "    \"created_at\","]
     #[doc = "    \"id\","]
     #[doc = "    \"source_repo_key\","]
+    #[doc = "    \"status\","]
     #[doc = "    \"target_repo_key\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
@@ -10805,7 +13028,16 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"rejection_reason\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"source_repo_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
     #[doc = "    \"target_repo_key\": {"]
@@ -10830,7 +13062,10 @@ pub mod types {
         pub promoted_by: ::std::option::Option<::uuid::Uuid>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub promoted_by_username: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub rejection_reason: ::std::option::Option<::std::string::String>,
         pub source_repo_key: ::std::string::String,
+        pub status: ::std::string::String,
         pub target_repo_key: ::std::string::String,
     }
     impl PromotionHistoryEntry {
@@ -10868,6 +13103,12 @@ pub mod types {
     #[doc = "      ],"]
     #[doc = "      \"format\": \"int32\","]
     #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -10881,6 +13122,8 @@ pub mod types {
         pub page: ::std::option::Option<i32>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub per_page: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub status: ::std::option::Option<::std::string::String>,
     }
     impl ::std::default::Default for PromotionHistoryQuery {
         fn default() -> Self {
@@ -10888,6 +13131,7 @@ pub mod types {
                 artifact_id: Default::default(),
                 page: Default::default(),
                 per_page: Default::default(),
+                status: Default::default(),
             }
         }
     }
@@ -10993,6 +13237,160 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`PromotionRuleListResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\","]
+    #[doc = "    \"total\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/PromotionRuleResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"total\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PromotionRuleListResponse {
+        pub items: ::std::vec::Vec<PromotionRuleResponse>,
+        pub total: u64,
+    }
+    impl PromotionRuleListResponse {
+        pub fn builder() -> builder::PromotionRuleListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`PromotionRuleResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"auto_promote\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"is_enabled\","]
+    #[doc = "    \"name\","]
+    #[doc = "    \"require_signature\","]
+    #[doc = "    \"source_repo_id\","]
+    #[doc = "    \"target_repo_id\","]
+    #[doc = "    \"updated_at\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"allowed_licenses\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"auto_promote\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_artifact_age_days\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_cve_severity\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"min_health_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_staging_hours\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"require_signature\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"source_repo_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"target_repo_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"updated_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PromotionRuleResponse {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allowed_licenses: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        pub auto_promote: bool,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub id: ::uuid::Uuid,
+        pub is_enabled: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_artifact_age_days: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_cve_severity: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_health_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_staging_hours: ::std::option::Option<i32>,
+        pub name: ::std::string::String,
+        pub require_signature: bool,
+        pub source_repo_id: ::uuid::Uuid,
+        pub target_repo_id: ::uuid::Uuid,
+        pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+    impl PromotionRuleResponse {
+        pub fn builder() -> builder::PromotionRuleResponse {
+            Default::default()
+        }
+    }
     #[doc = "`QuickSearchResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -11020,6 +13418,76 @@ pub mod types {
     }
     impl QuickSearchResponse {
         pub fn builder() -> builder::QuickSearchResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`ReadyzChecks`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"database\","]
+    #[doc = "    \"migrations\","]
+    #[doc = "    \"setup_complete\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"database\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/CheckStatus\""]
+    #[doc = "    },"]
+    #[doc = "    \"migrations\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/CheckStatus\""]
+    #[doc = "    },"]
+    #[doc = "    \"setup_complete\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/CheckStatus\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ReadyzChecks {
+        pub database: CheckStatus,
+        pub migrations: CheckStatus,
+        pub setup_complete: CheckStatus,
+    }
+    impl ReadyzChecks {
+        pub fn builder() -> builder::ReadyzChecks {
+            Default::default()
+        }
+    }
+    #[doc = "Readiness response with per-check detail."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Readiness response with per-check detail.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"checks\","]
+    #[doc = "    \"status\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"checks\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/ReadyzChecks\""]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ReadyzResponse {
+        pub checks: ReadyzChecks,
+        pub status: ::std::string::String,
+    }
+    impl ReadyzResponse {
+        pub fn builder() -> builder::ReadyzResponse {
             Default::default()
         }
     }
@@ -11156,6 +13624,90 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`RejectArtifactRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"reason\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"notes\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"reason\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RejectArtifactRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub notes: ::std::option::Option<::std::string::String>,
+        pub reason: ::std::string::String,
+    }
+    impl RejectArtifactRequest {
+        pub fn builder() -> builder::RejectArtifactRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`RejectionResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"reason\","]
+    #[doc = "    \"rejected\","]
+    #[doc = "    \"rejection_id\","]
+    #[doc = "    \"source\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"reason\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"rejected\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"rejection_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"source\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RejectionResponse {
+        pub artifact_id: ::uuid::Uuid,
+        pub reason: ::std::string::String,
+        pub rejected: bool,
+        pub rejection_id: ::uuid::Uuid,
+        pub source: ::std::string::String,
+    }
+    impl RejectionResponse {
+        pub fn builder() -> builder::RejectionResponse {
+            Default::default()
+        }
+    }
     #[doc = "`RemoteInstanceResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -11200,6 +13752,113 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`RepoHealthResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifacts_evaluated\","]
+    #[doc = "    \"artifacts_failing\","]
+    #[doc = "    \"artifacts_passing\","]
+    #[doc = "    \"health_grade\","]
+    #[doc = "    \"health_score\","]
+    #[doc = "    \"repository_id\","]
+    #[doc = "    \"repository_key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifacts_evaluated\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"artifacts_failing\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"artifacts_passing\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"avg_license_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"avg_metadata_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"avg_quality_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"avg_security_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"health_grade\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"health_score\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"last_evaluated_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RepoHealthResponse {
+        pub artifacts_evaluated: i32,
+        pub artifacts_failing: i32,
+        pub artifacts_passing: i32,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub avg_license_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub avg_metadata_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub avg_quality_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub avg_security_score: ::std::option::Option<i32>,
+        pub health_grade: ::std::string::String,
+        pub health_score: i32,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub last_evaluated_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        pub repository_id: ::uuid::Uuid,
+        pub repository_key: ::std::string::String,
+    }
+    impl RepoHealthResponse {
+        pub fn builder() -> builder::RepoHealthResponse {
+            Default::default()
+        }
+    }
     #[doc = "`RepoSecurityResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -11235,6 +13894,72 @@ pub mod types {
     }
     impl RepoSecurityResponse {
         pub fn builder() -> builder::RepoSecurityResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`RepoSelectorSchema`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"match_formats\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"match_labels\": {"]
+    #[doc = "      \"type\": \"object\","]
+    #[doc = "      \"additionalProperties\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"match_pattern\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"match_repos\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\","]
+    #[doc = "        \"format\": \"uuid\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RepoSelectorSchema {
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub match_formats: ::std::vec::Vec<::std::string::String>,
+        #[serde(
+            default,
+            skip_serializing_if = ":: std :: collections :: HashMap::is_empty"
+        )]
+        pub match_labels: ::std::collections::HashMap<::std::string::String, ::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub match_pattern: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub match_repos: ::std::vec::Vec<::uuid::Uuid>,
+    }
+    impl ::std::default::Default for RepoSelectorSchema {
+        fn default() -> Self {
+            Self {
+                match_formats: Default::default(),
+                match_labels: Default::default(),
+                match_pattern: Default::default(),
+                match_repos: Default::default(),
+            }
+        }
+    }
+    impl RepoSelectorSchema {
+        pub fn builder() -> builder::RepoSelectorSchema {
             Default::default()
         }
     }
@@ -11761,6 +14486,43 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`ReviewRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"notes\": {"]
+    #[doc = "      \"description\": \"Optional reviewer notes\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ReviewRequest {
+        #[doc = "Optional reviewer notes"]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub notes: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for ReviewRequest {
+        fn default() -> Self {
+            Self {
+                notes: Default::default(),
+            }
+        }
+    }
+    impl ReviewRequest {
+        pub fn builder() -> builder::ReviewRequest {
+            Default::default()
+        }
+    }
     #[doc = "`RoleListResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -11837,6 +14599,52 @@ pub mod types {
     }
     impl RoleResponse {
         pub fn builder() -> builder::RoleResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`RuleEvaluationResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"passed\","]
+    #[doc = "    \"rule_id\","]
+    #[doc = "    \"rule_name\","]
+    #[doc = "    \"violations\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"passed\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"rule_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"rule_name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"violations\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RuleEvaluationResponse {
+        pub passed: bool,
+        pub rule_id: ::uuid::Uuid,
+        pub rule_name: ::std::string::String,
+        pub violations: ::std::vec::Vec<::std::string::String>,
+    }
+    impl RuleEvaluationResponse {
+        pub fn builder() -> builder::RuleEvaluationResponse {
             Default::default()
         }
     }
@@ -12752,6 +15560,36 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`SetPeerLabelsRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"labels\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"labels\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/PeerLabelEntrySchema\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SetPeerLabelsRequest {
+        pub labels: ::std::vec::Vec<PeerLabelEntrySchema>,
+    }
+    impl SetPeerLabelsRequest {
+        pub fn builder() -> builder::SetPeerLabelsRequest {
+            Default::default()
+        }
+    }
     #[doc = "Response body for the setup status endpoint."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -13406,6 +16244,33 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`SuppressIssueRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"reason\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"reason\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SuppressIssueRequest {
+        pub reason: ::std::string::String,
+    }
+    impl SuppressIssueRequest {
+        pub fn builder() -> builder::SuppressIssueRequest {
+            Default::default()
+        }
+    }
     #[doc = "`SuppressRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -13436,6 +16301,129 @@ pub mod types {
     }
     impl SuppressRequest {
         pub fn builder() -> builder::SuppressRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`SyncPolicyListResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\","]
+    #[doc = "    \"total\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/SyncPolicyResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"total\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SyncPolicyListResponse {
+        pub items: ::std::vec::Vec<SyncPolicyResponse>,
+        pub total: u64,
+    }
+    impl SyncPolicyListResponse {
+        pub fn builder() -> builder::SyncPolicyListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`SyncPolicyResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_filter\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"description\","]
+    #[doc = "    \"enabled\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"name\","]
+    #[doc = "    \"peer_selector\","]
+    #[doc = "    \"precedence\","]
+    #[doc = "    \"priority\","]
+    #[doc = "    \"replication_mode\","]
+    #[doc = "    \"repo_selector\","]
+    #[doc = "    \"updated_at\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_filter\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"peer_selector\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"precedence\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"replication_mode\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repo_selector\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"updated_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SyncPolicyResponse {
+        pub artifact_filter: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub description: ::std::string::String,
+        pub enabled: bool,
+        pub id: ::uuid::Uuid,
+        pub name: ::std::string::String,
+        pub peer_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        pub precedence: i32,
+        pub priority: i32,
+        pub replication_mode: ::std::string::String,
+        pub repo_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+    impl SyncPolicyResponse {
+        pub fn builder() -> builder::SyncPolicyResponse {
             Default::default()
         }
     }
@@ -13888,6 +16876,33 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`TogglePolicyPayload`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"enabled\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct TogglePolicyPayload {
+        pub enabled: bool,
+    }
+    impl TogglePolicyPayload {
+        pub fn builder() -> builder::TogglePolicyPayload {
+            Default::default()
+        }
+    }
     #[doc = "`ToggleRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -14259,6 +17274,86 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`TriggerChecksRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct TriggerChecksRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub artifact_id: ::std::option::Option<::uuid::Uuid>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub repository_id: ::std::option::Option<::uuid::Uuid>,
+    }
+    impl ::std::default::Default for TriggerChecksRequest {
+        fn default() -> Self {
+            Self {
+                artifact_id: Default::default(),
+                repository_id: Default::default(),
+            }
+        }
+    }
+    impl TriggerChecksRequest {
+        pub fn builder() -> builder::TriggerChecksRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`TriggerChecksResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifacts_queued\","]
+    #[doc = "    \"message\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifacts_queued\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"message\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct TriggerChecksResponse {
+        pub artifacts_queued: i32,
+        pub message: ::std::string::String,
+    }
+    impl TriggerChecksResponse {
+        pub fn builder() -> builder::TriggerChecksResponse {
+            Default::default()
+        }
+    }
     #[doc = "`TriggerScanRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -14544,6 +17639,168 @@ pub mod types {
     }
     impl UpdateCveStatusRequest {
         pub fn builder() -> builder::UpdateCveStatusRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`UpdateGateRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"action\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"enforce_on_download\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"enforce_on_promotion\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"max_critical_issues\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_high_issues\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_medium_issues\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_health_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_metadata_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_quality_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_security_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"required_checks\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct UpdateGateRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub action: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub enforce_on_download: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub enforce_on_promotion: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub is_enabled: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_critical_issues: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_high_issues: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_medium_issues: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_health_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_metadata_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_quality_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_security_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub name: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub required_checks: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+    }
+    impl ::std::default::Default for UpdateGateRequest {
+        fn default() -> Self {
+            Self {
+                action: Default::default(),
+                description: Default::default(),
+                enforce_on_download: Default::default(),
+                enforce_on_promotion: Default::default(),
+                is_enabled: Default::default(),
+                max_critical_issues: Default::default(),
+                max_high_issues: Default::default(),
+                max_medium_issues: Default::default(),
+                min_health_score: Default::default(),
+                min_metadata_score: Default::default(),
+                min_quality_score: Default::default(),
+                min_security_score: Default::default(),
+                name: Default::default(),
+                required_checks: Default::default(),
+            }
+        }
+    }
+    impl UpdateGateRequest {
+        pub fn builder() -> builder::UpdateGateRequest {
             Default::default()
         }
     }
@@ -14871,11 +18128,28 @@ pub mod types {
     #[doc = "    \"is_enabled\": {"]
     #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
+    #[doc = "    \"max_artifact_age_days\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
     #[doc = "    \"max_severity\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
+    #[doc = "    \"min_staging_hours\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"require_signature\": {"]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -14886,8 +18160,14 @@ pub mod types {
         pub block_on_fail: bool,
         pub block_unscanned: bool,
         pub is_enabled: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_artifact_age_days: ::std::option::Option<i32>,
         pub max_severity: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_staging_hours: ::std::option::Option<i32>,
         pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub require_signature: ::std::option::Option<bool>,
     }
     impl UpdatePolicyRequest {
         pub fn builder() -> builder::UpdatePolicyRequest {
@@ -14911,6 +18191,12 @@ pub mod types {
     #[doc = "    \"is_public\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"key\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
@@ -14938,6 +18224,8 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub is_public: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub key: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub quota_bytes: ::std::option::Option<i64>,
@@ -14947,6 +18235,7 @@ pub mod types {
             Self {
                 description: Default::default(),
                 is_public: Default::default(),
+                key: Default::default(),
                 name: Default::default(),
                 quota_bytes: Default::default(),
             }
@@ -14954,6 +18243,119 @@ pub mod types {
     }
     impl UpdateRepositoryRequest {
         pub fn builder() -> builder::UpdateRepositoryRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`UpdateRuleRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"allowed_licenses\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"auto_promote\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"max_artifact_age_days\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_cve_severity\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"min_health_score\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_staging_hours\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"require_signature\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct UpdateRuleRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allowed_licenses: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub auto_promote: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub is_enabled: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_artifact_age_days: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_cve_severity: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_health_score: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub min_staging_hours: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub name: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub require_signature: ::std::option::Option<bool>,
+    }
+    impl ::std::default::Default for UpdateRuleRequest {
+        fn default() -> Self {
+            Self {
+                allowed_licenses: Default::default(),
+                auto_promote: Default::default(),
+                is_enabled: Default::default(),
+                max_artifact_age_days: Default::default(),
+                max_cve_severity: Default::default(),
+                min_health_score: Default::default(),
+                min_staging_hours: Default::default(),
+                name: Default::default(),
+                require_signature: Default::default(),
+            }
+        }
+    }
+    impl UpdateRuleRequest {
+        pub fn builder() -> builder::UpdateRuleRequest {
             Default::default()
         }
     }
@@ -15152,6 +18554,106 @@ pub mod types {
     }
     impl UpdateSigningConfigPayload {
         pub fn builder() -> builder::UpdateSigningConfigPayload {
+            Default::default()
+        }
+    }
+    #[doc = "`UpdateSyncPolicyPayload`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_filter\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"peer_selector\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"precedence\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"replication_mode\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"repo_selector\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct UpdateSyncPolicyPayload {
+        #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
+        pub artifact_filter: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub enabled: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub name: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
+        pub peer_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub precedence: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub priority: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub replication_mode: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
+        pub repo_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+    }
+    impl ::std::default::Default for UpdateSyncPolicyPayload {
+        fn default() -> Self {
+            Self {
+                artifact_filter: Default::default(),
+                description: Default::default(),
+                enabled: Default::default(),
+                name: Default::default(),
+                peer_selector: Default::default(),
+                precedence: Default::default(),
+                priority: Default::default(),
+                replication_mode: Default::default(),
+                repo_selector: Default::default(),
+            }
+        }
+    }
+    impl UpdateSyncPolicyPayload {
+        pub fn builder() -> builder::UpdateSyncPolicyPayload {
             Default::default()
         }
     }
@@ -15385,7 +18887,7 @@ pub mod types {
     #[doc = "    \"items\": {"]
     #[doc = "      \"type\": \"array\","]
     #[doc = "      \"items\": {"]
-    #[doc = "        \"$ref\": \"#/components/schemas/UserResponse\""]
+    #[doc = "        \"$ref\": \"#/components/schemas/AdminUserResponse\""]
     #[doc = "      }"]
     #[doc = "    },"]
     #[doc = "    \"pagination\": {"]
@@ -15397,7 +18899,7 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct UserListResponse {
-        pub items: ::std::vec::Vec<UserResponse>,
+        pub items: ::std::vec::Vec<AdminUserResponse>,
         pub pagination: Pagination,
     }
     impl UserListResponse {
@@ -16123,6 +19625,49 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct AddPeerLabelRequest {
+            value: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for AddPeerLabelRequest {
+            fn default() -> Self {
+                Self {
+                    value: Ok(Default::default()),
+                }
+            }
+        }
+        impl AddPeerLabelRequest {
+            pub fn value<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.value = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for value: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AddPeerLabelRequest> for super::AddPeerLabelRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AddPeerLabelRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    value: value.value?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AddPeerLabelRequest> for AddPeerLabelRequest {
+            fn from(value: super::AddPeerLabelRequest) -> Self {
+                Self {
+                    value: Ok(value.value),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct AddVirtualMemberRequest {
             member_key: ::std::result::Result<::std::string::String, ::std::string::String>,
             priority: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
@@ -16173,6 +19718,185 @@ pub mod types {
                 Self {
                     member_key: Ok(value.member_key),
                     priority: Ok(value.priority),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct AdminUserResponse {
+            auth_provider: ::std::result::Result<::std::string::String, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            display_name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            email: ::std::result::Result<::std::string::String, ::std::string::String>,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            is_active: ::std::result::Result<bool, ::std::string::String>,
+            is_admin: ::std::result::Result<bool, ::std::string::String>,
+            last_login_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            must_change_password: ::std::result::Result<bool, ::std::string::String>,
+            username: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for AdminUserResponse {
+            fn default() -> Self {
+                Self {
+                    auth_provider: Err("no value supplied for auth_provider".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    display_name: Ok(Default::default()),
+                    email: Err("no value supplied for email".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    is_active: Err("no value supplied for is_active".to_string()),
+                    is_admin: Err("no value supplied for is_admin".to_string()),
+                    last_login_at: Ok(Default::default()),
+                    must_change_password: Err(
+                        "no value supplied for must_change_password".to_string()
+                    ),
+                    username: Err("no value supplied for username".to_string()),
+                }
+            }
+        }
+        impl AdminUserResponse {
+            pub fn auth_provider<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.auth_provider = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for auth_provider: {e}"));
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn display_name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.display_name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for display_name: {e}"));
+                self
+            }
+            pub fn email<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.email = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for email: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn is_active<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_active = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_active: {e}"));
+                self
+            }
+            pub fn is_admin<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_admin = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_admin: {e}"));
+                self
+            }
+            pub fn last_login_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.last_login_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for last_login_at: {e}"));
+                self
+            }
+            pub fn must_change_password<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.must_change_password = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for must_change_password: {e}")
+                });
+                self
+            }
+            pub fn username<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.username = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for username: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AdminUserResponse> for super::AdminUserResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AdminUserResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    auth_provider: value.auth_provider?,
+                    created_at: value.created_at?,
+                    display_name: value.display_name?,
+                    email: value.email?,
+                    id: value.id?,
+                    is_active: value.is_active?,
+                    is_admin: value.is_admin?,
+                    last_login_at: value.last_login_at?,
+                    must_change_password: value.must_change_password?,
+                    username: value.username?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AdminUserResponse> for AdminUserResponse {
+            fn from(value: super::AdminUserResponse) -> Self {
+                Self {
+                    auth_provider: Ok(value.auth_provider),
+                    created_at: Ok(value.created_at),
+                    display_name: Ok(value.display_name),
+                    email: Ok(value.email),
+                    id: Ok(value.id),
+                    is_active: Ok(value.is_active),
+                    is_admin: Ok(value.is_admin),
+                    last_login_at: Ok(value.last_login_at),
+                    must_change_password: Ok(value.must_change_password),
+                    username: Ok(value.username),
                 }
             }
         }
@@ -16702,6 +20426,845 @@ pub mod types {
                     name: Ok(value.name),
                     scopes: Ok(value.scopes),
                     token_prefix: Ok(value.token_prefix),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ApprovalHistoryQuery {
+            page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            per_page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            source_repository: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            status: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ApprovalHistoryQuery {
+            fn default() -> Self {
+                Self {
+                    page: Ok(Default::default()),
+                    per_page: Ok(Default::default()),
+                    source_repository: Ok(Default::default()),
+                    status: Ok(Default::default()),
+                }
+            }
+        }
+        impl ApprovalHistoryQuery {
+            pub fn page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for page: {e}"));
+                self
+            }
+            pub fn per_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for per_page: {e}"));
+                self
+            }
+            pub fn source_repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source_repository = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for source_repository: {e}")
+                });
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ApprovalHistoryQuery> for super::ApprovalHistoryQuery {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ApprovalHistoryQuery,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    page: value.page?,
+                    per_page: value.per_page?,
+                    source_repository: value.source_repository?,
+                    status: value.status?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ApprovalHistoryQuery> for ApprovalHistoryQuery {
+            fn from(value: super::ApprovalHistoryQuery) -> Self {
+                Self {
+                    page: Ok(value.page),
+                    per_page: Ok(value.per_page),
+                    source_repository: Ok(value.source_repository),
+                    status: Ok(value.status),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ApprovalListResponse {
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::ApprovalResponse>,
+                ::std::string::String,
+            >,
+            pagination: ::std::result::Result<super::Pagination, ::std::string::String>,
+        }
+        impl ::std::default::Default for ApprovalListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    pagination: Err("no value supplied for pagination".to_string()),
+                }
+            }
+        }
+        impl ApprovalListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::ApprovalResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn pagination<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::Pagination>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.pagination = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for pagination: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ApprovalListResponse> for super::ApprovalListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ApprovalListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    pagination: value.pagination?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ApprovalListResponse> for ApprovalListResponse {
+            fn from(value: super::ApprovalListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    pagination: Ok(value.pagination),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ApprovalRequest {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            notes: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            skip_policy_check:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            source_repository: ::std::result::Result<::std::string::String, ::std::string::String>,
+            target_repository: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for ApprovalRequest {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    notes: Ok(Default::default()),
+                    skip_policy_check: Ok(Default::default()),
+                    source_repository: Err("no value supplied for source_repository".to_string()),
+                    target_repository: Err("no value supplied for target_repository".to_string()),
+                }
+            }
+        }
+        impl ApprovalRequest {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn notes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.notes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for notes: {e}"));
+                self
+            }
+            pub fn skip_policy_check<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.skip_policy_check = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for skip_policy_check: {e}")
+                });
+                self
+            }
+            pub fn source_repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source_repository = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for source_repository: {e}")
+                });
+                self
+            }
+            pub fn target_repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.target_repository = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for target_repository: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ApprovalRequest> for super::ApprovalRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ApprovalRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    notes: value.notes?,
+                    skip_policy_check: value.skip_policy_check?,
+                    source_repository: value.source_repository?,
+                    target_repository: value.target_repository?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ApprovalRequest> for ApprovalRequest {
+            fn from(value: super::ApprovalRequest) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    notes: Ok(value.notes),
+                    skip_policy_check: Ok(value.skip_policy_check),
+                    source_repository: Ok(value.source_repository),
+                    target_repository: Ok(value.target_repository),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ApprovalResponse {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            notes: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            policy_result: ::std::result::Result<
+                ::std::option::Option<
+                    ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                >,
+                ::std::string::String,
+            >,
+            requested_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            requested_by: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            review_notes: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            reviewed_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            reviewed_by:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            source_repository: ::std::result::Result<::std::string::String, ::std::string::String>,
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
+            target_repository: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for ApprovalResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    notes: Ok(Default::default()),
+                    policy_result: Ok(Default::default()),
+                    requested_at: Err("no value supplied for requested_at".to_string()),
+                    requested_by: Err("no value supplied for requested_by".to_string()),
+                    review_notes: Ok(Default::default()),
+                    reviewed_at: Ok(Default::default()),
+                    reviewed_by: Ok(Default::default()),
+                    source_repository: Err("no value supplied for source_repository".to_string()),
+                    status: Err("no value supplied for status".to_string()),
+                    target_repository: Err("no value supplied for target_repository".to_string()),
+                }
+            }
+        }
+        impl ApprovalResponse {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn notes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.notes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for notes: {e}"));
+                self
+            }
+            pub fn policy_result<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<
+                            ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                        >,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.policy_result = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for policy_result: {e}"));
+                self
+            }
+            pub fn requested_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.requested_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for requested_at: {e}"));
+                self
+            }
+            pub fn requested_by<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.requested_by = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for requested_by: {e}"));
+                self
+            }
+            pub fn review_notes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.review_notes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for review_notes: {e}"));
+                self
+            }
+            pub fn reviewed_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reviewed_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reviewed_at: {e}"));
+                self
+            }
+            pub fn reviewed_by<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reviewed_by = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reviewed_by: {e}"));
+                self
+            }
+            pub fn source_repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source_repository = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for source_repository: {e}")
+                });
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+            pub fn target_repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.target_repository = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for target_repository: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ApprovalResponse> for super::ApprovalResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ApprovalResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    id: value.id?,
+                    notes: value.notes?,
+                    policy_result: value.policy_result?,
+                    requested_at: value.requested_at?,
+                    requested_by: value.requested_by?,
+                    review_notes: value.review_notes?,
+                    reviewed_at: value.reviewed_at?,
+                    reviewed_by: value.reviewed_by?,
+                    source_repository: value.source_repository?,
+                    status: value.status?,
+                    target_repository: value.target_repository?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ApprovalResponse> for ApprovalResponse {
+            fn from(value: super::ApprovalResponse) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    id: Ok(value.id),
+                    notes: Ok(value.notes),
+                    policy_result: Ok(value.policy_result),
+                    requested_at: Ok(value.requested_at),
+                    requested_by: Ok(value.requested_by),
+                    review_notes: Ok(value.review_notes),
+                    reviewed_at: Ok(value.reviewed_at),
+                    reviewed_by: Ok(value.reviewed_by),
+                    source_repository: Ok(value.source_repository),
+                    status: Ok(value.status),
+                    target_repository: Ok(value.target_repository),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ArtifactEvalEntry {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            passed: ::std::result::Result<bool, ::std::string::String>,
+            violations: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ArtifactEvalEntry {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    passed: Err("no value supplied for passed".to_string()),
+                    violations: Err("no value supplied for violations".to_string()),
+                }
+            }
+        }
+        impl ArtifactEvalEntry {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn passed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.passed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for passed: {e}"));
+                self
+            }
+            pub fn violations<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.violations = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for violations: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ArtifactEvalEntry> for super::ArtifactEvalEntry {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ArtifactEvalEntry,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    passed: value.passed?,
+                    violations: value.violations?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ArtifactEvalEntry> for ArtifactEvalEntry {
+            fn from(value: super::ArtifactEvalEntry) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    passed: Ok(value.passed),
+                    violations: Ok(value.violations),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ArtifactFilterSchema {
+            exclude_paths: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            include_paths: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            max_age_days: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_size_bytes:
+                ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+        }
+        impl ::std::default::Default for ArtifactFilterSchema {
+            fn default() -> Self {
+                Self {
+                    exclude_paths: Ok(Default::default()),
+                    include_paths: Ok(Default::default()),
+                    max_age_days: Ok(Default::default()),
+                    max_size_bytes: Ok(Default::default()),
+                }
+            }
+        }
+        impl ArtifactFilterSchema {
+            pub fn exclude_paths<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.exclude_paths = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for exclude_paths: {e}"));
+                self
+            }
+            pub fn include_paths<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.include_paths = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for include_paths: {e}"));
+                self
+            }
+            pub fn max_age_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_age_days = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for max_age_days: {e}"));
+                self
+            }
+            pub fn max_size_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_size_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_size_bytes: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ArtifactFilterSchema> for super::ArtifactFilterSchema {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ArtifactFilterSchema,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    exclude_paths: value.exclude_paths?,
+                    include_paths: value.include_paths?,
+                    max_age_days: value.max_age_days?,
+                    max_size_bytes: value.max_size_bytes?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ArtifactFilterSchema> for ArtifactFilterSchema {
+            fn from(value: super::ArtifactFilterSchema) -> Self {
+                Self {
+                    exclude_paths: Ok(value.exclude_paths),
+                    include_paths: Ok(value.include_paths),
+                    max_age_days: Ok(value.max_age_days),
+                    max_size_bytes: Ok(value.max_size_bytes),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ArtifactHealthResponse {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            checks:
+                ::std::result::Result<::std::vec::Vec<super::CheckSummary>, ::std::string::String>,
+            checks_passed: ::std::result::Result<i32, ::std::string::String>,
+            checks_total: ::std::result::Result<i32, ::std::string::String>,
+            critical_issues: ::std::result::Result<i32, ::std::string::String>,
+            health_grade: ::std::result::Result<::std::string::String, ::std::string::String>,
+            health_score: ::std::result::Result<i32, ::std::string::String>,
+            last_checked_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            license_score: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            metadata_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            quality_score: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            security_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            total_issues: ::std::result::Result<i32, ::std::string::String>,
+        }
+        impl ::std::default::Default for ArtifactHealthResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    checks: Err("no value supplied for checks".to_string()),
+                    checks_passed: Err("no value supplied for checks_passed".to_string()),
+                    checks_total: Err("no value supplied for checks_total".to_string()),
+                    critical_issues: Err("no value supplied for critical_issues".to_string()),
+                    health_grade: Err("no value supplied for health_grade".to_string()),
+                    health_score: Err("no value supplied for health_score".to_string()),
+                    last_checked_at: Ok(Default::default()),
+                    license_score: Ok(Default::default()),
+                    metadata_score: Ok(Default::default()),
+                    quality_score: Ok(Default::default()),
+                    security_score: Ok(Default::default()),
+                    total_issues: Err("no value supplied for total_issues".to_string()),
+                }
+            }
+        }
+        impl ArtifactHealthResponse {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn checks<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::CheckSummary>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.checks = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for checks: {e}"));
+                self
+            }
+            pub fn checks_passed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.checks_passed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for checks_passed: {e}"));
+                self
+            }
+            pub fn checks_total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.checks_total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for checks_total: {e}"));
+                self
+            }
+            pub fn critical_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.critical_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for critical_issues: {e}")
+                });
+                self
+            }
+            pub fn health_grade<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.health_grade = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for health_grade: {e}"));
+                self
+            }
+            pub fn health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.health_score = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for health_score: {e}"));
+                self
+            }
+            pub fn last_checked_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.last_checked_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for last_checked_at: {e}")
+                });
+                self
+            }
+            pub fn license_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.license_score = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for license_score: {e}"));
+                self
+            }
+            pub fn metadata_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.metadata_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for metadata_score: {e}")
+                });
+                self
+            }
+            pub fn quality_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quality_score = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for quality_score: {e}"));
+                self
+            }
+            pub fn security_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.security_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for security_score: {e}")
+                });
+                self
+            }
+            pub fn total_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_issues = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total_issues: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ArtifactHealthResponse> for super::ArtifactHealthResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ArtifactHealthResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    checks: value.checks?,
+                    checks_passed: value.checks_passed?,
+                    checks_total: value.checks_total?,
+                    critical_issues: value.critical_issues?,
+                    health_grade: value.health_grade?,
+                    health_score: value.health_score?,
+                    last_checked_at: value.last_checked_at?,
+                    license_score: value.license_score?,
+                    metadata_score: value.metadata_score?,
+                    quality_score: value.quality_score?,
+                    security_score: value.security_score?,
+                    total_issues: value.total_issues?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ArtifactHealthResponse> for ArtifactHealthResponse {
+            fn from(value: super::ArtifactHealthResponse) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    checks: Ok(value.checks),
+                    checks_passed: Ok(value.checks_passed),
+                    checks_total: Ok(value.checks_total),
+                    critical_issues: Ok(value.critical_issues),
+                    health_grade: Ok(value.health_grade),
+                    health_score: Ok(value.health_score),
+                    last_checked_at: Ok(value.last_checked_at),
+                    license_score: Ok(value.license_score),
+                    metadata_score: Ok(value.metadata_score),
+                    quality_score: Ok(value.quality_score),
+                    security_score: Ok(value.security_score),
+                    total_issues: Ok(value.total_issues),
                 }
             }
         }
@@ -18928,6 +23491,119 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct BulkEvaluationResponse {
+            failed: ::std::result::Result<u64, ::std::string::String>,
+            passed: ::std::result::Result<u64, ::std::string::String>,
+            results: ::std::result::Result<
+                ::std::vec::Vec<super::ArtifactEvalEntry>,
+                ::std::string::String,
+            >,
+            rule_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            rule_name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            total_artifacts: ::std::result::Result<u64, ::std::string::String>,
+        }
+        impl ::std::default::Default for BulkEvaluationResponse {
+            fn default() -> Self {
+                Self {
+                    failed: Err("no value supplied for failed".to_string()),
+                    passed: Err("no value supplied for passed".to_string()),
+                    results: Err("no value supplied for results".to_string()),
+                    rule_id: Err("no value supplied for rule_id".to_string()),
+                    rule_name: Err("no value supplied for rule_name".to_string()),
+                    total_artifacts: Err("no value supplied for total_artifacts".to_string()),
+                }
+            }
+        }
+        impl BulkEvaluationResponse {
+            pub fn failed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.failed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for failed: {e}"));
+                self
+            }
+            pub fn passed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.passed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for passed: {e}"));
+                self
+            }
+            pub fn results<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::ArtifactEvalEntry>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.results = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for results: {e}"));
+                self
+            }
+            pub fn rule_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rule_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rule_id: {e}"));
+                self
+            }
+            pub fn rule_name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rule_name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rule_name: {e}"));
+                self
+            }
+            pub fn total_artifacts<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_artifacts = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for total_artifacts: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<BulkEvaluationResponse> for super::BulkEvaluationResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: BulkEvaluationResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    failed: value.failed?,
+                    passed: value.passed?,
+                    results: value.results?,
+                    rule_id: value.rule_id?,
+                    rule_name: value.rule_name?,
+                    total_artifacts: value.total_artifacts?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::BulkEvaluationResponse> for BulkEvaluationResponse {
+            fn from(value: super::BulkEvaluationResponse) -> Self {
+                Self {
+                    failed: Ok(value.failed),
+                    passed: Ok(value.passed),
+                    results: Ok(value.results),
+                    rule_id: Ok(value.rule_id),
+                    rule_name: Ok(value.rule_name),
+                    total_artifacts: Ok(value.total_artifacts),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct BulkPromoteRequest {
             artifact_ids:
                 ::std::result::Result<::std::vec::Vec<::uuid::Uuid>, ::std::string::String>,
@@ -19217,6 +23893,326 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct CheckResponse {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            check_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+            checker_version: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            completed_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            critical_count: ::std::result::Result<i32, ::std::string::String>,
+            details: ::std::result::Result<
+                ::std::option::Option<
+                    ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                >,
+                ::std::string::String,
+            >,
+            error_message: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            high_count: ::std::result::Result<i32, ::std::string::String>,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            info_count: ::std::result::Result<i32, ::std::string::String>,
+            issues_count: ::std::result::Result<i32, ::std::string::String>,
+            low_count: ::std::result::Result<i32, ::std::string::String>,
+            medium_count: ::std::result::Result<i32, ::std::string::String>,
+            passed: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            repository_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            score: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            started_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for CheckResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    check_type: Err("no value supplied for check_type".to_string()),
+                    checker_version: Ok(Default::default()),
+                    completed_at: Ok(Default::default()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    critical_count: Err("no value supplied for critical_count".to_string()),
+                    details: Ok(Default::default()),
+                    error_message: Ok(Default::default()),
+                    high_count: Err("no value supplied for high_count".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    info_count: Err("no value supplied for info_count".to_string()),
+                    issues_count: Err("no value supplied for issues_count".to_string()),
+                    low_count: Err("no value supplied for low_count".to_string()),
+                    medium_count: Err("no value supplied for medium_count".to_string()),
+                    passed: Ok(Default::default()),
+                    repository_id: Err("no value supplied for repository_id".to_string()),
+                    score: Ok(Default::default()),
+                    started_at: Ok(Default::default()),
+                    status: Err("no value supplied for status".to_string()),
+                }
+            }
+        }
+        impl CheckResponse {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn check_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.check_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for check_type: {e}"));
+                self
+            }
+            pub fn checker_version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.checker_version = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for checker_version: {e}")
+                });
+                self
+            }
+            pub fn completed_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.completed_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for completed_at: {e}"));
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn critical_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.critical_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for critical_count: {e}")
+                });
+                self
+            }
+            pub fn details<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<
+                            ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                        >,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.details = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for details: {e}"));
+                self
+            }
+            pub fn error_message<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.error_message = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for error_message: {e}"));
+                self
+            }
+            pub fn high_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.high_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for high_count: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn info_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.info_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for info_count: {e}"));
+                self
+            }
+            pub fn issues_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.issues_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for issues_count: {e}"));
+                self
+            }
+            pub fn low_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.low_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for low_count: {e}"));
+                self
+            }
+            pub fn medium_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.medium_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for medium_count: {e}"));
+                self
+            }
+            pub fn passed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.passed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for passed: {e}"));
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.score = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for score: {e}"));
+                self
+            }
+            pub fn started_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.started_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for started_at: {e}"));
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CheckResponse> for super::CheckResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CheckResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    check_type: value.check_type?,
+                    checker_version: value.checker_version?,
+                    completed_at: value.completed_at?,
+                    created_at: value.created_at?,
+                    critical_count: value.critical_count?,
+                    details: value.details?,
+                    error_message: value.error_message?,
+                    high_count: value.high_count?,
+                    id: value.id?,
+                    info_count: value.info_count?,
+                    issues_count: value.issues_count?,
+                    low_count: value.low_count?,
+                    medium_count: value.medium_count?,
+                    passed: value.passed?,
+                    repository_id: value.repository_id?,
+                    score: value.score?,
+                    started_at: value.started_at?,
+                    status: value.status?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CheckResponse> for CheckResponse {
+            fn from(value: super::CheckResponse) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    check_type: Ok(value.check_type),
+                    checker_version: Ok(value.checker_version),
+                    completed_at: Ok(value.completed_at),
+                    created_at: Ok(value.created_at),
+                    critical_count: Ok(value.critical_count),
+                    details: Ok(value.details),
+                    error_message: Ok(value.error_message),
+                    high_count: Ok(value.high_count),
+                    id: Ok(value.id),
+                    info_count: Ok(value.info_count),
+                    issues_count: Ok(value.issues_count),
+                    low_count: Ok(value.low_count),
+                    medium_count: Ok(value.medium_count),
+                    passed: Ok(value.passed),
+                    repository_id: Ok(value.repository_id),
+                    score: Ok(value.score),
+                    started_at: Ok(value.started_at),
+                    status: Ok(value.status),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct CheckStatus {
             message: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
@@ -19269,6 +24265,121 @@ pub mod types {
             fn from(value: super::CheckStatus) -> Self {
                 Self {
                     message: Ok(value.message),
+                    status: Ok(value.status),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CheckSummary {
+            check_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+            completed_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            issues_count: ::std::result::Result<i32, ::std::string::String>,
+            passed: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            score: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for CheckSummary {
+            fn default() -> Self {
+                Self {
+                    check_type: Err("no value supplied for check_type".to_string()),
+                    completed_at: Ok(Default::default()),
+                    issues_count: Err("no value supplied for issues_count".to_string()),
+                    passed: Ok(Default::default()),
+                    score: Ok(Default::default()),
+                    status: Err("no value supplied for status".to_string()),
+                }
+            }
+        }
+        impl CheckSummary {
+            pub fn check_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.check_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for check_type: {e}"));
+                self
+            }
+            pub fn completed_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.completed_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for completed_at: {e}"));
+                self
+            }
+            pub fn issues_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.issues_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for issues_count: {e}"));
+                self
+            }
+            pub fn passed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.passed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for passed: {e}"));
+                self
+            }
+            pub fn score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.score = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for score: {e}"));
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CheckSummary> for super::CheckSummary {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CheckSummary,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    check_type: value.check_type?,
+                    completed_at: value.completed_at?,
+                    issues_count: value.issues_count?,
+                    passed: value.passed?,
+                    score: value.score?,
+                    status: value.status?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CheckSummary> for CheckSummary {
+            fn from(value: super::CheckSummary) -> Self {
+                Self {
+                    check_type: Ok(value.check_type),
+                    completed_at: Ok(value.completed_at),
+                    issues_count: Ok(value.issues_count),
+                    passed: Ok(value.passed),
+                    score: Ok(value.score),
                     status: Ok(value.status),
                 }
             }
@@ -21360,6 +26471,247 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct CreateGateRequest {
+            action: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            enforce_on_download:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            enforce_on_promotion:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            max_critical_issues:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_high_issues:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_medium_issues:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_health_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_metadata_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_quality_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_security_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            required_checks: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for CreateGateRequest {
+            fn default() -> Self {
+                Self {
+                    action: Ok(Default::default()),
+                    description: Ok(Default::default()),
+                    enforce_on_download: Ok(Default::default()),
+                    enforce_on_promotion: Ok(Default::default()),
+                    max_critical_issues: Ok(Default::default()),
+                    max_high_issues: Ok(Default::default()),
+                    max_medium_issues: Ok(Default::default()),
+                    min_health_score: Ok(Default::default()),
+                    min_metadata_score: Ok(Default::default()),
+                    min_quality_score: Ok(Default::default()),
+                    min_security_score: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    repository_id: Ok(Default::default()),
+                    required_checks: Ok(Default::default()),
+                }
+            }
+        }
+        impl CreateGateRequest {
+            pub fn action<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.action = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for action: {e}"));
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn enforce_on_download<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enforce_on_download = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for enforce_on_download: {e}")
+                });
+                self
+            }
+            pub fn enforce_on_promotion<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enforce_on_promotion = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for enforce_on_promotion: {e}")
+                });
+                self
+            }
+            pub fn max_critical_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_critical_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_critical_issues: {e}")
+                });
+                self
+            }
+            pub fn max_high_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_high_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_high_issues: {e}")
+                });
+                self
+            }
+            pub fn max_medium_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_medium_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_medium_issues: {e}")
+                });
+                self
+            }
+            pub fn min_health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_health_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_health_score: {e}")
+                });
+                self
+            }
+            pub fn min_metadata_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_metadata_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_metadata_score: {e}")
+                });
+                self
+            }
+            pub fn min_quality_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_quality_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_quality_score: {e}")
+                });
+                self
+            }
+            pub fn min_security_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_security_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_security_score: {e}")
+                });
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn required_checks<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.required_checks = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for required_checks: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateGateRequest> for super::CreateGateRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateGateRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    action: value.action?,
+                    description: value.description?,
+                    enforce_on_download: value.enforce_on_download?,
+                    enforce_on_promotion: value.enforce_on_promotion?,
+                    max_critical_issues: value.max_critical_issues?,
+                    max_high_issues: value.max_high_issues?,
+                    max_medium_issues: value.max_medium_issues?,
+                    min_health_score: value.min_health_score?,
+                    min_metadata_score: value.min_metadata_score?,
+                    min_quality_score: value.min_quality_score?,
+                    min_security_score: value.min_security_score?,
+                    name: value.name?,
+                    repository_id: value.repository_id?,
+                    required_checks: value.required_checks?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateGateRequest> for CreateGateRequest {
+            fn from(value: super::CreateGateRequest) -> Self {
+                Self {
+                    action: Ok(value.action),
+                    description: Ok(value.description),
+                    enforce_on_download: Ok(value.enforce_on_download),
+                    enforce_on_promotion: Ok(value.enforce_on_promotion),
+                    max_critical_issues: Ok(value.max_critical_issues),
+                    max_high_issues: Ok(value.max_high_issues),
+                    max_medium_issues: Ok(value.max_medium_issues),
+                    min_health_score: Ok(value.min_health_score),
+                    min_metadata_score: Ok(value.min_metadata_score),
+                    min_quality_score: Ok(value.min_quality_score),
+                    min_security_score: Ok(value.min_security_score),
+                    name: Ok(value.name),
+                    repository_id: Ok(value.repository_id),
+                    required_checks: Ok(value.required_checks),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct CreateGroupRequest {
             description: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
@@ -22221,19 +27573,28 @@ pub mod types {
         pub struct CreatePolicyRequest {
             block_on_fail: ::std::result::Result<bool, ::std::string::String>,
             block_unscanned: ::std::result::Result<bool, ::std::string::String>,
+            max_artifact_age_days:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             max_severity: ::std::result::Result<::std::string::String, ::std::string::String>,
+            min_staging_hours:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             repository_id:
                 ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            require_signature:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for CreatePolicyRequest {
             fn default() -> Self {
                 Self {
                     block_on_fail: Err("no value supplied for block_on_fail".to_string()),
                     block_unscanned: Err("no value supplied for block_unscanned".to_string()),
+                    max_artifact_age_days: Ok(Default::default()),
                     max_severity: Err("no value supplied for max_severity".to_string()),
+                    min_staging_hours: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
                     repository_id: Ok(Default::default()),
+                    require_signature: Ok(Default::default()),
                 }
             }
         }
@@ -22258,6 +27619,16 @@ pub mod types {
                 });
                 self
             }
+            pub fn max_artifact_age_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_artifact_age_days = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_artifact_age_days: {e}")
+                });
+                self
+            }
             pub fn max_severity<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -22266,6 +27637,16 @@ pub mod types {
                 self.max_severity = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for max_severity: {e}"));
+                self
+            }
+            pub fn min_staging_hours<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_staging_hours = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_staging_hours: {e}")
+                });
                 self
             }
             pub fn name<T>(mut self, value: T) -> Self
@@ -22288,6 +27669,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
                 self
             }
+            pub fn require_signature<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.require_signature = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for require_signature: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<CreatePolicyRequest> for super::CreatePolicyRequest {
             type Error = super::error::ConversionError;
@@ -22297,9 +27688,12 @@ pub mod types {
                 Ok(Self {
                     block_on_fail: value.block_on_fail?,
                     block_unscanned: value.block_unscanned?,
+                    max_artifact_age_days: value.max_artifact_age_days?,
                     max_severity: value.max_severity?,
+                    min_staging_hours: value.min_staging_hours?,
                     name: value.name?,
                     repository_id: value.repository_id?,
+                    require_signature: value.require_signature?,
                 })
             }
         }
@@ -22308,9 +27702,12 @@ pub mod types {
                 Self {
                     block_on_fail: Ok(value.block_on_fail),
                     block_unscanned: Ok(value.block_unscanned),
+                    max_artifact_age_days: Ok(value.max_artifact_age_days),
                     max_severity: Ok(value.max_severity),
+                    min_staging_hours: Ok(value.min_staging_hours),
                     name: Ok(value.name),
                     repository_id: Ok(value.repository_id),
+                    require_signature: Ok(value.require_signature),
                 }
             }
         }
@@ -22455,6 +27852,198 @@ pub mod types {
                     quota_bytes: Ok(value.quota_bytes),
                     repo_type: Ok(value.repo_type),
                     upstream_url: Ok(value.upstream_url),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CreateRuleRequest {
+            allowed_licenses: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            auto_promote: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            max_artifact_age_days:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_cve_severity: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            min_health_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_staging_hours:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            require_signature:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            source_repo_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            target_repo_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+        }
+        impl ::std::default::Default for CreateRuleRequest {
+            fn default() -> Self {
+                Self {
+                    allowed_licenses: Ok(Default::default()),
+                    auto_promote: Ok(Default::default()),
+                    is_enabled: Ok(Default::default()),
+                    max_artifact_age_days: Ok(Default::default()),
+                    max_cve_severity: Ok(Default::default()),
+                    min_health_score: Ok(Default::default()),
+                    min_staging_hours: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    require_signature: Ok(Default::default()),
+                    source_repo_id: Err("no value supplied for source_repo_id".to_string()),
+                    target_repo_id: Err("no value supplied for target_repo_id".to_string()),
+                }
+            }
+        }
+        impl CreateRuleRequest {
+            pub fn allowed_licenses<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allowed_licenses = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allowed_licenses: {e}")
+                });
+                self
+            }
+            pub fn auto_promote<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.auto_promote = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for auto_promote: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn max_artifact_age_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_artifact_age_days = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_artifact_age_days: {e}")
+                });
+                self
+            }
+            pub fn max_cve_severity<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_cve_severity = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_cve_severity: {e}")
+                });
+                self
+            }
+            pub fn min_health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_health_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_health_score: {e}")
+                });
+                self
+            }
+            pub fn min_staging_hours<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_staging_hours = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_staging_hours: {e}")
+                });
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn require_signature<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.require_signature = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for require_signature: {e}")
+                });
+                self
+            }
+            pub fn source_repo_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source_repo_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for source_repo_id: {e}")
+                });
+                self
+            }
+            pub fn target_repo_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.target_repo_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for target_repo_id: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateRuleRequest> for super::CreateRuleRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateRuleRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    allowed_licenses: value.allowed_licenses?,
+                    auto_promote: value.auto_promote?,
+                    is_enabled: value.is_enabled?,
+                    max_artifact_age_days: value.max_artifact_age_days?,
+                    max_cve_severity: value.max_cve_severity?,
+                    min_health_score: value.min_health_score?,
+                    min_staging_hours: value.min_staging_hours?,
+                    name: value.name?,
+                    require_signature: value.require_signature?,
+                    source_repo_id: value.source_repo_id?,
+                    target_repo_id: value.target_repo_id?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateRuleRequest> for CreateRuleRequest {
+            fn from(value: super::CreateRuleRequest) -> Self {
+                Self {
+                    allowed_licenses: Ok(value.allowed_licenses),
+                    auto_promote: Ok(value.auto_promote),
+                    is_enabled: Ok(value.is_enabled),
+                    max_artifact_age_days: Ok(value.max_artifact_age_days),
+                    max_cve_severity: Ok(value.max_cve_severity),
+                    min_health_score: Ok(value.min_health_score),
+                    min_staging_hours: Ok(value.min_staging_hours),
+                    name: Ok(value.name),
+                    require_signature: Ok(value.require_signature),
+                    source_repo_id: Ok(value.source_repo_id),
+                    target_repo_id: Ok(value.target_repo_id),
                 }
             }
         }
@@ -22676,6 +28265,179 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct CreateSyncPolicyPayload {
+            artifact_filter: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            peer_selector: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            precedence: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            priority: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            replication_mode: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            repo_selector: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for CreateSyncPolicyPayload {
+            fn default() -> Self {
+                Self {
+                    artifact_filter: Ok(Default::default()),
+                    description: Ok(Default::default()),
+                    enabled: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    peer_selector: Ok(Default::default()),
+                    precedence: Ok(Default::default()),
+                    priority: Ok(Default::default()),
+                    replication_mode: Ok(Default::default()),
+                    repo_selector: Ok(Default::default()),
+                }
+            }
+        }
+        impl CreateSyncPolicyPayload {
+            pub fn artifact_filter<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_filter = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifact_filter: {e}")
+                });
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn peer_selector<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.peer_selector = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for peer_selector: {e}"));
+                self
+            }
+            pub fn precedence<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.precedence = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for precedence: {e}"));
+                self
+            }
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+            pub fn replication_mode<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.replication_mode = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for replication_mode: {e}")
+                });
+                self
+            }
+            pub fn repo_selector<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repo_selector = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repo_selector: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateSyncPolicyPayload> for super::CreateSyncPolicyPayload {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateSyncPolicyPayload,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_filter: value.artifact_filter?,
+                    description: value.description?,
+                    enabled: value.enabled?,
+                    name: value.name?,
+                    peer_selector: value.peer_selector?,
+                    precedence: value.precedence?,
+                    priority: value.priority?,
+                    replication_mode: value.replication_mode?,
+                    repo_selector: value.repo_selector?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateSyncPolicyPayload> for CreateSyncPolicyPayload {
+            fn from(value: super::CreateSyncPolicyPayload) -> Self {
+                Self {
+                    artifact_filter: Ok(value.artifact_filter),
+                    description: Ok(value.description),
+                    enabled: Ok(value.enabled),
+                    name: Ok(value.name),
+                    peer_selector: Ok(value.peer_selector),
+                    precedence: Ok(value.precedence),
+                    priority: Ok(value.priority),
+                    replication_mode: Ok(value.replication_mode),
+                    repo_selector: Ok(value.repo_selector),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct CreateTicketRequest {
             purpose: ::std::result::Result<::std::string::String, ::std::string::String>,
             resource_path: ::std::result::Result<
@@ -22840,7 +28602,7 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
-            user: ::std::result::Result<super::UserResponse, ::std::string::String>,
+            user: ::std::result::Result<super::AdminUserResponse, ::std::string::String>,
         }
         impl ::std::default::Default for CreateUserResponse {
             fn default() -> Self {
@@ -22863,7 +28625,7 @@ pub mod types {
             }
             pub fn user<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<super::UserResponse>,
+                T: ::std::convert::TryInto<super::AdminUserResponse>,
                 T::Error: ::std::fmt::Display,
             {
                 self.user = value
@@ -24117,6 +29879,88 @@ pub mod types {
                 Self {
                     from: Ok(value.from),
                     to: Ok(value.to),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct DbPoolStats {
+            active_connections: ::std::result::Result<i32, ::std::string::String>,
+            idle_connections: ::std::result::Result<i32, ::std::string::String>,
+            max_connections: ::std::result::Result<i32, ::std::string::String>,
+            size: ::std::result::Result<i32, ::std::string::String>,
+        }
+        impl ::std::default::Default for DbPoolStats {
+            fn default() -> Self {
+                Self {
+                    active_connections: Err("no value supplied for active_connections".to_string()),
+                    idle_connections: Err("no value supplied for idle_connections".to_string()),
+                    max_connections: Err("no value supplied for max_connections".to_string()),
+                    size: Err("no value supplied for size".to_string()),
+                }
+            }
+        }
+        impl DbPoolStats {
+            pub fn active_connections<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.active_connections = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for active_connections: {e}")
+                });
+                self
+            }
+            pub fn idle_connections<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.idle_connections = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for idle_connections: {e}")
+                });
+                self
+            }
+            pub fn max_connections<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_connections = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_connections: {e}")
+                });
+                self
+            }
+            pub fn size<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.size = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for size: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<DbPoolStats> for super::DbPoolStats {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: DbPoolStats,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    active_connections: value.active_connections?,
+                    idle_connections: value.idle_connections?,
+                    max_connections: value.max_connections?,
+                    size: value.size?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::DbPoolStats> for DbPoolStats {
+            fn from(value: super::DbPoolStats) -> Self {
+                Self {
+                    active_connections: Ok(value.active_connections),
+                    idle_connections: Ok(value.idle_connections),
+                    max_connections: Ok(value.max_connections),
+                    size: Ok(value.size),
                 }
             }
         }
@@ -26630,6 +32474,88 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct EvaluationResultResponse {
+            created: ::std::result::Result<u64, ::std::string::String>,
+            policies_evaluated: ::std::result::Result<u64, ::std::string::String>,
+            removed: ::std::result::Result<u64, ::std::string::String>,
+            updated: ::std::result::Result<u64, ::std::string::String>,
+        }
+        impl ::std::default::Default for EvaluationResultResponse {
+            fn default() -> Self {
+                Self {
+                    created: Err("no value supplied for created".to_string()),
+                    policies_evaluated: Err("no value supplied for policies_evaluated".to_string()),
+                    removed: Err("no value supplied for removed".to_string()),
+                    updated: Err("no value supplied for updated".to_string()),
+                }
+            }
+        }
+        impl EvaluationResultResponse {
+            pub fn created<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created: {e}"));
+                self
+            }
+            pub fn policies_evaluated<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.policies_evaluated = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for policies_evaluated: {e}")
+                });
+                self
+            }
+            pub fn removed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.removed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for removed: {e}"));
+                self
+            }
+            pub fn updated<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.updated = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for updated: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<EvaluationResultResponse> for super::EvaluationResultResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: EvaluationResultResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    created: value.created?,
+                    policies_evaluated: value.policies_evaluated?,
+                    removed: value.removed?,
+                    updated: value.updated?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::EvaluationResultResponse> for EvaluationResultResponse {
+            fn from(value: super::EvaluationResultResponse) -> Self {
+                Self {
+                    created: Ok(value.created),
+                    policies_evaluated: Ok(value.policies_evaluated),
+                    removed: Ok(value.removed),
+                    updated: Ok(value.updated),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct EventsQuery {
             limit: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
         }
@@ -27526,6 +33452,522 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct GateEvaluationResponse {
+            action: ::std::result::Result<::std::string::String, ::std::string::String>,
+            component_scores: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            gate_name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            health_grade: ::std::result::Result<::std::string::String, ::std::string::String>,
+            health_score: ::std::result::Result<i32, ::std::string::String>,
+            passed: ::std::result::Result<bool, ::std::string::String>,
+            violations: ::std::result::Result<
+                ::std::vec::Vec<super::GateViolationResponse>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for GateEvaluationResponse {
+            fn default() -> Self {
+                Self {
+                    action: Err("no value supplied for action".to_string()),
+                    component_scores: Err("no value supplied for component_scores".to_string()),
+                    gate_name: Err("no value supplied for gate_name".to_string()),
+                    health_grade: Err("no value supplied for health_grade".to_string()),
+                    health_score: Err("no value supplied for health_score".to_string()),
+                    passed: Err("no value supplied for passed".to_string()),
+                    violations: Err("no value supplied for violations".to_string()),
+                }
+            }
+        }
+        impl GateEvaluationResponse {
+            pub fn action<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.action = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for action: {e}"));
+                self
+            }
+            pub fn component_scores<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.component_scores = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for component_scores: {e}")
+                });
+                self
+            }
+            pub fn gate_name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.gate_name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for gate_name: {e}"));
+                self
+            }
+            pub fn health_grade<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.health_grade = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for health_grade: {e}"));
+                self
+            }
+            pub fn health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.health_score = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for health_score: {e}"));
+                self
+            }
+            pub fn passed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.passed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for passed: {e}"));
+                self
+            }
+            pub fn violations<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::GateViolationResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.violations = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for violations: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<GateEvaluationResponse> for super::GateEvaluationResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: GateEvaluationResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    action: value.action?,
+                    component_scores: value.component_scores?,
+                    gate_name: value.gate_name?,
+                    health_grade: value.health_grade?,
+                    health_score: value.health_score?,
+                    passed: value.passed?,
+                    violations: value.violations?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::GateEvaluationResponse> for GateEvaluationResponse {
+            fn from(value: super::GateEvaluationResponse) -> Self {
+                Self {
+                    action: Ok(value.action),
+                    component_scores: Ok(value.component_scores),
+                    gate_name: Ok(value.gate_name),
+                    health_grade: Ok(value.health_grade),
+                    health_score: Ok(value.health_score),
+                    passed: Ok(value.passed),
+                    violations: Ok(value.violations),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct GateResponse {
+            action: ::std::result::Result<::std::string::String, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            enforce_on_download: ::std::result::Result<bool, ::std::string::String>,
+            enforce_on_promotion: ::std::result::Result<bool, ::std::string::String>,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            is_enabled: ::std::result::Result<bool, ::std::string::String>,
+            max_critical_issues:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_high_issues:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_medium_issues:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_health_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_metadata_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_quality_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_security_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            required_checks: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for GateResponse {
+            fn default() -> Self {
+                Self {
+                    action: Err("no value supplied for action".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    description: Ok(Default::default()),
+                    enforce_on_download: Err(
+                        "no value supplied for enforce_on_download".to_string()
+                    ),
+                    enforce_on_promotion: Err(
+                        "no value supplied for enforce_on_promotion".to_string()
+                    ),
+                    id: Err("no value supplied for id".to_string()),
+                    is_enabled: Err("no value supplied for is_enabled".to_string()),
+                    max_critical_issues: Ok(Default::default()),
+                    max_high_issues: Ok(Default::default()),
+                    max_medium_issues: Ok(Default::default()),
+                    min_health_score: Ok(Default::default()),
+                    min_metadata_score: Ok(Default::default()),
+                    min_quality_score: Ok(Default::default()),
+                    min_security_score: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    repository_id: Ok(Default::default()),
+                    required_checks: Err("no value supplied for required_checks".to_string()),
+                    updated_at: Err("no value supplied for updated_at".to_string()),
+                }
+            }
+        }
+        impl GateResponse {
+            pub fn action<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.action = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for action: {e}"));
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn enforce_on_download<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enforce_on_download = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for enforce_on_download: {e}")
+                });
+                self
+            }
+            pub fn enforce_on_promotion<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enforce_on_promotion = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for enforce_on_promotion: {e}")
+                });
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn max_critical_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_critical_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_critical_issues: {e}")
+                });
+                self
+            }
+            pub fn max_high_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_high_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_high_issues: {e}")
+                });
+                self
+            }
+            pub fn max_medium_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_medium_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_medium_issues: {e}")
+                });
+                self
+            }
+            pub fn min_health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_health_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_health_score: {e}")
+                });
+                self
+            }
+            pub fn min_metadata_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_metadata_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_metadata_score: {e}")
+                });
+                self
+            }
+            pub fn min_quality_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_quality_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_quality_score: {e}")
+                });
+                self
+            }
+            pub fn min_security_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_security_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_security_score: {e}")
+                });
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn required_checks<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.required_checks = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for required_checks: {e}")
+                });
+                self
+            }
+            pub fn updated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.updated_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<GateResponse> for super::GateResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: GateResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    action: value.action?,
+                    created_at: value.created_at?,
+                    description: value.description?,
+                    enforce_on_download: value.enforce_on_download?,
+                    enforce_on_promotion: value.enforce_on_promotion?,
+                    id: value.id?,
+                    is_enabled: value.is_enabled?,
+                    max_critical_issues: value.max_critical_issues?,
+                    max_high_issues: value.max_high_issues?,
+                    max_medium_issues: value.max_medium_issues?,
+                    min_health_score: value.min_health_score?,
+                    min_metadata_score: value.min_metadata_score?,
+                    min_quality_score: value.min_quality_score?,
+                    min_security_score: value.min_security_score?,
+                    name: value.name?,
+                    repository_id: value.repository_id?,
+                    required_checks: value.required_checks?,
+                    updated_at: value.updated_at?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::GateResponse> for GateResponse {
+            fn from(value: super::GateResponse) -> Self {
+                Self {
+                    action: Ok(value.action),
+                    created_at: Ok(value.created_at),
+                    description: Ok(value.description),
+                    enforce_on_download: Ok(value.enforce_on_download),
+                    enforce_on_promotion: Ok(value.enforce_on_promotion),
+                    id: Ok(value.id),
+                    is_enabled: Ok(value.is_enabled),
+                    max_critical_issues: Ok(value.max_critical_issues),
+                    max_high_issues: Ok(value.max_high_issues),
+                    max_medium_issues: Ok(value.max_medium_issues),
+                    min_health_score: Ok(value.min_health_score),
+                    min_metadata_score: Ok(value.min_metadata_score),
+                    min_quality_score: Ok(value.min_quality_score),
+                    min_security_score: Ok(value.min_security_score),
+                    name: Ok(value.name),
+                    repository_id: Ok(value.repository_id),
+                    required_checks: Ok(value.required_checks),
+                    updated_at: Ok(value.updated_at),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct GateViolationResponse {
+            actual: ::std::result::Result<::std::string::String, ::std::string::String>,
+            expected: ::std::result::Result<::std::string::String, ::std::string::String>,
+            message: ::std::result::Result<::std::string::String, ::std::string::String>,
+            rule: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for GateViolationResponse {
+            fn default() -> Self {
+                Self {
+                    actual: Err("no value supplied for actual".to_string()),
+                    expected: Err("no value supplied for expected".to_string()),
+                    message: Err("no value supplied for message".to_string()),
+                    rule: Err("no value supplied for rule".to_string()),
+                }
+            }
+        }
+        impl GateViolationResponse {
+            pub fn actual<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.actual = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for actual: {e}"));
+                self
+            }
+            pub fn expected<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.expected = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for expected: {e}"));
+                self
+            }
+            pub fn message<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.message = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for message: {e}"));
+                self
+            }
+            pub fn rule<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rule = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rule: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<GateViolationResponse> for super::GateViolationResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: GateViolationResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    actual: value.actual?,
+                    expected: value.expected?,
+                    message: value.message?,
+                    rule: value.rule?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::GateViolationResponse> for GateViolationResponse {
+            fn from(value: super::GateViolationResponse) -> Self {
+                Self {
+                    actual: Ok(value.actual),
+                    expected: Ok(value.expected),
+                    message: Ok(value.message),
+                    rule: Ok(value.rule),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct GenerateSbomRequest {
             artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             force_regenerate:
@@ -28208,8 +34650,169 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct HealthDashboardResponse {
+            avg_health_score: ::std::result::Result<i32, ::std::string::String>,
+            repos_grade_a: ::std::result::Result<i64, ::std::string::String>,
+            repos_grade_b: ::std::result::Result<i64, ::std::string::String>,
+            repos_grade_c: ::std::result::Result<i64, ::std::string::String>,
+            repos_grade_d: ::std::result::Result<i64, ::std::string::String>,
+            repos_grade_f: ::std::result::Result<i64, ::std::string::String>,
+            repositories: ::std::result::Result<
+                ::std::vec::Vec<super::RepoHealthResponse>,
+                ::std::string::String,
+            >,
+            total_artifacts_evaluated: ::std::result::Result<i64, ::std::string::String>,
+            total_repositories: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for HealthDashboardResponse {
+            fn default() -> Self {
+                Self {
+                    avg_health_score: Err("no value supplied for avg_health_score".to_string()),
+                    repos_grade_a: Err("no value supplied for repos_grade_a".to_string()),
+                    repos_grade_b: Err("no value supplied for repos_grade_b".to_string()),
+                    repos_grade_c: Err("no value supplied for repos_grade_c".to_string()),
+                    repos_grade_d: Err("no value supplied for repos_grade_d".to_string()),
+                    repos_grade_f: Err("no value supplied for repos_grade_f".to_string()),
+                    repositories: Err("no value supplied for repositories".to_string()),
+                    total_artifacts_evaluated: Err(
+                        "no value supplied for total_artifacts_evaluated".to_string(),
+                    ),
+                    total_repositories: Err("no value supplied for total_repositories".to_string()),
+                }
+            }
+        }
+        impl HealthDashboardResponse {
+            pub fn avg_health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.avg_health_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for avg_health_score: {e}")
+                });
+                self
+            }
+            pub fn repos_grade_a<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repos_grade_a = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repos_grade_a: {e}"));
+                self
+            }
+            pub fn repos_grade_b<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repos_grade_b = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repos_grade_b: {e}"));
+                self
+            }
+            pub fn repos_grade_c<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repos_grade_c = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repos_grade_c: {e}"));
+                self
+            }
+            pub fn repos_grade_d<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repos_grade_d = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repos_grade_d: {e}"));
+                self
+            }
+            pub fn repos_grade_f<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repos_grade_f = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repos_grade_f: {e}"));
+                self
+            }
+            pub fn repositories<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::RepoHealthResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repositories = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repositories: {e}"));
+                self
+            }
+            pub fn total_artifacts_evaluated<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_artifacts_evaluated = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for total_artifacts_evaluated: {e}")
+                });
+                self
+            }
+            pub fn total_repositories<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_repositories = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for total_repositories: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<HealthDashboardResponse> for super::HealthDashboardResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: HealthDashboardResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    avg_health_score: value.avg_health_score?,
+                    repos_grade_a: value.repos_grade_a?,
+                    repos_grade_b: value.repos_grade_b?,
+                    repos_grade_c: value.repos_grade_c?,
+                    repos_grade_d: value.repos_grade_d?,
+                    repos_grade_f: value.repos_grade_f?,
+                    repositories: value.repositories?,
+                    total_artifacts_evaluated: value.total_artifacts_evaluated?,
+                    total_repositories: value.total_repositories?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::HealthDashboardResponse> for HealthDashboardResponse {
+            fn from(value: super::HealthDashboardResponse) -> Self {
+                Self {
+                    avg_health_score: Ok(value.avg_health_score),
+                    repos_grade_a: Ok(value.repos_grade_a),
+                    repos_grade_b: Ok(value.repos_grade_b),
+                    repos_grade_c: Ok(value.repos_grade_c),
+                    repos_grade_d: Ok(value.repos_grade_d),
+                    repos_grade_f: Ok(value.repos_grade_f),
+                    repositories: Ok(value.repositories),
+                    total_artifacts_evaluated: Ok(value.total_artifacts_evaluated),
+                    total_repositories: Ok(value.total_repositories),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct HealthResponse {
             checks: ::std::result::Result<super::HealthChecks, ::std::string::String>,
+            db_pool: ::std::result::Result<
+                ::std::option::Option<super::DbPoolStats>,
+                ::std::string::String,
+            >,
             demo_mode: ::std::result::Result<bool, ::std::string::String>,
             status: ::std::result::Result<::std::string::String, ::std::string::String>,
             version: ::std::result::Result<::std::string::String, ::std::string::String>,
@@ -28218,6 +34821,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     checks: Err("no value supplied for checks".to_string()),
+                    db_pool: Ok(Default::default()),
                     demo_mode: Err("no value supplied for demo_mode".to_string()),
                     status: Err("no value supplied for status".to_string()),
                     version: Err("no value supplied for version".to_string()),
@@ -28233,6 +34837,16 @@ pub mod types {
                 self.checks = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for checks: {e}"));
+                self
+            }
+            pub fn db_pool<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::DbPoolStats>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.db_pool = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for db_pool: {e}"));
                 self
             }
             pub fn demo_mode<T>(mut self, value: T) -> Self
@@ -28273,6 +34887,7 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     checks: value.checks?,
+                    db_pool: value.db_pool?,
                     demo_mode: value.demo_mode?,
                     status: value.status?,
                     version: value.version?,
@@ -28283,6 +34898,7 @@ pub mod types {
             fn from(value: super::HealthResponse) -> Self {
                 Self {
                     checks: Ok(value.checks),
+                    db_pool: Ok(value.db_pool),
                     demo_mode: Ok(value.demo_mode),
                     status: Ok(value.status),
                     version: Ok(value.version),
@@ -28574,6 +35190,232 @@ pub mod types {
             fn from(value: super::InstallFromLocalRequest) -> Self {
                 Self {
                     path: Ok(value.path),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct IssueResponse {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            category: ::std::result::Result<::std::string::String, ::std::string::String>,
+            check_result_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            is_suppressed: ::std::result::Result<bool, ::std::string::String>,
+            location: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            severity: ::std::result::Result<::std::string::String, ::std::string::String>,
+            suppressed_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            suppressed_by:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            suppressed_reason: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            title: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for IssueResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    category: Err("no value supplied for category".to_string()),
+                    check_result_id: Err("no value supplied for check_result_id".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    description: Ok(Default::default()),
+                    id: Err("no value supplied for id".to_string()),
+                    is_suppressed: Err("no value supplied for is_suppressed".to_string()),
+                    location: Ok(Default::default()),
+                    severity: Err("no value supplied for severity".to_string()),
+                    suppressed_at: Ok(Default::default()),
+                    suppressed_by: Ok(Default::default()),
+                    suppressed_reason: Ok(Default::default()),
+                    title: Err("no value supplied for title".to_string()),
+                }
+            }
+        }
+        impl IssueResponse {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn category<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.category = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for category: {e}"));
+                self
+            }
+            pub fn check_result_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.check_result_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for check_result_id: {e}")
+                });
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn is_suppressed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_suppressed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_suppressed: {e}"));
+                self
+            }
+            pub fn location<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.location = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for location: {e}"));
+                self
+            }
+            pub fn severity<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.severity = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for severity: {e}"));
+                self
+            }
+            pub fn suppressed_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.suppressed_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for suppressed_at: {e}"));
+                self
+            }
+            pub fn suppressed_by<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.suppressed_by = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for suppressed_by: {e}"));
+                self
+            }
+            pub fn suppressed_reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.suppressed_reason = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for suppressed_reason: {e}")
+                });
+                self
+            }
+            pub fn title<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.title = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for title: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<IssueResponse> for super::IssueResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: IssueResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    category: value.category?,
+                    check_result_id: value.check_result_id?,
+                    created_at: value.created_at?,
+                    description: value.description?,
+                    id: value.id?,
+                    is_suppressed: value.is_suppressed?,
+                    location: value.location?,
+                    severity: value.severity?,
+                    suppressed_at: value.suppressed_at?,
+                    suppressed_by: value.suppressed_by?,
+                    suppressed_reason: value.suppressed_reason?,
+                    title: value.title?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::IssueResponse> for IssueResponse {
+            fn from(value: super::IssueResponse) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    category: Ok(value.category),
+                    check_result_id: Ok(value.check_result_id),
+                    created_at: Ok(value.created_at),
+                    description: Ok(value.description),
+                    id: Ok(value.id),
+                    is_suppressed: Ok(value.is_suppressed),
+                    location: Ok(value.location),
+                    severity: Ok(value.severity),
+                    suppressed_at: Ok(value.suppressed_at),
+                    suppressed_by: Ok(value.suppressed_by),
+                    suppressed_reason: Ok(value.suppressed_reason),
+                    title: Ok(value.title),
                 }
             }
         }
@@ -30501,6 +37343,46 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct LivezResponse {
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for LivezResponse {
+            fn default() -> Self {
+                Self {
+                    status: Err("no value supplied for status".to_string()),
+                }
+            }
+        }
+        impl LivezResponse {
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<LivezResponse> for super::LivezResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: LivezResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    status: value.status?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::LivezResponse> for LivezResponse {
+            fn from(value: super::LivezResponse) -> Self {
+                Self {
+                    status: Ok(value.status),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct LoginRequest {
             password: ::std::result::Result<::std::string::String, ::std::string::String>,
             username: ::std::result::Result<::std::string::String, ::std::string::String>,
@@ -30681,6 +37563,145 @@ pub mod types {
                     token_type: Ok(value.token_type),
                     totp_required: Ok(value.totp_required),
                     totp_token: Ok(value.totp_token),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct MatchedPeerSchema {
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            region: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for MatchedPeerSchema {
+            fn default() -> Self {
+                Self {
+                    id: Err("no value supplied for id".to_string()),
+                    name: Err("no value supplied for name".to_string()),
+                    region: Ok(Default::default()),
+                }
+            }
+        }
+        impl MatchedPeerSchema {
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn region<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.region = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for region: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<MatchedPeerSchema> for super::MatchedPeerSchema {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: MatchedPeerSchema,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    id: value.id?,
+                    name: value.name?,
+                    region: value.region?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::MatchedPeerSchema> for MatchedPeerSchema {
+            fn from(value: super::MatchedPeerSchema) -> Self {
+                Self {
+                    id: Ok(value.id),
+                    name: Ok(value.name),
+                    region: Ok(value.region),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct MatchedRepoSchema {
+            format: ::std::result::Result<::std::string::String, ::std::string::String>,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            key: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for MatchedRepoSchema {
+            fn default() -> Self {
+                Self {
+                    format: Err("no value supplied for format".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    key: Err("no value supplied for key".to_string()),
+                }
+            }
+        }
+        impl MatchedRepoSchema {
+            pub fn format<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.format = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for format: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.key = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for key: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<MatchedRepoSchema> for super::MatchedRepoSchema {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: MatchedRepoSchema,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    format: value.format?,
+                    id: value.id?,
+                    key: value.key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::MatchedRepoSchema> for MatchedRepoSchema {
+            fn from(value: super::MatchedRepoSchema) -> Self {
+                Self {
+                    format: Ok(value.format),
+                    id: Ok(value.id),
+                    key: Ok(value.key),
                 }
             }
         }
@@ -33480,6 +40501,219 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct PeerLabelEntrySchema {
+            key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            value: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for PeerLabelEntrySchema {
+            fn default() -> Self {
+                Self {
+                    key: Err("no value supplied for key".to_string()),
+                    value: Ok(Default::default()),
+                }
+            }
+        }
+        impl PeerLabelEntrySchema {
+            pub fn key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.key = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for key: {e}"));
+                self
+            }
+            pub fn value<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.value = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for value: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PeerLabelEntrySchema> for super::PeerLabelEntrySchema {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PeerLabelEntrySchema,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    key: value.key?,
+                    value: value.value?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PeerLabelEntrySchema> for PeerLabelEntrySchema {
+            fn from(value: super::PeerLabelEntrySchema) -> Self {
+                Self {
+                    key: Ok(value.key),
+                    value: Ok(value.value),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PeerLabelResponse {
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            peer_instance_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            value: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for PeerLabelResponse {
+            fn default() -> Self {
+                Self {
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    key: Err("no value supplied for key".to_string()),
+                    peer_instance_id: Err("no value supplied for peer_instance_id".to_string()),
+                    value: Err("no value supplied for value".to_string()),
+                }
+            }
+        }
+        impl PeerLabelResponse {
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.key = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for key: {e}"));
+                self
+            }
+            pub fn peer_instance_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.peer_instance_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for peer_instance_id: {e}")
+                });
+                self
+            }
+            pub fn value<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.value = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for value: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PeerLabelResponse> for super::PeerLabelResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PeerLabelResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    created_at: value.created_at?,
+                    id: value.id?,
+                    key: value.key?,
+                    peer_instance_id: value.peer_instance_id?,
+                    value: value.value?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PeerLabelResponse> for PeerLabelResponse {
+            fn from(value: super::PeerLabelResponse) -> Self {
+                Self {
+                    created_at: Ok(value.created_at),
+                    id: Ok(value.id),
+                    key: Ok(value.key),
+                    peer_instance_id: Ok(value.peer_instance_id),
+                    value: Ok(value.value),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PeerLabelsListResponse {
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::PeerLabelResponse>,
+                ::std::string::String,
+            >,
+            total: ::std::result::Result<u64, ::std::string::String>,
+        }
+        impl ::std::default::Default for PeerLabelsListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    total: Err("no value supplied for total".to_string()),
+                }
+            }
+        }
+        impl PeerLabelsListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::PeerLabelResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PeerLabelsListResponse> for super::PeerLabelsListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PeerLabelsListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    total: value.total?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PeerLabelsListResponse> for PeerLabelsListResponse {
+            fn from(value: super::PeerLabelsListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    total: Ok(value.total),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct PeerResponse {
             bandwidth_estimate_bps:
                 ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
@@ -33691,6 +40925,168 @@ pub mod types {
                     target_peer_id: Ok(value.target_peer_id),
                     transfer_failure_count: Ok(value.transfer_failure_count),
                     transfer_success_count: Ok(value.transfer_success_count),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PeerSelectorSchema {
+            all: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            match_labels: ::std::result::Result<
+                ::std::collections::HashMap<::std::string::String, ::std::string::String>,
+                ::std::string::String,
+            >,
+            match_peers:
+                ::std::result::Result<::std::vec::Vec<::uuid::Uuid>, ::std::string::String>,
+            match_region: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for PeerSelectorSchema {
+            fn default() -> Self {
+                Self {
+                    all: Ok(Default::default()),
+                    match_labels: Ok(Default::default()),
+                    match_peers: Ok(Default::default()),
+                    match_region: Ok(Default::default()),
+                }
+            }
+        }
+        impl PeerSelectorSchema {
+            pub fn all<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.all = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for all: {e}"));
+                self
+            }
+            pub fn match_labels<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::collections::HashMap<::std::string::String, ::std::string::String>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.match_labels = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for match_labels: {e}"));
+                self
+            }
+            pub fn match_peers<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.match_peers = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for match_peers: {e}"));
+                self
+            }
+            pub fn match_region<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.match_region = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for match_region: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PeerSelectorSchema> for super::PeerSelectorSchema {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PeerSelectorSchema,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    all: value.all?,
+                    match_labels: value.match_labels?,
+                    match_peers: value.match_peers?,
+                    match_region: value.match_region?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PeerSelectorSchema> for PeerSelectorSchema {
+            fn from(value: super::PeerSelectorSchema) -> Self {
+                Self {
+                    all: Ok(value.all),
+                    match_labels: Ok(value.match_labels),
+                    match_peers: Ok(value.match_peers),
+                    match_region: Ok(value.match_region),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PendingQuery {
+            page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            per_page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            source_repository: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for PendingQuery {
+            fn default() -> Self {
+                Self {
+                    page: Ok(Default::default()),
+                    per_page: Ok(Default::default()),
+                    source_repository: Ok(Default::default()),
+                }
+            }
+        }
+        impl PendingQuery {
+            pub fn page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for page: {e}"));
+                self
+            }
+            pub fn per_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for per_page: {e}"));
+                self
+            }
+            pub fn source_repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source_repository = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for source_repository: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PendingQuery> for super::PendingQuery {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PendingQuery,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    page: value.page?,
+                    per_page: value.per_page?,
+                    source_repository: value.source_repository?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PendingQuery> for PendingQuery {
+            fn from(value: super::PendingQuery) -> Self {
+                Self {
+                    page: Ok(value.page),
+                    per_page: Ok(value.per_page),
+                    source_repository: Ok(value.source_repository),
                 }
             }
         }
@@ -34683,10 +42079,15 @@ pub mod types {
             >,
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             is_enabled: ::std::result::Result<bool, ::std::string::String>,
+            max_artifact_age_days:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             max_severity: ::std::result::Result<::std::string::String, ::std::string::String>,
+            min_staging_hours:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             repository_id:
                 ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            require_signature: ::std::result::Result<bool, ::std::string::String>,
             updated_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
@@ -34700,9 +42101,12 @@ pub mod types {
                     created_at: Err("no value supplied for created_at".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     is_enabled: Err("no value supplied for is_enabled".to_string()),
+                    max_artifact_age_days: Ok(Default::default()),
                     max_severity: Err("no value supplied for max_severity".to_string()),
+                    min_staging_hours: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
                     repository_id: Ok(Default::default()),
+                    require_signature: Err("no value supplied for require_signature".to_string()),
                     updated_at: Err("no value supplied for updated_at".to_string()),
                 }
             }
@@ -34758,6 +42162,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
                 self
             }
+            pub fn max_artifact_age_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_artifact_age_days = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_artifact_age_days: {e}")
+                });
+                self
+            }
             pub fn max_severity<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -34766,6 +42180,16 @@ pub mod types {
                 self.max_severity = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for max_severity: {e}"));
+                self
+            }
+            pub fn min_staging_hours<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_staging_hours = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_staging_hours: {e}")
+                });
                 self
             }
             pub fn name<T>(mut self, value: T) -> Self
@@ -34786,6 +42210,16 @@ pub mod types {
                 self.repository_id = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn require_signature<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.require_signature = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for require_signature: {e}")
+                });
                 self
             }
             pub fn updated_at<T>(mut self, value: T) -> Self
@@ -34810,9 +42244,12 @@ pub mod types {
                     created_at: value.created_at?,
                     id: value.id?,
                     is_enabled: value.is_enabled?,
+                    max_artifact_age_days: value.max_artifact_age_days?,
                     max_severity: value.max_severity?,
+                    min_staging_hours: value.min_staging_hours?,
                     name: value.name?,
                     repository_id: value.repository_id?,
+                    require_signature: value.require_signature?,
                     updated_at: value.updated_at?,
                 })
             }
@@ -34825,9 +42262,12 @@ pub mod types {
                     created_at: Ok(value.created_at),
                     id: Ok(value.id),
                     is_enabled: Ok(value.is_enabled),
+                    max_artifact_age_days: Ok(value.max_artifact_age_days),
                     max_severity: Ok(value.max_severity),
+                    min_staging_hours: Ok(value.min_staging_hours),
                     name: Ok(value.name),
                     repository_id: Ok(value.repository_id),
+                    require_signature: Ok(value.require_signature),
                     updated_at: Ok(value.updated_at),
                 }
             }
@@ -34897,6 +42337,255 @@ pub mod types {
                     message: Ok(value.message),
                     rule: Ok(value.rule),
                     severity: Ok(value.severity),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PreviewPolicyPayload {
+            artifact_filter: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            peer_selector: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            precedence: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            priority: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            replication_mode: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            repo_selector: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for PreviewPolicyPayload {
+            fn default() -> Self {
+                Self {
+                    artifact_filter: Ok(Default::default()),
+                    description: Ok(Default::default()),
+                    enabled: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    peer_selector: Ok(Default::default()),
+                    precedence: Ok(Default::default()),
+                    priority: Ok(Default::default()),
+                    replication_mode: Ok(Default::default()),
+                    repo_selector: Ok(Default::default()),
+                }
+            }
+        }
+        impl PreviewPolicyPayload {
+            pub fn artifact_filter<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_filter = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifact_filter: {e}")
+                });
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn peer_selector<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.peer_selector = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for peer_selector: {e}"));
+                self
+            }
+            pub fn precedence<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.precedence = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for precedence: {e}"));
+                self
+            }
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+            pub fn replication_mode<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.replication_mode = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for replication_mode: {e}")
+                });
+                self
+            }
+            pub fn repo_selector<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repo_selector = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repo_selector: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PreviewPolicyPayload> for super::PreviewPolicyPayload {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PreviewPolicyPayload,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_filter: value.artifact_filter?,
+                    description: value.description?,
+                    enabled: value.enabled?,
+                    name: value.name?,
+                    peer_selector: value.peer_selector?,
+                    precedence: value.precedence?,
+                    priority: value.priority?,
+                    replication_mode: value.replication_mode?,
+                    repo_selector: value.repo_selector?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PreviewPolicyPayload> for PreviewPolicyPayload {
+            fn from(value: super::PreviewPolicyPayload) -> Self {
+                Self {
+                    artifact_filter: Ok(value.artifact_filter),
+                    description: Ok(value.description),
+                    enabled: Ok(value.enabled),
+                    name: Ok(value.name),
+                    peer_selector: Ok(value.peer_selector),
+                    precedence: Ok(value.precedence),
+                    priority: Ok(value.priority),
+                    replication_mode: Ok(value.replication_mode),
+                    repo_selector: Ok(value.repo_selector),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PreviewResultResponse {
+            matched_peers: ::std::result::Result<
+                ::std::vec::Vec<super::MatchedPeerSchema>,
+                ::std::string::String,
+            >,
+            matched_repositories: ::std::result::Result<
+                ::std::vec::Vec<super::MatchedRepoSchema>,
+                ::std::string::String,
+            >,
+            subscription_count: ::std::result::Result<u64, ::std::string::String>,
+        }
+        impl ::std::default::Default for PreviewResultResponse {
+            fn default() -> Self {
+                Self {
+                    matched_peers: Err("no value supplied for matched_peers".to_string()),
+                    matched_repositories: Err(
+                        "no value supplied for matched_repositories".to_string()
+                    ),
+                    subscription_count: Err("no value supplied for subscription_count".to_string()),
+                }
+            }
+        }
+        impl PreviewResultResponse {
+            pub fn matched_peers<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::MatchedPeerSchema>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.matched_peers = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for matched_peers: {e}"));
+                self
+            }
+            pub fn matched_repositories<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::MatchedRepoSchema>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.matched_repositories = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for matched_repositories: {e}")
+                });
+                self
+            }
+            pub fn subscription_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.subscription_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for subscription_count: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PreviewResultResponse> for super::PreviewResultResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PreviewResultResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    matched_peers: value.matched_peers?,
+                    matched_repositories: value.matched_repositories?,
+                    subscription_count: value.subscription_count?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PreviewResultResponse> for PreviewResultResponse {
+            fn from(value: super::PreviewResultResponse) -> Self {
+                Self {
+                    matched_peers: Ok(value.matched_peers),
+                    matched_repositories: Ok(value.matched_repositories),
+                    subscription_count: Ok(value.subscription_count),
                 }
             }
         }
@@ -35066,7 +42755,12 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            rejection_reason: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             source_repo_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
             target_repo_key: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
         impl ::std::default::Default for PromotionHistoryEntry {
@@ -35080,7 +42774,9 @@ pub mod types {
                     policy_result: Ok(Default::default()),
                     promoted_by: Ok(Default::default()),
                     promoted_by_username: Ok(Default::default()),
+                    rejection_reason: Ok(Default::default()),
                     source_repo_key: Err("no value supplied for source_repo_key".to_string()),
+                    status: Err("no value supplied for status".to_string()),
                     target_repo_key: Err("no value supplied for target_repo_key".to_string()),
                 }
             }
@@ -35170,6 +42866,16 @@ pub mod types {
                 });
                 self
             }
+            pub fn rejection_reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rejection_reason = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for rejection_reason: {e}")
+                });
+                self
+            }
             pub fn source_repo_key<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -35178,6 +42884,16 @@ pub mod types {
                 self.source_repo_key = value.try_into().map_err(|e| {
                     format!("error converting supplied value for source_repo_key: {e}")
                 });
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
                 self
             }
             pub fn target_repo_key<T>(mut self, value: T) -> Self
@@ -35205,7 +42921,9 @@ pub mod types {
                     policy_result: value.policy_result?,
                     promoted_by: value.promoted_by?,
                     promoted_by_username: value.promoted_by_username?,
+                    rejection_reason: value.rejection_reason?,
                     source_repo_key: value.source_repo_key?,
+                    status: value.status?,
                     target_repo_key: value.target_repo_key?,
                 })
             }
@@ -35221,7 +42939,9 @@ pub mod types {
                     policy_result: Ok(value.policy_result),
                     promoted_by: Ok(value.promoted_by),
                     promoted_by_username: Ok(value.promoted_by_username),
+                    rejection_reason: Ok(value.rejection_reason),
                     source_repo_key: Ok(value.source_repo_key),
+                    status: Ok(value.status),
                     target_repo_key: Ok(value.target_repo_key),
                 }
             }
@@ -35232,6 +42952,10 @@ pub mod types {
                 ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
             page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             per_page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            status: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
         }
         impl ::std::default::Default for PromotionHistoryQuery {
             fn default() -> Self {
@@ -35239,6 +42963,7 @@ pub mod types {
                     artifact_id: Ok(Default::default()),
                     page: Ok(Default::default()),
                     per_page: Ok(Default::default()),
+                    status: Ok(Default::default()),
                 }
             }
         }
@@ -35273,6 +42998,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for per_page: {e}"));
                 self
             }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
         }
         impl ::std::convert::TryFrom<PromotionHistoryQuery> for super::PromotionHistoryQuery {
             type Error = super::error::ConversionError;
@@ -35283,6 +43018,7 @@ pub mod types {
                     artifact_id: value.artifact_id?,
                     page: value.page?,
                     per_page: value.per_page?,
+                    status: value.status?,
                 })
             }
         }
@@ -35292,6 +43028,7 @@ pub mod types {
                     artifact_id: Ok(value.artifact_id),
                     page: Ok(value.page),
                     per_page: Ok(value.per_page),
+                    status: Ok(value.status),
                 }
             }
         }
@@ -35470,6 +43207,302 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct PromotionRuleListResponse {
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::PromotionRuleResponse>,
+                ::std::string::String,
+            >,
+            total: ::std::result::Result<u64, ::std::string::String>,
+        }
+        impl ::std::default::Default for PromotionRuleListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    total: Err("no value supplied for total".to_string()),
+                }
+            }
+        }
+        impl PromotionRuleListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::PromotionRuleResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PromotionRuleListResponse> for super::PromotionRuleListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PromotionRuleListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    total: value.total?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PromotionRuleListResponse> for PromotionRuleListResponse {
+            fn from(value: super::PromotionRuleListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    total: Ok(value.total),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PromotionRuleResponse {
+            allowed_licenses: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            auto_promote: ::std::result::Result<bool, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            is_enabled: ::std::result::Result<bool, ::std::string::String>,
+            max_artifact_age_days:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_cve_severity: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            min_health_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_staging_hours:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            require_signature: ::std::result::Result<bool, ::std::string::String>,
+            source_repo_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            target_repo_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for PromotionRuleResponse {
+            fn default() -> Self {
+                Self {
+                    allowed_licenses: Ok(Default::default()),
+                    auto_promote: Err("no value supplied for auto_promote".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    is_enabled: Err("no value supplied for is_enabled".to_string()),
+                    max_artifact_age_days: Ok(Default::default()),
+                    max_cve_severity: Ok(Default::default()),
+                    min_health_score: Ok(Default::default()),
+                    min_staging_hours: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    require_signature: Err("no value supplied for require_signature".to_string()),
+                    source_repo_id: Err("no value supplied for source_repo_id".to_string()),
+                    target_repo_id: Err("no value supplied for target_repo_id".to_string()),
+                    updated_at: Err("no value supplied for updated_at".to_string()),
+                }
+            }
+        }
+        impl PromotionRuleResponse {
+            pub fn allowed_licenses<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allowed_licenses = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allowed_licenses: {e}")
+                });
+                self
+            }
+            pub fn auto_promote<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.auto_promote = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for auto_promote: {e}"));
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn max_artifact_age_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_artifact_age_days = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_artifact_age_days: {e}")
+                });
+                self
+            }
+            pub fn max_cve_severity<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_cve_severity = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_cve_severity: {e}")
+                });
+                self
+            }
+            pub fn min_health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_health_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_health_score: {e}")
+                });
+                self
+            }
+            pub fn min_staging_hours<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_staging_hours = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_staging_hours: {e}")
+                });
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn require_signature<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.require_signature = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for require_signature: {e}")
+                });
+                self
+            }
+            pub fn source_repo_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source_repo_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for source_repo_id: {e}")
+                });
+                self
+            }
+            pub fn target_repo_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.target_repo_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for target_repo_id: {e}")
+                });
+                self
+            }
+            pub fn updated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.updated_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PromotionRuleResponse> for super::PromotionRuleResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PromotionRuleResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    allowed_licenses: value.allowed_licenses?,
+                    auto_promote: value.auto_promote?,
+                    created_at: value.created_at?,
+                    id: value.id?,
+                    is_enabled: value.is_enabled?,
+                    max_artifact_age_days: value.max_artifact_age_days?,
+                    max_cve_severity: value.max_cve_severity?,
+                    min_health_score: value.min_health_score?,
+                    min_staging_hours: value.min_staging_hours?,
+                    name: value.name?,
+                    require_signature: value.require_signature?,
+                    source_repo_id: value.source_repo_id?,
+                    target_repo_id: value.target_repo_id?,
+                    updated_at: value.updated_at?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PromotionRuleResponse> for PromotionRuleResponse {
+            fn from(value: super::PromotionRuleResponse) -> Self {
+                Self {
+                    allowed_licenses: Ok(value.allowed_licenses),
+                    auto_promote: Ok(value.auto_promote),
+                    created_at: Ok(value.created_at),
+                    id: Ok(value.id),
+                    is_enabled: Ok(value.is_enabled),
+                    max_artifact_age_days: Ok(value.max_artifact_age_days),
+                    max_cve_severity: Ok(value.max_cve_severity),
+                    min_health_score: Ok(value.min_health_score),
+                    min_staging_hours: Ok(value.min_staging_hours),
+                    name: Ok(value.name),
+                    require_signature: Ok(value.require_signature),
+                    source_repo_id: Ok(value.source_repo_id),
+                    target_repo_id: Ok(value.target_repo_id),
+                    updated_at: Ok(value.updated_at),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct QuickSearchResponse {
             results: ::std::result::Result<
                 ::std::vec::Vec<super::SearchResultItem>,
@@ -35509,6 +43542,128 @@ pub mod types {
             fn from(value: super::QuickSearchResponse) -> Self {
                 Self {
                     results: Ok(value.results),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ReadyzChecks {
+            database: ::std::result::Result<super::CheckStatus, ::std::string::String>,
+            migrations: ::std::result::Result<super::CheckStatus, ::std::string::String>,
+            setup_complete: ::std::result::Result<super::CheckStatus, ::std::string::String>,
+        }
+        impl ::std::default::Default for ReadyzChecks {
+            fn default() -> Self {
+                Self {
+                    database: Err("no value supplied for database".to_string()),
+                    migrations: Err("no value supplied for migrations".to_string()),
+                    setup_complete: Err("no value supplied for setup_complete".to_string()),
+                }
+            }
+        }
+        impl ReadyzChecks {
+            pub fn database<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::CheckStatus>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.database = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for database: {e}"));
+                self
+            }
+            pub fn migrations<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::CheckStatus>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.migrations = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for migrations: {e}"));
+                self
+            }
+            pub fn setup_complete<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::CheckStatus>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.setup_complete = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for setup_complete: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ReadyzChecks> for super::ReadyzChecks {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ReadyzChecks,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    database: value.database?,
+                    migrations: value.migrations?,
+                    setup_complete: value.setup_complete?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ReadyzChecks> for ReadyzChecks {
+            fn from(value: super::ReadyzChecks) -> Self {
+                Self {
+                    database: Ok(value.database),
+                    migrations: Ok(value.migrations),
+                    setup_complete: Ok(value.setup_complete),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ReadyzResponse {
+            checks: ::std::result::Result<super::ReadyzChecks, ::std::string::String>,
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for ReadyzResponse {
+            fn default() -> Self {
+                Self {
+                    checks: Err("no value supplied for checks".to_string()),
+                    status: Err("no value supplied for status".to_string()),
+                }
+            }
+        }
+        impl ReadyzResponse {
+            pub fn checks<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::ReadyzChecks>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.checks = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for checks: {e}"));
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ReadyzResponse> for super::ReadyzResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ReadyzResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    checks: value.checks?,
+                    status: value.status?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ReadyzResponse> for ReadyzResponse {
+            fn from(value: super::ReadyzResponse) -> Self {
+                Self {
+                    checks: Ok(value.checks),
+                    status: Ok(value.status),
                 }
             }
         }
@@ -35745,6 +43900,159 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct RejectArtifactRequest {
+            notes: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            reason: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for RejectArtifactRequest {
+            fn default() -> Self {
+                Self {
+                    notes: Ok(Default::default()),
+                    reason: Err("no value supplied for reason".to_string()),
+                }
+            }
+        }
+        impl RejectArtifactRequest {
+            pub fn notes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.notes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for notes: {e}"));
+                self
+            }
+            pub fn reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reason = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reason: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RejectArtifactRequest> for super::RejectArtifactRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RejectArtifactRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    notes: value.notes?,
+                    reason: value.reason?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RejectArtifactRequest> for RejectArtifactRequest {
+            fn from(value: super::RejectArtifactRequest) -> Self {
+                Self {
+                    notes: Ok(value.notes),
+                    reason: Ok(value.reason),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RejectionResponse {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            reason: ::std::result::Result<::std::string::String, ::std::string::String>,
+            rejected: ::std::result::Result<bool, ::std::string::String>,
+            rejection_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            source: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for RejectionResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    reason: Err("no value supplied for reason".to_string()),
+                    rejected: Err("no value supplied for rejected".to_string()),
+                    rejection_id: Err("no value supplied for rejection_id".to_string()),
+                    source: Err("no value supplied for source".to_string()),
+                }
+            }
+        }
+        impl RejectionResponse {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reason = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reason: {e}"));
+                self
+            }
+            pub fn rejected<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rejected = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rejected: {e}"));
+                self
+            }
+            pub fn rejection_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rejection_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rejection_id: {e}"));
+                self
+            }
+            pub fn source<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for source: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RejectionResponse> for super::RejectionResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RejectionResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    reason: value.reason?,
+                    rejected: value.rejected?,
+                    rejection_id: value.rejection_id?,
+                    source: value.source?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RejectionResponse> for RejectionResponse {
+            fn from(value: super::RejectionResponse) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    reason: Ok(value.reason),
+                    rejected: Ok(value.rejected),
+                    rejection_id: Ok(value.rejection_id),
+                    source: Ok(value.source),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct RemoteInstanceResponse {
             created_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
@@ -35830,6 +44138,211 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct RepoHealthResponse {
+            artifacts_evaluated: ::std::result::Result<i32, ::std::string::String>,
+            artifacts_failing: ::std::result::Result<i32, ::std::string::String>,
+            artifacts_passing: ::std::result::Result<i32, ::std::string::String>,
+            avg_license_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            avg_metadata_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            avg_quality_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            avg_security_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            health_grade: ::std::result::Result<::std::string::String, ::std::string::String>,
+            health_score: ::std::result::Result<i32, ::std::string::String>,
+            last_evaluated_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            repository_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for RepoHealthResponse {
+            fn default() -> Self {
+                Self {
+                    artifacts_evaluated: Err(
+                        "no value supplied for artifacts_evaluated".to_string()
+                    ),
+                    artifacts_failing: Err("no value supplied for artifacts_failing".to_string()),
+                    artifacts_passing: Err("no value supplied for artifacts_passing".to_string()),
+                    avg_license_score: Ok(Default::default()),
+                    avg_metadata_score: Ok(Default::default()),
+                    avg_quality_score: Ok(Default::default()),
+                    avg_security_score: Ok(Default::default()),
+                    health_grade: Err("no value supplied for health_grade".to_string()),
+                    health_score: Err("no value supplied for health_score".to_string()),
+                    last_evaluated_at: Ok(Default::default()),
+                    repository_id: Err("no value supplied for repository_id".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                }
+            }
+        }
+        impl RepoHealthResponse {
+            pub fn artifacts_evaluated<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifacts_evaluated = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifacts_evaluated: {e}")
+                });
+                self
+            }
+            pub fn artifacts_failing<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifacts_failing = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifacts_failing: {e}")
+                });
+                self
+            }
+            pub fn artifacts_passing<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifacts_passing = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifacts_passing: {e}")
+                });
+                self
+            }
+            pub fn avg_license_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.avg_license_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for avg_license_score: {e}")
+                });
+                self
+            }
+            pub fn avg_metadata_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.avg_metadata_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for avg_metadata_score: {e}")
+                });
+                self
+            }
+            pub fn avg_quality_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.avg_quality_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for avg_quality_score: {e}")
+                });
+                self
+            }
+            pub fn avg_security_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.avg_security_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for avg_security_score: {e}")
+                });
+                self
+            }
+            pub fn health_grade<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.health_grade = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for health_grade: {e}"));
+                self
+            }
+            pub fn health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.health_score = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for health_score: {e}"));
+                self
+            }
+            pub fn last_evaluated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.last_evaluated_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for last_evaluated_at: {e}")
+                });
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RepoHealthResponse> for super::RepoHealthResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RepoHealthResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifacts_evaluated: value.artifacts_evaluated?,
+                    artifacts_failing: value.artifacts_failing?,
+                    artifacts_passing: value.artifacts_passing?,
+                    avg_license_score: value.avg_license_score?,
+                    avg_metadata_score: value.avg_metadata_score?,
+                    avg_quality_score: value.avg_quality_score?,
+                    avg_security_score: value.avg_security_score?,
+                    health_grade: value.health_grade?,
+                    health_score: value.health_score?,
+                    last_evaluated_at: value.last_evaluated_at?,
+                    repository_id: value.repository_id?,
+                    repository_key: value.repository_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RepoHealthResponse> for RepoHealthResponse {
+            fn from(value: super::RepoHealthResponse) -> Self {
+                Self {
+                    artifacts_evaluated: Ok(value.artifacts_evaluated),
+                    artifacts_failing: Ok(value.artifacts_failing),
+                    artifacts_passing: Ok(value.artifacts_passing),
+                    avg_license_score: Ok(value.avg_license_score),
+                    avg_metadata_score: Ok(value.avg_metadata_score),
+                    avg_quality_score: Ok(value.avg_quality_score),
+                    avg_security_score: Ok(value.avg_security_score),
+                    health_grade: Ok(value.health_grade),
+                    health_score: Ok(value.health_score),
+                    last_evaluated_at: Ok(value.last_evaluated_at),
+                    repository_id: Ok(value.repository_id),
+                    repository_key: Ok(value.repository_key),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct RepoSecurityResponse {
             config: ::std::result::Result<
                 ::std::option::Option<super::ScanConfigResponse>,
@@ -35886,6 +44399,100 @@ pub mod types {
                 Self {
                     config: Ok(value.config),
                     score: Ok(value.score),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RepoSelectorSchema {
+            match_formats: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            match_labels: ::std::result::Result<
+                ::std::collections::HashMap<::std::string::String, ::std::string::String>,
+                ::std::string::String,
+            >,
+            match_pattern: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            match_repos:
+                ::std::result::Result<::std::vec::Vec<::uuid::Uuid>, ::std::string::String>,
+        }
+        impl ::std::default::Default for RepoSelectorSchema {
+            fn default() -> Self {
+                Self {
+                    match_formats: Ok(Default::default()),
+                    match_labels: Ok(Default::default()),
+                    match_pattern: Ok(Default::default()),
+                    match_repos: Ok(Default::default()),
+                }
+            }
+        }
+        impl RepoSelectorSchema {
+            pub fn match_formats<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.match_formats = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for match_formats: {e}"));
+                self
+            }
+            pub fn match_labels<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::collections::HashMap<::std::string::String, ::std::string::String>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.match_labels = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for match_labels: {e}"));
+                self
+            }
+            pub fn match_pattern<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.match_pattern = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for match_pattern: {e}"));
+                self
+            }
+            pub fn match_repos<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.match_repos = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for match_repos: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RepoSelectorSchema> for super::RepoSelectorSchema {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RepoSelectorSchema,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    match_formats: value.match_formats?,
+                    match_labels: value.match_labels?,
+                    match_pattern: value.match_pattern?,
+                    match_repos: value.match_repos?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RepoSelectorSchema> for RepoSelectorSchema {
+            fn from(value: super::RepoSelectorSchema) -> Self {
+                Self {
+                    match_formats: Ok(value.match_formats),
+                    match_labels: Ok(value.match_labels),
+                    match_pattern: Ok(value.match_pattern),
+                    match_repos: Ok(value.match_repos),
                 }
             }
         }
@@ -36866,6 +45473,49 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct ReviewRequest {
+            notes: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ReviewRequest {
+            fn default() -> Self {
+                Self {
+                    notes: Ok(Default::default()),
+                }
+            }
+        }
+        impl ReviewRequest {
+            pub fn notes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.notes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for notes: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ReviewRequest> for super::ReviewRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ReviewRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    notes: value.notes?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ReviewRequest> for ReviewRequest {
+            fn from(value: super::ReviewRequest) -> Self {
+                Self {
+                    notes: Ok(value.notes),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct RoleListResponse {
             items:
                 ::std::result::Result<::std::vec::Vec<super::RoleResponse>, ::std::string::String>,
@@ -36991,6 +45641,91 @@ pub mod types {
                     id: Ok(value.id),
                     name: Ok(value.name),
                     permissions: Ok(value.permissions),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RuleEvaluationResponse {
+            passed: ::std::result::Result<bool, ::std::string::String>,
+            rule_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            rule_name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            violations: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for RuleEvaluationResponse {
+            fn default() -> Self {
+                Self {
+                    passed: Err("no value supplied for passed".to_string()),
+                    rule_id: Err("no value supplied for rule_id".to_string()),
+                    rule_name: Err("no value supplied for rule_name".to_string()),
+                    violations: Err("no value supplied for violations".to_string()),
+                }
+            }
+        }
+        impl RuleEvaluationResponse {
+            pub fn passed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.passed = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for passed: {e}"));
+                self
+            }
+            pub fn rule_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rule_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rule_id: {e}"));
+                self
+            }
+            pub fn rule_name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rule_name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rule_name: {e}"));
+                self
+            }
+            pub fn violations<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.violations = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for violations: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RuleEvaluationResponse> for super::RuleEvaluationResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RuleEvaluationResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    passed: value.passed?,
+                    rule_id: value.rule_id?,
+                    rule_name: value.rule_name?,
+                    violations: value.violations?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RuleEvaluationResponse> for RuleEvaluationResponse {
+            fn from(value: super::RuleEvaluationResponse) -> Self {
+                Self {
+                    passed: Ok(value.passed),
+                    rule_id: Ok(value.rule_id),
+                    rule_name: Ok(value.rule_name),
+                    violations: Ok(value.violations),
                 }
             }
         }
@@ -39011,6 +47746,49 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct SetPeerLabelsRequest {
+            labels: ::std::result::Result<
+                ::std::vec::Vec<super::PeerLabelEntrySchema>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for SetPeerLabelsRequest {
+            fn default() -> Self {
+                Self {
+                    labels: Err("no value supplied for labels".to_string()),
+                }
+            }
+        }
+        impl SetPeerLabelsRequest {
+            pub fn labels<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::PeerLabelEntrySchema>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.labels = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for labels: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SetPeerLabelsRequest> for super::SetPeerLabelsRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SetPeerLabelsRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    labels: value.labels?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SetPeerLabelsRequest> for SetPeerLabelsRequest {
+            fn from(value: super::SetPeerLabelsRequest) -> Self {
+                Self {
+                    labels: Ok(value.labels),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct SetupStatusResponse {
             setup_required: ::std::result::Result<bool, ::std::string::String>,
         }
@@ -40202,6 +48980,46 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct SuppressIssueRequest {
+            reason: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for SuppressIssueRequest {
+            fn default() -> Self {
+                Self {
+                    reason: Err("no value supplied for reason".to_string()),
+                }
+            }
+        }
+        impl SuppressIssueRequest {
+            pub fn reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reason = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reason: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SuppressIssueRequest> for super::SuppressIssueRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SuppressIssueRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    reason: value.reason?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SuppressIssueRequest> for SuppressIssueRequest {
+            fn from(value: super::SuppressIssueRequest) -> Self {
+                Self {
+                    reason: Ok(value.reason),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct SuppressRequest {
             service_name: ::std::result::Result<::std::string::String, ::std::string::String>,
             until: ::std::result::Result<
@@ -40255,6 +49073,278 @@ pub mod types {
                 Self {
                     service_name: Ok(value.service_name),
                     until: Ok(value.until),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct SyncPolicyListResponse {
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::SyncPolicyResponse>,
+                ::std::string::String,
+            >,
+            total: ::std::result::Result<u64, ::std::string::String>,
+        }
+        impl ::std::default::Default for SyncPolicyListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    total: Err("no value supplied for total".to_string()),
+                }
+            }
+        }
+        impl SyncPolicyListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::SyncPolicyResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<u64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SyncPolicyListResponse> for super::SyncPolicyListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SyncPolicyListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    total: value.total?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SyncPolicyListResponse> for SyncPolicyListResponse {
+            fn from(value: super::SyncPolicyListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    total: Ok(value.total),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct SyncPolicyResponse {
+            artifact_filter: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<::std::string::String, ::std::string::String>,
+            enabled: ::std::result::Result<bool, ::std::string::String>,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            peer_selector: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            precedence: ::std::result::Result<i32, ::std::string::String>,
+            priority: ::std::result::Result<i32, ::std::string::String>,
+            replication_mode: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repo_selector: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for SyncPolicyResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_filter: Err("no value supplied for artifact_filter".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    description: Err("no value supplied for description".to_string()),
+                    enabled: Err("no value supplied for enabled".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    name: Err("no value supplied for name".to_string()),
+                    peer_selector: Err("no value supplied for peer_selector".to_string()),
+                    precedence: Err("no value supplied for precedence".to_string()),
+                    priority: Err("no value supplied for priority".to_string()),
+                    replication_mode: Err("no value supplied for replication_mode".to_string()),
+                    repo_selector: Err("no value supplied for repo_selector".to_string()),
+                    updated_at: Err("no value supplied for updated_at".to_string()),
+                }
+            }
+        }
+        impl SyncPolicyResponse {
+            pub fn artifact_filter<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_filter = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifact_filter: {e}")
+                });
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn peer_selector<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.peer_selector = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for peer_selector: {e}"));
+                self
+            }
+            pub fn precedence<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.precedence = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for precedence: {e}"));
+                self
+            }
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+            pub fn replication_mode<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.replication_mode = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for replication_mode: {e}")
+                });
+                self
+            }
+            pub fn repo_selector<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repo_selector = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repo_selector: {e}"));
+                self
+            }
+            pub fn updated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.updated_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SyncPolicyResponse> for super::SyncPolicyResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SyncPolicyResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_filter: value.artifact_filter?,
+                    created_at: value.created_at?,
+                    description: value.description?,
+                    enabled: value.enabled?,
+                    id: value.id?,
+                    name: value.name?,
+                    peer_selector: value.peer_selector?,
+                    precedence: value.precedence?,
+                    priority: value.priority?,
+                    replication_mode: value.replication_mode?,
+                    repo_selector: value.repo_selector?,
+                    updated_at: value.updated_at?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SyncPolicyResponse> for SyncPolicyResponse {
+            fn from(value: super::SyncPolicyResponse) -> Self {
+                Self {
+                    artifact_filter: Ok(value.artifact_filter),
+                    created_at: Ok(value.created_at),
+                    description: Ok(value.description),
+                    enabled: Ok(value.enabled),
+                    id: Ok(value.id),
+                    name: Ok(value.name),
+                    peer_selector: Ok(value.peer_selector),
+                    precedence: Ok(value.precedence),
+                    priority: Ok(value.priority),
+                    replication_mode: Ok(value.replication_mode),
+                    repo_selector: Ok(value.repo_selector),
+                    updated_at: Ok(value.updated_at),
                 }
             }
         }
@@ -41069,6 +50159,46 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct TogglePolicyPayload {
+            enabled: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for TogglePolicyPayload {
+            fn default() -> Self {
+                Self {
+                    enabled: Err("no value supplied for enabled".to_string()),
+                }
+            }
+        }
+        impl TogglePolicyPayload {
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<TogglePolicyPayload> for super::TogglePolicyPayload {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: TogglePolicyPayload,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    enabled: value.enabled?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::TogglePolicyPayload> for TogglePolicyPayload {
+            fn from(value: super::TogglePolicyPayload) -> Self {
+                Self {
+                    enabled: Ok(value.enabled),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct ToggleRequest {
             enabled: ::std::result::Result<bool, ::std::string::String>,
         }
@@ -41720,6 +50850,116 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct TriggerChecksRequest {
+            artifact_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            repository_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+        }
+        impl ::std::default::Default for TriggerChecksRequest {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Ok(Default::default()),
+                    repository_id: Ok(Default::default()),
+                }
+            }
+        }
+        impl TriggerChecksRequest {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<TriggerChecksRequest> for super::TriggerChecksRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: TriggerChecksRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    repository_id: value.repository_id?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::TriggerChecksRequest> for TriggerChecksRequest {
+            fn from(value: super::TriggerChecksRequest) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    repository_id: Ok(value.repository_id),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct TriggerChecksResponse {
+            artifacts_queued: ::std::result::Result<i32, ::std::string::String>,
+            message: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for TriggerChecksResponse {
+            fn default() -> Self {
+                Self {
+                    artifacts_queued: Err("no value supplied for artifacts_queued".to_string()),
+                    message: Err("no value supplied for message".to_string()),
+                }
+            }
+        }
+        impl TriggerChecksResponse {
+            pub fn artifacts_queued<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifacts_queued = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifacts_queued: {e}")
+                });
+                self
+            }
+            pub fn message<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.message = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for message: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<TriggerChecksResponse> for super::TriggerChecksResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: TriggerChecksResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifacts_queued: value.artifacts_queued?,
+                    message: value.message?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::TriggerChecksResponse> for TriggerChecksResponse {
+            fn from(value: super::TriggerChecksResponse) -> Self {
+                Self {
+                    artifacts_queued: Ok(value.artifacts_queued),
+                    message: Ok(value.message),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct TriggerScanRequest {
             artifact_id:
                 ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
@@ -42166,6 +51406,251 @@ pub mod types {
                 Self {
                     reason: Ok(value.reason),
                     status: Ok(value.status),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct UpdateGateRequest {
+            action: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            enforce_on_download:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            enforce_on_promotion:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            max_critical_issues:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_high_issues:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_medium_issues:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_health_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_metadata_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_quality_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_security_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            required_checks: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for UpdateGateRequest {
+            fn default() -> Self {
+                Self {
+                    action: Ok(Default::default()),
+                    description: Ok(Default::default()),
+                    enforce_on_download: Ok(Default::default()),
+                    enforce_on_promotion: Ok(Default::default()),
+                    is_enabled: Ok(Default::default()),
+                    max_critical_issues: Ok(Default::default()),
+                    max_high_issues: Ok(Default::default()),
+                    max_medium_issues: Ok(Default::default()),
+                    min_health_score: Ok(Default::default()),
+                    min_metadata_score: Ok(Default::default()),
+                    min_quality_score: Ok(Default::default()),
+                    min_security_score: Ok(Default::default()),
+                    name: Ok(Default::default()),
+                    required_checks: Ok(Default::default()),
+                }
+            }
+        }
+        impl UpdateGateRequest {
+            pub fn action<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.action = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for action: {e}"));
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn enforce_on_download<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enforce_on_download = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for enforce_on_download: {e}")
+                });
+                self
+            }
+            pub fn enforce_on_promotion<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enforce_on_promotion = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for enforce_on_promotion: {e}")
+                });
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn max_critical_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_critical_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_critical_issues: {e}")
+                });
+                self
+            }
+            pub fn max_high_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_high_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_high_issues: {e}")
+                });
+                self
+            }
+            pub fn max_medium_issues<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_medium_issues = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_medium_issues: {e}")
+                });
+                self
+            }
+            pub fn min_health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_health_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_health_score: {e}")
+                });
+                self
+            }
+            pub fn min_metadata_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_metadata_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_metadata_score: {e}")
+                });
+                self
+            }
+            pub fn min_quality_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_quality_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_quality_score: {e}")
+                });
+                self
+            }
+            pub fn min_security_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_security_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_security_score: {e}")
+                });
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn required_checks<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.required_checks = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for required_checks: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<UpdateGateRequest> for super::UpdateGateRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: UpdateGateRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    action: value.action?,
+                    description: value.description?,
+                    enforce_on_download: value.enforce_on_download?,
+                    enforce_on_promotion: value.enforce_on_promotion?,
+                    is_enabled: value.is_enabled?,
+                    max_critical_issues: value.max_critical_issues?,
+                    max_high_issues: value.max_high_issues?,
+                    max_medium_issues: value.max_medium_issues?,
+                    min_health_score: value.min_health_score?,
+                    min_metadata_score: value.min_metadata_score?,
+                    min_quality_score: value.min_quality_score?,
+                    min_security_score: value.min_security_score?,
+                    name: value.name?,
+                    required_checks: value.required_checks?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::UpdateGateRequest> for UpdateGateRequest {
+            fn from(value: super::UpdateGateRequest) -> Self {
+                Self {
+                    action: Ok(value.action),
+                    description: Ok(value.description),
+                    enforce_on_download: Ok(value.enforce_on_download),
+                    enforce_on_promotion: Ok(value.enforce_on_promotion),
+                    is_enabled: Ok(value.is_enabled),
+                    max_critical_issues: Ok(value.max_critical_issues),
+                    max_high_issues: Ok(value.max_high_issues),
+                    max_medium_issues: Ok(value.max_medium_issues),
+                    min_health_score: Ok(value.min_health_score),
+                    min_metadata_score: Ok(value.min_metadata_score),
+                    min_quality_score: Ok(value.min_quality_score),
+                    min_security_score: Ok(value.min_security_score),
+                    name: Ok(value.name),
+                    required_checks: Ok(value.required_checks),
                 }
             }
         }
@@ -42673,8 +52158,14 @@ pub mod types {
             block_on_fail: ::std::result::Result<bool, ::std::string::String>,
             block_unscanned: ::std::result::Result<bool, ::std::string::String>,
             is_enabled: ::std::result::Result<bool, ::std::string::String>,
+            max_artifact_age_days:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             max_severity: ::std::result::Result<::std::string::String, ::std::string::String>,
+            min_staging_hours:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            require_signature:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for UpdatePolicyRequest {
             fn default() -> Self {
@@ -42682,8 +52173,11 @@ pub mod types {
                     block_on_fail: Err("no value supplied for block_on_fail".to_string()),
                     block_unscanned: Err("no value supplied for block_unscanned".to_string()),
                     is_enabled: Err("no value supplied for is_enabled".to_string()),
+                    max_artifact_age_days: Ok(Default::default()),
                     max_severity: Err("no value supplied for max_severity".to_string()),
+                    min_staging_hours: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
+                    require_signature: Ok(Default::default()),
                 }
             }
         }
@@ -42718,6 +52212,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
                 self
             }
+            pub fn max_artifact_age_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_artifact_age_days = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_artifact_age_days: {e}")
+                });
+                self
+            }
             pub fn max_severity<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -42726,6 +52230,16 @@ pub mod types {
                 self.max_severity = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for max_severity: {e}"));
+                self
+            }
+            pub fn min_staging_hours<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_staging_hours = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_staging_hours: {e}")
+                });
                 self
             }
             pub fn name<T>(mut self, value: T) -> Self
@@ -42738,6 +52252,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
                 self
             }
+            pub fn require_signature<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.require_signature = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for require_signature: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<UpdatePolicyRequest> for super::UpdatePolicyRequest {
             type Error = super::error::ConversionError;
@@ -42748,8 +52272,11 @@ pub mod types {
                     block_on_fail: value.block_on_fail?,
                     block_unscanned: value.block_unscanned?,
                     is_enabled: value.is_enabled?,
+                    max_artifact_age_days: value.max_artifact_age_days?,
                     max_severity: value.max_severity?,
+                    min_staging_hours: value.min_staging_hours?,
                     name: value.name?,
+                    require_signature: value.require_signature?,
                 })
             }
         }
@@ -42759,8 +52286,11 @@ pub mod types {
                     block_on_fail: Ok(value.block_on_fail),
                     block_unscanned: Ok(value.block_unscanned),
                     is_enabled: Ok(value.is_enabled),
+                    max_artifact_age_days: Ok(value.max_artifact_age_days),
                     max_severity: Ok(value.max_severity),
+                    min_staging_hours: Ok(value.min_staging_hours),
                     name: Ok(value.name),
+                    require_signature: Ok(value.require_signature),
                 }
             }
         }
@@ -42771,6 +52301,10 @@ pub mod types {
                 ::std::string::String,
             >,
             is_public: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            key: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             name: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -42782,6 +52316,7 @@ pub mod types {
                 Self {
                     description: Ok(Default::default()),
                     is_public: Ok(Default::default()),
+                    key: Ok(Default::default()),
                     name: Ok(Default::default()),
                     quota_bytes: Ok(Default::default()),
                 }
@@ -42806,6 +52341,16 @@ pub mod types {
                 self.is_public = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for is_public: {e}"));
+                self
+            }
+            pub fn key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.key = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for key: {e}"));
                 self
             }
             pub fn name<T>(mut self, value: T) -> Self
@@ -42837,6 +52382,7 @@ pub mod types {
                 Ok(Self {
                     description: value.description?,
                     is_public: value.is_public?,
+                    key: value.key?,
                     name: value.name?,
                     quota_bytes: value.quota_bytes?,
                 })
@@ -42847,8 +52393,176 @@ pub mod types {
                 Self {
                     description: Ok(value.description),
                     is_public: Ok(value.is_public),
+                    key: Ok(value.key),
                     name: Ok(value.name),
                     quota_bytes: Ok(value.quota_bytes),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct UpdateRuleRequest {
+            allowed_licenses: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            auto_promote: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            max_artifact_age_days:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            max_cve_severity: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            min_health_score:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            min_staging_hours:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            require_signature:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+        }
+        impl ::std::default::Default for UpdateRuleRequest {
+            fn default() -> Self {
+                Self {
+                    allowed_licenses: Ok(Default::default()),
+                    auto_promote: Ok(Default::default()),
+                    is_enabled: Ok(Default::default()),
+                    max_artifact_age_days: Ok(Default::default()),
+                    max_cve_severity: Ok(Default::default()),
+                    min_health_score: Ok(Default::default()),
+                    min_staging_hours: Ok(Default::default()),
+                    name: Ok(Default::default()),
+                    require_signature: Ok(Default::default()),
+                }
+            }
+        }
+        impl UpdateRuleRequest {
+            pub fn allowed_licenses<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allowed_licenses = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allowed_licenses: {e}")
+                });
+                self
+            }
+            pub fn auto_promote<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.auto_promote = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for auto_promote: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn max_artifact_age_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_artifact_age_days = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_artifact_age_days: {e}")
+                });
+                self
+            }
+            pub fn max_cve_severity<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_cve_severity = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_cve_severity: {e}")
+                });
+                self
+            }
+            pub fn min_health_score<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_health_score = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_health_score: {e}")
+                });
+                self
+            }
+            pub fn min_staging_hours<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_staging_hours = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for min_staging_hours: {e}")
+                });
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn require_signature<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.require_signature = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for require_signature: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<UpdateRuleRequest> for super::UpdateRuleRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: UpdateRuleRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    allowed_licenses: value.allowed_licenses?,
+                    auto_promote: value.auto_promote?,
+                    is_enabled: value.is_enabled?,
+                    max_artifact_age_days: value.max_artifact_age_days?,
+                    max_cve_severity: value.max_cve_severity?,
+                    min_health_score: value.min_health_score?,
+                    min_staging_hours: value.min_staging_hours?,
+                    name: value.name?,
+                    require_signature: value.require_signature?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::UpdateRuleRequest> for UpdateRuleRequest {
+            fn from(value: super::UpdateRuleRequest) -> Self {
+                Self {
+                    allowed_licenses: Ok(value.allowed_licenses),
+                    auto_promote: Ok(value.auto_promote),
+                    is_enabled: Ok(value.is_enabled),
+                    max_artifact_age_days: Ok(value.max_artifact_age_days),
+                    max_cve_severity: Ok(value.max_cve_severity),
+                    min_health_score: Ok(value.min_health_score),
+                    min_staging_hours: Ok(value.min_staging_hours),
+                    name: Ok(value.name),
+                    require_signature: Ok(value.require_signature),
                 }
             }
         }
@@ -43164,6 +52878,182 @@ pub mod types {
                     sign_metadata: Ok(value.sign_metadata),
                     sign_packages: Ok(value.sign_packages),
                     signing_key_id: Ok(value.signing_key_id),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct UpdateSyncPolicyPayload {
+            artifact_filter: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            peer_selector: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            precedence: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            priority: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            replication_mode: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            repo_selector: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for UpdateSyncPolicyPayload {
+            fn default() -> Self {
+                Self {
+                    artifact_filter: Ok(Default::default()),
+                    description: Ok(Default::default()),
+                    enabled: Ok(Default::default()),
+                    name: Ok(Default::default()),
+                    peer_selector: Ok(Default::default()),
+                    precedence: Ok(Default::default()),
+                    priority: Ok(Default::default()),
+                    replication_mode: Ok(Default::default()),
+                    repo_selector: Ok(Default::default()),
+                }
+            }
+        }
+        impl UpdateSyncPolicyPayload {
+            pub fn artifact_filter<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_filter = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifact_filter: {e}")
+                });
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn peer_selector<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.peer_selector = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for peer_selector: {e}"));
+                self
+            }
+            pub fn precedence<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.precedence = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for precedence: {e}"));
+                self
+            }
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+            pub fn replication_mode<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.replication_mode = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for replication_mode: {e}")
+                });
+                self
+            }
+            pub fn repo_selector<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repo_selector = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repo_selector: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<UpdateSyncPolicyPayload> for super::UpdateSyncPolicyPayload {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: UpdateSyncPolicyPayload,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_filter: value.artifact_filter?,
+                    description: value.description?,
+                    enabled: value.enabled?,
+                    name: value.name?,
+                    peer_selector: value.peer_selector?,
+                    precedence: value.precedence?,
+                    priority: value.priority?,
+                    replication_mode: value.replication_mode?,
+                    repo_selector: value.repo_selector?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::UpdateSyncPolicyPayload> for UpdateSyncPolicyPayload {
+            fn from(value: super::UpdateSyncPolicyPayload) -> Self {
+                Self {
+                    artifact_filter: Ok(value.artifact_filter),
+                    description: Ok(value.description),
+                    enabled: Ok(value.enabled),
+                    name: Ok(value.name),
+                    peer_selector: Ok(value.peer_selector),
+                    precedence: Ok(value.precedence),
+                    priority: Ok(value.priority),
+                    replication_mode: Ok(value.replication_mode),
+                    repo_selector: Ok(value.repo_selector),
                 }
             }
         }
@@ -43550,8 +53440,10 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct UserListResponse {
-            items:
-                ::std::result::Result<::std::vec::Vec<super::UserResponse>, ::std::string::String>,
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::AdminUserResponse>,
+                ::std::string::String,
+            >,
             pagination: ::std::result::Result<super::Pagination, ::std::string::String>,
         }
         impl ::std::default::Default for UserListResponse {
@@ -43565,7 +53457,7 @@ pub mod types {
         impl UserListResponse {
             pub fn items<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::vec::Vec<super::UserResponse>>,
+                T: ::std::convert::TryInto<::std::vec::Vec<super::AdminUserResponse>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.items = value
@@ -44681,6 +54573,41 @@ impl ClientAnalyticsExt for Client {
         builder::GetStorageTrend::new(self)
     }
 }
+#[doc = "Promotion approval workflow"]
+pub trait ClientApprovalExt {
+    #[doc = "List approval history with optional filtering by status or source repository\n\nSends a `GET` request to `/api/v1/approval/history`\n\nArguments:\n- `page`: Page number (1-indexed)\n- `per_page`: Items per page (max 100)\n- `source_repository`: Filter by source repository key\n- `status`: Filter by status (pending, approved, rejected)\n```ignore\nlet response = client.list_approval_history()\n    .page(page)\n    .per_page(per_page)\n    .source_repository(source_repository)\n    .status(status)\n    .send()\n    .await;\n```"]
+    fn list_approval_history(&self) -> builder::ListApprovalHistory<'_>;
+    #[doc = "List pending approval requests. Optionally filter by source repository\n\nSends a `GET` request to `/api/v1/approval/pending`\n\nArguments:\n- `page`: Page number (1-indexed)\n- `per_page`: Items per page (max 100)\n- `source_repository`: Filter by source repository key\n```ignore\nlet response = client.list_pending_approvals()\n    .page(page)\n    .per_page(per_page)\n    .source_repository(source_repository)\n    .send()\n    .await;\n```"]
+    fn list_pending_approvals(&self) -> builder::ListPendingApprovals<'_>;
+    #[doc = "Request approval for promoting an artifact from staging to release\n\nSends a `POST` request to `/api/v1/approval/request`\n\n```ignore\nlet response = client.request_approval()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn request_approval(&self) -> builder::RequestApproval<'_>;
+    #[doc = "Get a single approval request by ID\n\nSends a `GET` request to `/api/v1/approval/{id}`\n\nArguments:\n- `id`: Approval request ID\n```ignore\nlet response = client.get_approval()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn get_approval(&self) -> builder::GetApproval<'_>;
+    #[doc = "Approve a pending promotion request. Admin-only\n\nThis copies the artifact from the staging repo to the release repo,\ninserts the new artifact record, records promotion history, and\nupdates the approval status to \"approved\".\n\nSends a `POST` request to `/api/v1/approval/{id}/approve`\n\nArguments:\n- `id`: Approval request ID\n- `body`\n```ignore\nlet response = client.approve_promotion()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn approve_promotion(&self) -> builder::ApprovePromotion<'_>;
+    #[doc = "Reject a pending promotion request. Admin-only\n\nSends a `POST` request to `/api/v1/approval/{id}/reject`\n\nArguments:\n- `id`: Approval request ID\n- `body`\n```ignore\nlet response = client.reject_promotion()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn reject_promotion(&self) -> builder::RejectPromotion<'_>;
+}
+impl ClientApprovalExt for Client {
+    fn list_approval_history(&self) -> builder::ListApprovalHistory<'_> {
+        builder::ListApprovalHistory::new(self)
+    }
+    fn list_pending_approvals(&self) -> builder::ListPendingApprovals<'_> {
+        builder::ListPendingApprovals::new(self)
+    }
+    fn request_approval(&self) -> builder::RequestApproval<'_> {
+        builder::RequestApproval::new(self)
+    }
+    fn get_approval(&self) -> builder::GetApproval<'_> {
+        builder::GetApproval::new(self)
+    }
+    fn approve_promotion(&self) -> builder::ApprovePromotion<'_> {
+        builder::ApprovePromotion::new(self)
+    }
+    fn reject_promotion(&self) -> builder::RejectPromotion<'_> {
+        builder::RejectPromotion::new(self)
+    }
+}
 #[doc = "Standalone artifact access by ID"]
 pub trait ClientArtifactsExt {
     #[doc = "Get artifact by ID\n\nSends a `GET` request to `/api/v1/artifacts/{id}`\n\nArguments:\n- `id`: Artifact ID\n```ignore\nlet response = client.get_artifact()\n    .id(id)\n    .send()\n    .await;\n```"]
@@ -44845,9 +54772,11 @@ impl ClientGroupsExt for Client {
 pub trait ClientHealthExt {
     #[doc = "Prometheus metrics endpoint.\nRenders all registered metrics from the metrics-exporter-prometheus recorder\n\nSends a `GET` request to `/api/v1/admin/metrics`\n\n```ignore\nlet response = client.metrics()\n    .send()\n    .await;\n```"]
     fn metrics(&self) -> builder::Metrics<'_>;
-    #[doc = "Health check endpoint - basic liveness check\n\nSends a `GET` request to `/health`\n\n```ignore\nlet response = client.health_check()\n    .send()\n    .await;\n```"]
+    #[doc = "Health check endpoint — rich status page for dashboards\n\nChecks database, storage (real write/read probe), optional services (Trivy,\nMeilisearch), and exposes DB connection pool statistics.\n\nSends a `GET` request to `/health`\n\n```ignore\nlet response = client.health_check()\n    .send()\n    .await;\n```"]
     fn health_check(&self) -> builder::HealthCheck<'_>;
-    #[doc = "Readiness check endpoint - is the service ready to accept traffic?\n\nSends a `GET` request to `/ready`\n\n```ignore\nlet response = client.readiness_check()\n    .send()\n    .await;\n```"]
+    #[doc = "Liveness probe — confirms the process is alive and can serve HTTP\n\nTakes no State parameter. If Axum can route the request and execute this\nfunction, the process is alive. External service failures cannot trigger\npod restarts.\n\nSends a `GET` request to `/livez`\n\n```ignore\nlet response = client.liveness_check()\n    .send()\n    .await;\n```"]
+    fn liveness_check(&self) -> builder::LivenessCheck<'_>;
+    #[doc = "Readiness probe — is the service ready to accept traffic?\n\nChecks database connectivity, that migrations have run successfully,\nand that initial setup (admin password) is complete.\n\nSends a `GET` request to `/readyz`\n\n```ignore\nlet response = client.readiness_check()\n    .send()\n    .await;\n```"]
     fn readiness_check(&self) -> builder::ReadinessCheck<'_>;
 }
 impl ClientHealthExt for Client {
@@ -44856,6 +54785,9 @@ impl ClientHealthExt for Client {
     }
     fn health_check(&self) -> builder::HealthCheck<'_> {
         builder::HealthCheck::new(self)
+    }
+    fn liveness_check(&self) -> builder::LivenessCheck<'_> {
+        builder::LivenessCheck::new(self)
     }
     fn readiness_check(&self) -> builder::ReadinessCheck<'_> {
         builder::ReadinessCheck::new(self)
@@ -45051,6 +54983,31 @@ impl ClientPackagesExt for Client {
         builder::GetPackageVersions::new(self)
     }
 }
+#[doc = "Peer instance label management"]
+pub trait ClientPeerInstanceLabelsExt {
+    #[doc = "List all labels on a peer instance\n\nSends a `GET` request to `/api/v1/peers/{id}/labels`\n\nArguments:\n- `id`: Peer instance ID\n```ignore\nlet response = client.list_labels()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn list_labels(&self) -> builder::ListLabels<'_>;
+    #[doc = "Set all labels on a peer instance (replaces existing)\n\nSends a `PUT` request to `/api/v1/peers/{id}/labels`\n\nArguments:\n- `id`: Peer instance ID\n- `body`\n```ignore\nlet response = client.set_labels()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn set_labels(&self) -> builder::SetLabels<'_>;
+    #[doc = "Add or update a single label on a peer instance\n\nSends a `POST` request to `/api/v1/peers/{id}/labels/{label_key}`\n\nArguments:\n- `id`: Peer instance ID\n- `label_key`: Label key to set\n- `body`\n```ignore\nlet response = client.add_label()\n    .id(id)\n    .label_key(label_key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn add_label(&self) -> builder::AddLabel<'_>;
+    #[doc = "Delete a label by key from a peer instance\n\nSends a `DELETE` request to `/api/v1/peers/{id}/labels/{label_key}`\n\nArguments:\n- `id`: Peer instance ID\n- `label_key`: Label key to remove\n```ignore\nlet response = client.delete_label()\n    .id(id)\n    .label_key(label_key)\n    .send()\n    .await;\n```"]
+    fn delete_label(&self) -> builder::DeleteLabel<'_>;
+}
+impl ClientPeerInstanceLabelsExt for Client {
+    fn list_labels(&self) -> builder::ListLabels<'_> {
+        builder::ListLabels::new(self)
+    }
+    fn set_labels(&self) -> builder::SetLabels<'_> {
+        builder::SetLabels::new(self)
+    }
+    fn add_label(&self) -> builder::AddLabel<'_> {
+        builder::AddLabel::new(self)
+    }
+    fn delete_label(&self) -> builder::DeleteLabel<'_> {
+        builder::DeleteLabel::new(self)
+    }
+}
 #[doc = "Peer replication and sync"]
 pub trait ClientPeersExt {
     #[doc = "List peer instances\n\nSends a `GET` request to `/api/v1/peers`\n\n```ignore\nlet response = client.list_peers()\n    .page(page)\n    .per_page(per_page)\n    .region(region)\n    .status(status)\n    .send()\n    .await;\n```"]
@@ -45111,6 +55068,22 @@ pub trait ClientPeersExt {
     fn complete_session(&self) -> builder::CompleteSession<'_>;
     #[doc = "POST /api/v1/peers/:id/transfer/:session_id/fail\n\nSends a `POST` request to `/api/v1/peers/{id}/transfer/{session_id}/fail`\n\nArguments:\n- `id`: Peer instance ID\n- `session_id`: Transfer session ID\n- `body`\n```ignore\nlet response = client.fail_session()\n    .id(id)\n    .session_id(session_id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn fail_session(&self) -> builder::FailSession<'_>;
+    #[doc = "List all sync policies\n\nSends a `GET` request to `/api/v1/sync-policies`\n\n```ignore\nlet response = client.list_sync_policies()\n    .send()\n    .await;\n```"]
+    fn list_sync_policies(&self) -> builder::ListSyncPolicies<'_>;
+    #[doc = "Create a new sync policy\n\nSends a `POST` request to `/api/v1/sync-policies`\n\n```ignore\nlet response = client.create_sync_policy()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn create_sync_policy(&self) -> builder::CreateSyncPolicy<'_>;
+    #[doc = "Force re-evaluate all sync policies\n\nSends a `POST` request to `/api/v1/sync-policies/evaluate`\n\n```ignore\nlet response = client.evaluate_policies()\n    .send()\n    .await;\n```"]
+    fn evaluate_policies(&self) -> builder::EvaluatePolicies<'_>;
+    #[doc = "Preview what a policy would match (dry-run)\n\nSends a `POST` request to `/api/v1/sync-policies/preview`\n\n```ignore\nlet response = client.preview_sync_policy()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn preview_sync_policy(&self) -> builder::PreviewSyncPolicy<'_>;
+    #[doc = "Get a sync policy by ID\n\nSends a `GET` request to `/api/v1/sync-policies/{id}`\n\nArguments:\n- `id`: Sync policy ID\n```ignore\nlet response = client.get_sync_policy()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn get_sync_policy(&self) -> builder::GetSyncPolicy<'_>;
+    #[doc = "Update a sync policy\n\nSends a `PUT` request to `/api/v1/sync-policies/{id}`\n\nArguments:\n- `id`: Sync policy ID\n- `body`\n```ignore\nlet response = client.update_sync_policy()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn update_sync_policy(&self) -> builder::UpdateSyncPolicy<'_>;
+    #[doc = "Delete a sync policy\n\nSends a `DELETE` request to `/api/v1/sync-policies/{id}`\n\nArguments:\n- `id`: Sync policy ID\n```ignore\nlet response = client.delete_sync_policy()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn delete_sync_policy(&self) -> builder::DeleteSyncPolicy<'_>;
+    #[doc = "Toggle a sync policy (enable/disable)\n\nSends a `POST` request to `/api/v1/sync-policies/{id}/toggle`\n\nArguments:\n- `id`: Sync policy ID\n- `body`\n```ignore\nlet response = client.toggle_policy()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn toggle_policy(&self) -> builder::TogglePolicy<'_>;
 }
 impl ClientPeersExt for Client {
     fn list_peers(&self) -> builder::ListPeers<'_> {
@@ -45199,6 +55172,30 @@ impl ClientPeersExt for Client {
     }
     fn fail_session(&self) -> builder::FailSession<'_> {
         builder::FailSession::new(self)
+    }
+    fn list_sync_policies(&self) -> builder::ListSyncPolicies<'_> {
+        builder::ListSyncPolicies::new(self)
+    }
+    fn create_sync_policy(&self) -> builder::CreateSyncPolicy<'_> {
+        builder::CreateSyncPolicy::new(self)
+    }
+    fn evaluate_policies(&self) -> builder::EvaluatePolicies<'_> {
+        builder::EvaluatePolicies::new(self)
+    }
+    fn preview_sync_policy(&self) -> builder::PreviewSyncPolicy<'_> {
+        builder::PreviewSyncPolicy::new(self)
+    }
+    fn get_sync_policy(&self) -> builder::GetSyncPolicy<'_> {
+        builder::GetSyncPolicy::new(self)
+    }
+    fn update_sync_policy(&self) -> builder::UpdateSyncPolicy<'_> {
+        builder::UpdateSyncPolicy::new(self)
+    }
+    fn delete_sync_policy(&self) -> builder::DeleteSyncPolicy<'_> {
+        builder::DeleteSyncPolicy::new(self)
+    }
+    fn toggle_policy(&self) -> builder::TogglePolicy<'_> {
+        builder::TogglePolicy::new(self)
     }
 }
 #[doc = "RBAC permission management"]
@@ -45318,22 +55315,137 @@ impl ClientPluginsExt for Client {
 }
 #[doc = "Staging-to-release artifact promotion"]
 pub trait ClientPromotionExt {
+    #[doc = "List all promotion rules\n\nSends a `GET` request to `/api/v1/promotion-rules`\n\n```ignore\nlet response = client.list_rules()\n    .source_repo_id(source_repo_id)\n    .send()\n    .await;\n```"]
+    fn list_rules(&self) -> builder::ListRules<'_>;
+    #[doc = "Create a promotion rule\n\nSends a `POST` request to `/api/v1/promotion-rules`\n\n```ignore\nlet response = client.create_rule()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn create_rule(&self) -> builder::CreateRule<'_>;
+    #[doc = "Get a promotion rule by ID\n\nSends a `GET` request to `/api/v1/promotion-rules/{id}`\n\nArguments:\n- `id`: Promotion rule ID\n```ignore\nlet response = client.get_rule()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn get_rule(&self) -> builder::GetRule<'_>;
+    #[doc = "Update a promotion rule\n\nSends a `PUT` request to `/api/v1/promotion-rules/{id}`\n\nArguments:\n- `id`: Promotion rule ID\n- `body`\n```ignore\nlet response = client.update_rule()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn update_rule(&self) -> builder::UpdateRule<'_>;
+    #[doc = "Delete a promotion rule\n\nSends a `DELETE` request to `/api/v1/promotion-rules/{id}`\n\nArguments:\n- `id`: Promotion rule ID\n```ignore\nlet response = client.delete_rule()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn delete_rule(&self) -> builder::DeleteRule<'_>;
+    #[doc = "Dry-run evaluate a rule against all artifacts in its source repository\n\nSends a `POST` request to `/api/v1/promotion-rules/{id}/evaluate`\n\nArguments:\n- `id`: Promotion rule ID to evaluate\n```ignore\nlet response = client.evaluate_rule()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn evaluate_rule(&self) -> builder::EvaluateRule<'_>;
     #[doc = "Sends a `POST` request to `/api/v1/promotion/repositories/{key}/artifacts/{artifact_id}/promote`\n\nArguments:\n- `key`: Source repository key\n- `artifact_id`: Artifact ID to promote\n- `body`\n```ignore\nlet response = client.promote_artifact()\n    .key(key)\n    .artifact_id(artifact_id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn promote_artifact(&self) -> builder::PromoteArtifact<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/promotion/repositories/{key}/artifacts/{artifact_id}/reject`\n\nArguments:\n- `key`: Source repository key\n- `artifact_id`: Artifact ID to reject\n- `body`\n```ignore\nlet response = client.reject_artifact()\n    .key(key)\n    .artifact_id(artifact_id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn reject_artifact(&self) -> builder::RejectArtifact<'_>;
     #[doc = "Sends a `POST` request to `/api/v1/promotion/repositories/{key}/promote`\n\nArguments:\n- `key`: Source repository key\n- `body`\n```ignore\nlet response = client.promote_artifacts_bulk()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn promote_artifacts_bulk(&self) -> builder::PromoteArtifactsBulk<'_>;
-    #[doc = "Sends a `GET` request to `/api/v1/promotion/repositories/{key}/promotion-history`\n\nArguments:\n- `key`: Repository key\n- `artifact_id`: Filter by artifact ID\n- `page`: Page number (1-indexed)\n- `per_page`: Items per page (max 100)\n```ignore\nlet response = client.promotion_history()\n    .key(key)\n    .artifact_id(artifact_id)\n    .page(page)\n    .per_page(per_page)\n    .send()\n    .await;\n```"]
+    #[doc = "Sends a `GET` request to `/api/v1/promotion/repositories/{key}/promotion-history`\n\nArguments:\n- `key`: Repository key\n- `artifact_id`: Filter by artifact ID\n- `page`: Page number (1-indexed)\n- `per_page`: Items per page (max 100)\n- `status`: Filter by status (promoted, rejected, pending_approval)\n```ignore\nlet response = client.promotion_history()\n    .key(key)\n    .artifact_id(artifact_id)\n    .page(page)\n    .per_page(per_page)\n    .status(status)\n    .send()\n    .await;\n```"]
     fn promotion_history(&self) -> builder::PromotionHistory<'_>;
 }
 impl ClientPromotionExt for Client {
+    fn list_rules(&self) -> builder::ListRules<'_> {
+        builder::ListRules::new(self)
+    }
+    fn create_rule(&self) -> builder::CreateRule<'_> {
+        builder::CreateRule::new(self)
+    }
+    fn get_rule(&self) -> builder::GetRule<'_> {
+        builder::GetRule::new(self)
+    }
+    fn update_rule(&self) -> builder::UpdateRule<'_> {
+        builder::UpdateRule::new(self)
+    }
+    fn delete_rule(&self) -> builder::DeleteRule<'_> {
+        builder::DeleteRule::new(self)
+    }
+    fn evaluate_rule(&self) -> builder::EvaluateRule<'_> {
+        builder::EvaluateRule::new(self)
+    }
     fn promote_artifact(&self) -> builder::PromoteArtifact<'_> {
         builder::PromoteArtifact::new(self)
+    }
+    fn reject_artifact(&self) -> builder::RejectArtifact<'_> {
+        builder::RejectArtifact::new(self)
     }
     fn promote_artifacts_bulk(&self) -> builder::PromoteArtifactsBulk<'_> {
         builder::PromoteArtifactsBulk::new(self)
     }
     fn promotion_history(&self) -> builder::PromotionHistory<'_> {
         builder::PromotionHistory::new(self)
+    }
+}
+#[doc = "Artifact health scoring and quality gates"]
+pub trait ClientQualityExt {
+    #[doc = "Sends a `GET` request to `/api/v1/quality/checks`\n\n```ignore\nlet response = client.list_checks()\n    .artifact_id(artifact_id)\n    .repository_id(repository_id)\n    .send()\n    .await;\n```"]
+    fn list_checks(&self) -> builder::ListChecks<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/quality/checks/trigger`\n\n```ignore\nlet response = client.trigger_checks()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn trigger_checks(&self) -> builder::TriggerChecks<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/quality/checks/{id}`\n\nArguments:\n- `id`: Check result ID\n```ignore\nlet response = client.get_check()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn get_check(&self) -> builder::GetCheck<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/quality/checks/{id}/issues`\n\nArguments:\n- `id`: Check result ID\n```ignore\nlet response = client.list_check_issues()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn list_check_issues(&self) -> builder::ListCheckIssues<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/quality/gates`\n\n```ignore\nlet response = client.list_gates()\n    .send()\n    .await;\n```"]
+    fn list_gates(&self) -> builder::ListGates<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/quality/gates`\n\n```ignore\nlet response = client.create_gate()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn create_gate(&self) -> builder::CreateGate<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/quality/gates/evaluate/{artifact_id}`\n\nArguments:\n- `artifact_id`: Artifact ID to evaluate\n- `repository_id`\n```ignore\nlet response = client.evaluate_gate()\n    .artifact_id(artifact_id)\n    .repository_id(repository_id)\n    .send()\n    .await;\n```"]
+    fn evaluate_gate(&self) -> builder::EvaluateGate<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/quality/gates/{id}`\n\nArguments:\n- `id`: Quality gate ID\n```ignore\nlet response = client.get_gate()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn get_gate(&self) -> builder::GetGate<'_>;
+    #[doc = "Sends a `PUT` request to `/api/v1/quality/gates/{id}`\n\nArguments:\n- `id`: Quality gate ID\n- `body`\n```ignore\nlet response = client.update_gate()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn update_gate(&self) -> builder::UpdateGate<'_>;
+    #[doc = "Sends a `DELETE` request to `/api/v1/quality/gates/{id}`\n\nArguments:\n- `id`: Quality gate ID\n```ignore\nlet response = client.delete_gate()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn delete_gate(&self) -> builder::DeleteGate<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/quality/health/artifacts/{artifact_id}`\n\nArguments:\n- `artifact_id`: Artifact ID\n```ignore\nlet response = client.get_artifact_health()\n    .artifact_id(artifact_id)\n    .send()\n    .await;\n```"]
+    fn get_artifact_health(&self) -> builder::GetArtifactHealth<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/quality/health/dashboard`\n\n```ignore\nlet response = client.get_health_dashboard()\n    .send()\n    .await;\n```"]
+    fn get_health_dashboard(&self) -> builder::GetHealthDashboard<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/quality/health/repositories/{key}`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.get_repo_health()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn get_repo_health(&self) -> builder::GetRepoHealth<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/quality/issues/{id}/suppress`\n\nArguments:\n- `id`: Issue ID\n- `body`\n```ignore\nlet response = client.suppress_issue()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn suppress_issue(&self) -> builder::SuppressIssue<'_>;
+    #[doc = "Sends a `DELETE` request to `/api/v1/quality/issues/{id}/suppress`\n\nArguments:\n- `id`: Issue ID\n```ignore\nlet response = client.unsuppress_issue()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn unsuppress_issue(&self) -> builder::UnsuppressIssue<'_>;
+}
+impl ClientQualityExt for Client {
+    fn list_checks(&self) -> builder::ListChecks<'_> {
+        builder::ListChecks::new(self)
+    }
+    fn trigger_checks(&self) -> builder::TriggerChecks<'_> {
+        builder::TriggerChecks::new(self)
+    }
+    fn get_check(&self) -> builder::GetCheck<'_> {
+        builder::GetCheck::new(self)
+    }
+    fn list_check_issues(&self) -> builder::ListCheckIssues<'_> {
+        builder::ListCheckIssues::new(self)
+    }
+    fn list_gates(&self) -> builder::ListGates<'_> {
+        builder::ListGates::new(self)
+    }
+    fn create_gate(&self) -> builder::CreateGate<'_> {
+        builder::CreateGate::new(self)
+    }
+    fn evaluate_gate(&self) -> builder::EvaluateGate<'_> {
+        builder::EvaluateGate::new(self)
+    }
+    fn get_gate(&self) -> builder::GetGate<'_> {
+        builder::GetGate::new(self)
+    }
+    fn update_gate(&self) -> builder::UpdateGate<'_> {
+        builder::UpdateGate::new(self)
+    }
+    fn delete_gate(&self) -> builder::DeleteGate<'_> {
+        builder::DeleteGate::new(self)
+    }
+    fn get_artifact_health(&self) -> builder::GetArtifactHealth<'_> {
+        builder::GetArtifactHealth::new(self)
+    }
+    fn get_health_dashboard(&self) -> builder::GetHealthDashboard<'_> {
+        builder::GetHealthDashboard::new(self)
+    }
+    fn get_repo_health(&self) -> builder::GetRepoHealth<'_> {
+        builder::GetRepoHealth::new(self)
+    }
+    fn suppress_issue(&self) -> builder::SuppressIssue<'_> {
+        builder::SuppressIssue::new(self)
+    }
+    fn unsuppress_issue(&self) -> builder::UnsuppressIssue<'_> {
+        builder::UnsuppressIssue::new(self)
     }
 }
 #[doc = "Repository CRUD and artifact operations"]
@@ -45418,27 +55530,27 @@ impl ClientRepositoriesExt for Client {
 }
 #[doc = "Repository label management"]
 pub trait ClientRepositoryLabelsExt {
-    #[doc = "List all labels on a repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/labels`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.list_labels()\n    .key(key)\n    .send()\n    .await;\n```"]
-    fn list_labels(&self) -> builder::ListLabels<'_>;
-    #[doc = "Set all labels on a repository (replaces existing)\n\nSends a `PUT` request to `/api/v1/repositories/{key}/labels`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.set_labels()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
-    fn set_labels(&self) -> builder::SetLabels<'_>;
-    #[doc = "Add or update a single label\n\nSends a `POST` request to `/api/v1/repositories/{key}/labels/{label_key}`\n\nArguments:\n- `key`: Repository key\n- `label_key`: Label key to set\n- `body`\n```ignore\nlet response = client.add_label()\n    .key(key)\n    .label_key(label_key)\n    .body(body)\n    .send()\n    .await;\n```"]
-    fn add_label(&self) -> builder::AddLabel<'_>;
-    #[doc = "Delete a label by key\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/labels/{label_key}`\n\nArguments:\n- `key`: Repository key\n- `label_key`: Label key to remove\n```ignore\nlet response = client.delete_label()\n    .key(key)\n    .label_key(label_key)\n    .send()\n    .await;\n```"]
-    fn delete_label(&self) -> builder::DeleteLabel<'_>;
+    #[doc = "List all labels on a repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/labels`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.list_repo_labels()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn list_repo_labels(&self) -> builder::ListRepoLabels<'_>;
+    #[doc = "Set all labels on a repository (replaces existing)\n\nSends a `PUT` request to `/api/v1/repositories/{key}/labels`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.set_repo_labels()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn set_repo_labels(&self) -> builder::SetRepoLabels<'_>;
+    #[doc = "Add or update a single label\n\nSends a `POST` request to `/api/v1/repositories/{key}/labels/{label_key}`\n\nArguments:\n- `key`: Repository key\n- `label_key`: Label key to set\n- `body`\n```ignore\nlet response = client.add_repo_label()\n    .key(key)\n    .label_key(label_key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn add_repo_label(&self) -> builder::AddRepoLabel<'_>;
+    #[doc = "Delete a label by key\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/labels/{label_key}`\n\nArguments:\n- `key`: Repository key\n- `label_key`: Label key to remove\n```ignore\nlet response = client.delete_repo_label()\n    .key(key)\n    .label_key(label_key)\n    .send()\n    .await;\n```"]
+    fn delete_repo_label(&self) -> builder::DeleteRepoLabel<'_>;
 }
 impl ClientRepositoryLabelsExt for Client {
-    fn list_labels(&self) -> builder::ListLabels<'_> {
-        builder::ListLabels::new(self)
+    fn list_repo_labels(&self) -> builder::ListRepoLabels<'_> {
+        builder::ListRepoLabels::new(self)
     }
-    fn set_labels(&self) -> builder::SetLabels<'_> {
-        builder::SetLabels::new(self)
+    fn set_repo_labels(&self) -> builder::SetRepoLabels<'_> {
+        builder::SetRepoLabels::new(self)
     }
-    fn add_label(&self) -> builder::AddLabel<'_> {
-        builder::AddLabel::new(self)
+    fn add_repo_label(&self) -> builder::AddRepoLabel<'_> {
+        builder::AddRepoLabel::new(self)
     }
-    fn delete_label(&self) -> builder::DeleteLabel<'_> {
-        builder::DeleteLabel::new(self)
+    fn delete_repo_label(&self) -> builder::DeleteRepoLabel<'_> {
+        builder::DeleteRepoLabel::new(self)
     }
 }
 #[doc = "Software Bill of Materials"]
@@ -48006,10 +58118,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/ldap`"]
         pub async fn send(
             self,
-        ) -> Result<
-            ResponseValue<::std::vec::Vec<types::LdapConfigResponse>>,
-            Error<types::ErrorResponse>,
-        > {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::LdapConfigResponse>>, Error<()>> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/sso/ldap", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -48036,9 +58145,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48079,9 +58186,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/sso/ldap`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LdapConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LdapConfigResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -48114,9 +58219,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48144,9 +58247,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/ldap/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LdapConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LdapConfigResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -48178,12 +58279,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48235,9 +58332,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/sso/ldap/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LdapConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LdapConfigResponse>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -48275,12 +58370,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48308,7 +58399,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/sso/ldap/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -48322,15 +58413,7 @@ pub mod builder {
                 ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
             );
             #[allow(unused_mut)]
-            let mut request = client
-                .client
-                .delete(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
-                .headers(header_map)
-                .build()?;
+            let mut request = client.client.delete(url).headers(header_map).build()?;
             let info = OperationInfo {
                 operation_id: "delete_ldap",
             };
@@ -48340,12 +58423,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48373,9 +58452,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/sso/ldap/{id}/test`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LdapTestResult>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LdapTestResult>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -48407,12 +58484,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48460,7 +58533,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/sso/ldap/{id}/toggle`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -48480,10 +58553,6 @@ pub mod builder {
             let mut request = client
                 .client
                 .patch(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
                 .json(&body)
                 .headers(header_map)
                 .build()?;
@@ -48496,12 +58565,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48518,10 +58583,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/oidc`"]
         pub async fn send(
             self,
-        ) -> Result<
-            ResponseValue<::std::vec::Vec<types::OidcConfigResponse>>,
-            Error<types::ErrorResponse>,
-        > {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::OidcConfigResponse>>, Error<()>> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/sso/oidc", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -48548,9 +58610,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48591,9 +58651,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/sso/oidc`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::OidcConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::OidcConfigResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -48626,9 +58684,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48656,9 +58712,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/oidc/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::OidcConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::OidcConfigResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -48690,12 +58744,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48747,9 +58797,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/sso/oidc/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::OidcConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::OidcConfigResponse>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -48787,12 +58835,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48820,7 +58864,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/sso/oidc/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -48834,15 +58878,7 @@ pub mod builder {
                 ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
             );
             #[allow(unused_mut)]
-            let mut request = client
-                .client
-                .delete(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
-                .headers(header_map)
-                .build()?;
+            let mut request = client.client.delete(url).headers(header_map).build()?;
             let info = OperationInfo {
                 operation_id: "delete_oidc",
             };
@@ -48852,12 +58888,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48905,7 +58937,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/sso/oidc/{id}/toggle`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -48925,10 +58957,6 @@ pub mod builder {
             let mut request = client
                 .client
                 .patch(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
                 .json(&body)
                 .headers(header_map)
                 .build()?;
@@ -48941,12 +58969,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -48963,10 +58987,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/providers`"]
         pub async fn send(
             self,
-        ) -> Result<
-            ResponseValue<::std::vec::Vec<types::SsoProviderInfo>>,
-            Error<types::ErrorResponse>,
-        > {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SsoProviderInfo>>, Error<()>> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/sso/providers", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -48993,9 +59014,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -49012,10 +59031,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/saml`"]
         pub async fn send(
             self,
-        ) -> Result<
-            ResponseValue<::std::vec::Vec<types::SamlConfigResponse>>,
-            Error<types::ErrorResponse>,
-        > {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SamlConfigResponse>>, Error<()>> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/sso/saml", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -49042,9 +59058,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -49085,9 +59099,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/sso/saml`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SamlConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SamlConfigResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -49120,9 +59132,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -49150,9 +59160,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/saml/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SamlConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SamlConfigResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -49184,12 +59192,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -49241,9 +59245,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/sso/saml/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SamlConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SamlConfigResponse>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -49281,12 +59283,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -49314,7 +59312,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/sso/saml/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -49328,15 +59326,7 @@ pub mod builder {
                 ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
             );
             #[allow(unused_mut)]
-            let mut request = client
-                .client
-                .delete(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
-                .headers(header_map)
-                .build()?;
+            let mut request = client.client.delete(url).headers(header_map).build()?;
             let info = OperationInfo {
                 operation_id: "delete_saml",
             };
@@ -49346,12 +59336,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -49399,7 +59385,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/sso/saml/{id}/toggle`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -49419,10 +59405,6 @@ pub mod builder {
             let mut request = client
                 .client
                 .patch(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
                 .json(&body)
                 .headers(header_map)
                 .build()?;
@@ -49435,12 +59417,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -49896,6 +59874,508 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientApprovalExt::list_approval_history`]\n\n[`ClientApprovalExt::list_approval_history`]: super::ClientApprovalExt::list_approval_history"]
+    #[derive(Debug, Clone)]
+    pub struct ListApprovalHistory<'a> {
+        client: &'a super::Client,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        source_repository: Result<Option<::std::string::String>, String>,
+        status: Result<Option<::std::string::String>, String>,
+    }
+    impl<'a> ListApprovalHistory<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                page: Ok(None),
+                per_page: Ok(None),
+                source_repository: Ok(None),
+                status: Ok(None),
+            }
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn source_repository<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.source_repository = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for source_repository failed"
+                    .to_string()
+            });
+            self
+        }
+        pub fn status<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.status = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for status failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/approval/history`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalListResponse>, Error<()>> {
+            let Self {
+                client,
+                page,
+                per_page,
+                source_repository,
+                status,
+            } = self;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let source_repository = source_repository.map_err(Error::InvalidRequest)?;
+            let status = status.map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/approval/history", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new(
+                    "source_repository",
+                    &source_repository,
+                ))
+                .query(&progenitor_client::QueryParam::new("status", &status))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_approval_history",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientApprovalExt::list_pending_approvals`]\n\n[`ClientApprovalExt::list_pending_approvals`]: super::ClientApprovalExt::list_pending_approvals"]
+    #[derive(Debug, Clone)]
+    pub struct ListPendingApprovals<'a> {
+        client: &'a super::Client,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        source_repository: Result<Option<::std::string::String>, String>,
+    }
+    impl<'a> ListPendingApprovals<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                page: Ok(None),
+                per_page: Ok(None),
+                source_repository: Ok(None),
+            }
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn source_repository<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.source_repository = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for source_repository failed"
+                    .to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/approval/pending`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalListResponse>, Error<()>> {
+            let Self {
+                client,
+                page,
+                per_page,
+                source_repository,
+            } = self;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let source_repository = source_repository.map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/approval/pending", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new(
+                    "source_repository",
+                    &source_repository,
+                ))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_pending_approvals",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientApprovalExt::request_approval`]\n\n[`ClientApprovalExt::request_approval`]: super::ClientApprovalExt::request_approval"]
+    #[derive(Debug, Clone)]
+    pub struct RequestApproval<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::ApprovalRequest, String>,
+    }
+    impl<'a> RequestApproval<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ApprovalRequest>,
+            <V as std::convert::TryInto<types::ApprovalRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `ApprovalRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(types::builder::ApprovalRequest) -> types::builder::ApprovalRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/approval/request`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::ApprovalRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/approval/request", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "request_approval",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                201u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientApprovalExt::get_approval`]\n\n[`ClientApprovalExt::get_approval`]: super::ClientApprovalExt::get_approval"]
+    #[derive(Debug, Clone)]
+    pub struct GetApproval<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetApproval<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/approval/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/approval/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_approval",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientApprovalExt::approve_promotion`]\n\n[`ClientApprovalExt::approve_promotion`]: super::ClientApprovalExt::approve_promotion"]
+    #[derive(Debug, Clone)]
+    pub struct ApprovePromotion<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::ReviewRequest, String>,
+    }
+    impl<'a> ApprovePromotion<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ReviewRequest>,
+            <V as std::convert::TryInto<types::ReviewRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `ReviewRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(types::builder::ReviewRequest) -> types::builder::ReviewRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/approval/{id}/approve`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::ReviewRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/approval/{}/approve",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "approve_promotion",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientApprovalExt::reject_promotion`]\n\n[`ClientApprovalExt::reject_promotion`]: super::ClientApprovalExt::reject_promotion"]
+    #[derive(Debug, Clone)]
+    pub struct RejectPromotion<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::ReviewRequest, String>,
+    }
+    impl<'a> RejectPromotion<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ReviewRequest>,
+            <V as std::convert::TryInto<types::ReviewRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `ReviewRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(types::builder::ReviewRequest) -> types::builder::ReviewRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/approval/{id}/reject`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::ReviewRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/approval/{}/reject",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "reject_promotion",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientArtifactsExt::get_artifact`]\n\n[`ClientArtifactsExt::get_artifact`]: super::ClientArtifactsExt::get_artifact"]
     #[derive(Debug, Clone)]
     pub struct GetArtifact<'a> {
@@ -49919,9 +60399,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/artifacts/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ArtifactResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -49953,9 +60431,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -49985,8 +60461,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/artifacts/{id}/metadata`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::ArtifactMetadataResponse>, Error<types::ErrorResponse>>
-        {
+        ) -> Result<ResponseValue<types::ArtifactMetadataResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -50018,9 +60493,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50048,10 +60521,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/artifacts/{id}/stats`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ArtifactStatsResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactStatsResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -50083,9 +60553,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50122,9 +60590,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/login`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LoginResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LoginResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::LoginRequest::try_from(v).map_err(|e| e.to_string()))
@@ -50155,9 +60621,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50205,9 +60669,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/auth/me`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::UserResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::UserResponse>, Error<()>> {
             let Self { client } = self;
             let url = format!("{}/api/v1/auth/me", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -50234,12 +60696,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50278,9 +60736,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/refresh`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LoginResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LoginResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::RefreshTokenRequest::try_from(v).map_err(|e| e.to_string()))
@@ -50311,9 +60767,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50352,10 +60806,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/sso/exchange`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ExchangeCodeResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::ExchangeCodeResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::ExchangeCodeRequest::try_from(v).map_err(|e| e.to_string()))
@@ -50386,9 +60837,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50438,7 +60887,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/sso/ldap/{id}/login`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -50458,10 +60907,6 @@ pub mod builder {
             let mut request = client
                 .client
                 .post(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
                 .json(&body)
                 .headers(header_map)
                 .build()?;
@@ -50474,12 +60919,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50529,7 +60970,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/auth/sso/oidc/{id}/callback`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
             let Self {
                 client,
                 id,
@@ -50566,9 +61007,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                400u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50596,7 +61035,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/auth/sso/oidc/{id}/login`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -50620,9 +61059,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50713,7 +61150,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/sso/saml/{id}/acs`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -50745,9 +61182,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                400u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50775,7 +61210,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/auth/sso/saml/{id}/login`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -50799,9 +61234,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50840,9 +61273,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/ticket`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::TicketResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TicketResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateTicketRequest::try_from(v).map_err(|e| e.to_string()))
@@ -50873,9 +61304,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50916,10 +61345,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/tokens`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::CreateApiTokenResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::CreateApiTokenResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateApiTokenRequest::try_from(v).map_err(|e| e.to_string()))
@@ -50950,9 +61376,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -50980,7 +61404,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/auth/tokens/{token_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
             let Self { client, token_id } = self;
             let token_id = token_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -50994,15 +61418,7 @@ pub mod builder {
                 ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
             );
             #[allow(unused_mut)]
-            let mut request = client
-                .client
-                .delete(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
-                .headers(header_map)
-                .build()?;
+            let mut request = client.client.delete(url).headers(header_map).build()?;
             let info = OperationInfo {
                 operation_id: "revoke_api_token",
             };
@@ -51012,12 +61428,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -51056,7 +61468,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/disable`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TotpDisableRequest::try_from(v).map_err(|e| e.to_string()))
@@ -51071,10 +61483,6 @@ pub mod builder {
             let mut request = client
                 .client
                 .post(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
                 .json(&body)
                 .headers(header_map)
                 .build()?;
@@ -51087,9 +61495,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -51126,9 +61532,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/enable`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::TotpEnableResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TotpEnableResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TotpCodeRequest::try_from(v).map_err(|e| e.to_string()))
@@ -51159,9 +61563,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -51176,9 +61578,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/setup`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::TotpSetupResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TotpSetupResponse>, Error<()>> {
             let Self { client } = self;
             let url = format!("{}/api/v1/auth/totp/setup", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -51205,9 +61605,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -51246,9 +61644,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/verify`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LoginResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LoginResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TotpVerifyRequest::try_from(v).map_err(|e| e.to_string()))
@@ -51279,9 +61675,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -55725,8 +66119,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/chunks/{artifact_id}`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::ChunkAvailabilityResponse>, Error<types::ErrorResponse>>
-        {
+        ) -> Result<ResponseValue<types::ChunkAvailabilityResponse>, Error<()>> {
             let Self {
                 client,
                 id,
@@ -55764,9 +66157,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -56068,8 +66459,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/connections`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::PeerResponse>>, Error<types::ErrorResponse>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::PeerResponse>>, Error<()>> {
             let Self { client, id, status } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let status = status.map_err(Error::InvalidRequest)?;
@@ -56103,9 +66493,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -56402,6 +66790,327 @@ pub mod builder {
                 200u16 => Ok(ResponseValue::empty(response)),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeerInstanceLabelsExt::list_labels`]\n\n[`ClientPeerInstanceLabelsExt::list_labels`]: super::ClientPeerInstanceLabelsExt::list_labels"]
+    #[derive(Debug, Clone)]
+    pub struct ListLabels<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> ListLabels<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/labels`"]
+        pub async fn send(self) -> Result<ResponseValue<types::PeerLabelsListResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/peers/{}/labels",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_labels",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeerInstanceLabelsExt::set_labels`]\n\n[`ClientPeerInstanceLabelsExt::set_labels`]: super::ClientPeerInstanceLabelsExt::set_labels"]
+    #[derive(Debug, Clone)]
+    pub struct SetLabels<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::SetPeerLabelsRequest, String>,
+    }
+    impl<'a> SetLabels<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::SetPeerLabelsRequest>,
+            <V as std::convert::TryInto<types::SetPeerLabelsRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `SetPeerLabelsRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::SetPeerLabelsRequest,
+                ) -> types::builder::SetPeerLabelsRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/peers/{id}/labels`"]
+        pub async fn send(self) -> Result<ResponseValue<types::PeerLabelsListResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::SetPeerLabelsRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/peers/{}/labels",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "set_labels",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeerInstanceLabelsExt::add_label`]\n\n[`ClientPeerInstanceLabelsExt::add_label`]: super::ClientPeerInstanceLabelsExt::add_label"]
+    #[derive(Debug, Clone)]
+    pub struct AddLabel<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        label_key: Result<::std::string::String, String>,
+        body: Result<types::builder::AddPeerLabelRequest, String>,
+    }
+    impl<'a> AddLabel<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                label_key: Err("label_key was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn label_key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.label_key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for label_key failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::AddPeerLabelRequest>,
+            <V as std::convert::TryInto<types::AddPeerLabelRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `AddPeerLabelRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::AddPeerLabelRequest,
+                ) -> types::builder::AddPeerLabelRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/labels/{label_key}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::PeerLabelResponse>, Error<()>> {
+            let Self {
+                client,
+                id,
+                label_key,
+                body,
+            } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let label_key = label_key.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::AddPeerLabelRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/peers/{}/labels/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+                encode_path(&label_key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "add_label",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeerInstanceLabelsExt::delete_label`]\n\n[`ClientPeerInstanceLabelsExt::delete_label`]: super::ClientPeerInstanceLabelsExt::delete_label"]
+    #[derive(Debug, Clone)]
+    pub struct DeleteLabel<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        label_key: Result<::std::string::String, String>,
+    }
+    impl<'a> DeleteLabel<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                label_key: Err("label_key was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn label_key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.label_key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for label_key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/peers/{id}/labels/{label_key}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self {
+                client,
+                id,
+                label_key,
+            } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let label_key = label_key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/peers/{}/labels/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+                encode_path(&label_key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "delete_label",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -58732,6 +69441,400 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientPromotionExt::list_rules`]\n\n[`ClientPromotionExt::list_rules`]: super::ClientPromotionExt::list_rules"]
+    #[derive(Debug, Clone)]
+    pub struct ListRules<'a> {
+        client: &'a super::Client,
+        source_repo_id: Result<Option<::uuid::Uuid>, String>,
+    }
+    impl<'a> ListRules<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                source_repo_id: Ok(None),
+            }
+        }
+        pub fn source_repo_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.source_repo_id = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: uuid :: Uuid` for source_repo_id failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/promotion-rules`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::PromotionRuleListResponse>, Error<()>> {
+            let Self {
+                client,
+                source_repo_id,
+            } = self;
+            let source_repo_id = source_repo_id.map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/promotion-rules", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new(
+                    "source_repo_id",
+                    &source_repo_id,
+                ))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_rules",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPromotionExt::create_rule`]\n\n[`ClientPromotionExt::create_rule`]: super::ClientPromotionExt::create_rule"]
+    #[derive(Debug, Clone)]
+    pub struct CreateRule<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::CreateRuleRequest, String>,
+    }
+    impl<'a> CreateRule<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateRuleRequest>,
+            <V as std::convert::TryInto<types::CreateRuleRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `CreateRuleRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateRuleRequest,
+                ) -> types::builder::CreateRuleRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/promotion-rules`"]
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::CreateRuleRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/promotion-rules", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_rule",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPromotionExt::get_rule`]\n\n[`ClientPromotionExt::get_rule`]: super::ClientPromotionExt::get_rule"]
+    #[derive(Debug, Clone)]
+    pub struct GetRule<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetRule<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/promotion-rules/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/promotion-rules/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_rule",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPromotionExt::update_rule`]\n\n[`ClientPromotionExt::update_rule`]: super::ClientPromotionExt::update_rule"]
+    #[derive(Debug, Clone)]
+    pub struct UpdateRule<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::UpdateRuleRequest, String>,
+    }
+    impl<'a> UpdateRule<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::UpdateRuleRequest>,
+            <V as std::convert::TryInto<types::UpdateRuleRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `UpdateRuleRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::UpdateRuleRequest,
+                ) -> types::builder::UpdateRuleRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/promotion-rules/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::UpdateRuleRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/promotion-rules/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "update_rule",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPromotionExt::delete_rule`]\n\n[`ClientPromotionExt::delete_rule`]: super::ClientPromotionExt::delete_rule"]
+    #[derive(Debug, Clone)]
+    pub struct DeleteRule<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> DeleteRule<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/promotion-rules/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/promotion-rules/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "delete_rule",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPromotionExt::evaluate_rule`]\n\n[`ClientPromotionExt::evaluate_rule`]: super::ClientPromotionExt::evaluate_rule"]
+    #[derive(Debug, Clone)]
+    pub struct EvaluateRule<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> EvaluateRule<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/promotion-rules/{id}/evaluate`"]
+        pub async fn send(self) -> Result<ResponseValue<types::BulkEvaluationResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/promotion-rules/{}/evaluate",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "evaluate_rule",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientPromotionExt::promote_artifact`]\n\n[`ClientPromotionExt::promote_artifact`]: super::ClientPromotionExt::promote_artifact"]
     #[derive(Debug, Clone)]
     pub struct PromoteArtifact<'a> {
@@ -58790,9 +69893,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/promotion/repositories/{key}/artifacts/{artifact_id}/promote`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PromotionResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionResponse>, Error<()>> {
             let Self {
                 client,
                 key,
@@ -58835,15 +69936,116 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                409u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                422u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPromotionExt::reject_artifact`]\n\n[`ClientPromotionExt::reject_artifact`]: super::ClientPromotionExt::reject_artifact"]
+    #[derive(Debug, Clone)]
+    pub struct RejectArtifact<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        artifact_id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::RejectArtifactRequest, String>,
+    }
+    impl<'a> RejectArtifact<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::RejectArtifactRequest>,
+            <V as std::convert::TryInto<types::RejectArtifactRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `RejectArtifactRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::RejectArtifactRequest,
+                ) -> types::builder::RejectArtifactRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/promotion/repositories/{key}/artifacts/{artifact_id}/reject`"]
+        pub async fn send(self) -> Result<ResponseValue<types::RejectionResponse>, Error<()>> {
+            let Self {
+                client,
+                key,
+                artifact_id,
+                body,
+            } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::RejectArtifactRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/promotion/repositories/{}/artifacts/{}/reject",
+                client.baseurl,
+                encode_path(&key.to_string()),
+                encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "reject_artifact",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -58893,10 +70095,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/promotion/repositories/{key}/promote`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::BulkPromotionResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::BulkPromotionResponse>, Error<()>> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -58932,12 +70131,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                422u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -58950,6 +70145,7 @@ pub mod builder {
         artifact_id: Result<Option<::uuid::Uuid>, String>,
         page: Result<Option<i32>, String>,
         per_page: Result<Option<i32>, String>,
+        status: Result<Option<::std::string::String>, String>,
     }
     impl<'a> PromotionHistory<'a> {
         pub fn new(client: &'a super::Client) -> Self {
@@ -58959,6 +70155,7 @@ pub mod builder {
                 artifact_id: Ok(None),
                 page: Ok(None),
                 per_page: Ok(None),
+                status: Ok(None),
             }
         }
         pub fn key<V>(mut self, value: V) -> Self
@@ -59000,22 +70197,32 @@ pub mod builder {
                 .map_err(|_| "conversion to `i32` for per_page failed".to_string());
             self
         }
+        pub fn status<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.status = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for status failed".to_string()
+            });
+            self
+        }
         #[doc = "Sends a `GET` request to `/api/v1/promotion/repositories/{key}/promotion-history`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::PromotionHistoryResponse>, Error<types::ErrorResponse>>
-        {
+        ) -> Result<ResponseValue<types::PromotionHistoryResponse>, Error<()>> {
             let Self {
                 client,
                 key,
                 artifact_id,
                 page,
                 per_page,
+                status,
             } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
             let page = page.map_err(Error::InvalidRequest)?;
             let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let status = status.map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/api/v1/promotion/repositories/{}/promotion-history",
                 client.baseurl,
@@ -59040,6 +70247,7 @@ pub mod builder {
                 ))
                 .query(&progenitor_client::QueryParam::new("page", &page))
                 .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new("status", &status))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -59051,9 +70259,1001 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::list_checks`]\n\n[`ClientQualityExt::list_checks`]: super::ClientQualityExt::list_checks"]
+    #[derive(Debug, Clone)]
+    pub struct ListChecks<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<Option<::uuid::Uuid>, String>,
+        repository_id: Result<Option<::uuid::Uuid>, String>,
+    }
+    impl<'a> ListChecks<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Ok(None),
+                repository_id: Ok(None),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn repository_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.repository_id = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: uuid :: Uuid` for repository_id failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/quality/checks`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CheckResponse>>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+                repository_id,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let repository_id = repository_id.map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/quality/checks", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new(
+                    "artifact_id",
+                    &artifact_id,
+                ))
+                .query(&progenitor_client::QueryParam::new(
+                    "repository_id",
+                    &repository_id,
+                ))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_checks",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::trigger_checks`]\n\n[`ClientQualityExt::trigger_checks`]: super::ClientQualityExt::trigger_checks"]
+    #[derive(Debug, Clone)]
+    pub struct TriggerChecks<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::TriggerChecksRequest, String>,
+    }
+    impl<'a> TriggerChecks<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TriggerChecksRequest>,
+            <V as std::convert::TryInto<types::TriggerChecksRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `TriggerChecksRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::TriggerChecksRequest,
+                ) -> types::builder::TriggerChecksRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/quality/checks/trigger`"]
+        pub async fn send(self) -> Result<ResponseValue<types::TriggerChecksResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::TriggerChecksRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/quality/checks/trigger", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "trigger_checks",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::get_check`]\n\n[`ClientQualityExt::get_check`]: super::ClientQualityExt::get_check"]
+    #[derive(Debug, Clone)]
+    pub struct GetCheck<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetCheck<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/quality/checks/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CheckResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/checks/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_check",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::list_check_issues`]\n\n[`ClientQualityExt::list_check_issues`]: super::ClientQualityExt::list_check_issues"]
+    #[derive(Debug, Clone)]
+    pub struct ListCheckIssues<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> ListCheckIssues<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/quality/checks/{id}/issues`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::IssueResponse>>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/checks/{}/issues",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_check_issues",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::list_gates`]\n\n[`ClientQualityExt::list_gates`]: super::ClientQualityExt::list_gates"]
+    #[derive(Debug, Clone)]
+    pub struct ListGates<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> ListGates<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/quality/gates`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::GateResponse>>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/quality/gates", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_gates",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::create_gate`]\n\n[`ClientQualityExt::create_gate`]: super::ClientQualityExt::create_gate"]
+    #[derive(Debug, Clone)]
+    pub struct CreateGate<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::CreateGateRequest, String>,
+    }
+    impl<'a> CreateGate<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateGateRequest>,
+            <V as std::convert::TryInto<types::CreateGateRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `CreateGateRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateGateRequest,
+                ) -> types::builder::CreateGateRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/quality/gates`"]
+        pub async fn send(self) -> Result<ResponseValue<types::GateResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::CreateGateRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/quality/gates", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_gate",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::evaluate_gate`]\n\n[`ClientQualityExt::evaluate_gate`]: super::ClientQualityExt::evaluate_gate"]
+    #[derive(Debug, Clone)]
+    pub struct EvaluateGate<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<::uuid::Uuid, String>,
+        repository_id: Result<Option<::uuid::Uuid>, String>,
+    }
+    impl<'a> EvaluateGate<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+                repository_id: Ok(None),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn repository_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.repository_id = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: uuid :: Uuid` for repository_id failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/quality/gates/evaluate/{artifact_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::GateEvaluationResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+                repository_id,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let repository_id = repository_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/gates/evaluate/{}",
+                client.baseurl,
+                encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new(
+                    "repository_id",
+                    &repository_id,
+                ))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "evaluate_gate",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::get_gate`]\n\n[`ClientQualityExt::get_gate`]: super::ClientQualityExt::get_gate"]
+    #[derive(Debug, Clone)]
+    pub struct GetGate<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetGate<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/quality/gates/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::GateResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/gates/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_gate",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::update_gate`]\n\n[`ClientQualityExt::update_gate`]: super::ClientQualityExt::update_gate"]
+    #[derive(Debug, Clone)]
+    pub struct UpdateGate<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::UpdateGateRequest, String>,
+    }
+    impl<'a> UpdateGate<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::UpdateGateRequest>,
+            <V as std::convert::TryInto<types::UpdateGateRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `UpdateGateRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::UpdateGateRequest,
+                ) -> types::builder::UpdateGateRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/quality/gates/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::GateResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::UpdateGateRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/gates/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "update_gate",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::delete_gate`]\n\n[`ClientQualityExt::delete_gate`]: super::ClientQualityExt::delete_gate"]
+    #[derive(Debug, Clone)]
+    pub struct DeleteGate<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> DeleteGate<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/quality/gates/{id}`"]
+        pub async fn send(
+            self,
+        ) -> Result<
+            ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
+            Error<()>,
+        > {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/gates/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .delete(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "delete_gate",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::get_artifact_health`]\n\n[`ClientQualityExt::get_artifact_health`]: super::ClientQualityExt::get_artifact_health"]
+    #[derive(Debug, Clone)]
+    pub struct GetArtifactHealth<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetArtifactHealth<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/quality/health/artifacts/{artifact_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactHealthResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/health/artifacts/{}",
+                client.baseurl,
+                encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_artifact_health",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::get_health_dashboard`]\n\n[`ClientQualityExt::get_health_dashboard`]: super::ClientQualityExt::get_health_dashboard"]
+    #[derive(Debug, Clone)]
+    pub struct GetHealthDashboard<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> GetHealthDashboard<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/quality/health/dashboard`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::HealthDashboardResponse>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/quality/health/dashboard", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_health_dashboard",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::get_repo_health`]\n\n[`ClientQualityExt::get_repo_health`]: super::ClientQualityExt::get_repo_health"]
+    #[derive(Debug, Clone)]
+    pub struct GetRepoHealth<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> GetRepoHealth<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/quality/health/repositories/{key}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::RepoHealthResponse>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/health/repositories/{}",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_repo_health",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::suppress_issue`]\n\n[`ClientQualityExt::suppress_issue`]: super::ClientQualityExt::suppress_issue"]
+    #[derive(Debug, Clone)]
+    pub struct SuppressIssue<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::SuppressIssueRequest, String>,
+    }
+    impl<'a> SuppressIssue<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::SuppressIssueRequest>,
+            <V as std::convert::TryInto<types::SuppressIssueRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `SuppressIssueRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::SuppressIssueRequest,
+                ) -> types::builder::SuppressIssueRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/quality/issues/{id}/suppress`"]
+        pub async fn send(self) -> Result<ResponseValue<types::IssueResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::SuppressIssueRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/issues/{}/suppress",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "suppress_issue",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQualityExt::unsuppress_issue`]\n\n[`ClientQualityExt::unsuppress_issue`]: super::ClientQualityExt::unsuppress_issue"]
+    #[derive(Debug, Clone)]
+    pub struct UnsuppressIssue<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> UnsuppressIssue<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/quality/issues/{id}/suppress`"]
+        pub async fn send(self) -> Result<ResponseValue<types::IssueResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quality/issues/{}/suppress",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .delete(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "unsuppress_issue",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -59451,6 +71651,7 @@ pub mod builder {
                 200u16 => ResponseValue::from_response(response).await,
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -59880,13 +72081,13 @@ pub mod builder {
             }
         }
     }
-    #[doc = "Builder for [`ClientRepositoryLabelsExt::list_labels`]\n\n[`ClientRepositoryLabelsExt::list_labels`]: super::ClientRepositoryLabelsExt::list_labels"]
+    #[doc = "Builder for [`ClientRepositoryLabelsExt::list_repo_labels`]\n\n[`ClientRepositoryLabelsExt::list_repo_labels`]: super::ClientRepositoryLabelsExt::list_repo_labels"]
     #[derive(Debug, Clone)]
-    pub struct ListLabels<'a> {
+    pub struct ListRepoLabels<'a> {
         client: &'a super::Client,
         key: Result<::std::string::String, String>,
     }
-    impl<'a> ListLabels<'a> {
+    impl<'a> ListRepoLabels<'a> {
         pub fn new(client: &'a super::Client) -> Self {
             Self {
                 client: client,
@@ -59927,7 +72128,7 @@ pub mod builder {
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
-                operation_id: "list_labels",
+                operation_id: "list_repo_labels",
             };
             client.pre(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
@@ -59940,14 +72141,14 @@ pub mod builder {
             }
         }
     }
-    #[doc = "Builder for [`ClientRepositoryLabelsExt::set_labels`]\n\n[`ClientRepositoryLabelsExt::set_labels`]: super::ClientRepositoryLabelsExt::set_labels"]
+    #[doc = "Builder for [`ClientRepositoryLabelsExt::set_repo_labels`]\n\n[`ClientRepositoryLabelsExt::set_repo_labels`]: super::ClientRepositoryLabelsExt::set_repo_labels"]
     #[derive(Debug, Clone)]
-    pub struct SetLabels<'a> {
+    pub struct SetRepoLabels<'a> {
         client: &'a super::Client,
         key: Result<::std::string::String, String>,
         body: Result<types::builder::SetLabelsRequest, String>,
     }
-    impl<'a> SetLabels<'a> {
+    impl<'a> SetRepoLabels<'a> {
         pub fn new(client: &'a super::Client) -> Self {
             Self {
                 client: client,
@@ -60013,7 +72214,7 @@ pub mod builder {
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
-                operation_id: "set_labels",
+                operation_id: "set_repo_labels",
             };
             client.pre(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
@@ -60026,15 +72227,15 @@ pub mod builder {
             }
         }
     }
-    #[doc = "Builder for [`ClientRepositoryLabelsExt::add_label`]\n\n[`ClientRepositoryLabelsExt::add_label`]: super::ClientRepositoryLabelsExt::add_label"]
+    #[doc = "Builder for [`ClientRepositoryLabelsExt::add_repo_label`]\n\n[`ClientRepositoryLabelsExt::add_repo_label`]: super::ClientRepositoryLabelsExt::add_repo_label"]
     #[derive(Debug, Clone)]
-    pub struct AddLabel<'a> {
+    pub struct AddRepoLabel<'a> {
         client: &'a super::Client,
         key: Result<::std::string::String, String>,
         label_key: Result<::std::string::String, String>,
         body: Result<types::builder::AddLabelRequest, String>,
     }
-    impl<'a> AddLabel<'a> {
+    impl<'a> AddRepoLabel<'a> {
         pub fn new(client: &'a super::Client) -> Self {
             Self {
                 client: client,
@@ -60115,7 +72316,7 @@ pub mod builder {
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
-                operation_id: "add_label",
+                operation_id: "add_repo_label",
             };
             client.pre(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
@@ -60128,14 +72329,14 @@ pub mod builder {
             }
         }
     }
-    #[doc = "Builder for [`ClientRepositoryLabelsExt::delete_label`]\n\n[`ClientRepositoryLabelsExt::delete_label`]: super::ClientRepositoryLabelsExt::delete_label"]
+    #[doc = "Builder for [`ClientRepositoryLabelsExt::delete_repo_label`]\n\n[`ClientRepositoryLabelsExt::delete_repo_label`]: super::ClientRepositoryLabelsExt::delete_repo_label"]
     #[derive(Debug, Clone)]
-    pub struct DeleteLabel<'a> {
+    pub struct DeleteRepoLabel<'a> {
         client: &'a super::Client,
         key: Result<::std::string::String, String>,
         label_key: Result<::std::string::String, String>,
     }
-    impl<'a> DeleteLabel<'a> {
+    impl<'a> DeleteRepoLabel<'a> {
         pub fn new(client: &'a super::Client) -> Self {
             Self {
                 client: client,
@@ -60184,7 +72385,7 @@ pub mod builder {
             #[allow(unused_mut)]
             let mut request = client.client.delete(url).headers(header_map).build()?;
             let info = OperationInfo {
-                operation_id: "delete_label",
+                operation_id: "delete_repo_label",
             };
             client.pre(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
@@ -60540,10 +72741,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/security`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::RepoSecurityResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::RepoSecurityResponse>, Error<()>> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -60575,9 +72773,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -60629,9 +72825,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/security`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ScanConfigResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ScanConfigResponse>, Error<()>> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -60669,9 +72863,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -60757,9 +72949,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/security/scans`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ScanListResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ScanListResponse>, Error<()>> {
             let Self {
                 client,
                 key,
@@ -60815,9 +73005,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -60952,9 +73140,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SbomResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SbomResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::GenerateSbomRequest::try_from(v).map_err(|e| e.to_string()))
@@ -60985,12 +73171,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                422u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61018,10 +73200,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/sbom/by-artifact/{artifact_id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SbomContentResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::SbomContentResponse>, Error<()>> {
             let Self {
                 client,
                 artifact_id,
@@ -61056,9 +73235,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61100,9 +73277,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/check-compliance`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LicenseCheckResult>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LicenseCheckResult>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -61135,9 +73310,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61253,9 +73426,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/cve/status/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::CveHistoryEntry>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CveHistoryEntry>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -61291,9 +73462,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                422u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61456,10 +73625,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/license-policies`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LicensePolicyResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::LicensePolicyResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -61492,9 +73658,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                422u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61522,10 +73686,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/sbom/license-policies/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::LicensePolicyResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::LicensePolicyResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -61557,9 +73718,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61591,7 +73750,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<types::ErrorResponse>,
+            Error<()>,
         > {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -61624,9 +73783,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61654,10 +73811,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/sbom/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SbomContentResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::SbomContentResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -61689,9 +73843,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61723,7 +73875,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<types::ErrorResponse>,
+            Error<()>,
         > {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -61756,9 +73908,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61788,10 +73938,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/sbom/{id}/components`"]
         pub async fn send(
             self,
-        ) -> Result<
-            ResponseValue<::std::vec::Vec<types::ComponentResponse>>,
-            Error<types::ErrorResponse>,
-        > {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ComponentResponse>>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -61823,9 +73970,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -61875,9 +74020,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/{id}/convert`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SbomResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SbomResponse>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -61913,12 +74056,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                422u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -62788,9 +74927,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/security/findings/{id}/acknowledge`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::FindingResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::FindingResponse>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -62826,9 +74963,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -62856,9 +74991,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/security/findings/{id}/acknowledge`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::FindingResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::FindingResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -62890,9 +75023,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -62974,9 +75105,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/security/policies`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PolicyResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PolicyResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreatePolicyRequest::try_from(v).map_err(|e| e.to_string()))
@@ -63007,9 +75136,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                422u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63037,9 +75164,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/security/policies/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PolicyResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PolicyResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -63071,9 +75196,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63123,9 +75246,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/security/policies/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PolicyResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PolicyResponse>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -63161,9 +75282,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63195,7 +75314,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<types::ErrorResponse>,
+            Error<()>,
         > {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -63228,9 +75347,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63269,10 +75386,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/security/scan`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::TriggerScanResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::TriggerScanResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TriggerScanRequest::try_from(v).map_err(|e| e.to_string()))
@@ -63303,12 +75417,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                500u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63460,9 +75570,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/security/scans/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ScanResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ScanResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -63494,9 +75602,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63548,10 +75654,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/security/scans/{id}/findings`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::FindingListResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::FindingListResponse>, Error<()>> {
             let Self {
                 client,
                 id,
@@ -63592,9 +75695,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63706,9 +75807,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/keys`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::KeyListResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::KeyListResponse>, Error<()>> {
             let Self {
                 client,
                 repository_id,
@@ -63743,9 +75842,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63784,9 +75881,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/signing/keys`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SigningKeyPublic>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SigningKeyPublic>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateKeyPayload::try_from(v).map_err(|e| e.to_string()))
@@ -63817,9 +75912,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63847,9 +75940,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/keys/{key_id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SigningKeyPublic>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SigningKeyPublic>, Error<()>> {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -63881,12 +75972,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63918,7 +76005,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<types::ErrorResponse>,
+            Error<()>,
         > {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
@@ -63951,12 +76038,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63984,7 +76067,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/keys/{key_id}/public`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -64008,9 +76091,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -64042,7 +76123,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<types::ErrorResponse>,
+            Error<()>,
         > {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
@@ -64075,12 +76156,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -64108,9 +76185,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/signing/keys/{key_id}/rotate`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SigningKeyPublic>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SigningKeyPublic>, Error<()>> {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -64142,12 +76217,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -64175,10 +76246,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/repositories/{repo_id}/config`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::SigningConfigResponse>, Error<types::ErrorResponse>>
-        {
+        pub async fn send(self) -> Result<ResponseValue<types::SigningConfigResponse>, Error<()>> {
             let Self { client, repo_id } = self;
             let repo_id = repo_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -64210,12 +76278,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -64270,8 +76334,7 @@ pub mod builder {
         #[doc = "Sends a `POST` request to `/api/v1/signing/repositories/{repo_id}/config`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::RepositorySigningConfig>, Error<types::ErrorResponse>>
-        {
+        ) -> Result<ResponseValue<types::RepositorySigningConfig>, Error<()>> {
             let Self {
                 client,
                 repo_id,
@@ -64313,12 +76376,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -64346,7 +76405,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/repositories/{repo_id}/public-key`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
             let Self { client, repo_id } = self;
             let repo_id = repo_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -64370,9 +76429,534 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::list_sync_policies`]\n\n[`ClientPeersExt::list_sync_policies`]: super::ClientPeersExt::list_sync_policies"]
+    #[derive(Debug, Clone)]
+    pub struct ListSyncPolicies<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> ListSyncPolicies<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/sync-policies`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyListResponse>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/sync-policies", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_sync_policies",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::create_sync_policy`]\n\n[`ClientPeersExt::create_sync_policy`]: super::ClientPeersExt::create_sync_policy"]
+    #[derive(Debug, Clone)]
+    pub struct CreateSyncPolicy<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::CreateSyncPolicyPayload, String>,
+    }
+    impl<'a> CreateSyncPolicy<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateSyncPolicyPayload>,
+            <V as std::convert::TryInto<types::CreateSyncPolicyPayload>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CreateSyncPolicyPayload` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateSyncPolicyPayload,
+                ) -> types::builder::CreateSyncPolicyPayload,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/sync-policies`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| {
+                    types::CreateSyncPolicyPayload::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/sync-policies", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_sync_policy",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::evaluate_policies`]\n\n[`ClientPeersExt::evaluate_policies`]: super::ClientPeersExt::evaluate_policies"]
+    #[derive(Debug, Clone)]
+    pub struct EvaluatePolicies<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> EvaluatePolicies<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/sync-policies/evaluate`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::EvaluationResultResponse>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/sync-policies/evaluate", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "evaluate_policies",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::preview_sync_policy`]\n\n[`ClientPeersExt::preview_sync_policy`]: super::ClientPeersExt::preview_sync_policy"]
+    #[derive(Debug, Clone)]
+    pub struct PreviewSyncPolicy<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::PreviewPolicyPayload, String>,
+    }
+    impl<'a> PreviewSyncPolicy<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::PreviewPolicyPayload>,
+            <V as std::convert::TryInto<types::PreviewPolicyPayload>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `PreviewPolicyPayload` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::PreviewPolicyPayload,
+                ) -> types::builder::PreviewPolicyPayload,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/sync-policies/preview`"]
+        pub async fn send(self) -> Result<ResponseValue<types::PreviewResultResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::PreviewPolicyPayload::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/sync-policies/preview", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "preview_sync_policy",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::get_sync_policy`]\n\n[`ClientPeersExt::get_sync_policy`]: super::ClientPeersExt::get_sync_policy"]
+    #[derive(Debug, Clone)]
+    pub struct GetSyncPolicy<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetSyncPolicy<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/sync-policies/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/sync-policies/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_sync_policy",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::update_sync_policy`]\n\n[`ClientPeersExt::update_sync_policy`]: super::ClientPeersExt::update_sync_policy"]
+    #[derive(Debug, Clone)]
+    pub struct UpdateSyncPolicy<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::UpdateSyncPolicyPayload, String>,
+    }
+    impl<'a> UpdateSyncPolicy<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::UpdateSyncPolicyPayload>,
+            <V as std::convert::TryInto<types::UpdateSyncPolicyPayload>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `UpdateSyncPolicyPayload` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::UpdateSyncPolicyPayload,
+                ) -> types::builder::UpdateSyncPolicyPayload,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/sync-policies/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::UpdateSyncPolicyPayload::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/sync-policies/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "update_sync_policy",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::delete_sync_policy`]\n\n[`ClientPeersExt::delete_sync_policy`]: super::ClientPeersExt::delete_sync_policy"]
+    #[derive(Debug, Clone)]
+    pub struct DeleteSyncPolicy<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> DeleteSyncPolicy<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/sync-policies/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/sync-policies/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "delete_sync_policy",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::toggle_policy`]\n\n[`ClientPeersExt::toggle_policy`]: super::ClientPeersExt::toggle_policy"]
+    #[derive(Debug, Clone)]
+    pub struct TogglePolicy<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::TogglePolicyPayload, String>,
+    }
+    impl<'a> TogglePolicy<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::TogglePolicyPayload>,
+            <V as std::convert::TryInto<types::TogglePolicyPayload>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `TogglePolicyPayload` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::TogglePolicyPayload,
+                ) -> types::builder::TogglePolicyPayload,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/sync-policies/{id}/toggle`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::TogglePolicyPayload::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/sync-policies/{}/toggle",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "toggle_policy",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -64423,9 +77007,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/tree`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::TreeResponse>, Error<types::ErrorResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TreeResponse>, Error<()>> {
             let Self {
                 client,
                 include_metadata,
@@ -64469,12 +77051,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
-                404u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -64692,7 +77270,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/users/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::UserResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AdminUserResponse>, Error<()>> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -64827,7 +77405,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/users/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::UserResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AdminUserResponse>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -66096,9 +78674,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/health`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::HealthResponse>, Error<types::HealthResponse>> {
+        pub async fn send(self) -> Result<ResponseValue<types::HealthResponse>, Error<()>> {
             let Self { client } = self;
             let url = format!("{}/health", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -66125,9 +78701,48 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
-                503u16 => Err(Error::ErrorResponse(
-                    ResponseValue::from_response(response).await?,
-                )),
+                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientHealthExt::liveness_check`]\n\n[`ClientHealthExt::liveness_check`]: super::ClientHealthExt::liveness_check"]
+    #[derive(Debug, Clone)]
+    pub struct LivenessCheck<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> LivenessCheck<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/livez`"]
+        pub async fn send(self) -> Result<ResponseValue<types::LivezResponse>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/livez", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "liveness_check",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -66141,17 +78756,25 @@ pub mod builder {
         pub fn new(client: &'a super::Client) -> Self {
             Self { client: client }
         }
-        #[doc = "Sends a `GET` request to `/ready`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        #[doc = "Sends a `GET` request to `/readyz`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ReadyzResponse>, Error<()>> {
             let Self { client } = self;
-            let url = format!("{}/ready", client.baseurl,);
+            let url = format!("{}/readyz", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
             header_map.append(
                 ::reqwest::header::HeaderName::from_static("api-version"),
                 ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
             );
             #[allow(unused_mut)]
-            let mut request = client.client.get(url).headers(header_map).build()?;
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
             let info = OperationInfo {
                 operation_id: "readiness_check",
             };
@@ -66160,7 +78783,7 @@ pub mod builder {
             client.post(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::empty(response)),
+                200u16 => ResponseValue::from_response(response).await,
                 503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -66174,6 +78797,7 @@ pub mod prelude {
     pub use super::Client;
     pub use super::ClientAdminExt;
     pub use super::ClientAnalyticsExt;
+    pub use super::ClientApprovalExt;
     pub use super::ClientArtifactsExt;
     pub use super::ClientAuthExt;
     pub use super::ClientBuildsExt;
@@ -66183,10 +78807,12 @@ pub mod prelude {
     pub use super::ClientMigrationExt;
     pub use super::ClientMonitoringExt;
     pub use super::ClientPackagesExt;
+    pub use super::ClientPeerInstanceLabelsExt;
     pub use super::ClientPeersExt;
     pub use super::ClientPermissionsExt;
     pub use super::ClientPluginsExt;
     pub use super::ClientPromotionExt;
+    pub use super::ClientQualityExt;
     pub use super::ClientRepositoriesExt;
     pub use super::ClientRepositoryLabelsExt;
     pub use super::ClientSbomExt;

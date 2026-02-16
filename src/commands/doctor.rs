@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use artifact_keeper_sdk::{ClientAuthExt, ClientHealthExt};
+use artifact_keeper_sdk::{ClientAuthExt, ClientRepositoriesExt};
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use console::style;
@@ -139,9 +139,8 @@ fn build_diag_client(
         .timeout(DIAG_REQUEST_TIMEOUT)
         .build()?;
 
-    let base_url = format!("{}/api/{}", instance.url, instance.api_version);
     Ok(artifact_keeper_sdk::Client::new_with_client(
-        &base_url,
+        &instance.url,
         http_client,
     ))
 }
@@ -164,9 +163,8 @@ fn build_diag_client_with_auth(
         .build()
         .map_err(|e| e.to_string())?;
 
-    let base_url = format!("{}/api/{}", instance.url, instance.api_version);
     Ok(artifact_keeper_sdk::Client::new_with_client(
-        &base_url,
+        &instance.url,
         http_client,
     ))
 }
@@ -183,27 +181,14 @@ async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagRe
         }
     };
 
-    match client.health_check().send().await {
+    // Probe the API by listing repos (page=1, per_page=1) — works without auth
+    // and validates connectivity, API routing, and database access in one call.
+    match client.list_repositories().page(1).per_page(1).send().await {
         Ok(resp) => {
-            let version = &resp.version;
-            let sub_issues = collect_health_issues(&resp.checks);
-
-            if sub_issues.is_empty() && resp.status == "healthy" {
-                diag.pass(&format!("{name} ({}) -- v{version}, healthy", instance.url));
-            } else if resp.status == "healthy" {
-                diag.warn(&format!(
-                    "{name} ({}) -- v{version}, degraded: {}",
-                    instance.url,
-                    sub_issues.join("; ")
-                ));
-            } else {
-                diag.fail(&format!(
-                    "{name} ({}) -- v{version}, {}: {}",
-                    instance.url,
-                    resp.status,
-                    sub_issues.join("; ")
-                ));
-            }
+            diag.pass(&format!(
+                "{name} ({}) -- reachable, {} repos",
+                instance.url, resp.pagination.total
+            ));
         }
         Err(e) => {
             diag.fail(&format!(
@@ -213,18 +198,6 @@ async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagRe
             ));
         }
     }
-}
-
-/// Collect human-readable issue strings from the health check sub-components.
-fn collect_health_issues(checks: &artifact_keeper_sdk::types::HealthChecks) -> Vec<String> {
-    let mut issues = Vec::new();
-    for (label, check) in [("database", &checks.database), ("storage", &checks.storage)] {
-        if check.status != "healthy" {
-            let detail = check.message.as_deref().unwrap_or(&check.status);
-            issues.push(format!("{label}: {detail}"));
-        }
-    }
-    issues
 }
 
 /// Turn a raw error string into a concise diagnostic message.
