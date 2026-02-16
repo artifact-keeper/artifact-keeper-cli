@@ -3,7 +3,7 @@ use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 
-use super::client::client_for;
+use super::client::{client_for, client_for_optional_auth};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -13,8 +13,8 @@ pub enum RepoCommand {
     /// List repositories (filtered by your permissions)
     List {
         /// Filter by package format (npm, pypi, maven, docker, etc.)
-        #[arg(long)]
-        format: Option<String>,
+        #[arg(long = "pkg-format", id = "pkg_format")]
+        pkg_format: Option<String>,
 
         /// Filter by repository type (local, remote, virtual)
         #[arg(long, name = "type")]
@@ -45,8 +45,8 @@ pub enum RepoCommand {
         key: String,
 
         /// Package format
-        #[arg(long)]
-        format: String,
+        #[arg(long = "pkg-format", id = "pkg_format_create")]
+        pkg_format: String,
 
         /// Repository type
         #[arg(long, default_value = "local")]
@@ -78,14 +78,14 @@ impl RepoCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::List {
-                format,
+                pkg_format,
                 repo_type,
                 search,
                 page,
                 per_page,
             } => {
                 list_repos(
-                    format.as_deref(),
+                    pkg_format.as_deref(),
                     repo_type.as_deref(),
                     search.as_deref(),
                     page,
@@ -97,10 +97,19 @@ impl RepoCommand {
             Self::Show { key } => show_repo(&key, global).await,
             Self::Create {
                 key,
-                format,
+                pkg_format,
                 repo_type,
                 description,
-            } => create_repo(&key, &format, &repo_type, description.as_deref(), global).await,
+            } => {
+                create_repo(
+                    &key,
+                    &pkg_format,
+                    &repo_type,
+                    description.as_deref(),
+                    global,
+                )
+                .await
+            }
             Self::Delete { key, yes } => delete_repo(&key, yes, global).await,
             Self::Browse { key } => browse_repo(&key, global).await,
         }
@@ -115,7 +124,7 @@ async fn list_repos(
     per_page: i32,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
+    let client = client_for_optional_auth(global)?;
 
     let spinner = crate::output::spinner("Fetching repositories...");
 
@@ -207,7 +216,7 @@ async fn list_repos(
 }
 
 async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
+    let client = client_for_optional_auth(global)?;
 
     let repo = client
         .get_repository()
@@ -329,7 +338,7 @@ async fn delete_repo(key: &str, skip_confirm: bool, global: &GlobalArgs) -> Resu
 }
 
 async fn browse_repo(key: &str, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
+    let client = client_for_optional_auth(global)?;
 
     let spinner = crate::output::spinner("Loading artifacts...");
 

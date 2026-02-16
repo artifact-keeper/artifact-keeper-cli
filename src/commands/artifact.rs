@@ -6,7 +6,7 @@ use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
-use super::client::{build_client, client_for};
+use super::client::{build_client, client_for, client_for_optional_auth};
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
 use crate::error::AkError;
@@ -91,8 +91,8 @@ pub enum ArtifactCommand {
         repo: Option<String>,
 
         /// Filter by package format
-        #[arg(long)]
-        format: Option<String>,
+        #[arg(long = "pkg-format", id = "pkg_format")]
+        pkg_format: Option<String>,
     },
 
     /// Copy an artifact between repositories (same or cross-instance)
@@ -131,8 +131,8 @@ impl ArtifactCommand {
             Self::Search {
                 query,
                 repo,
-                format,
-            } => search(&query, repo.as_deref(), format.as_deref(), global).await,
+                pkg_format,
+            } => search(&query, repo.as_deref(), pkg_format.as_deref(), global).await,
             Self::Copy {
                 source,
                 destination,
@@ -308,7 +308,7 @@ async fn list(
     per_page: i32,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
+    let client = client_for_optional_auth(global)?;
 
     let spinner = output::spinner("Fetching artifacts...");
 
@@ -395,7 +395,7 @@ async fn list(
 }
 
 async fn info(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
+    let client = client_for_optional_auth(global)?;
 
     let artifacts = client
         .list_artifacts()
@@ -491,7 +491,7 @@ async fn search(
     format: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
+    let client = client_for_optional_auth(global)?;
 
     let spinner = output::spinner("Searching...");
 
