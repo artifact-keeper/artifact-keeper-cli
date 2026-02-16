@@ -40,9 +40,8 @@ pub fn build_client(
         .build()
         .into_diagnostic()?;
 
-    let base_url = format!("{}/api/{}", instance.url, instance.api_version);
     Ok(artifact_keeper_sdk::Client::new_with_client(
-        &base_url,
+        &instance.url,
         http_client,
     ))
 }
@@ -66,4 +65,29 @@ pub fn authenticated_client(
 pub fn client_for(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
     let (_, _, client) = authenticated_client(global)?;
     Ok(client)
+}
+
+/// Build an unauthenticated SDK client for the resolved instance.
+///
+/// Falls back to authenticated if credentials are available.
+/// Use this for commands that can work without auth (public repos, etc.).
+pub fn client_for_optional_auth(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
+    // Try authenticated first, fall back to unauthenticated
+    if let Ok(client) = client_for(global) {
+        return Ok(client);
+    }
+
+    let config = AppConfig::load()?;
+    let (_, instance) = config.resolve_instance(global.instance.as_deref())?;
+
+    let http_client = reqwest::ClientBuilder::new()
+        .connect_timeout(Duration::from_secs(15))
+        .timeout(Duration::from_secs(30))
+        .build()
+        .into_diagnostic()?;
+
+    Ok(artifact_keeper_sdk::Client::new_with_client(
+        &instance.url,
+        http_client,
+    ))
 }

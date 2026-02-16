@@ -75,7 +75,7 @@ pub enum Command {
 
     /// Browse and manage repositories
     #[command(
-        after_help = "Examples:\n  ak repo list\n  ak repo list --format npm\n  ak repo show my-npm-repo\n  ak repo create my-pypi --format pypi --type local"
+        after_help = "Examples:\n  ak repo list\n  ak repo list --pkg-format npm\n  ak repo show my-npm-repo\n  ak repo create my-pypi --pkg-format pypi --type local"
     )]
     Repo {
         #[command(subcommand)]
@@ -84,7 +84,7 @@ pub enum Command {
 
     /// Upload, download, search, and manage artifacts
     #[command(
-        after_help = "Examples:\n  ak artifact push my-repo ./package-1.0.tar.gz\n  ak artifact pull my-repo org/pkg/1.0/pkg-1.0.jar -o pkg.jar\n  ak artifact list my-repo\n  ak artifact search \"log4j\" --format maven\n  ak artifact copy src-repo/path dst-repo/path\n  ak artifact copy src/path dst/path --from-instance staging --to-instance prod"
+        after_help = "Examples:\n  ak artifact push my-repo ./package-1.0.tar.gz\n  ak artifact pull my-repo org/pkg/1.0/pkg-1.0.jar -o pkg.jar\n  ak artifact list my-repo\n  ak artifact search \"log4j\" --pkg-format maven\n  ak artifact copy src-repo/path dst-repo/path\n  ak artifact copy src/path dst/path --from-instance staging --to-instance prod"
     )]
     Artifact {
         #[command(subcommand)]
