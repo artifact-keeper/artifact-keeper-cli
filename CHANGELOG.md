@@ -5,6 +5,13 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-02-16
+
+### Changed
+
+- **Code cleanup** — removed dead code (unused fields, empty modules, unreachable branches), simplified match/if-let patterns, used `saturating_sub` and `#[derive(Default)]` where appropriate (#49)
+- **Unit tests** — added 251 unit tests across all 13 CLI modules covering parsing, config, credentials, instance management, diagnostics, scan helpers, setup detection, error types, and output rendering; introduced shared test mutex to prevent env var races (#50)
+
 ## [0.4.1] - 2026-02-16
 
 ### Fixed
