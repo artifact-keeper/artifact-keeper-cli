@@ -1,5 +1,4 @@
 pub mod credentials;
-pub mod instances;
 
 use std::path::PathBuf;
 

@@ -45,27 +45,24 @@ impl ConfigCommand {
 }
 
 fn get_value(cfg: &AppConfig, key: &str) -> Result<String> {
-    match key {
-        "default_instance" => Ok(cfg
+    let value = match key {
+        "default_instance" => cfg
             .default_instance
             .clone()
-            .unwrap_or_else(|| "(not set)".into())),
-        "output_format" => Ok(if cfg.output_format.is_empty() {
-            "table".into()
-        } else {
-            cfg.output_format.clone()
-        }),
-        "color" => Ok(if cfg.color.is_empty() {
-            "auto".into()
-        } else {
-            cfg.color.clone()
-        }),
-        _ => Err(AkError::ConfigError(format!(
-            "Unknown config key '{key}'. Valid keys: {}",
-            KNOWN_KEYS.join(", ")
-        ))
-        .into()),
-    }
+            .unwrap_or_else(|| "(not set)".into()),
+        "output_format" if cfg.output_format.is_empty() => "table".into(),
+        "output_format" => cfg.output_format.clone(),
+        "color" if cfg.color.is_empty() => "auto".into(),
+        "color" => cfg.color.clone(),
+        _ => {
+            return Err(AkError::ConfigError(format!(
+                "Unknown config key '{key}'. Valid keys: {}",
+                KNOWN_KEYS.join(", ")
+            ))
+            .into());
+        }
+    };
+    Ok(value)
 }
 
 fn config_get(key: &str, format: &OutputFormat) -> Result<()> {
@@ -86,37 +83,30 @@ fn config_set(key: &str, value: &str) -> Result<()> {
         "default_instance" => {
             if value == "(not set)" || value.is_empty() {
                 cfg.default_instance = None;
+            } else if !cfg.instances.contains_key(value) {
+                return Err(AkError::ConfigError(format!(
+                    "Instance '{value}' not found. Run `ak instance list` to see available instances."
+                ))
+                .into());
             } else {
-                if !cfg.instances.contains_key(value) {
-                    return Err(AkError::ConfigError(format!(
-                        "Instance '{value}' not found. Run `ak instance list` to see available instances."
-                    ))
-                    .into());
-                }
                 cfg.default_instance = Some(value.to_string());
             }
         }
         "output_format" => {
-            match value {
-                "table" | "json" | "yaml" | "quiet" => {}
-                _ => {
-                    return Err(AkError::ConfigError(format!(
-                        "Invalid output format '{value}'. Valid values: table, json, yaml, quiet"
-                    ))
-                    .into());
-                }
+            if !matches!(value, "table" | "json" | "yaml" | "quiet") {
+                return Err(AkError::ConfigError(format!(
+                    "Invalid output format '{value}'. Valid values: table, json, yaml, quiet"
+                ))
+                .into());
             }
             cfg.output_format = value.to_string();
         }
         "color" => {
-            match value {
-                "auto" | "always" | "never" => {}
-                _ => {
-                    return Err(AkError::ConfigError(format!(
-                        "Invalid color mode '{value}'. Valid values: auto, always, never"
-                    ))
-                    .into());
-                }
+            if !matches!(value, "auto" | "always" | "never") {
+                return Err(AkError::ConfigError(format!(
+                    "Invalid color mode '{value}'. Valid values: auto, always, never"
+                ))
+                .into());
             }
             cfg.color = value.to_string();
         }

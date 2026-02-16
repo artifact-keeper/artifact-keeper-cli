@@ -102,79 +102,64 @@ impl SetupCommand {
 
 struct DetectedEcosystem {
     name: &'static str,
-    format: &'static str,
     marker: &'static str,
 }
 
 const ECOSYSTEMS: &[DetectedEcosystem] = &[
     DetectedEcosystem {
         name: "npm",
-        format: "npm",
         marker: "package.json",
     },
     DetectedEcosystem {
         name: "pip",
-        format: "pypi",
         marker: "pyproject.toml",
     },
     DetectedEcosystem {
         name: "pip",
-        format: "pypi",
         marker: "requirements.txt",
     },
     DetectedEcosystem {
         name: "pip",
-        format: "pypi",
         marker: "setup.py",
     },
     DetectedEcosystem {
         name: "cargo",
-        format: "cargo",
         marker: "Cargo.toml",
     },
     DetectedEcosystem {
         name: "docker",
-        format: "docker",
         marker: "Dockerfile",
     },
     DetectedEcosystem {
         name: "docker",
-        format: "docker",
         marker: "docker-compose.yml",
     },
     DetectedEcosystem {
         name: "maven",
-        format: "maven",
         marker: "pom.xml",
     },
     DetectedEcosystem {
         name: "gradle",
-        format: "maven",
         marker: "build.gradle",
     },
     DetectedEcosystem {
         name: "gradle",
-        format: "maven",
         marker: "build.gradle.kts",
     },
     DetectedEcosystem {
         name: "go",
-        format: "go",
         marker: "go.mod",
     },
     DetectedEcosystem {
         name: "nuget",
-        format: "nuget",
         marker: "*.csproj",
     },
     DetectedEcosystem {
         name: "nuget",
-        format: "nuget",
         marker: "*.fsproj",
     },
     DetectedEcosystem {
         name: "helm",
-        format: "helm",
         marker: "Chart.yaml",
     },
 ];
@@ -352,7 +337,7 @@ fn sudo_write(path: &Path, content: &str) -> Result<()> {
         .into_diagnostic()?;
 
     if !status.success() {
-        return Err(AkError::ServerError(format!("Failed to write {}", path.display())).into());
+        return Err(AkError::ConfigError(format!("Failed to write {}", path.display())).into());
     }
 
     Ok(())
@@ -531,7 +516,7 @@ async fn setup_docker(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     if !status.success() {
         return Err(
-            AkError::ServerError("Docker login failed. Check your credentials.".into()).into(),
+            AkError::ConfigError("Docker login failed. Check your credentials.".into()).into(),
         );
     }
 
@@ -706,7 +691,7 @@ async fn setup_helm(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         .into_diagnostic()?;
 
     if !status.success() {
-        return Err(AkError::ServerError("helm repo add failed".into()).into());
+        return Err(AkError::ConfigError("helm repo add failed".into()).into());
     }
 
     eprintln!("Helm repository added. Run `helm repo update` to fetch charts.");

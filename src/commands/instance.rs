@@ -101,11 +101,10 @@ fn remove_instance(name: &str) -> Result<()> {
 
     if config.default_instance.as_deref() == Some(name) {
         config.default_instance = config.instances.keys().next().cloned();
-        match config.default_instance {
-            Some(ref new_default) => {
-                eprintln!("Removed instance '{name}'. Default switched to '{new_default}'.");
-            }
-            None => eprintln!("Removed instance '{name}'. No instances remaining."),
+        if let Some(ref new_default) = config.default_instance {
+            eprintln!("Removed instance '{name}'. Default switched to '{new_default}'.");
+        } else {
+            eprintln!("Removed instance '{name}'. No instances remaining.");
         }
     } else {
         eprintln!("Removed instance '{name}'.");

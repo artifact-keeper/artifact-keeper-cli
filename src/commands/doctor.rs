@@ -19,6 +19,7 @@ const DOT: &str = "-";
 const DIAG_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const DIAG_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 
+#[derive(Default)]
 struct DiagResult {
     passes: u32,
     warnings: u32,
@@ -26,14 +27,6 @@ struct DiagResult {
 }
 
 impl DiagResult {
-    fn new() -> Self {
-        Self {
-            passes: 0,
-            warnings: 0,
-            failures: 0,
-        }
-    }
-
     fn pass(&mut self, msg: &str) {
         self.passes += 1;
         eprintln!("  {} {}", style(CHECK).green(), msg);
@@ -62,7 +55,7 @@ pub async fn execute(_global: &crate::cli::GlobalArgs) -> Result<()> {
     eprintln!("  {}", style("=".repeat(22)).dim());
     eprintln!();
 
-    let mut diag = DiagResult::new();
+    let mut diag = DiagResult::default();
 
     if config.instances.is_empty() {
         diag.fail("No instances configured. Run `ak instance add <name> <url>` to get started.");
@@ -242,33 +235,8 @@ async fn check_auth(name: &str, instance: &InstanceConfig, diag: &mut DiagResult
         }
     };
 
-    match client.get_current_user().send().await {
-        Ok(user) => {
-            let mut details = format!("authenticated as {}", user.username);
-            if user.is_admin {
-                details.push_str(" (admin)");
-            }
-
-            if let Some(exp) = decode_jwt_expiry(&cred.access_token) {
-                let now = chrono::Utc::now().timestamp();
-                let days_left = (exp - now) / 86400;
-                if days_left < 0 {
-                    diag.fail(&format!(
-                        "{name} -- token expired (run: ak auth login --instance {name})"
-                    ));
-                    return;
-                } else if days_left <= 7 {
-                    diag.warn(&format!(
-                        "{name} -- {details}, token expires in {days_left} days (run: ak auth login --instance {name})"
-                    ));
-                    return;
-                } else {
-                    details.push_str(&format!(", token expires in {days_left} days"));
-                }
-            }
-
-            diag.pass(&format!("{name} -- {details}"));
-        }
+    let user = match client.get_current_user().send().await {
+        Ok(user) => user,
         Err(e) => {
             let err_str = e.to_string();
             if err_str.contains("401") || err_str.contains("Unauthorized") {
@@ -280,8 +248,34 @@ async fn check_auth(name: &str, instance: &InstanceConfig, diag: &mut DiagResult
             } else {
                 diag.fail(&format!("{name} -- auth check failed: {err_str}"));
             }
+            return;
+        }
+    };
+
+    let mut details = format!("authenticated as {}", user.username);
+    if user.is_admin {
+        details.push_str(" (admin)");
+    }
+
+    if let Some(exp) = decode_jwt_expiry(&cred.access_token) {
+        let now = chrono::Utc::now().timestamp();
+        let days_left = (exp - now) / 86400;
+        if days_left < 0 {
+            diag.fail(&format!(
+                "{name} -- token expired (run: ak auth login --instance {name})"
+            ));
+            return;
+        } else if days_left <= 7 {
+            diag.warn(&format!(
+                "{name} -- {details}, token expires in {days_left} days (run: ak auth login --instance {name})"
+            ));
+            return;
+        } else {
+            details.push_str(&format!(", token expires in {days_left} days"));
         }
     }
+
+    diag.pass(&format!("{name} -- {details}"));
 }
 
 /// Decode JWT expiry claim without verifying the signature.

@@ -82,23 +82,20 @@ impl AuthCommand {
 
 async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Result<()> {
     let config = AppConfig::load()?;
-    let (instance_name, instance) = match url {
-        Some(url) => {
-            let (name, inst) = config
-                .instances
-                .iter()
-                .find(|(_, inst)| inst.url == url)
-                .ok_or_else(|| {
-                    AkError::ConfigError(format!(
-                        "No instance configured with URL '{url}'. Run `ak instance add <name> {url}` first."
-                    ))
-                })?;
-            (name.to_string(), inst.clone())
-        }
-        None => {
-            let (name, inst) = config.resolve_instance(global.instance.as_deref())?;
-            (name.to_string(), inst.clone())
-        }
+    let (instance_name, instance) = if let Some(url) = url {
+        let (name, inst) = config
+            .instances
+            .iter()
+            .find(|(_, inst)| inst.url == url)
+            .ok_or_else(|| {
+                AkError::ConfigError(format!(
+                    "No instance configured with URL '{url}'. Run `ak instance add <name> {url}` first."
+                ))
+            })?;
+        (name.to_string(), inst.clone())
+    } else {
+        let (name, inst) = config.resolve_instance(global.instance.as_deref())?;
+        (name.to_string(), inst.clone())
     };
 
     if global.no_input {
@@ -272,16 +269,14 @@ async fn token_create(
     let client = client_for(global)?;
 
     let default_name = format!("ak-cli-{}", chrono::Utc::now().format("%Y%m%d-%H%M%S"));
-    let name = if let Some(desc) = description {
-        desc.to_string()
-    } else if global.no_input {
-        default_name
-    } else {
-        dialoguer::Input::new()
+    let name = match description {
+        Some(desc) => desc.to_string(),
+        None if global.no_input => default_name,
+        None => dialoguer::Input::new()
             .with_prompt("Token name")
             .default(default_name)
             .interact_text()
-            .into_diagnostic()?
+            .into_diagnostic()?,
     };
 
     let body = artifact_keeper_sdk::types::CreateApiTokenRequest {
