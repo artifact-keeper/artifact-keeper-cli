@@ -5,6 +5,12 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-02-16
+
+### Fixed
+
+- **Setup writes to home directory** — `ak setup npm` now writes `.npmrc` to `~/` and `ak setup nuget` writes `NuGet.Config` to `~/.nuget/NuGet/` instead of the project directory, preventing accidental token commits to git (#47)
+
 ## [0.4.0] - 2026-02-16
 
 ### Added
@@ -58,6 +64,7 @@ Initial release of the Artifact Keeper CLI.
 - Covers 250+ API endpoints across all backend features
 - OpenAPI 3.1 → 3.0 conversion handled automatically by the xtask
 
+[0.4.1]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.4.1
 [0.4.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.4.0
 [0.3.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.3.0
 [0.2.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.2.0
