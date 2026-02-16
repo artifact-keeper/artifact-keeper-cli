@@ -860,3 +860,291 @@ async fn setup_apt(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     );
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- strip_protocol ----
+
+    #[test]
+    fn strip_protocol_https() {
+        assert_eq!(strip_protocol("https://example.com"), "example.com");
+    }
+
+    #[test]
+    fn strip_protocol_http() {
+        assert_eq!(strip_protocol("http://example.com"), "example.com");
+    }
+
+    #[test]
+    fn strip_protocol_no_protocol() {
+        assert_eq!(strip_protocol("example.com"), "example.com");
+    }
+
+    #[test]
+    fn strip_protocol_with_path() {
+        assert_eq!(
+            strip_protocol("https://example.com/api/v1"),
+            "example.com/api/v1"
+        );
+    }
+
+    #[test]
+    fn strip_protocol_with_port() {
+        assert_eq!(
+            strip_protocol("https://example.com:8080"),
+            "example.com:8080"
+        );
+    }
+
+    // ---- host_from_url ----
+
+    #[test]
+    fn host_from_url_basic() {
+        assert_eq!(host_from_url("https://example.com"), "example.com");
+    }
+
+    #[test]
+    fn host_from_url_with_path() {
+        assert_eq!(
+            host_from_url("https://example.com/api/v1/npm"),
+            "example.com"
+        );
+    }
+
+    #[test]
+    fn host_from_url_with_port() {
+        assert_eq!(
+            host_from_url("https://example.com:8080/path"),
+            "example.com:8080"
+        );
+    }
+
+    #[test]
+    fn host_from_url_no_protocol() {
+        assert_eq!(host_from_url("example.com/path"), "example.com");
+    }
+
+    #[test]
+    fn host_from_url_empty() {
+        assert_eq!(host_from_url(""), "");
+    }
+
+    // ---- detect_ecosystems ----
+
+    #[test]
+    fn detect_ecosystems_empty_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn detect_ecosystems_npm() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("package.json"), "{}").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["npm"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_pip_pyproject() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("pyproject.toml"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["pip"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_pip_requirements() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("requirements.txt"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["pip"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_pip_setup_py() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("setup.py"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["pip"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_cargo() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Cargo.toml"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["cargo"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_docker() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Dockerfile"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["docker"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_docker_compose() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("docker-compose.yml"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["docker"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_maven() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("pom.xml"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["maven"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_gradle() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("build.gradle"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["gradle"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_gradle_kts() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("build.gradle.kts"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["gradle"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_go() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("go.mod"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["go"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_nuget_csproj() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("MyApp.csproj"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["nuget"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_nuget_fsproj() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("MyApp.fsproj"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["nuget"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_helm() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Chart.yaml"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["helm"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_multiple() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("package.json"), "{}").unwrap();
+        std::fs::write(dir.path().join("Cargo.toml"), "").unwrap();
+        std::fs::write(dir.path().join("Dockerfile"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["npm", "cargo", "docker"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_deduplicates() {
+        let dir = tempfile::tempdir().unwrap();
+        // Both pyproject.toml and requirements.txt → only one "pip"
+        std::fs::write(dir.path().join("pyproject.toml"), "").unwrap();
+        std::fs::write(dir.path().join("requirements.txt"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["pip"]);
+    }
+
+    #[test]
+    fn detect_ecosystems_deduplicates_docker() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("Dockerfile"), "").unwrap();
+        std::fs::write(dir.path().join("docker-compose.yml"), "").unwrap();
+        let result = detect_ecosystems(dir.path());
+        assert_eq!(result, vec!["docker"]);
+    }
+
+    // ---- write_config_file ----
+
+    #[test]
+    fn write_config_file_creates_new() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.conf");
+        write_config_file(&path, "content here", "test config").unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "content here");
+    }
+
+    #[test]
+    fn write_config_file_creates_parent_dirs() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("nested").join("deep").join("test.conf");
+        write_config_file(&path, "nested content", "nested config").unwrap();
+
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "nested content");
+    }
+
+    #[test]
+    fn write_config_file_backs_up_existing() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("existing.conf");
+
+        std::fs::write(&path, "original").unwrap();
+        write_config_file(&path, "updated", "config").unwrap();
+
+        // New content written
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "updated");
+
+        // Backup created
+        let backup = dir.path().join("existing.bak");
+        assert!(backup.exists());
+        let backup_content = std::fs::read_to_string(&backup).unwrap();
+        assert_eq!(backup_content, "original");
+    }
+
+    // ---- confirm_write ----
+
+    #[test]
+    fn confirm_write_no_input_returns_true() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.conf");
+        let result = confirm_write(&path, "content", true).unwrap();
+        assert!(result);
+    }
+
+    // ---- DetectedEcosystem struct ----
+
+    #[test]
+    fn ecosystems_constant_has_entries() {
+        assert!(!ECOSYSTEMS.is_empty());
+        assert!(ECOSYSTEMS.len() >= 14);
+    }
+
+    #[test]
+    fn ecosystems_all_have_names() {
+        for eco in ECOSYSTEMS {
+            assert!(!eco.name.is_empty());
+            assert!(!eco.marker.is_empty());
+        }
+    }
+}

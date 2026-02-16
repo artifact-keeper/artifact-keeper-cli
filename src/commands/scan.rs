@@ -410,3 +410,162 @@ fn truncate(s: &str, max: usize) -> String {
         format!("{truncated}...")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- truncate ----
+
+    #[test]
+    fn truncate_short_string() {
+        assert_eq!(truncate("hello", 10), "hello");
+    }
+
+    #[test]
+    fn truncate_exact_length() {
+        assert_eq!(truncate("hello", 5), "hello");
+    }
+
+    #[test]
+    fn truncate_long_string() {
+        assert_eq!(truncate("hello world", 8), "hello...");
+    }
+
+    #[test]
+    fn truncate_empty() {
+        assert_eq!(truncate("", 5), "");
+    }
+
+    #[test]
+    fn truncate_zero_max() {
+        assert_eq!(truncate("hello", 0), "...");
+    }
+
+    #[test]
+    fn truncate_one_max() {
+        assert_eq!(truncate("hello", 1), "...");
+    }
+
+    #[test]
+    fn truncate_three_max() {
+        assert_eq!(truncate("hello", 3), "...");
+    }
+
+    #[test]
+    fn truncate_four_max() {
+        assert_eq!(truncate("hello", 4), "h...");
+    }
+
+    #[test]
+    fn truncate_unicode() {
+        assert_eq!(truncate("héllo wörld", 8), "héllo...");
+    }
+
+    // ---- parse_severity_filter ----
+
+    #[test]
+    fn parse_severity_filter_none() {
+        let result = parse_severity_filter(None);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn parse_severity_filter_single() {
+        let result = parse_severity_filter(Some("CRITICAL"));
+        assert_eq!(result, vec!["CRITICAL"]);
+    }
+
+    #[test]
+    fn parse_severity_filter_multiple() {
+        let result = parse_severity_filter(Some("CRITICAL,HIGH,MEDIUM"));
+        assert_eq!(result, vec!["CRITICAL", "HIGH", "MEDIUM"]);
+    }
+
+    #[test]
+    fn parse_severity_filter_lowercase() {
+        let result = parse_severity_filter(Some("critical,high"));
+        assert_eq!(result, vec!["CRITICAL", "HIGH"]);
+    }
+
+    #[test]
+    fn parse_severity_filter_with_spaces() {
+        let result = parse_severity_filter(Some("CRITICAL , HIGH , LOW"));
+        assert_eq!(result, vec!["CRITICAL", "HIGH", "LOW"]);
+    }
+
+    #[test]
+    fn parse_severity_filter_mixed_case() {
+        let result = parse_severity_filter(Some("Critical,hIGH"));
+        assert_eq!(result, vec!["CRITICAL", "HIGH"]);
+    }
+
+    // ---- format_severity ----
+
+    #[test]
+    fn format_severity_critical() {
+        let result = format_severity("CRITICAL");
+        assert!(result.contains("CRITICAL"));
+    }
+
+    #[test]
+    fn format_severity_high() {
+        let result = format_severity("HIGH");
+        assert!(result.contains("HIGH"));
+    }
+
+    #[test]
+    fn format_severity_medium() {
+        let result = format_severity("MEDIUM");
+        assert!(result.contains("MEDIUM"));
+    }
+
+    #[test]
+    fn format_severity_low() {
+        let result = format_severity("LOW");
+        assert!(result.contains("LOW"));
+    }
+
+    #[test]
+    fn format_severity_info() {
+        let result = format_severity("INFO");
+        assert!(result.contains("INFO"));
+    }
+
+    #[test]
+    fn format_severity_unknown() {
+        assert_eq!(format_severity("UNKNOWN"), "UNKNOWN");
+    }
+
+    // ---- format_severity_count ----
+
+    #[test]
+    fn format_severity_count_zero() {
+        let result = format_severity_count(0, "CRITICAL");
+        assert!(result.contains("0"));
+    }
+
+    #[test]
+    fn format_severity_count_nonzero_critical() {
+        let result = format_severity_count(5, "CRITICAL");
+        assert!(result.contains("5"));
+    }
+
+    #[test]
+    fn format_severity_count_nonzero_high() {
+        let result = format_severity_count(3, "HIGH");
+        assert!(result.contains("3"));
+    }
+
+    #[test]
+    fn format_severity_count_nonzero_medium() {
+        let result = format_severity_count(7, "MEDIUM");
+        assert!(result.contains("7"));
+    }
+
+    #[test]
+    fn format_severity_count_nonzero_low() {
+        let result = format_severity_count(2, "LOW");
+        assert_eq!(result, "2");
+    }
+}

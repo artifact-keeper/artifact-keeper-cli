@@ -101,3 +101,267 @@ pub fn config_dir() -> Result<PathBuf> {
 fn config_path() -> Result<PathBuf> {
     Ok(config_dir()?.join("config.toml"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::ENV_LOCK;
+
+    fn with_temp_config<F: FnOnce()>(f: F) {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+        f();
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    // ---- AppConfig defaults ----
+
+    #[test]
+    fn default_config_has_no_instance() {
+        let config = AppConfig::default();
+        assert!(config.default_instance.is_none());
+        assert!(config.instances.is_empty());
+    }
+
+    #[test]
+    fn default_serde_values() {
+        let config: AppConfig = toml::from_str("").unwrap();
+        assert_eq!(config.output_format, "table");
+        assert_eq!(config.color, "auto");
+        assert!(config.default_instance.is_none());
+        assert!(config.instances.is_empty());
+    }
+
+    // ---- Serialization roundtrip ----
+
+    #[test]
+    fn serialize_deserialize_roundtrip() {
+        let mut config = AppConfig::default();
+        config.default_instance = Some("prod".into());
+        config.output_format = "json".into();
+        config.color = "always".into();
+        config.instances.insert(
+            "prod".into(),
+            InstanceConfig {
+                url: "https://prod.example.com".into(),
+                api_version: "v1".into(),
+            },
+        );
+
+        let toml_str = toml::to_string_pretty(&config).unwrap();
+        let loaded: AppConfig = toml::from_str(&toml_str).unwrap();
+
+        assert_eq!(loaded.default_instance, Some("prod".into()));
+        assert_eq!(loaded.output_format, "json");
+        assert_eq!(loaded.color, "always");
+        assert!(loaded.instances.contains_key("prod"));
+        assert_eq!(loaded.instances["prod"].url, "https://prod.example.com");
+    }
+
+    #[test]
+    fn instance_config_default_api_version() {
+        let toml_str = r#"
+[instances.test]
+url = "https://test.com"
+"#;
+        let config: AppConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.instances["test"].api_version, "v1");
+    }
+
+    // ---- resolve_instance ----
+
+    #[test]
+    fn resolve_instance_no_instances_no_override() {
+        let config = AppConfig::default();
+        let result = config.resolve_instance(None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn resolve_instance_with_override() {
+        let mut config = AppConfig::default();
+        config.instances.insert(
+            "prod".into(),
+            InstanceConfig {
+                url: "https://prod.example.com".into(),
+                api_version: "v1".into(),
+            },
+        );
+
+        let (name, inst) = config.resolve_instance(Some("prod")).unwrap();
+        assert_eq!(name, "prod");
+        assert_eq!(inst.url, "https://prod.example.com");
+    }
+
+    #[test]
+    fn resolve_instance_uses_default() {
+        let mut config = AppConfig::default();
+        config.default_instance = Some("staging".into());
+        config.instances.insert(
+            "staging".into(),
+            InstanceConfig {
+                url: "https://staging.example.com".into(),
+                api_version: "v1".into(),
+            },
+        );
+
+        let (name, _) = config.resolve_instance(None).unwrap();
+        assert_eq!(name, "staging");
+    }
+
+    #[test]
+    fn resolve_instance_override_trumps_default() {
+        let mut config = AppConfig::default();
+        config.default_instance = Some("staging".into());
+        config.instances.insert(
+            "staging".into(),
+            InstanceConfig {
+                url: "https://staging.example.com".into(),
+                api_version: "v1".into(),
+            },
+        );
+        config.instances.insert(
+            "prod".into(),
+            InstanceConfig {
+                url: "https://prod.example.com".into(),
+                api_version: "v1".into(),
+            },
+        );
+
+        let (name, _) = config.resolve_instance(Some("prod")).unwrap();
+        assert_eq!(name, "prod");
+    }
+
+    #[test]
+    fn resolve_instance_not_found() {
+        let config = AppConfig::default();
+        let result = config.resolve_instance(Some("nonexistent"));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn resolve_instance_default_not_in_map() {
+        let mut config = AppConfig::default();
+        config.default_instance = Some("deleted".into());
+        let result = config.resolve_instance(None);
+        assert!(result.is_err());
+    }
+
+    // ---- config_dir ----
+
+    #[test]
+    fn config_dir_from_env() {
+        let _guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::set_var("AK_CONFIG_DIR", "/tmp/ak-test-config-dir") };
+        let dir = config_dir().unwrap();
+        assert_eq!(dir, PathBuf::from("/tmp/ak-test-config-dir"));
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn config_dir_default_contains_artifact_keeper() {
+        let _guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+        let dir = config_dir().unwrap();
+        assert!(
+            dir.to_string_lossy().contains("artifact-keeper"),
+            "Default config dir should contain 'artifact-keeper': {}",
+            dir.display()
+        );
+    }
+
+    // ---- load / save ----
+
+    #[test]
+    fn load_nonexistent_returns_default() {
+        with_temp_config(|| {
+            let config = AppConfig::load().unwrap();
+            assert!(config.default_instance.is_none());
+            assert!(config.instances.is_empty());
+            // Default::default() gives empty strings; serde defaults only apply during deserialization.
+            // Downstream code (get_value) treats empty as "table"/"auto".
+            assert!(config.output_format.is_empty());
+            assert!(config.color.is_empty());
+        });
+    }
+
+    #[test]
+    fn save_and_load_roundtrip() {
+        with_temp_config(|| {
+            let mut config = AppConfig::default();
+            config.default_instance = Some("test".into());
+            config.output_format = "yaml".into();
+            config.instances.insert(
+                "test".into(),
+                InstanceConfig {
+                    url: "https://test.example.com".into(),
+                    api_version: "v2".into(),
+                },
+            );
+            config.save().unwrap();
+
+            let loaded = AppConfig::load().unwrap();
+            assert_eq!(loaded.default_instance, Some("test".into()));
+            assert_eq!(loaded.output_format, "yaml");
+            assert!(loaded.instances.contains_key("test"));
+            assert_eq!(loaded.instances["test"].url, "https://test.example.com");
+            assert_eq!(loaded.instances["test"].api_version, "v2");
+        });
+    }
+
+    #[test]
+    fn save_creates_parent_dirs() {
+        with_temp_config(|| {
+            let config = AppConfig::default();
+            // save should work even if the parent dir doesn't exist yet
+            config.save().unwrap();
+            let loaded = AppConfig::load().unwrap();
+            assert!(loaded.default_instance.is_none());
+        });
+    }
+
+    #[test]
+    fn save_overwrites_existing() {
+        with_temp_config(|| {
+            let mut config = AppConfig::default();
+            config.output_format = "json".into();
+            config.save().unwrap();
+
+            let mut config2 = AppConfig::load().unwrap();
+            config2.output_format = "yaml".into();
+            config2.save().unwrap();
+
+            let loaded = AppConfig::load().unwrap();
+            assert_eq!(loaded.output_format, "yaml");
+        });
+    }
+
+    #[test]
+    fn multiple_instances_roundtrip() {
+        with_temp_config(|| {
+            let mut config = AppConfig::default();
+            config.default_instance = Some("prod".into());
+            for name in &["prod", "staging", "dev"] {
+                config.instances.insert(
+                    name.to_string(),
+                    InstanceConfig {
+                        url: format!("https://{name}.example.com"),
+                        api_version: "v1".into(),
+                    },
+                );
+            }
+            config.save().unwrap();
+
+            let loaded = AppConfig::load().unwrap();
+            assert_eq!(loaded.instances.len(), 3);
+            assert!(loaded.instances.contains_key("prod"));
+            assert!(loaded.instances.contains_key("staging"));
+            assert!(loaded.instances.contains_key("dev"));
+        });
+    }
+}

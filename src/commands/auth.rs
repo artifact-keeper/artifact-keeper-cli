@@ -322,6 +322,54 @@ fn format_optional_date(date: Option<chrono::DateTime<chrono::Utc>>, fmt: &str) 
         .unwrap_or_else(|| "never".into())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ---- format_optional_date ----
+
+    #[test]
+    fn format_optional_date_none() {
+        let result = format_optional_date(None, "%Y-%m-%d");
+        assert_eq!(result, "never");
+    }
+
+    #[test]
+    fn format_optional_date_some() {
+        use chrono::TimeZone;
+        let date = chrono::Utc
+            .with_ymd_and_hms(2026, 1, 15, 12, 30, 0)
+            .unwrap();
+        let result = format_optional_date(Some(date), "%Y-%m-%d");
+        assert_eq!(result, "2026-01-15");
+    }
+
+    #[test]
+    fn format_optional_date_rfc3339() {
+        use chrono::TimeZone;
+        let date = chrono::Utc
+            .with_ymd_and_hms(2026, 1, 15, 12, 30, 0)
+            .unwrap();
+        let result = format_optional_date(Some(date), "%+");
+        assert!(result.contains("2026-01-15"));
+    }
+
+    // ---- AuthCommand enum ----
+
+    #[test]
+    fn auth_switch_stub() {
+        // Verify the switch command doesn't panic
+        let global = GlobalArgs {
+            format: crate::output::OutputFormat::Quiet,
+            instance: None,
+            no_input: true,
+        };
+        let cmd = AuthCommand::Switch;
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(cmd.execute(&global)).unwrap();
+    }
+}
+
 async fn token_list(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 

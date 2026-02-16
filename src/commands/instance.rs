@@ -203,3 +203,201 @@ fn info_instance(name: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_utils::ENV_LOCK;
+
+    fn with_temp_config<F: FnOnce()>(f: F) {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+        f();
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    // ---- add_instance ----
+
+    #[test]
+    fn add_instance_first_becomes_default() {
+        with_temp_config(|| {
+            add_instance("prod", "https://prod.example.com", "v1").unwrap();
+
+            let config = AppConfig::load().unwrap();
+            assert!(config.instances.contains_key("prod"));
+            assert_eq!(config.default_instance, Some("prod".into()));
+            assert_eq!(config.instances["prod"].url, "https://prod.example.com");
+        });
+    }
+
+    #[test]
+    fn add_instance_second_not_default() {
+        with_temp_config(|| {
+            add_instance("prod", "https://prod.example.com", "v1").unwrap();
+            add_instance("staging", "https://staging.example.com", "v1").unwrap();
+
+            let config = AppConfig::load().unwrap();
+            assert_eq!(config.instances.len(), 2);
+            assert_eq!(config.default_instance, Some("prod".into()));
+        });
+    }
+
+    #[test]
+    fn add_instance_duplicate_fails() {
+        with_temp_config(|| {
+            add_instance("prod", "https://prod.example.com", "v1").unwrap();
+            let result = add_instance("prod", "https://other.com", "v1");
+            assert!(result.is_err());
+        });
+    }
+
+    #[test]
+    fn add_instance_strips_trailing_slash() {
+        with_temp_config(|| {
+            add_instance("test", "https://example.com/", "v1").unwrap();
+
+            let config = AppConfig::load().unwrap();
+            assert_eq!(config.instances["test"].url, "https://example.com");
+        });
+    }
+
+    #[test]
+    fn add_instance_custom_api_version() {
+        with_temp_config(|| {
+            add_instance("test", "https://example.com", "v2").unwrap();
+
+            let config = AppConfig::load().unwrap();
+            assert_eq!(config.instances["test"].api_version, "v2");
+        });
+    }
+
+    // ---- remove_instance ----
+
+    #[test]
+    fn remove_instance_exists() {
+        with_temp_config(|| {
+            add_instance("prod", "https://prod.example.com", "v1").unwrap();
+            add_instance("staging", "https://staging.example.com", "v1").unwrap();
+
+            remove_instance("staging").unwrap();
+
+            let config = AppConfig::load().unwrap();
+            assert_eq!(config.instances.len(), 1);
+            assert!(!config.instances.contains_key("staging"));
+        });
+    }
+
+    #[test]
+    fn remove_instance_not_found() {
+        with_temp_config(|| {
+            let result = remove_instance("nonexistent");
+            assert!(result.is_err());
+        });
+    }
+
+    #[test]
+    fn remove_default_instance_switches_default() {
+        with_temp_config(|| {
+            add_instance("alpha", "https://alpha.com", "v1").unwrap();
+            add_instance("beta", "https://beta.com", "v1").unwrap();
+
+            // alpha is default (first added)
+            remove_instance("alpha").unwrap();
+
+            let config = AppConfig::load().unwrap();
+            assert_eq!(config.instances.len(), 1);
+            // default should switch to the remaining instance
+            assert!(config.default_instance.is_some());
+        });
+    }
+
+    #[test]
+    fn remove_last_instance_clears_default() {
+        with_temp_config(|| {
+            add_instance("only", "https://only.com", "v1").unwrap();
+            remove_instance("only").unwrap();
+
+            let config = AppConfig::load().unwrap();
+            assert!(config.instances.is_empty());
+            assert!(config.default_instance.is_none());
+        });
+    }
+
+    // ---- use_instance ----
+
+    #[test]
+    fn use_instance_sets_default() {
+        with_temp_config(|| {
+            add_instance("prod", "https://prod.com", "v1").unwrap();
+            add_instance("staging", "https://staging.com", "v1").unwrap();
+
+            use_instance("staging").unwrap();
+
+            let config = AppConfig::load().unwrap();
+            assert_eq!(config.default_instance, Some("staging".into()));
+        });
+    }
+
+    #[test]
+    fn use_instance_not_found() {
+        with_temp_config(|| {
+            let result = use_instance("nonexistent");
+            assert!(result.is_err());
+        });
+    }
+
+    // ---- list_instances ----
+
+    #[test]
+    fn list_instances_empty() {
+        with_temp_config(|| {
+            // Should not error even with no instances
+            list_instances(&OutputFormat::Quiet).unwrap();
+        });
+    }
+
+    #[test]
+    fn list_instances_with_entries() {
+        with_temp_config(|| {
+            add_instance("prod", "https://prod.com", "v1").unwrap();
+            add_instance("staging", "https://staging.com", "v1").unwrap();
+
+            list_instances(&OutputFormat::Quiet).unwrap();
+            list_instances(&OutputFormat::Json).unwrap();
+            list_instances(&OutputFormat::Yaml).unwrap();
+            list_instances(&OutputFormat::Table).unwrap();
+        });
+    }
+
+    // ---- info_instance ----
+
+    #[test]
+    fn info_instance_default() {
+        with_temp_config(|| {
+            add_instance("prod", "https://prod.com", "v1").unwrap();
+
+            let global = GlobalArgs {
+                format: OutputFormat::Quiet,
+                instance: None,
+                no_input: true,
+            };
+            info_instance(None, &global).unwrap();
+        });
+    }
+
+    #[test]
+    fn info_instance_by_name() {
+        with_temp_config(|| {
+            add_instance("prod", "https://prod.com", "v1").unwrap();
+            add_instance("staging", "https://staging.com", "v1").unwrap();
+
+            let global = GlobalArgs {
+                format: OutputFormat::Json,
+                instance: None,
+                no_input: true,
+            };
+            info_instance(Some("staging"), &global).unwrap();
+        });
+    }
+}

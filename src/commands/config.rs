@@ -172,3 +172,244 @@ fn config_path() -> Result<()> {
     println!("{}", path.display());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::InstanceConfig;
+    use crate::test_utils::ENV_LOCK;
+
+    fn make_config(default_instance: Option<&str>, output_format: &str, color: &str) -> AppConfig {
+        let mut cfg = AppConfig::default();
+        cfg.default_instance = default_instance.map(|s| s.to_string());
+        cfg.output_format = output_format.to_string();
+        cfg.color = color.to_string();
+        cfg
+    }
+
+    // ---- get_value ----
+
+    #[test]
+    fn get_value_default_instance_set() {
+        let cfg = make_config(Some("prod"), "table", "auto");
+        assert_eq!(get_value(&cfg, "default_instance").unwrap(), "prod");
+    }
+
+    #[test]
+    fn get_value_default_instance_not_set() {
+        let cfg = make_config(None, "table", "auto");
+        assert_eq!(get_value(&cfg, "default_instance").unwrap(), "(not set)");
+    }
+
+    #[test]
+    fn get_value_output_format_table() {
+        let cfg = make_config(None, "table", "auto");
+        assert_eq!(get_value(&cfg, "output_format").unwrap(), "table");
+    }
+
+    #[test]
+    fn get_value_output_format_json() {
+        let cfg = make_config(None, "json", "auto");
+        assert_eq!(get_value(&cfg, "output_format").unwrap(), "json");
+    }
+
+    #[test]
+    fn get_value_output_format_empty_defaults_to_table() {
+        let cfg = make_config(None, "", "auto");
+        assert_eq!(get_value(&cfg, "output_format").unwrap(), "table");
+    }
+
+    #[test]
+    fn get_value_color_auto() {
+        let cfg = make_config(None, "table", "auto");
+        assert_eq!(get_value(&cfg, "color").unwrap(), "auto");
+    }
+
+    #[test]
+    fn get_value_color_always() {
+        let cfg = make_config(None, "table", "always");
+        assert_eq!(get_value(&cfg, "color").unwrap(), "always");
+    }
+
+    #[test]
+    fn get_value_color_empty_defaults_to_auto() {
+        let cfg = make_config(None, "table", "");
+        assert_eq!(get_value(&cfg, "color").unwrap(), "auto");
+    }
+
+    #[test]
+    fn get_value_unknown_key() {
+        let cfg = AppConfig::default();
+        let result = get_value(&cfg, "nonexistent");
+        assert!(result.is_err());
+    }
+
+    // ---- KNOWN_KEYS ----
+
+    #[test]
+    fn known_keys_contains_expected() {
+        assert!(KNOWN_KEYS.contains(&"default_instance"));
+        assert!(KNOWN_KEYS.contains(&"output_format"));
+        assert!(KNOWN_KEYS.contains(&"color"));
+    }
+
+    // ---- config_set ----
+
+    #[test]
+    fn config_set_output_format_valid() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let cfg = AppConfig::default();
+        cfg.save().unwrap();
+
+        config_set("output_format", "json").unwrap();
+
+        let loaded = AppConfig::load().unwrap();
+        assert_eq!(loaded.output_format, "json");
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn config_set_output_format_invalid() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let cfg = AppConfig::default();
+        cfg.save().unwrap();
+
+        let result = config_set("output_format", "xml");
+        assert!(result.is_err());
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn config_set_color_valid() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let cfg = AppConfig::default();
+        cfg.save().unwrap();
+
+        config_set("color", "always").unwrap();
+
+        let loaded = AppConfig::load().unwrap();
+        assert_eq!(loaded.color, "always");
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn config_set_color_invalid() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let cfg = AppConfig::default();
+        cfg.save().unwrap();
+
+        let result = config_set("color", "rainbow");
+        assert!(result.is_err());
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn config_set_default_instance_valid() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let mut cfg = AppConfig::default();
+        cfg.instances.insert(
+            "prod".into(),
+            InstanceConfig {
+                url: "https://prod.example.com".into(),
+                api_version: "v1".into(),
+            },
+        );
+        cfg.save().unwrap();
+
+        config_set("default_instance", "prod").unwrap();
+
+        let loaded = AppConfig::load().unwrap();
+        assert_eq!(loaded.default_instance, Some("prod".into()));
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn config_set_default_instance_not_found() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let cfg = AppConfig::default();
+        cfg.save().unwrap();
+
+        let result = config_set("default_instance", "nonexistent");
+        assert!(result.is_err());
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn config_set_default_instance_clear() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let mut cfg = AppConfig::default();
+        cfg.default_instance = Some("old".into());
+        cfg.save().unwrap();
+
+        config_set("default_instance", "(not set)").unwrap();
+
+        let loaded = AppConfig::load().unwrap();
+        assert!(loaded.default_instance.is_none());
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn config_set_unknown_key() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let cfg = AppConfig::default();
+        cfg.save().unwrap();
+
+        let result = config_set("unknown_key", "value");
+        assert!(result.is_err());
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    // ---- config_list ----
+
+    #[test]
+    fn config_list_returns_all_keys() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let cfg = AppConfig::default();
+        cfg.save().unwrap();
+
+        config_list(&OutputFormat::Quiet).unwrap();
+        config_list(&OutputFormat::Json).unwrap();
+
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    // ---- config_path ----
+
+    #[test]
+    fn config_path_returns_ok() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::tempdir().unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        config_path().unwrap();
+
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+}

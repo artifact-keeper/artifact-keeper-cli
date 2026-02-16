@@ -243,3 +243,394 @@ impl Cli {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    fn parse(args: &[&str]) -> std::result::Result<Cli, clap::Error> {
+        Cli::try_parse_from(args)
+    }
+
+    // ---- Basic command parsing ----
+
+    #[test]
+    fn parse_auth_login() {
+        let cli = parse(&["ak", "auth", "login"]).unwrap();
+        assert!(matches!(cli.command, Command::Auth { .. }));
+    }
+
+    #[test]
+    fn parse_auth_login_with_url() {
+        let cli = parse(&["ak", "auth", "login", "https://example.com"]).unwrap();
+        assert!(matches!(cli.command, Command::Auth { .. }));
+    }
+
+    #[test]
+    fn parse_auth_login_token_flag() {
+        let cli = parse(&["ak", "auth", "login", "--token"]).unwrap();
+        assert!(matches!(cli.command, Command::Auth { .. }));
+    }
+
+    #[test]
+    fn parse_auth_logout() {
+        let cli = parse(&["ak", "auth", "logout"]).unwrap();
+        assert!(matches!(cli.command, Command::Auth { .. }));
+    }
+
+    #[test]
+    fn parse_auth_whoami() {
+        let cli = parse(&["ak", "auth", "whoami"]).unwrap();
+        assert!(matches!(cli.command, Command::Auth { .. }));
+    }
+
+    #[test]
+    fn parse_auth_switch() {
+        let cli = parse(&["ak", "auth", "switch"]).unwrap();
+        assert!(matches!(cli.command, Command::Auth { .. }));
+    }
+
+    #[test]
+    fn parse_auth_token_create() {
+        let cli = parse(&["ak", "auth", "token", "create"]).unwrap();
+        assert!(matches!(cli.command, Command::Auth { .. }));
+    }
+
+    #[test]
+    fn parse_auth_token_list() {
+        let cli = parse(&["ak", "auth", "token", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Auth { .. }));
+    }
+
+    #[test]
+    fn parse_instance_add() {
+        let cli = parse(&["ak", "instance", "add", "prod", "https://prod.com"]).unwrap();
+        assert!(matches!(cli.command, Command::Instance { .. }));
+    }
+
+    #[test]
+    fn parse_instance_remove() {
+        let cli = parse(&["ak", "instance", "remove", "prod"]).unwrap();
+        assert!(matches!(cli.command, Command::Instance { .. }));
+    }
+
+    #[test]
+    fn parse_instance_list() {
+        let cli = parse(&["ak", "instance", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Instance { .. }));
+    }
+
+    #[test]
+    fn parse_instance_use() {
+        let cli = parse(&["ak", "instance", "use", "prod"]).unwrap();
+        assert!(matches!(cli.command, Command::Instance { .. }));
+    }
+
+    #[test]
+    fn parse_instance_info() {
+        let cli = parse(&["ak", "instance", "info"]).unwrap();
+        assert!(matches!(cli.command, Command::Instance { .. }));
+    }
+
+    #[test]
+    fn parse_repo_list() {
+        let cli = parse(&["ak", "repo", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Repo { .. }));
+    }
+
+    #[test]
+    fn parse_repo_show() {
+        let cli = parse(&["ak", "repo", "show", "my-repo"]).unwrap();
+        assert!(matches!(cli.command, Command::Repo { .. }));
+    }
+
+    #[test]
+    fn parse_repo_create() {
+        let cli = parse(&["ak", "repo", "create", "my-repo", "--pkg-format", "npm"]).unwrap();
+        assert!(matches!(cli.command, Command::Repo { .. }));
+    }
+
+    #[test]
+    fn parse_repo_delete() {
+        let cli = parse(&["ak", "repo", "delete", "my-repo"]).unwrap();
+        assert!(matches!(cli.command, Command::Repo { .. }));
+    }
+
+    #[test]
+    fn parse_artifact_push() {
+        let cli = parse(&["ak", "artifact", "push", "my-repo", "file.tar.gz"]).unwrap();
+        assert!(matches!(cli.command, Command::Artifact { .. }));
+    }
+
+    #[test]
+    fn parse_artifact_pull() {
+        let cli = parse(&["ak", "artifact", "pull", "my-repo", "org/pkg/1.0"]).unwrap();
+        assert!(matches!(cli.command, Command::Artifact { .. }));
+    }
+
+    #[test]
+    fn parse_artifact_list() {
+        let cli = parse(&["ak", "artifact", "list", "my-repo"]).unwrap();
+        assert!(matches!(cli.command, Command::Artifact { .. }));
+    }
+
+    #[test]
+    fn parse_artifact_search() {
+        let cli = parse(&["ak", "artifact", "search", "log4j"]).unwrap();
+        assert!(matches!(cli.command, Command::Artifact { .. }));
+    }
+
+    #[test]
+    fn parse_artifact_copy() {
+        let cli = parse(&["ak", "artifact", "copy", "src/path", "dst/path"]).unwrap();
+        assert!(matches!(cli.command, Command::Artifact { .. }));
+    }
+
+    #[test]
+    fn parse_setup_auto() {
+        let cli = parse(&["ak", "setup", "auto"]).unwrap();
+        assert!(matches!(cli.command, Command::Setup { .. }));
+    }
+
+    #[test]
+    fn parse_setup_npm() {
+        let cli = parse(&["ak", "setup", "npm"]).unwrap();
+        assert!(matches!(cli.command, Command::Setup { .. }));
+    }
+
+    #[test]
+    fn parse_setup_npm_with_repo() {
+        let cli = parse(&["ak", "setup", "npm", "--repo", "my-npm"]).unwrap();
+        assert!(matches!(cli.command, Command::Setup { .. }));
+    }
+
+    #[test]
+    fn parse_scan_run() {
+        let cli = parse(&["ak", "scan", "run", "my-repo", "artifact/path"]).unwrap();
+        assert!(matches!(cli.command, Command::Scan { .. }));
+    }
+
+    #[test]
+    fn parse_scan_list() {
+        let cli = parse(&["ak", "scan", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Scan { .. }));
+    }
+
+    #[test]
+    fn parse_scan_show() {
+        let cli = parse(&["ak", "scan", "show", "scan-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Scan { .. }));
+    }
+
+    #[test]
+    fn parse_doctor() {
+        let cli = parse(&["ak", "doctor"]).unwrap();
+        assert!(matches!(cli.command, Command::Doctor));
+    }
+
+    #[test]
+    fn parse_tui() {
+        let cli = parse(&["ak", "tui"]).unwrap();
+        assert!(matches!(cli.command, Command::Tui));
+    }
+
+    #[test]
+    fn parse_config_list() {
+        let cli = parse(&["ak", "config", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Config { .. }));
+    }
+
+    #[test]
+    fn parse_config_get() {
+        let cli = parse(&["ak", "config", "get", "output_format"]).unwrap();
+        assert!(matches!(cli.command, Command::Config { .. }));
+    }
+
+    #[test]
+    fn parse_config_set() {
+        let cli = parse(&["ak", "config", "set", "color", "never"]).unwrap();
+        assert!(matches!(cli.command, Command::Config { .. }));
+    }
+
+    #[test]
+    fn parse_config_path() {
+        let cli = parse(&["ak", "config", "path"]).unwrap();
+        assert!(matches!(cli.command, Command::Config { .. }));
+    }
+
+    #[test]
+    fn parse_admin_backup_list() {
+        let cli = parse(&["ak", "admin", "backup", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_metrics() {
+        let cli = parse(&["ak", "admin", "metrics"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_users_list() {
+        let cli = parse(&["ak", "admin", "users", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_plugins_list() {
+        let cli = parse(&["ak", "admin", "plugins", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_completion_bash() {
+        let cli = parse(&["ak", "completion", "bash"]).unwrap();
+        assert!(matches!(cli.command, Command::Completion { .. }));
+    }
+
+    #[test]
+    fn parse_completion_zsh() {
+        let cli = parse(&["ak", "completion", "zsh"]).unwrap();
+        assert!(matches!(cli.command, Command::Completion { .. }));
+    }
+
+    #[test]
+    fn parse_completion_fish() {
+        let cli = parse(&["ak", "completion", "fish"]).unwrap();
+        assert!(matches!(cli.command, Command::Completion { .. }));
+    }
+
+    #[test]
+    fn parse_man_pages() {
+        let cli = parse(&["ak", "man-pages", "/tmp/man"]).unwrap();
+        assert!(matches!(cli.command, Command::ManPages { .. }));
+    }
+
+    #[test]
+    fn parse_migrate() {
+        let cli = parse(&[
+            "ak",
+            "migrate",
+            "--from-instance",
+            "staging",
+            "--from-repo",
+            "libs",
+            "--to-repo",
+            "libs-prod",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Migrate { .. }));
+    }
+
+    // ---- Global flags ----
+
+    #[test]
+    fn parse_format_json() {
+        let cli = parse(&["ak", "--format", "json", "doctor"]).unwrap();
+        assert!(matches!(cli.format, OutputFormat::Json));
+    }
+
+    #[test]
+    fn parse_format_yaml() {
+        let cli = parse(&["ak", "--format", "yaml", "doctor"]).unwrap();
+        assert!(matches!(cli.format, OutputFormat::Yaml));
+    }
+
+    #[test]
+    fn parse_format_quiet() {
+        let cli = parse(&["ak", "--format", "quiet", "doctor"]).unwrap();
+        assert!(matches!(cli.format, OutputFormat::Quiet));
+    }
+
+    #[test]
+    fn parse_quiet_flag() {
+        let cli = parse(&["ak", "-q", "doctor"]).unwrap();
+        assert!(cli.quiet);
+    }
+
+    #[test]
+    fn parse_instance_flag() {
+        let cli = parse(&["ak", "--instance", "prod", "doctor"]).unwrap();
+        assert_eq!(cli.instance, Some("prod".into()));
+    }
+
+    #[test]
+    fn parse_no_input_flag() {
+        let cli = parse(&["ak", "--no-input", "doctor"]).unwrap();
+        assert!(cli.no_input);
+    }
+
+    #[test]
+    fn parse_color_never() {
+        let cli = parse(&["ak", "--color", "never", "doctor"]).unwrap();
+        assert!(matches!(cli.color, ColorMode::Never));
+    }
+
+    #[test]
+    fn parse_color_always() {
+        let cli = parse(&["ak", "--color", "always", "doctor"]).unwrap();
+        assert!(matches!(cli.color, ColorMode::Always));
+    }
+
+    // ---- Error cases ----
+
+    #[test]
+    fn parse_no_command_fails() {
+        assert!(parse(&["ak"]).is_err());
+    }
+
+    #[test]
+    fn parse_unknown_command_fails() {
+        assert!(parse(&["ak", "unknown-command"]).is_err());
+    }
+
+    #[test]
+    fn parse_invalid_format_fails() {
+        assert!(parse(&["ak", "--format", "xml", "doctor"]).is_err());
+    }
+
+    #[test]
+    fn parse_missing_required_arg_fails() {
+        // instance add requires name and url
+        assert!(parse(&["ak", "instance", "add"]).is_err());
+        assert!(parse(&["ak", "instance", "add", "name"]).is_err());
+    }
+
+    #[test]
+    fn parse_repo_create_requires_format() {
+        assert!(parse(&["ak", "repo", "create", "key"]).is_err());
+    }
+
+    // ---- Global args extraction ----
+
+    #[test]
+    fn default_format_is_table() {
+        let cli = parse(&["ak", "doctor"]).unwrap();
+        assert!(matches!(cli.format, OutputFormat::Table));
+    }
+
+    #[test]
+    fn default_no_input_is_false() {
+        let cli = parse(&["ak", "doctor"]).unwrap();
+        assert!(!cli.no_input);
+    }
+
+    #[test]
+    fn default_quiet_is_false() {
+        let cli = parse(&["ak", "doctor"]).unwrap();
+        assert!(!cli.quiet);
+    }
+
+    #[test]
+    fn default_instance_is_none() {
+        let cli = parse(&["ak", "doctor"]).unwrap();
+        assert!(cli.instance.is_none());
+    }
+
+    #[test]
+    fn default_color_is_auto() {
+        let cli = parse(&["ak", "doctor"]).unwrap();
+        assert!(matches!(cli.color, ColorMode::Auto));
+    }
+}
