@@ -331,3 +331,20 @@ jobs:
           user-name: "github-actions[bot]"
           commit-message: "Update ak formula to ${{ steps.version.outputs.version }}"
           target-branch: main
+
+  snap:
+    name: Publish to Snap Store
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: snapcore/action-build@v1
+        id: build
+
+      - uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_STORE_TOKEN }}
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: stable
