@@ -1,4 +1,4 @@
-name: ak
+name: artifactkeeper
 version: git
 summary: Artifact Keeper CLI — manage artifacts, repositories, and registries
 description: |
