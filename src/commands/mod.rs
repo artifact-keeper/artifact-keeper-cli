@@ -25,3 +25,4 @@ pub mod setup;
 pub mod sign;
 pub mod sync_policy;
 pub mod tui;
+pub mod webhook;

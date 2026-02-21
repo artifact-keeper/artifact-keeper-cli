@@ -242,6 +242,15 @@ pub enum Command {
         command: commands::sync_policy::SyncPolicyCommand,
     },
 
+    /// Manage webhooks for event-driven integrations
+    #[command(
+        after_help = "Examples:\n  ak webhook list\n  ak webhook create deploy-hook --url https://ci.company.com/hook --events artifact.pushed,artifact.promoted\n  ak webhook test <id>\n  ak webhook deliveries <id>"
+    )]
+    Webhook {
+        #[command(subcommand)]
+        command: commands::webhook::WebhookCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -366,6 +375,7 @@ impl Cli {
             Command::License { command } => command.execute(&global).await,
             Command::Peer { command } => command.execute(&global).await,
             Command::SyncPolicy { command } => command.execute(&global).await,
+            Command::Webhook { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Dt { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
