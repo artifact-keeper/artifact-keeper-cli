@@ -150,6 +150,15 @@ pub enum Command {
         command: commands::group::GroupCommand,
     },
 
+    /// Promote artifacts between repositories
+    #[command(
+        after_help = "Examples:\n  ak promotion promote <artifact-id> --from staging --to production\n  ak promotion rule list\n  ak promotion rule create my-rule --from <repo-id> --to <repo-id> --auto\n  ak promotion history --repo my-repo"
+    )]
+    Promotion {
+        #[command(subcommand)]
+        command: commands::promotion::PromotionCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -254,6 +263,7 @@ impl Cli {
                 .await
             }
             Command::Group { command } => command.execute(&global).await,
+            Command::Promotion { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
@@ -629,6 +639,44 @@ mod tests {
     fn parse_group_remove_member() {
         let cli = parse(&["ak", "group", "remove-member", "group-id", "user-id"]).unwrap();
         assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    // ---- Promotion command parsing ----
+
+    #[test]
+    fn parse_promotion_promote() {
+        let cli = parse(&[
+            "ak", "promotion", "promote", "artifact-id", "--from", "staging", "--to", "prod",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
+    }
+
+    #[test]
+    fn parse_promotion_rule_list() {
+        let cli = parse(&["ak", "promotion", "rule", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
+    }
+
+    #[test]
+    fn parse_promotion_rule_create() {
+        let cli = parse(&[
+            "ak", "promotion", "rule", "create", "my-rule", "--from", "src-id", "--to", "dst-id",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
+    }
+
+    #[test]
+    fn parse_promotion_rule_delete() {
+        let cli = parse(&["ak", "promotion", "rule", "delete", "rule-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
+    }
+
+    #[test]
+    fn parse_promotion_history() {
+        let cli = parse(&["ak", "promotion", "history", "--repo", "my-repo"]).unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
     }
 
     // ---- Permission command parsing ----
