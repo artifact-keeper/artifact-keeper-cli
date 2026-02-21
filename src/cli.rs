@@ -223,6 +223,15 @@ pub enum Command {
         command: commands::license::LicenseCommand,
     },
 
+    /// Manage federation peer instances
+    #[command(
+        after_help = "Examples:\n  ak peer list\n  ak peer list --status active --region us-east-1\n  ak peer show <peer-id>\n  ak peer register my-peer --url https://peer.example.com --api-key <key>\n  ak peer unregister <peer-id>\n  ak peer test <peer-id>\n  ak peer sync <peer-id>\n  ak peer tasks <peer-id>"
+    )]
+    Peer {
+        #[command(subcommand)]
+        command: commands::peer::PeerCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -345,6 +354,7 @@ impl Cli {
             Command::Sign { command } => command.execute(&global).await,
             Command::Sbom { command } => command.execute(&global).await,
             Command::License { command } => command.execute(&global).await,
+            Command::Peer { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Dt { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,

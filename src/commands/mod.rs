@@ -14,6 +14,7 @@ pub mod label;
 pub mod license;
 pub mod lifecycle;
 pub mod migrate;
+pub mod peer;
 pub mod permission;
 pub mod promotion;
 pub mod quality_gate;
