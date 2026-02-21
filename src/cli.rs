@@ -141,6 +141,15 @@ pub enum Command {
         dry_run: bool,
     },
 
+    /// Manage user groups
+    #[command(
+        after_help = "Examples:\n  ak group list\n  ak group show <group-id>\n  ak group create dev-team --description \"Development team\"\n  ak group add-member <group-id> <user-id>"
+    )]
+    Group {
+        #[command(subcommand)]
+        command: commands::group::GroupCommand,
+    },
+
     /// Administrative operations (backup, cleanup, users, plugins)
     #[command(
         after_help = "Examples:\n  ak admin backup list\n  ak admin backup create --type full\n  ak admin cleanup --audit-logs --old-backups\n  ak admin metrics\n  ak admin users list\n  ak admin plugins list"
@@ -235,6 +244,7 @@ impl Cli {
                 )
                 .await
             }
+            Command::Group { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
             Command::Tui => commands::tui::execute(&global).await,
@@ -571,6 +581,44 @@ mod tests {
     fn parse_color_always() {
         let cli = parse(&["ak", "--color", "always", "doctor"]).unwrap();
         assert!(matches!(cli.color, ColorMode::Always));
+    }
+
+    // ---- Group command parsing ----
+
+    #[test]
+    fn parse_group_list() {
+        let cli = parse(&["ak", "group", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_show() {
+        let cli = parse(&["ak", "group", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_create() {
+        let cli = parse(&["ak", "group", "create", "dev-team"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_delete() {
+        let cli = parse(&["ak", "group", "delete", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_add_member() {
+        let cli = parse(&["ak", "group", "add-member", "group-id", "user-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_remove_member() {
+        let cli = parse(&["ak", "group", "remove-member", "group-id", "user-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
     }
 
     // ---- Error cases ----

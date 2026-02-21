@@ -5,6 +5,7 @@ pub mod client;
 pub mod completion;
 pub mod config;
 pub mod doctor;
+pub mod group;
 pub mod instance;
 pub mod migrate;
 pub mod repo;
