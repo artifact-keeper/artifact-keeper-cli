@@ -150,6 +150,15 @@ pub enum Command {
         command: commands::group::GroupCommand,
     },
 
+    /// Manage promotion approval workflows
+    #[command(
+        after_help = "Examples:\n  ak approval list\n  ak approval list --status pending\n  ak approval show <approval-id>\n  ak approval approve <approval-id> --comment \"Looks good\"\n  ak approval reject <approval-id> --comment \"Needs fixes\""
+    )]
+    Approval {
+        #[command(subcommand)]
+        command: commands::approval::ApprovalCommand,
+    },
+
     /// Promote artifacts between repositories
     #[command(
         after_help = "Examples:\n  ak promotion promote <artifact-id> --from staging --to production\n  ak promotion rule list\n  ak promotion rule create my-rule --from <repo-id> --to <repo-id> --auto\n  ak promotion history --repo my-repo"
@@ -263,6 +272,7 @@ impl Cli {
                 .await
             }
             Command::Group { command } => command.execute(&global).await,
+            Command::Approval { command } => command.execute(&global).await,
             Command::Promotion { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
@@ -639,6 +649,33 @@ mod tests {
     fn parse_group_remove_member() {
         let cli = parse(&["ak", "group", "remove-member", "group-id", "user-id"]).unwrap();
         assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    // ---- Approval command parsing ----
+
+    #[test]
+    fn parse_approval_list() {
+        let cli = parse(&["ak", "approval", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Approval { .. }));
+    }
+
+    #[test]
+    fn parse_approval_show() {
+        let cli = parse(&["ak", "approval", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Approval { .. }));
+    }
+
+    #[test]
+    fn parse_approval_approve() {
+        let cli =
+            parse(&["ak", "approval", "approve", "some-id", "--comment", "LGTM"]).unwrap();
+        assert!(matches!(cli.command, Command::Approval { .. }));
+    }
+
+    #[test]
+    fn parse_approval_reject() {
+        let cli = parse(&["ak", "approval", "reject", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Approval { .. }));
     }
 
     // ---- Promotion command parsing ----

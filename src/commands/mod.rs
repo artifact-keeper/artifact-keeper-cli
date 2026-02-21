@@ -1,4 +1,5 @@
 pub mod admin;
+pub mod approval;
 pub mod artifact;
 pub mod auth;
 pub mod client;
