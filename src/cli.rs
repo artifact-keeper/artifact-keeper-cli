@@ -150,6 +150,15 @@ pub enum Command {
         command: commands::group::GroupCommand,
     },
 
+    /// Manage fine-grained permission rules
+    #[command(
+        after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
+    )]
+    Permission {
+        #[command(subcommand)]
+        command: commands::permission::PermissionCommand,
+    },
+
     /// Administrative operations (backup, cleanup, users, plugins)
     #[command(
         after_help = "Examples:\n  ak admin backup list\n  ak admin backup create --type full\n  ak admin cleanup --audit-logs --old-backups\n  ak admin metrics\n  ak admin users list\n  ak admin plugins list"
@@ -245,6 +254,7 @@ impl Cli {
                 .await
             }
             Command::Group { command } => command.execute(&global).await,
+            Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
             Command::Tui => commands::tui::execute(&global).await,
@@ -619,6 +629,41 @@ mod tests {
     fn parse_group_remove_member() {
         let cli = parse(&["ak", "group", "remove-member", "group-id", "user-id"]).unwrap();
         assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    // ---- Permission command parsing ----
+
+    #[test]
+    fn parse_permission_list() {
+        let cli = parse(&["ak", "permission", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Permission { .. }));
+    }
+
+    #[test]
+    fn parse_permission_create() {
+        let cli = parse(&[
+            "ak",
+            "permission",
+            "create",
+            "--principal",
+            "00000000-0000-0000-0000-000000000001",
+            "--principal-type",
+            "user",
+            "--target",
+            "00000000-0000-0000-0000-000000000002",
+            "--target-type",
+            "repository",
+            "--actions",
+            "read,write",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Permission { .. }));
+    }
+
+    #[test]
+    fn parse_permission_delete() {
+        let cli = parse(&["ak", "permission", "delete", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Permission { .. }));
     }
 
     // ---- Error cases ----

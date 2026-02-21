@@ -8,6 +8,7 @@ pub mod doctor;
 pub mod group;
 pub mod instance;
 pub mod migrate;
+pub mod permission;
 pub mod repo;
 pub mod scan;
 pub mod setup;
