@@ -235,11 +235,7 @@ async fn show_approval(id: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 fn format_approval_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["ID", "SOURCE", "TARGET", "STATUS", "REQUESTED"]);
+    let mut table = new_table(vec!["ID", "SOURCE", "TARGET", "STATUS", "REQUESTED"]);
 
     for a in items {
         let id = a["id"].as_str().unwrap_or("-");

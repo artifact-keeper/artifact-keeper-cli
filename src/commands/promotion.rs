@@ -331,11 +331,7 @@ async fn delete_rule(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
 }
 
 fn format_rule_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["ID", "NAME", "SOURCE", "TARGET", "AUTO", "ENABLED"]);
+    let mut table = new_table(vec!["ID", "NAME", "SOURCE", "TARGET", "AUTO", "ENABLED"]);
 
     for r in items {
         let id = r["id"].as_str().unwrap_or("-");
@@ -368,11 +364,7 @@ fn format_rule_table(items: &[serde_json::Value]) -> String {
 }
 
 fn format_history_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["ID", "ARTIFACT", "SOURCE", "TARGET", "STATUS", "DATE"]);
+    let mut table = new_table(vec!["ID", "ARTIFACT", "SOURCE", "TARGET", "STATUS", "DATE"]);
 
     for e in items {
         let id = e["id"].as_str().unwrap_or("-");

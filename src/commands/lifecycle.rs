@@ -380,11 +380,7 @@ async fn execute_policy(id: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 fn format_policy_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec![
+    let mut table = new_table(vec![
             "ID", "NAME", "TYPE", "ENABLED", "PRIORITY", "LAST RUN",
         ]);
 

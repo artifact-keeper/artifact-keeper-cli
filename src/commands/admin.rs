@@ -853,11 +853,7 @@ async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
 
 /// Format a list of backup entries as a table string.
 fn format_backups_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["ID", "STATUS", "TYPE", "ARTIFACTS", "SIZE", "CREATED"]);
+    let mut table = new_table(vec!["ID", "STATUS", "TYPE", "ARTIFACTS", "SIZE", "CREATED"]);
 
     for b in items {
         let id = b["id"].as_str().unwrap_or("-");
@@ -880,11 +876,7 @@ fn format_backups_table(items: &[serde_json::Value]) -> String {
 
 /// Format a list of user entries as a table string.
 fn format_users_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec![
+    let mut table = new_table(vec![
             "ID",
             "USERNAME",
             "EMAIL",
@@ -923,11 +915,7 @@ fn format_users_table(items: &[serde_json::Value]) -> String {
 
 /// Format a list of plugin entries as a table string.
 fn format_plugins_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec![
+    let mut table = new_table(vec![
             "NAME",
             "VERSION",
             "TYPE",

@@ -289,11 +289,7 @@ async fn add_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Resul
 }
 
 fn format_group_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["ID", "NAME", "DESCRIPTION", "MEMBERS", "CREATED"]);
+    let mut table = new_table(vec!["ID", "NAME", "DESCRIPTION", "MEMBERS", "CREATED"]);
 
     for g in items {
         let id = g["id"].as_str().unwrap_or("-");

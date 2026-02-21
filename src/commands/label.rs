@@ -143,11 +143,7 @@ async fn add_label(repo_key: &str, label: &str, global: &GlobalArgs) -> Result<(
 }
 
 fn format_label_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["KEY", "VALUE", "CREATED"]);
+    let mut table = new_table(vec!["KEY", "VALUE", "CREATED"]);
 
     for l in items {
         table.add_row(vec![

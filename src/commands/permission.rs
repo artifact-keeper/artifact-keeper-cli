@@ -243,11 +243,7 @@ async fn create_permission(
 }
 
 fn format_permission_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["ID", "PRINCIPAL", "TYPE", "TARGET", "TYPE", "ACTIONS"]);
+    let mut table = new_table(vec!["ID", "PRINCIPAL", "TYPE", "TARGET", "TYPE", "ACTIONS"]);
 
     for p in items {
         let id = p["id"].as_str().unwrap_or("-");

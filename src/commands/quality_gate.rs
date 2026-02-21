@@ -439,11 +439,7 @@ async fn delete_gate(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
 }
 
 fn format_gate_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec![
+    let mut table = new_table(vec![
             "ID", "NAME", "ACTION", "ENABLED", "MAX CRIT", "MAX HIGH",
         ]);
 
