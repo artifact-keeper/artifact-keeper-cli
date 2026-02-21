@@ -1,9 +1,10 @@
 use artifact_keeper_sdk::ClientPermissionsExt;
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 
 use super::client::client_for;
+use super::helpers::{confirm_action, parse_uuid, print_page_info};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -189,12 +190,12 @@ async fn list_permissions(
         output::render(&entries, &global.format, Some(table_str))
     );
 
-    if resp.pagination.total_pages > 1 {
-        eprintln!(
-            "Page {} of {} ({} total permissions)",
-            resp.pagination.page, resp.pagination.total_pages, resp.pagination.total
-        );
-    }
+    print_page_info(
+        resp.pagination.page,
+        resp.pagination.total_pages,
+        resp.pagination.total,
+        "permissions",
+    );
 
     Ok(())
 }
@@ -207,12 +208,8 @@ async fn create_permission(
     actions: Vec<String>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let principal_id: uuid::Uuid = principal
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid principal ID: {principal}")))?;
-    let target_id: uuid::Uuid = target
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid target ID: {target}")))?;
+    let principal_id = parse_uuid(principal, "principal")?;
+    let target_id = parse_uuid(target, "target")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Creating permission...");
@@ -252,22 +249,14 @@ async fn create_permission(
 }
 
 async fn delete_permission(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
-    let perm_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid permission ID: {id}")))?;
+    let perm_id = parse_uuid(id, "permission")?;
 
-    let needs_confirmation = !skip_confirm && !global.no_input;
-    if needs_confirmation {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!("Delete permission {id}?"))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !confirm_action(
+        &format!("Delete permission {id}?"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
     let client = client_for(global)?;

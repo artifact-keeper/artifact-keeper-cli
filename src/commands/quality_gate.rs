@@ -1,9 +1,10 @@
 use artifact_keeper_sdk::ClientQualityExt;
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 
 use super::client::client_for;
+use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -232,9 +233,7 @@ async fn list_gates(global: &GlobalArgs) -> Result<()> {
 }
 
 async fn show_gate(id: &str, global: &GlobalArgs) -> Result<()> {
-    let gate_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid quality gate ID: {id}")))?;
+    let gate_id = parse_uuid(id, "quality gate")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching quality gate...");
@@ -330,12 +329,7 @@ async fn create_gate(
     required_checks: Vec<String>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repository_id = repo_id
-        .map(|id| {
-            id.parse::<uuid::Uuid>()
-                .map_err(|_| AkError::ConfigError(format!("Invalid repository ID: {id}")))
-        })
-        .transpose()?;
+    let repository_id = parse_optional_uuid(repo_id, "repository")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Creating quality gate...");
@@ -385,9 +379,7 @@ async fn update_gate(
     enabled: Option<bool>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let gate_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid quality gate ID: {id}")))?;
+    let gate_id = parse_uuid(id, "quality gate")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Updating quality gate...");
@@ -424,22 +416,14 @@ async fn update_gate(
 }
 
 async fn delete_gate(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
-    let gate_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid quality gate ID: {id}")))?;
+    let gate_id = parse_uuid(id, "quality gate")?;
 
-    let needs_confirmation = !skip_confirm && !global.no_input;
-    if needs_confirmation {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!("Delete quality gate {id}?"))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !confirm_action(
+        &format!("Delete quality gate {id}?"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
     let client = client_for(global)?;
@@ -463,19 +447,14 @@ async fn check_artifact(
     repo_id: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let aid: uuid::Uuid = artifact_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid artifact ID: {artifact_id}")))?;
+    let aid = parse_uuid(artifact_id, "artifact")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Evaluating quality gates...");
 
     let mut req = client.evaluate_gate().artifact_id(aid);
     if let Some(rid) = repo_id {
-        let repo_uuid: uuid::Uuid = rid
-            .parse()
-            .map_err(|_| AkError::ConfigError(format!("Invalid repository ID: {rid}")))?;
-        req = req.repository_id(repo_uuid);
+        req = req.repository_id(parse_uuid(rid, "repository")?);
     }
 
     let result = req

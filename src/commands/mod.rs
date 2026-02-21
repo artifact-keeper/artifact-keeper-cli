@@ -7,6 +7,7 @@ pub mod completion;
 pub mod config;
 pub mod doctor;
 pub mod group;
+pub mod helpers;
 pub mod instance;
 pub mod label;
 pub mod lifecycle;

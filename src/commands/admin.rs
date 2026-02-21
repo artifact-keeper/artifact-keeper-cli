@@ -1,9 +1,10 @@
 use artifact_keeper_sdk::{ClientAdminExt, ClientPluginsExt, ClientUsersExt};
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 
 use super::client::client_for;
+use super::helpers::{confirm_action, parse_uuid};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -364,23 +365,14 @@ async fn restore_backup(
 ) -> Result<()> {
     let client = client_for(global)?;
 
-    let id: uuid::Uuid = backup_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid backup ID: {backup_id}")))?;
+    let id = parse_uuid(backup_id, "backup")?;
 
-    if !global.no_input {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!(
-                "Restore from backup {backup_id}? This may overwrite existing data"
-            ))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !confirm_action(
+        &format!("Restore from backup {backup_id}? This may overwrite existing data"),
+        false,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
     let spinner = output::spinner("Restoring backup...");
@@ -656,9 +648,7 @@ async fn update_user(
 ) -> Result<()> {
     let client = client_for(global)?;
 
-    let id: uuid::Uuid = user_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid user ID: {user_id}")))?;
+    let id = parse_uuid(user_id, "user")?;
 
     let spinner = output::spinner("Updating user...");
 
@@ -686,22 +676,14 @@ async fn update_user(
 async fn delete_user(user_id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
-    let id: uuid::Uuid = user_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid user ID: {user_id}")))?;
+    let id = parse_uuid(user_id, "user")?;
 
-    let needs_confirmation = !skip_confirm && !global.no_input;
-    if needs_confirmation {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!("Delete user {user_id}? This cannot be undone"))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !confirm_action(
+        &format!("Delete user {user_id}? This cannot be undone"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
     let spinner = output::spinner("Deleting user...");
@@ -833,24 +815,14 @@ async fn install_plugin(url: &str, git_ref: Option<&str>, global: &GlobalArgs) -
 async fn remove_plugin(plugin_id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
-    let id: uuid::Uuid = plugin_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid plugin ID: {plugin_id}")))?;
+    let id = parse_uuid(plugin_id, "plugin")?;
 
-    let needs_confirmation = !skip_confirm && !global.no_input;
-    if needs_confirmation {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!(
-                "Remove plugin {plugin_id}? This will unload the format handler"
-            ))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !confirm_action(
+        &format!("Remove plugin {plugin_id}? This will unload the format handler"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
     let spinner = output::spinner("Removing plugin...");
@@ -871,9 +843,7 @@ async fn remove_plugin(plugin_id: &str, skip_confirm: bool, global: &GlobalArgs)
 async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
-    let id: uuid::Uuid = user_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid user ID: {user_id}")))?;
+    let id = parse_uuid(user_id, "user")?;
 
     let spinner = output::spinner("Resetting password...");
 

@@ -1,9 +1,10 @@
 use artifact_keeper_sdk::ClientLifecycleExt;
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 
 use super::client::client_for;
+use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -121,9 +122,7 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
 
     let mut req = client.list_lifecycle_policies();
     if let Some(id) = repo_id {
-        let uid: uuid::Uuid = id
-            .parse()
-            .map_err(|_| AkError::ConfigError(format!("Invalid repository ID: {id}")))?;
+        let uid = parse_uuid(id, "repository")?;
         req = req.repository_id(uid);
     }
 
@@ -201,9 +200,7 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
 }
 
 async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
-    let policy_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid policy ID: {id}")))?;
+    let policy_id = parse_uuid(id, "policy")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching lifecycle policy...");
@@ -283,12 +280,7 @@ async fn create_policy(
     require_signature: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repository_id = repo_id
-        .map(|id| {
-            id.parse::<uuid::Uuid>()
-                .map_err(|_| AkError::ConfigError(format!("Invalid repository ID: {id}")))
-        })
-        .transpose()?;
+    let repository_id = parse_optional_uuid(repo_id, "repository")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Creating lifecycle policy...");
@@ -327,22 +319,14 @@ async fn create_policy(
 }
 
 async fn delete_policy(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
-    let policy_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid policy ID: {id}")))?;
+    let policy_id = parse_uuid(id, "policy")?;
 
-    let needs_confirmation = !skip_confirm && !global.no_input;
-    if needs_confirmation {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!("Delete lifecycle policy {id}?"))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !confirm_action(
+        &format!("Delete lifecycle policy {id}?"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
     let client = client_for(global)?;
@@ -362,9 +346,7 @@ async fn delete_policy(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Res
 }
 
 async fn preview_policy(id: &str, global: &GlobalArgs) -> Result<()> {
-    let policy_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid policy ID: {id}")))?;
+    let policy_id = parse_uuid(id, "policy")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Previewing policy execution...");
@@ -383,9 +365,7 @@ async fn preview_policy(id: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 async fn execute_policy(id: &str, global: &GlobalArgs) -> Result<()> {
-    let policy_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid policy ID: {id}")))?;
+    let policy_id = parse_uuid(id, "policy")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Executing policy...");

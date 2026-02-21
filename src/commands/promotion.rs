@@ -1,9 +1,10 @@
 use artifact_keeper_sdk::ClientPromotionExt;
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 
 use super::client::client_for;
+use super::helpers::{confirm_action, parse_uuid, print_page_info};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -136,9 +137,7 @@ async fn promote_artifact(
     skip_checks: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let aid: uuid::Uuid = artifact_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid artifact ID: {artifact_id}")))?;
+    let aid = parse_uuid(artifact_id, "artifact")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Promoting artifact...");
@@ -195,9 +194,7 @@ async fn list_rules(source_repo_id: Option<&str>, global: &GlobalArgs) -> Result
 
     let mut req = client.list_rules();
     if let Some(id) = source_repo_id {
-        let uid: uuid::Uuid = id
-            .parse()
-            .map_err(|_| AkError::ConfigError(format!("Invalid repository ID: {id}")))?;
+        let uid = parse_uuid(id, "repository")?;
         req = req.source_repo_id(uid);
     }
 
@@ -271,12 +268,8 @@ async fn create_rule(
     auto: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let source_id: uuid::Uuid = from
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid source repository ID: {from}")))?;
-    let target_id: uuid::Uuid = to
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid target repository ID: {to}")))?;
+    let source_id = parse_uuid(from, "source repository")?;
+    let target_id = parse_uuid(to, "target repository")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Creating promotion rule...");
@@ -315,22 +308,14 @@ async fn create_rule(
 }
 
 async fn delete_rule(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
-    let rule_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid rule ID: {id}")))?;
+    let rule_id = parse_uuid(id, "rule")?;
 
-    let needs_confirmation = !skip_confirm && !global.no_input;
-    if needs_confirmation {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!("Delete promotion rule {id}?"))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !confirm_action(
+        &format!("Delete promotion rule {id}?"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
     let client = client_for(global)?;
@@ -432,12 +417,12 @@ async fn promotion_history(
         output::render(&entries, &global.format, Some(table_str))
     );
 
-    if resp.pagination.total_pages > 1 {
-        eprintln!(
-            "Page {} of {} ({} total entries)",
-            resp.pagination.page, resp.pagination.total_pages, resp.pagination.total
-        );
-    }
+    print_page_info(
+        resp.pagination.page,
+        resp.pagination.total_pages,
+        resp.pagination.total,
+        "entries",
+    );
 
     Ok(())
 }

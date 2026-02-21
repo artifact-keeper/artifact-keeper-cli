@@ -4,6 +4,7 @@ use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
+use super::helpers::parse_uuid;
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -67,9 +68,11 @@ impl ApprovalCommand {
             } => list_approvals(status.as_deref(), repo.as_deref(), page, per_page, global).await,
             Self::Show { id } => show_approval(&id, global).await,
             Self::Approve { id, comment } => {
-                approve_promotion(&id, comment.as_deref(), global).await
+                review_promotion(&id, comment.as_deref(), true, global).await
             }
-            Self::Reject { id, comment } => reject_promotion(&id, comment.as_deref(), global).await,
+            Self::Reject { id, comment } => {
+                review_promotion(&id, comment.as_deref(), false, global).await
+            }
         }
     }
 }
@@ -177,9 +180,7 @@ async fn list_approvals(
 }
 
 async fn show_approval(id: &str, global: &GlobalArgs) -> Result<()> {
-    let approval_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid approval ID: {id}")))?;
+    let approval_id = parse_uuid(id, "approval")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching approval...");
@@ -243,58 +244,44 @@ async fn show_approval(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
-async fn approve_promotion(id: &str, comment: Option<&str>, global: &GlobalArgs) -> Result<()> {
-    let approval_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid approval ID: {id}")))?;
+async fn review_promotion(
+    id: &str,
+    comment: Option<&str>,
+    approve: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let approval_id = parse_uuid(id, "approval")?;
 
     let client = client_for(global)?;
-    let spinner = output::spinner("Approving promotion...");
+    let action = if approve { "Approving" } else { "Rejecting" };
+    let spinner = output::spinner(&format!("{action} promotion..."));
 
     let body = artifact_keeper_sdk::types::ReviewRequest {
         notes: comment.map(|s| s.to_string()),
     };
 
-    let resp = client
-        .approve_promotion()
-        .id(approval_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to approve promotion: {e}")))?;
-
-    spinner.finish_and_clear();
-    eprintln!(
-        "Approval {} approved (artifact {} -> {}).",
-        resp.id, resp.source_repository, resp.target_repository
-    );
-
-    Ok(())
-}
-
-async fn reject_promotion(id: &str, comment: Option<&str>, global: &GlobalArgs) -> Result<()> {
-    let approval_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid approval ID: {id}")))?;
-
-    let client = client_for(global)?;
-    let spinner = output::spinner("Rejecting promotion...");
-
-    let body = artifact_keeper_sdk::types::ReviewRequest {
-        notes: comment.map(|s| s.to_string()),
+    let resp = if approve {
+        client
+            .approve_promotion()
+            .id(approval_id)
+            .body(body)
+            .send()
+            .await
+            .map_err(|e| AkError::ServerError(format!("Failed to approve promotion: {e}")))?
+    } else {
+        client
+            .reject_promotion()
+            .id(approval_id)
+            .body(body)
+            .send()
+            .await
+            .map_err(|e| AkError::ServerError(format!("Failed to reject promotion: {e}")))?
     };
 
-    let resp = client
-        .reject_promotion()
-        .id(approval_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to reject promotion: {e}")))?;
-
     spinner.finish_and_clear();
+    let verb = if approve { "approved" } else { "rejected" };
     eprintln!(
-        "Approval {} rejected (artifact {} -> {}).",
+        "Approval {} {verb} (artifact {} -> {}).",
         resp.id, resp.source_repository, resp.target_repository
     );
 

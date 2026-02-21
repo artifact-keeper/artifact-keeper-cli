@@ -1,9 +1,10 @@
 use artifact_keeper_sdk::ClientGroupsExt;
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 
 use super::client::client_for;
+use super::helpers::{confirm_action, parse_uuid, print_page_info};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -164,21 +165,19 @@ async fn list_groups(
         output::render(&entries, &global.format, Some(table_str))
     );
 
-    if resp.pagination.total_pages > 1 {
-        eprintln!(
-            "Page {} of {} ({} total groups)",
-            resp.pagination.page, resp.pagination.total_pages, resp.pagination.total
-        );
-    }
+    print_page_info(
+        resp.pagination.page,
+        resp.pagination.total_pages,
+        resp.pagination.total,
+        "groups",
+    );
 
     Ok(())
 }
 
 async fn show_group(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let group_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid group ID: {id}")))?;
+    let group_id = parse_uuid(id, "group")?;
 
     let spinner = output::spinner("Fetching group...");
     let group = client
@@ -247,22 +246,14 @@ async fn create_group(name: &str, description: Option<&str>, global: &GlobalArgs
 }
 
 async fn delete_group(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
-    let group_id: uuid::Uuid = id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid group ID: {id}")))?;
+    let group_id = parse_uuid(id, "group")?;
 
-    let needs_confirmation = !skip_confirm && !global.no_input;
-    if needs_confirmation {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!("Delete group {id}?"))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !confirm_action(
+        &format!("Delete group {id}?"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
     let client = client_for(global)?;
@@ -282,12 +273,8 @@ async fn delete_group(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resu
 }
 
 async fn add_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Result<()> {
-    let gid: uuid::Uuid = group_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid group ID: {group_id}")))?;
-    let uid: uuid::Uuid = user_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid user ID: {user_id}")))?;
+    let gid = parse_uuid(group_id, "group")?;
+    let uid = parse_uuid(user_id, "user")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Adding member...");
@@ -311,12 +298,8 @@ async fn add_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Resul
 }
 
 async fn remove_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Result<()> {
-    let gid: uuid::Uuid = group_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid group ID: {group_id}")))?;
-    let uid: uuid::Uuid = user_id
-        .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid user ID: {user_id}")))?;
+    let gid = parse_uuid(group_id, "group")?;
+    let uid = parse_uuid(user_id, "user")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Removing member...");
