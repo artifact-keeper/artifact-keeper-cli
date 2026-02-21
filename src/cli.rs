@@ -279,6 +279,15 @@ pub enum Command {
         command: commands::admin::AdminCommand,
     },
 
+    /// Usage analytics and storage insights
+    #[command(
+        after_help = "Examples:\n  ak analytics downloads --from 2026-01-01\n  ak analytics storage\n  ak analytics growth\n  ak analytics top-stale --days 30 --limit 10"
+    )]
+    Analytics {
+        #[command(subcommand)]
+        command: commands::analytics::AnalyticsCommand,
+    },
+
     /// Manage CLI configuration
     #[command(
         after_help = "Examples:\n  ak config list\n  ak config get default_instance\n  ak config set default_instance prod"
@@ -379,6 +388,7 @@ impl Cli {
             Command::Permission { command } => command.execute(&global).await,
             Command::Dt { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
+            Command::Analytics { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
             Command::Tui => commands::tui::execute(&global).await,
             Command::Completion { shell } => commands::completion::execute(shell),
@@ -1884,5 +1894,85 @@ mod tests {
     fn parse_sync_policy_alias_sp_create() {
         let cli = parse(&["ak", "sp", "create", "my-policy", "--mode", "push"]).unwrap();
         assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    // ---- Analytics command parsing ----
+
+    #[test]
+    fn parse_analytics_downloads() {
+        let cli = parse(&["ak", "analytics", "downloads"]).unwrap();
+        assert!(matches!(cli.command, Command::Analytics { .. }));
+    }
+
+    #[test]
+    fn parse_analytics_downloads_with_dates() {
+        let cli = parse(&[
+            "ak",
+            "analytics",
+            "downloads",
+            "--from",
+            "2026-01-01",
+            "--to",
+            "2026-01-31",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Analytics { .. }));
+    }
+
+    #[test]
+    fn parse_analytics_storage() {
+        let cli = parse(&["ak", "analytics", "storage"]).unwrap();
+        assert!(matches!(cli.command, Command::Analytics { .. }));
+    }
+
+    #[test]
+    fn parse_analytics_growth() {
+        let cli = parse(&["ak", "analytics", "growth"]).unwrap();
+        assert!(matches!(cli.command, Command::Analytics { .. }));
+    }
+
+    #[test]
+    fn parse_analytics_storage_trend() {
+        let cli = parse(&["ak", "analytics", "storage-trend"]).unwrap();
+        assert!(matches!(cli.command, Command::Analytics { .. }));
+    }
+
+    #[test]
+    fn parse_analytics_top_stale() {
+        let cli = parse(&["ak", "analytics", "top-stale"]).unwrap();
+        assert!(matches!(cli.command, Command::Analytics { .. }));
+    }
+
+    #[test]
+    fn parse_analytics_top_stale_custom() {
+        let cli = parse(&[
+            "ak",
+            "analytics",
+            "top-stale",
+            "--days",
+            "30",
+            "--limit",
+            "10",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Analytics { .. }));
+    }
+
+    #[test]
+    fn parse_analytics_repo_trend() {
+        let cli = parse(&[
+            "ak",
+            "analytics",
+            "repo-trend",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Analytics { .. }));
+    }
+
+    #[test]
+    fn parse_analytics_snapshot() {
+        let cli = parse(&["ak", "analytics", "snapshot"]).unwrap();
+        assert!(matches!(cli.command, Command::Analytics { .. }));
     }
 }
