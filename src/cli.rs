@@ -205,6 +205,15 @@ pub enum Command {
         command: commands::sign::SignCommand,
     },
 
+    /// Software Bill of Materials operations
+    #[command(
+        after_help = "Examples:\n  ak sbom generate <artifact-id>\n  ak sbom list --repo <uuid>\n  ak sbom components <sbom-id>\n  ak sbom cve history <artifact-id>"
+    )]
+    Sbom {
+        #[command(subcommand)]
+        command: commands::sbom::SbomCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -315,6 +324,7 @@ impl Cli {
             Command::Label { command } => command.execute(&global).await,
             Command::Lifecycle { command } => command.execute(&global).await,
             Command::Sign { command } => command.execute(&global).await,
+            Command::Sbom { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
@@ -1082,6 +1092,137 @@ mod tests {
             "config",
             "export-key",
             "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    // ---- SBOM command parsing ----
+
+    #[test]
+    fn parse_sbom_generate() {
+        let cli = parse(&[
+            "ak",
+            "sbom",
+            "generate",
+            "00000000-0000-0000-0000-000000000001",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Sbom { .. }));
+    }
+
+    #[test]
+    fn parse_sbom_generate_with_options() {
+        parse(&[
+            "ak",
+            "sbom",
+            "generate",
+            "00000000-0000-0000-0000-000000000001",
+            "--sbom-format",
+            "spdx",
+            "--force",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_show() {
+        let cli = parse(&["ak", "sbom", "show", "00000000-0000-0000-0000-000000000001"]).unwrap();
+        assert!(matches!(cli.command, Command::Sbom { .. }));
+    }
+
+    #[test]
+    fn parse_sbom_list() {
+        let cli = parse(&["ak", "sbom", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Sbom { .. }));
+    }
+
+    #[test]
+    fn parse_sbom_list_with_filters() {
+        parse(&[
+            "ak",
+            "sbom",
+            "list",
+            "--repo",
+            "00000000-0000-0000-0000-000000000001",
+            "--sbom-format",
+            "cyclonedx",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_get() {
+        let cli = parse(&["ak", "sbom", "get", "00000000-0000-0000-0000-000000000001"]).unwrap();
+        assert!(matches!(cli.command, Command::Sbom { .. }));
+    }
+
+    #[test]
+    fn parse_sbom_delete() {
+        parse(&[
+            "ak",
+            "sbom",
+            "delete",
+            "00000000-0000-0000-0000-000000000001",
+            "--yes",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_components() {
+        parse(&[
+            "ak",
+            "sbom",
+            "components",
+            "00000000-0000-0000-0000-000000000001",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_export() {
+        parse(&[
+            "ak",
+            "sbom",
+            "export",
+            "00000000-0000-0000-0000-000000000001",
+            "--output",
+            "/tmp/sbom.json",
+            "--target-format",
+            "cyclonedx",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_cve_history() {
+        parse(&[
+            "ak",
+            "sbom",
+            "cve",
+            "history",
+            "00000000-0000-0000-0000-000000000001",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_cve_trends() {
+        parse(&["ak", "sbom", "cve", "trends", "--days", "60"]).unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_cve_update_status() {
+        parse(&[
+            "ak",
+            "sbom",
+            "cve",
+            "update-status",
+            "00000000-0000-0000-0000-000000000001",
+            "--status",
+            "acknowledged",
+            "--reason",
+            "Not exploitable in our config",
         ])
         .unwrap();
     }
