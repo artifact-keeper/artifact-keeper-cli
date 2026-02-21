@@ -113,6 +113,28 @@ pub enum UsersCommand {
         #[arg(long)]
         admin: bool,
     },
+    /// Update a user's details
+    Update {
+        /// User ID
+        id: String,
+
+        /// New email address
+        #[arg(long)]
+        email: Option<String>,
+
+        /// New display name
+        #[arg(long)]
+        display_name: Option<String>,
+
+        /// Set admin status
+        #[arg(long)]
+        admin: Option<bool>,
+
+        /// Set active status
+        #[arg(long)]
+        active: Option<bool>,
+    },
+
     /// Delete a user
     Delete {
         /// User ID
@@ -121,6 +143,12 @@ pub enum UsersCommand {
         /// Skip confirmation prompt
         #[arg(long)]
         yes: bool,
+    },
+
+    /// Reset a user's password (generates a temporary password)
+    ResetPassword {
+        /// User ID
+        id: String,
     },
 }
 
@@ -180,7 +208,25 @@ impl AdminCommand {
                     display_name,
                     admin,
                 } => create_user(&username, &email, display_name.as_deref(), admin, global).await,
+                UsersCommand::Update {
+                    id,
+                    email,
+                    display_name,
+                    admin,
+                    active,
+                } => {
+                    update_user(
+                        &id,
+                        email.as_deref(),
+                        display_name.as_deref(),
+                        admin,
+                        active,
+                        global,
+                    )
+                    .await
+                }
                 UsersCommand::Delete { id, yes } => delete_user(&id, yes, global).await,
+                UsersCommand::ResetPassword { id } => reset_password(&id, global).await,
             },
             Self::Plugins { command } => match command {
                 PluginsCommand::List => list_plugins(global).await,
@@ -600,6 +646,43 @@ async fn create_user(
     Ok(())
 }
 
+async fn update_user(
+    user_id: &str,
+    email: Option<&str>,
+    display_name: Option<&str>,
+    admin: Option<bool>,
+    active: Option<bool>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+
+    let id: uuid::Uuid = user_id
+        .parse()
+        .map_err(|_| AkError::ConfigError(format!("Invalid user ID: {user_id}")))?;
+
+    let spinner = output::spinner("Updating user...");
+
+    let body = artifact_keeper_sdk::types::UpdateUserRequest {
+        email: email.map(|s| s.to_string()),
+        display_name: display_name.map(|s| s.to_string()),
+        is_admin: admin,
+        is_active: active,
+    };
+
+    let user = client
+        .update_user()
+        .id(id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| AkError::ServerError(format!("Failed to update user: {e}")))?;
+
+    spinner.finish_and_clear();
+    eprintln!("User '{}' updated (ID: {}).", user.username, user.id);
+
+    Ok(())
+}
+
 async fn delete_user(user_id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
@@ -781,6 +864,36 @@ async fn remove_plugin(plugin_id: &str, skip_confirm: bool, global: &GlobalArgs)
 
     spinner.finish_and_clear();
     eprintln!("Plugin {plugin_id} removed.");
+
+    Ok(())
+}
+
+async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+
+    let id: uuid::Uuid = user_id
+        .parse()
+        .map_err(|_| AkError::ConfigError(format!("Invalid user ID: {user_id}")))?;
+
+    let spinner = output::spinner("Resetting password...");
+
+    let resp = client
+        .reset_password()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| AkError::ServerError(format!("Failed to reset password: {e}")))?;
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", resp.temporary_password);
+        return Ok(());
+    }
+
+    eprintln!("Password reset for user {user_id}.");
+    eprintln!("Temporary password: {}", resp.temporary_password);
+    eprintln!("(User will be prompted to change on first login.)");
 
     Ok(())
 }

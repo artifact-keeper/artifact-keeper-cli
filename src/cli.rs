@@ -549,6 +549,27 @@ mod tests {
     }
 
     #[test]
+    fn parse_admin_users_update() {
+        let cli = parse(&[
+            "ak",
+            "admin",
+            "users",
+            "update",
+            "some-id",
+            "--email",
+            "alice@new.com",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_users_reset_password() {
+        let cli = parse(&["ak", "admin", "users", "reset-password", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
     fn parse_admin_plugins_list() {
         let cli = parse(&["ak", "admin", "plugins", "list"]).unwrap();
         assert!(matches!(cli.command, Command::Admin { .. }));
