@@ -178,6 +178,15 @@ pub enum Command {
         command: commands::quality_gate::QualityGateCommand,
     },
 
+    /// Manage lifecycle and retention policies
+    #[command(
+        after_help = "Examples:\n  ak lifecycle list\n  ak lifecycle show <policy-id>\n  ak lifecycle create my-policy --max-severity high --block-on-fail\n  ak lifecycle preview <policy-id>\n  ak lifecycle execute <policy-id>"
+    )]
+    Lifecycle {
+        #[command(subcommand)]
+        command: commands::lifecycle::LifecycleCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -285,6 +294,7 @@ impl Cli {
             Command::Approval { command } => command.execute(&global).await,
             Command::Promotion { command } => command.execute(&global).await,
             Command::QualityGate { command } => command.execute(&global).await,
+            Command::Lifecycle { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
@@ -660,6 +670,53 @@ mod tests {
     fn parse_group_remove_member() {
         let cli = parse(&["ak", "group", "remove-member", "group-id", "user-id"]).unwrap();
         assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    // ---- Lifecycle command parsing ----
+
+    #[test]
+    fn parse_lifecycle_list() {
+        let cli = parse(&["ak", "lifecycle", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_show() {
+        let cli = parse(&["ak", "lifecycle", "show", "policy-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_create() {
+        let cli = parse(&[
+            "ak",
+            "lifecycle",
+            "create",
+            "my-policy",
+            "--max-severity",
+            "high",
+            "--block-on-fail",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_delete() {
+        let cli = parse(&["ak", "lifecycle", "delete", "policy-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_preview() {
+        let cli = parse(&["ak", "lifecycle", "preview", "policy-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_execute() {
+        let cli = parse(&["ak", "lifecycle", "execute", "policy-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
     }
 
     // ---- Quality gate command parsing ----
