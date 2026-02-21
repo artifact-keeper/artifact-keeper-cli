@@ -69,9 +69,7 @@ impl ApprovalCommand {
             Self::Approve { id, comment } => {
                 approve_promotion(&id, comment.as_deref(), global).await
             }
-            Self::Reject { id, comment } => {
-                reject_promotion(&id, comment.as_deref(), global).await
-            }
+            Self::Reject { id, comment } => reject_promotion(&id, comment.as_deref(), global).await,
         }
     }
 }
@@ -88,10 +86,7 @@ async fn list_approvals(
 
     // Use history endpoint when filtering by status, pending endpoint otherwise
     let resp = if status.is_some() {
-        let mut req = client
-            .list_approval_history()
-            .page(page)
-            .per_page(per_page);
+        let mut req = client.list_approval_history().page(page).per_page(per_page);
         if let Some(s) = status {
             req = req.status(s);
         }

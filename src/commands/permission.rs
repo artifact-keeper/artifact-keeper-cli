@@ -88,8 +88,15 @@ impl PermissionCommand {
                 target_type,
                 actions,
             } => {
-                create_permission(&principal, &principal_type, &target, &target_type, actions, global)
-                    .await
+                create_permission(
+                    &principal,
+                    &principal_type,
+                    &target,
+                    &target_type,
+                    actions,
+                    global,
+                )
+                .await
             }
             Self::Delete { id, yes } => delete_permission(&id, yes, global).await,
         }
@@ -154,14 +161,7 @@ async fn list_permissions(
         table
             .load_preset(UTF8_FULL_CONDENSED)
             .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "PRINCIPAL",
-                "TYPE",
-                "TARGET",
-                "TYPE",
-                "ACTIONS",
-            ]);
+            .set_header(vec!["ID", "PRINCIPAL", "TYPE", "TARGET", "TYPE", "ACTIONS"]);
 
         for p in &resp.items {
             let id_str = p.id.to_string();

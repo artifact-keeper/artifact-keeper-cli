@@ -842,8 +842,7 @@ mod tests {
 
     #[test]
     fn parse_approval_approve() {
-        let cli =
-            parse(&["ak", "approval", "approve", "some-id", "--comment", "LGTM"]).unwrap();
+        let cli = parse(&["ak", "approval", "approve", "some-id", "--comment", "LGTM"]).unwrap();
         assert!(matches!(cli.command, Command::Approval { .. }));
     }
 
@@ -858,7 +857,14 @@ mod tests {
     #[test]
     fn parse_promotion_promote() {
         let cli = parse(&[
-            "ak", "promotion", "promote", "artifact-id", "--from", "staging", "--to", "prod",
+            "ak",
+            "promotion",
+            "promote",
+            "artifact-id",
+            "--from",
+            "staging",
+            "--to",
+            "prod",
         ])
         .unwrap();
         assert!(matches!(cli.command, Command::Promotion { .. }));
@@ -873,7 +879,15 @@ mod tests {
     #[test]
     fn parse_promotion_rule_create() {
         let cli = parse(&[
-            "ak", "promotion", "rule", "create", "my-rule", "--from", "src-id", "--to", "dst-id",
+            "ak",
+            "promotion",
+            "rule",
+            "create",
+            "my-rule",
+            "--from",
+            "src-id",
+            "--to",
+            "dst-id",
         ])
         .unwrap();
         assert!(matches!(cli.command, Command::Promotion { .. }));

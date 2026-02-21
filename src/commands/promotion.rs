@@ -105,20 +105,18 @@ impl PromotionCommand {
                 to,
                 notes,
                 skip_checks,
-            } => promote_artifact(&from, &artifact, &to, notes.as_deref(), skip_checks, global).await,
+            } => {
+                promote_artifact(&from, &artifact, &to, notes.as_deref(), skip_checks, global).await
+            }
             Self::Rule { command } => match command {
-                PromotionRuleCommand::List { from } => {
-                    list_rules(from.as_deref(), global).await
-                }
+                PromotionRuleCommand::List { from } => list_rules(from.as_deref(), global).await,
                 PromotionRuleCommand::Create {
                     name,
                     from,
                     to,
                     auto,
                 } => create_rule(&name, &from, &to, auto, global).await,
-                PromotionRuleCommand::Delete { id, yes } => {
-                    delete_rule(&id, yes, global).await
-                }
+                PromotionRuleCommand::Delete { id, yes } => delete_rule(&id, yes, global).await,
             },
             Self::History {
                 repo,
@@ -170,10 +168,7 @@ async fn promote_artifact(
     }
 
     if resp.promoted {
-        eprintln!(
-            "Artifact promoted: {} -> {}",
-            resp.source, resp.target
-        );
+        eprintln!("Artifact promoted: {} -> {}", resp.source, resp.target);
         if let Some(msg) = &resp.message {
             eprintln!("{msg}");
         }

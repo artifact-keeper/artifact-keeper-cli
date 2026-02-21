@@ -216,12 +216,7 @@ async fn list_gates(global: &GlobalArgs) -> Result<()> {
                 .map(|v| v.to_string())
                 .unwrap_or_else(|| "-".to_string());
             table.add_row(vec![
-                id_short,
-                &g.name,
-                &g.action,
-                enabled,
-                &max_crit,
-                &max_high,
+                id_short, &g.name, &g.action, enabled, &max_crit, &max_high,
             ]);
         }
 
@@ -306,8 +301,16 @@ async fn show_gate(id: &str, global: &GlobalArgs) -> Result<()> {
         } else {
             gate.required_checks.join(", ")
         },
-        if gate.enforce_on_download { "yes" } else { "no" },
-        if gate.enforce_on_promotion { "yes" } else { "no" },
+        if gate.enforce_on_download {
+            "yes"
+        } else {
+            "no"
+        },
+        if gate.enforce_on_promotion {
+            "yes"
+        } else {
+            "no"
+        },
     );
 
     println!("{}", output::render(&info, &global.format, Some(table_str)));
@@ -315,6 +318,7 @@ async fn show_gate(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn create_gate(
     name: &str,
     max_critical: Option<i32>,
@@ -367,10 +371,7 @@ async fn create_gate(
         return Ok(());
     }
 
-    eprintln!(
-        "Quality gate '{}' created (ID: {}).",
-        gate.name, gate.id
-    );
+    eprintln!("Quality gate '{}' created (ID: {}).", gate.name, gate.id);
 
     Ok(())
 }
@@ -514,7 +515,10 @@ async fn check_artifact(
             if !result.violations.is_empty() {
                 eprintln!("Violations:");
                 for v in &result.violations {
-                    eprintln!("  - {}: {} (expected: {}, actual: {})", v.rule, v.message, v.expected, v.actual);
+                    eprintln!(
+                        "  - {}: {} (expected: {}, actual: {})",
+                        v.rule, v.message, v.expected, v.actual
+                    );
                 }
             }
         }

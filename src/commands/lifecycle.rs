@@ -271,6 +271,7 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn create_policy(
     name: &str,
     max_severity: &str,
