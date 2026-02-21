@@ -1,7 +1,10 @@
 use std::io;
 
-use artifact_keeper_sdk::types::{FacetsResponse, PaginationInfo, SearchResultItem};
-use artifact_keeper_sdk::{ClientRepositoriesExt, ClientSearchExt};
+use artifact_keeper_sdk::types::{
+    DashboardResponse, FacetsResponse, FindingResponse, PaginationInfo, ScanResponse,
+    SearchResultItem,
+};
+use artifact_keeper_sdk::{ClientRepositoriesExt, ClientSearchExt, ClientSecurityExt};
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -85,6 +88,7 @@ enum Panel {
     Instances,
     Repos,
     Artifacts,
+    Security,
 }
 
 struct InstanceEntry {
@@ -104,6 +108,16 @@ struct ArtifactEntry {
     size_bytes: i64,
     downloads: i64,
     created: String,
+}
+
+#[derive(Default)]
+struct SecurityState {
+    dashboard: Option<DashboardResponse>,
+    scans: Vec<ScanResponse>,
+    scan_list_state: ListState,
+    selected_findings: Vec<FindingResponse>,
+    finding_list_state: ListState,
+    showing_findings: bool,
 }
 
 struct App {
@@ -131,6 +145,8 @@ struct App {
     global_search_pagination: Option<PaginationInfo>,
     global_search_state: ListState,
     global_search_submitted: bool,
+    // Security panel state
+    security: SecurityState,
 }
 
 impl App {
@@ -172,6 +188,7 @@ impl App {
             global_search_pagination: None,
             global_search_state: ListState::default(),
             global_search_submitted: false,
+            security: SecurityState::default(),
         }
     }
 
@@ -196,6 +213,19 @@ impl App {
             Panel::Instances => (&mut self.instance_state, self.instances.len()),
             Panel::Repos => (&mut self.repo_state, self.repos.len()),
             Panel::Artifacts => (&mut self.artifact_state, self.artifacts.len()),
+            Panel::Security => {
+                if self.security.showing_findings {
+                    (
+                        &mut self.security.finding_list_state,
+                        self.security.selected_findings.len(),
+                    )
+                } else {
+                    (
+                        &mut self.security.scan_list_state,
+                        self.security.scans.len(),
+                    )
+                }
+            }
         }
     }
 
@@ -214,6 +244,7 @@ impl App {
             Panel::Instances => {}
             Panel::Repos => self.active_panel = Panel::Instances,
             Panel::Artifacts => self.active_panel = Panel::Repos,
+            Panel::Security => self.active_panel = Panel::Artifacts,
         }
     }
 
@@ -489,6 +520,94 @@ impl App {
         self.exit_global_search();
         self.active_panel = Panel::Artifacts;
     }
+
+    async fn load_security_data(&mut self) {
+        let instance_name = match self.selected_instance() {
+            Some(i) => i.name.clone(),
+            None => return,
+        };
+
+        let client = match self.build_cached_client(&instance_name) {
+            Some(c) => c,
+            None => {
+                self.status_message = format!("Failed to connect to {instance_name}");
+                return;
+            }
+        };
+
+        self.loading = true;
+        self.status_message = "Loading security dashboard...".to_string();
+
+        if let Ok(resp) = client.get_dashboard().send().await {
+            self.security.dashboard = Some(resp.into_inner());
+        }
+
+        match client.list_scans().per_page(50).send().await {
+            Ok(resp) => {
+                let inner = resp.into_inner();
+                self.security.scans = inner.items;
+                self.security.scan_list_state = ListState::default();
+                if !self.security.scans.is_empty() {
+                    self.security.scan_list_state.select(Some(0));
+                }
+                self.status_message =
+                    format!("{} scans on {instance_name}", self.security.scans.len());
+            }
+            Err(e) => {
+                self.status_message = format!("Failed to load scans: {e}");
+                self.security.scans.clear();
+            }
+        }
+
+        self.loading = false;
+    }
+
+    async fn load_findings(&mut self) {
+        let scan_id = match self
+            .security
+            .scan_list_state
+            .selected()
+            .and_then(|i| self.security.scans.get(i))
+        {
+            Some(scan) => scan.id,
+            None => return,
+        };
+
+        let instance_name = match self.selected_instance() {
+            Some(i) => i.name.clone(),
+            None => return,
+        };
+
+        let client = match self.build_cached_client(&instance_name) {
+            Some(c) => c,
+            None => {
+                self.status_message = format!("Failed to connect to {instance_name}");
+                return;
+            }
+        };
+
+        self.loading = true;
+        self.status_message = "Loading findings...".to_string();
+
+        match client.list_findings().id(scan_id).per_page(50).send().await {
+            Ok(resp) => {
+                let inner = resp.into_inner();
+                self.security.selected_findings = inner.items;
+                self.security.finding_list_state = ListState::default();
+                if !self.security.selected_findings.is_empty() {
+                    self.security.finding_list_state.select(Some(0));
+                }
+                self.security.showing_findings = true;
+                self.status_message =
+                    format!("{} findings in scan", self.security.selected_findings.len());
+            }
+            Err(e) => {
+                self.status_message = format!("Failed to load findings: {e}");
+            }
+        }
+
+        self.loading = false;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -644,11 +763,18 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                 app.detail_view = !app.detail_view;
             }
             KeyCode::Tab => {
-                app.active_panel = match app.active_panel {
+                let next = match app.active_panel {
                     Panel::Instances => Panel::Repos,
                     Panel::Repos => Panel::Artifacts,
-                    Panel::Artifacts => Panel::Instances,
+                    Panel::Artifacts => Panel::Security,
+                    Panel::Security => Panel::Instances,
                 };
+                if next == Panel::Security && app.security.dashboard.is_none() {
+                    app.active_panel = next;
+                    app.load_security_data().await;
+                } else {
+                    app.active_panel = next;
+                }
             }
             KeyCode::Enter => match app.active_panel {
                 Panel::Instances => {
@@ -666,7 +792,28 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                 Panel::Artifacts => {
                     app.detail_view = !app.detail_view;
                 }
+                Panel::Security => {
+                    if !app.security.showing_findings {
+                        app.load_findings().await;
+                    }
+                }
             },
+            KeyCode::Esc => {
+                if app.active_panel == Panel::Security && app.security.showing_findings {
+                    app.security.showing_findings = false;
+                    app.security.selected_findings.clear();
+                    app.security.finding_list_state = ListState::default();
+                    app.status_message = format!("{} scans loaded", app.security.scans.len());
+                }
+            }
+            KeyCode::Char('4') => {
+                if app.security.dashboard.is_none() {
+                    app.active_panel = Panel::Security;
+                    app.load_security_data().await;
+                } else {
+                    app.active_panel = Panel::Security;
+                }
+            }
             KeyCode::Char('s') | KeyCode::Char('S') => {
                 app.global_searching = true;
                 app.global_search_submitted = false;
@@ -676,6 +823,10 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                 app.check_instance_health().await;
                 if app.active_panel == Panel::Repos || app.active_panel == Panel::Artifacts {
                     app.load_repos().await;
+                }
+                if app.active_panel == Panel::Security {
+                    app.security.dashboard = None;
+                    app.load_security_data().await;
                 }
                 app.status_message = "Refreshed".to_string();
             }
@@ -700,6 +851,8 @@ fn draw(f: &mut Frame, app: &mut App) {
 
     if app.global_searching {
         draw_global_search(f, app, main_layout[0]);
+    } else if app.active_panel == Panel::Security {
+        draw_security_panel(f, app, main_layout[0]);
     } else if app.detail_view {
         draw_detail(f, app, main_layout[0]);
     } else {
@@ -895,6 +1048,16 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
     } else if app.global_searching {
         spans.extend(hotkey_span(" Enter", " search"));
         spans.extend(hotkey_span("Esc", " cancel"));
+    } else if app.active_panel == Panel::Security {
+        spans.extend(hotkey_span(" q", "uit"));
+        if app.security.showing_findings {
+            spans.extend(hotkey_span("Esc", " back to scans"));
+        } else {
+            spans.extend(hotkey_span("Enter", " view findings"));
+        }
+        spans.extend(hotkey_span("Tab", " next panel"));
+        spans.extend(hotkey_span("r", "efresh"));
+        spans.extend(hotkey_span("?", "help"));
     } else {
         spans.extend(hotkey_span(" q", "uit"));
         spans.extend(hotkey_span("s", " search all"));
@@ -921,8 +1084,10 @@ fn draw_help_overlay(f: &mut Frame, area: Rect) {
         Line::from("  l/Right     Move to right panel"),
         Line::from("  j/Down      Move down in list"),
         Line::from("  k/Up        Move up in list"),
-        Line::from("  Enter       Select / expand"),
-        Line::from("  Tab         Cycle panels"),
+        Line::from("  Enter       Select / expand / drill into findings"),
+        Line::from("  Esc         Back (findings to scans)"),
+        Line::from("  Tab         Cycle panels (1-4)"),
+        Line::from("  4           Jump to Security panel"),
         Line::from(""),
         Line::from("  s           Global search (all repos)"),
         Line::from("  /           Filter artifacts in repo"),
@@ -1111,6 +1276,216 @@ fn draw_facets_panel(f: &mut Frame, app: &App, area: Rect) {
         .wrap(Wrap { trim: false });
 
     f.render_widget(paragraph, area);
+}
+
+// ---------------------------------------------------------------------------
+// Security panel drawing
+// ---------------------------------------------------------------------------
+
+fn severity_style(severity: &str) -> Style {
+    match severity.to_uppercase().as_str() {
+        "CRITICAL" => Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        "HIGH" => Style::default().fg(Color::Red),
+        "MEDIUM" => Style::default().fg(Color::Yellow),
+        _ => dim_style(), // LOW, INFO, UNKNOWN
+    }
+}
+
+fn draw_security_panel(f: &mut Frame, app: &mut App, area: Rect) {
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(3), Constraint::Min(5)])
+        .split(area);
+
+    // Dashboard summary bar
+    draw_security_dashboard(f, app, layout[0]);
+
+    if app.security.showing_findings {
+        draw_findings_list(f, app, layout[1]);
+    } else {
+        draw_scan_list(f, app, layout[1]);
+    }
+}
+
+fn draw_security_dashboard(f: &mut Frame, app: &App, area: Rect) {
+    let spans = if let Some(ref dash) = app.security.dashboard {
+        let medium = dash
+            .total_findings
+            .saturating_sub(dash.critical_findings)
+            .saturating_sub(dash.high_findings);
+
+        vec![
+            Span::styled(" Scans: ", bold_style()),
+            Span::raw(format!("{}", dash.total_scans)),
+            Span::raw("  "),
+            Span::styled("Findings: ", bold_style()),
+            Span::raw(format!("{}", dash.total_findings)),
+            Span::raw(" ("),
+            Span::styled(
+                format!("C:{}", dash.critical_findings),
+                severity_style("CRITICAL"),
+            ),
+            Span::raw(" "),
+            Span::styled(format!("H:{}", dash.high_findings), severity_style("HIGH")),
+            Span::raw(" "),
+            Span::styled(format!("M:{medium}"), severity_style("MEDIUM")),
+            Span::raw(")  "),
+            Span::styled("Grade A: ", bold_style()),
+            Span::styled(
+                format!("{}", dash.repos_grade_a),
+                Style::default().fg(Color::Green),
+            ),
+            Span::raw("  "),
+            Span::styled("Grade F: ", bold_style()),
+            Span::styled(
+                format!("{}", dash.repos_grade_f),
+                Style::default().fg(Color::Red),
+            ),
+        ]
+    } else {
+        vec![Span::styled("Loading dashboard...", dim_style())]
+    };
+
+    let block = Block::default()
+        .title(" Security Dashboard ")
+        .borders(Borders::ALL)
+        .border_style(cyan_style());
+
+    let paragraph = Paragraph::new(Line::from(spans)).block(block);
+    f.render_widget(paragraph, area);
+}
+
+fn draw_scan_list(f: &mut Frame, app: &mut App, area: Rect) {
+    if app.security.scans.is_empty() {
+        let block = Block::default()
+            .title(" Scans ")
+            .borders(Borders::ALL)
+            .border_style(cyan_style());
+        let msg = Paragraph::new("No scans found. Run `ak scan run` to start a scan.")
+            .block(block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(msg, area);
+        return;
+    }
+
+    let title = format!(
+        " Scans ({}) - Enter to view findings ",
+        app.security.scans.len()
+    );
+
+    let items: Vec<ListItem> = app
+        .security
+        .scans
+        .iter()
+        .map(|scan| {
+            let name = scan.artifact_name.as_deref().unwrap_or("unknown");
+            let date = scan.created_at.format("%Y-%m-%d %H:%M");
+
+            let mut spans = vec![
+                Span::raw(format!("{name}  ")),
+                Span::styled(&scan.scan_type, Style::default().fg(Color::Magenta)),
+                Span::raw("  "),
+                Span::styled(
+                    &scan.status,
+                    match scan.status.as_str() {
+                        "completed" => Style::default().fg(Color::Green),
+                        "failed" => Style::default().fg(Color::Red),
+                        "running" | "pending" => Style::default().fg(Color::Yellow),
+                        _ => dim_style(),
+                    },
+                ),
+                Span::raw("  "),
+            ];
+
+            if scan.critical_count > 0 {
+                spans.push(Span::styled(
+                    format!("C:{} ", scan.critical_count),
+                    severity_style("CRITICAL"),
+                ));
+            }
+            if scan.high_count > 0 {
+                spans.push(Span::styled(
+                    format!("H:{} ", scan.high_count),
+                    severity_style("HIGH"),
+                ));
+            }
+            if scan.medium_count > 0 {
+                spans.push(Span::styled(
+                    format!("M:{} ", scan.medium_count),
+                    severity_style("MEDIUM"),
+                ));
+            }
+            if scan.low_count > 0 {
+                spans.push(Span::styled(format!("L:{} ", scan.low_count), dim_style()));
+            }
+
+            spans.push(Span::styled(format!("  {date}"), dim_style()));
+
+            ListItem::new(Line::from(spans))
+        })
+        .collect();
+
+    render_panel(
+        f,
+        &title,
+        items,
+        cyan_style(),
+        &mut app.security.scan_list_state,
+        area,
+    );
+}
+
+fn draw_findings_list(f: &mut Frame, app: &mut App, area: Rect) {
+    if app.security.selected_findings.is_empty() {
+        let block = Block::default()
+            .title(" Findings (Esc to go back) ")
+            .borders(Borders::ALL)
+            .border_style(cyan_style());
+        let msg = Paragraph::new("No findings in this scan.")
+            .block(block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(msg, area);
+        return;
+    }
+
+    let title = format!(
+        " Findings ({}) - Esc to go back ",
+        app.security.selected_findings.len()
+    );
+
+    let items: Vec<ListItem> = app
+        .security
+        .selected_findings
+        .iter()
+        .map(|finding| {
+            let sev = &finding.severity;
+            let cve = finding.cve_id.as_deref().unwrap_or("");
+            let component = finding.affected_component.as_deref().unwrap_or("");
+            let fixed = finding
+                .fixed_version
+                .as_deref()
+                .map(|v| format!(" (fix: {v})"))
+                .unwrap_or_default();
+
+            ListItem::new(Line::from(vec![
+                Span::styled(format!("{sev:<8} "), severity_style(sev)),
+                Span::raw(format!("{cve:<16} ")),
+                Span::raw(&finding.title),
+                Span::raw("  "),
+                Span::styled(component, dim_style()),
+                Span::styled(fixed, Style::default().fg(Color::Green)),
+            ]))
+        })
+        .collect();
+
+    render_panel(
+        f,
+        &title,
+        items,
+        cyan_style(),
+        &mut app.security.finding_list_state,
+        area,
+    );
 }
 
 // ---------------------------------------------------------------------------
