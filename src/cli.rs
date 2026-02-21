@@ -196,6 +196,15 @@ pub enum Command {
         command: commands::lifecycle::LifecycleCommand,
     },
 
+    /// Signing & key management
+    #[command(
+        after_help = "Examples:\n  ak sign key list\n  ak sign key create my-key --algorithm ed25519 --type signing --repo <uuid>\n  ak sign config show <repo-id>"
+    )]
+    Sign {
+        #[command(subcommand)]
+        command: commands::sign::SignCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -305,6 +314,7 @@ impl Cli {
             Command::QualityGate { command } => command.execute(&global).await,
             Command::Label { command } => command.execute(&global).await,
             Command::Lifecycle { command } => command.execute(&global).await,
+            Command::Sign { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
@@ -938,6 +948,142 @@ mod tests {
     fn parse_permission_delete() {
         let cli = parse(&["ak", "permission", "delete", "some-id"]).unwrap();
         assert!(matches!(cli.command, Command::Permission { .. }));
+    }
+
+    // ---- Sign command parsing ----
+
+    #[test]
+    fn parse_sign_key_list() {
+        parse(&["ak", "sign", "key", "list"]).unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_list_with_repo() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "list",
+            "--repo",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_create() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "create",
+            "my-key",
+            "--algorithm",
+            "ed25519",
+            "--type",
+            "signing",
+            "--repo",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_show() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "show",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_delete() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "delete",
+            "00000000-0000-0000-0000-000000000000",
+            "--yes",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_revoke() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "revoke",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_rotate() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "rotate",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_export() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "export",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_config_show() {
+        parse(&[
+            "ak",
+            "sign",
+            "config",
+            "show",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_config_update() {
+        parse(&[
+            "ak",
+            "sign",
+            "config",
+            "update",
+            "00000000-0000-0000-0000-000000000000",
+            "--require-signatures",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_config_export_key() {
+        parse(&[
+            "ak",
+            "sign",
+            "config",
+            "export-key",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
     }
 
     // ---- Error cases ----

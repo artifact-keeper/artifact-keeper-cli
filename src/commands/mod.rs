@@ -18,4 +18,5 @@ pub mod quality_gate;
 pub mod repo;
 pub mod scan;
 pub mod setup;
+pub mod sign;
 pub mod tui;
