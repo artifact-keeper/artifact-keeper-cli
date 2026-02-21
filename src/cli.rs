@@ -168,6 +168,16 @@ pub enum Command {
         command: commands::promotion::PromotionCommand,
     },
 
+    /// Manage artifact quality gates
+    #[command(
+        alias = "qg",
+        after_help = "Examples:\n  ak quality-gate list\n  ak quality-gate show <gate-id>\n  ak quality-gate create strict --max-critical 0 --max-high 5 --action block\n  ak quality-gate check <artifact-id>\n  ak quality-gate delete <gate-id>"
+    )]
+    QualityGate {
+        #[command(subcommand)]
+        command: commands::quality_gate::QualityGateCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -274,6 +284,7 @@ impl Cli {
             Command::Group { command } => command.execute(&global).await,
             Command::Approval { command } => command.execute(&global).await,
             Command::Promotion { command } => command.execute(&global).await,
+            Command::QualityGate { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
@@ -649,6 +660,62 @@ mod tests {
     fn parse_group_remove_member() {
         let cli = parse(&["ak", "group", "remove-member", "group-id", "user-id"]).unwrap();
         assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    // ---- Quality gate command parsing ----
+
+    #[test]
+    fn parse_quality_gate_list() {
+        let cli = parse(&["ak", "quality-gate", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_show() {
+        let cli = parse(&["ak", "quality-gate", "show", "gate-id"]).unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_create() {
+        let cli = parse(&[
+            "ak",
+            "quality-gate",
+            "create",
+            "strict",
+            "--max-critical",
+            "0",
+            "--action",
+            "block",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_update() {
+        let cli = parse(&[
+            "ak",
+            "quality-gate",
+            "update",
+            "gate-id",
+            "--max-critical",
+            "1",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_delete() {
+        let cli = parse(&["ak", "quality-gate", "delete", "gate-id"]).unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_check() {
+        let cli = parse(&["ak", "quality-gate", "check", "artifact-id"]).unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
     }
 
     // ---- Approval command parsing ----

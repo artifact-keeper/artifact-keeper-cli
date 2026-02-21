@@ -11,6 +11,7 @@ pub mod instance;
 pub mod migrate;
 pub mod permission;
 pub mod promotion;
+pub mod quality_gate;
 pub mod repo;
 pub mod scan;
 pub mod setup;
