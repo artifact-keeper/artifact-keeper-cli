@@ -141,6 +141,70 @@ pub enum Command {
         dry_run: bool,
     },
 
+    /// Manage user groups
+    #[command(
+        after_help = "Examples:\n  ak group list\n  ak group show <group-id>\n  ak group create dev-team --description \"Development team\"\n  ak group add-member <group-id> <user-id>"
+    )]
+    Group {
+        #[command(subcommand)]
+        command: commands::group::GroupCommand,
+    },
+
+    /// Manage promotion approval workflows
+    #[command(
+        after_help = "Examples:\n  ak approval list\n  ak approval list --status pending\n  ak approval show <approval-id>\n  ak approval approve <approval-id> --comment \"Looks good\"\n  ak approval reject <approval-id> --comment \"Needs fixes\""
+    )]
+    Approval {
+        #[command(subcommand)]
+        command: commands::approval::ApprovalCommand,
+    },
+
+    /// Promote artifacts between repositories
+    #[command(
+        after_help = "Examples:\n  ak promotion promote <artifact-id> --from staging --to production\n  ak promotion rule list\n  ak promotion rule create my-rule --from <repo-id> --to <repo-id> --auto\n  ak promotion history --repo my-repo"
+    )]
+    Promotion {
+        #[command(subcommand)]
+        command: commands::promotion::PromotionCommand,
+    },
+
+    /// Manage artifact quality gates
+    #[command(
+        alias = "qg",
+        after_help = "Examples:\n  ak quality-gate list\n  ak quality-gate show <gate-id>\n  ak quality-gate create strict --max-critical 0 --max-high 5 --action block\n  ak quality-gate check <artifact-id>\n  ak quality-gate delete <gate-id>"
+    )]
+    QualityGate {
+        #[command(subcommand)]
+        command: commands::quality_gate::QualityGateCommand,
+    },
+
+    /// Tag repositories with key-value labels
+    #[command(
+        after_help = "Examples:\n  ak label repo list my-repo\n  ak label repo add my-repo env=production\n  ak label repo remove my-repo env"
+    )]
+    Label {
+        #[command(subcommand)]
+        command: commands::label::LabelCommand,
+    },
+
+    /// Manage lifecycle and retention policies
+    #[command(
+        after_help = "Examples:\n  ak lifecycle list\n  ak lifecycle show <policy-id>\n  ak lifecycle create my-policy --max-severity high --block-on-fail\n  ak lifecycle preview <policy-id>\n  ak lifecycle execute <policy-id>"
+    )]
+    Lifecycle {
+        #[command(subcommand)]
+        command: commands::lifecycle::LifecycleCommand,
+    },
+
+    /// Manage fine-grained permission rules
+    #[command(
+        after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
+    )]
+    Permission {
+        #[command(subcommand)]
+        command: commands::permission::PermissionCommand,
+    },
+
     /// Administrative operations (backup, cleanup, users, plugins)
     #[command(
         after_help = "Examples:\n  ak admin backup list\n  ak admin backup create --type full\n  ak admin cleanup --audit-logs --old-backups\n  ak admin metrics\n  ak admin users list\n  ak admin plugins list"
@@ -235,6 +299,13 @@ impl Cli {
                 )
                 .await
             }
+            Command::Group { command } => command.execute(&global).await,
+            Command::Approval { command } => command.execute(&global).await,
+            Command::Promotion { command } => command.execute(&global).await,
+            Command::QualityGate { command } => command.execute(&global).await,
+            Command::Label { command } => command.execute(&global).await,
+            Command::Lifecycle { command } => command.execute(&global).await,
+            Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
             Command::Tui => commands::tui::execute(&global).await,
@@ -478,6 +549,27 @@ mod tests {
     }
 
     #[test]
+    fn parse_admin_users_update() {
+        let cli = parse(&[
+            "ak",
+            "admin",
+            "users",
+            "update",
+            "some-id",
+            "--email",
+            "alice@new.com",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_users_reset_password() {
+        let cli = parse(&["ak", "admin", "users", "reset-password", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
     fn parse_admin_plugins_list() {
         let cli = parse(&["ak", "admin", "plugins", "list"]).unwrap();
         assert!(matches!(cli.command, Command::Admin { .. }));
@@ -571,6 +663,281 @@ mod tests {
     fn parse_color_always() {
         let cli = parse(&["ak", "--color", "always", "doctor"]).unwrap();
         assert!(matches!(cli.color, ColorMode::Always));
+    }
+
+    // ---- Group command parsing ----
+
+    #[test]
+    fn parse_group_list() {
+        let cli = parse(&["ak", "group", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_show() {
+        let cli = parse(&["ak", "group", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_create() {
+        let cli = parse(&["ak", "group", "create", "dev-team"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_delete() {
+        let cli = parse(&["ak", "group", "delete", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_add_member() {
+        let cli = parse(&["ak", "group", "add-member", "group-id", "user-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    #[test]
+    fn parse_group_remove_member() {
+        let cli = parse(&["ak", "group", "remove-member", "group-id", "user-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    // ---- Label command parsing ----
+
+    #[test]
+    fn parse_label_repo_list() {
+        let cli = parse(&["ak", "label", "repo", "list", "my-repo"]).unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
+    }
+
+    #[test]
+    fn parse_label_repo_add() {
+        let cli = parse(&["ak", "label", "repo", "add", "my-repo", "env=prod"]).unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
+    }
+
+    #[test]
+    fn parse_label_repo_remove() {
+        let cli = parse(&["ak", "label", "repo", "remove", "my-repo", "env"]).unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
+    }
+
+    // ---- Lifecycle command parsing ----
+
+    #[test]
+    fn parse_lifecycle_list() {
+        let cli = parse(&["ak", "lifecycle", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_show() {
+        let cli = parse(&["ak", "lifecycle", "show", "policy-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_create() {
+        let cli = parse(&[
+            "ak",
+            "lifecycle",
+            "create",
+            "my-policy",
+            "--max-severity",
+            "high",
+            "--block-on-fail",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_delete() {
+        let cli = parse(&["ak", "lifecycle", "delete", "policy-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_preview() {
+        let cli = parse(&["ak", "lifecycle", "preview", "policy-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    #[test]
+    fn parse_lifecycle_execute() {
+        let cli = parse(&["ak", "lifecycle", "execute", "policy-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Lifecycle { .. }));
+    }
+
+    // ---- Quality gate command parsing ----
+
+    #[test]
+    fn parse_quality_gate_list() {
+        let cli = parse(&["ak", "quality-gate", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_show() {
+        let cli = parse(&["ak", "quality-gate", "show", "gate-id"]).unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_create() {
+        let cli = parse(&[
+            "ak",
+            "quality-gate",
+            "create",
+            "strict",
+            "--max-critical",
+            "0",
+            "--action",
+            "block",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_update() {
+        let cli = parse(&[
+            "ak",
+            "quality-gate",
+            "update",
+            "gate-id",
+            "--max-critical",
+            "1",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_delete() {
+        let cli = parse(&["ak", "quality-gate", "delete", "gate-id"]).unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    #[test]
+    fn parse_quality_gate_check() {
+        let cli = parse(&["ak", "quality-gate", "check", "artifact-id"]).unwrap();
+        assert!(matches!(cli.command, Command::QualityGate { .. }));
+    }
+
+    // ---- Approval command parsing ----
+
+    #[test]
+    fn parse_approval_list() {
+        let cli = parse(&["ak", "approval", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Approval { .. }));
+    }
+
+    #[test]
+    fn parse_approval_show() {
+        let cli = parse(&["ak", "approval", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Approval { .. }));
+    }
+
+    #[test]
+    fn parse_approval_approve() {
+        let cli = parse(&["ak", "approval", "approve", "some-id", "--comment", "LGTM"]).unwrap();
+        assert!(matches!(cli.command, Command::Approval { .. }));
+    }
+
+    #[test]
+    fn parse_approval_reject() {
+        let cli = parse(&["ak", "approval", "reject", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Approval { .. }));
+    }
+
+    // ---- Promotion command parsing ----
+
+    #[test]
+    fn parse_promotion_promote() {
+        let cli = parse(&[
+            "ak",
+            "promotion",
+            "promote",
+            "artifact-id",
+            "--from",
+            "staging",
+            "--to",
+            "prod",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
+    }
+
+    #[test]
+    fn parse_promotion_rule_list() {
+        let cli = parse(&["ak", "promotion", "rule", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
+    }
+
+    #[test]
+    fn parse_promotion_rule_create() {
+        let cli = parse(&[
+            "ak",
+            "promotion",
+            "rule",
+            "create",
+            "my-rule",
+            "--from",
+            "src-id",
+            "--to",
+            "dst-id",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
+    }
+
+    #[test]
+    fn parse_promotion_rule_delete() {
+        let cli = parse(&["ak", "promotion", "rule", "delete", "rule-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
+    }
+
+    #[test]
+    fn parse_promotion_history() {
+        let cli = parse(&["ak", "promotion", "history", "--repo", "my-repo"]).unwrap();
+        assert!(matches!(cli.command, Command::Promotion { .. }));
+    }
+
+    // ---- Permission command parsing ----
+
+    #[test]
+    fn parse_permission_list() {
+        let cli = parse(&["ak", "permission", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Permission { .. }));
+    }
+
+    #[test]
+    fn parse_permission_create() {
+        let cli = parse(&[
+            "ak",
+            "permission",
+            "create",
+            "--principal",
+            "00000000-0000-0000-0000-000000000001",
+            "--principal-type",
+            "user",
+            "--target",
+            "00000000-0000-0000-0000-000000000002",
+            "--target-type",
+            "repository",
+            "--actions",
+            "read,write",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Permission { .. }));
+    }
+
+    #[test]
+    fn parse_permission_delete() {
+        let cli = parse(&["ak", "permission", "delete", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Permission { .. }));
     }
 
     // ---- Error cases ----
