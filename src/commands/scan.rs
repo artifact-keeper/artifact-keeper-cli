@@ -2219,28 +2219,11 @@ mod tests {
     use wiremock::{Mock, ResponseTemplate};
 
     /// Set up env vars for handler tests; returns a guard that must be held.
-    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
-        let guard = crate::test_utils::ENV_LOCK
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            std::env::set_var("AK_CONFIG_DIR", tmp.path());
-            std::env::set_var("AK_TOKEN", "test-token");
-        }
-        guard
-    }
-
-    fn teardown_env() {
-        unsafe {
-            std::env::remove_var("AK_CONFIG_DIR");
-            std::env::remove_var("AK_TOKEN");
-        }
-    }
 
     #[tokio::test]
     async fn handler_list_scans_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/scans"))
@@ -2254,13 +2237,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_scans(None, 1, 20, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_scans_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/scans"))
@@ -2289,13 +2272,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_scans(None, 1, 20, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_scans_with_repo_filter() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/repositories/.+/security/scans"))
@@ -2309,13 +2292,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = list_scans(Some("my-repo"), 1, 20, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_dashboard() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/dashboard"))
@@ -2335,13 +2318,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_dashboard(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_dashboard_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/dashboard"))
@@ -2361,13 +2344,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = show_dashboard(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_scores_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/scores"))
@@ -2378,13 +2361,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_scores(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_scores_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/scores"))
@@ -2410,13 +2393,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_scores(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_scan_configs_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/configs"))
@@ -2427,13 +2410,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_scan_configs(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_scan_configs_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/configs"))
@@ -2456,13 +2439,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_scan_configs(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_policies_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/policies"))
@@ -2473,13 +2456,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_policies(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_policies_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/security/policies"))
@@ -2505,13 +2488,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_policies(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_policy() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/security/policies/.+"))
@@ -2535,13 +2518,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_policy("00000000-0000-0000-0000-000000000001", &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_create_policy() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/security/policies"))
@@ -2565,13 +2548,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = create_policy("new-policy", "HIGH", true, false, None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_delete_policy() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("DELETE"))
             .and(path_regex("/api/v1/security/policies/.+"))
@@ -2583,13 +2566,13 @@ mod tests {
         // yes=true to skip confirmation, no_input is also true in test_global
         let result = delete_policy("00000000-0000-0000-0000-000000000001", true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_acknowledge_finding() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path_regex("/api/v1/security/findings/.+/acknowledge"))
@@ -2619,13 +2602,13 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_revoke_finding() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("DELETE"))
             .and(path_regex("/api/v1/security/findings/.+/acknowledge"))
@@ -2650,13 +2633,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = revoke_finding("00000000-0000-0000-0000-000000000001", &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_repo_security() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/repositories/.+/security"))
@@ -2693,13 +2676,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_repo_security("my-repo", &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_update_repo_security() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("PUT"))
             .and(path_regex("/api/v1/repositories/.+/security"))
@@ -2721,13 +2704,13 @@ mod tests {
         let result =
             update_repo_security("my-repo", true, true, true, true, "CRITICAL", &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_findings() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         let scan_id = "00000000-0000-0000-0000-000000000001";
 
@@ -2780,13 +2763,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_findings(scan_id, None, 1, 50, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_run_scan() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         // Mock for list_artifacts (finding the artifact)
         Mock::given(method("GET"))
@@ -2821,13 +2804,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = run_scan("my-repo", "pkg/foo-1.0.tar.gz", &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_update_policy() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         let policy_id = "00000000-0000-0000-0000-000000000001";
 
@@ -2883,6 +2866,6 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 }

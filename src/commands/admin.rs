@@ -1704,28 +1704,10 @@ mod tests {
     use wiremock::matchers::{method, path, path_regex};
     use wiremock::{Mock, ResponseTemplate};
 
-    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
-        let guard = crate::test_utils::ENV_LOCK
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            std::env::set_var("AK_CONFIG_DIR", tmp.path());
-            std::env::set_var("AK_TOKEN", "test-token");
-        }
-        guard
-    }
-
-    fn teardown_env() {
-        unsafe {
-            std::env::remove_var("AK_CONFIG_DIR");
-            std::env::remove_var("AK_TOKEN");
-        }
-    }
-
     #[tokio::test]
     async fn handler_list_backups_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/admin/backups"))
@@ -1739,13 +1721,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_backups(1, 20, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_backups_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/admin/backups"))
@@ -1768,13 +1750,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_backups(1, 20, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_create_backup() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/admin/backups"))
@@ -1794,13 +1776,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = create_backup("full", &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_run_cleanup() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/admin/cleanup"))
@@ -1815,13 +1797,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = run_cleanup(true, true, true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_metrics() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/admin/stats"))
@@ -1840,13 +1822,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_metrics(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_users_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/users"))
@@ -1860,13 +1842,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_users(None, 1, 20, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_users_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/users"))
@@ -1890,13 +1872,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_users(None, 1, 20, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_create_user() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/users"))
@@ -1920,13 +1902,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = create_user("bob", "bob@example.com", None, false, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_update_user() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("PATCH"))
             .and(path_regex("/api/v1/users/.+"))
@@ -1955,13 +1937,13 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_delete_user() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("DELETE"))
             .and(path_regex("/api/v1/users/.+"))
@@ -1972,13 +1954,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = delete_user("00000000-0000-0000-0000-000000000001", true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_reset_password() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path_regex("/api/v1/users/.+/password/reset"))
@@ -1991,13 +1973,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = reset_password("00000000-0000-0000-0000-000000000001", &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_plugins_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/plugins"))
@@ -2010,13 +1992,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_plugins(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_plugins_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/plugins"))
@@ -2039,13 +2021,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_plugins(&global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_install_plugin() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/plugins/install/git"))
@@ -2062,13 +2044,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = install_plugin("https://github.com/example/plugin.git", None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_remove_plugin() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("DELETE"))
             .and(path_regex("/api/v1/plugins/.+"))
@@ -2079,6 +2061,6 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = remove_plugin("00000000-0000-0000-0000-000000000001", true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 }

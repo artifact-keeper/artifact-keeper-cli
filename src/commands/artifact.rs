@@ -1322,28 +1322,10 @@ mod tests {
     use wiremock::matchers::{method, path, path_regex};
     use wiremock::{Mock, ResponseTemplate};
 
-    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
-        let guard = crate::test_utils::ENV_LOCK
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            std::env::set_var("AK_CONFIG_DIR", tmp.path());
-            std::env::set_var("AK_TOKEN", "test-token");
-        }
-        guard
-    }
-
-    fn teardown_env() {
-        unsafe {
-            std::env::remove_var("AK_CONFIG_DIR");
-            std::env::remove_var("AK_TOKEN");
-        }
-    }
-
     #[tokio::test]
     async fn handler_list_artifacts_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/repositories/.+/artifacts"))
@@ -1357,13 +1339,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list("my-repo", None, 1, 50, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_artifacts_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/repositories/.+/artifacts"))
@@ -1388,13 +1370,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list("maven-central", None, 1, 50, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_artifact_info() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/repositories/.+/artifacts"))
@@ -1419,13 +1401,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = info("maven-central", "org/example/lib/1.0/lib-1.0.jar", &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_artifact_info_not_found() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/repositories/.+/artifacts"))
@@ -1439,13 +1421,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = info("my-repo", "nonexistent", &global).await;
         assert!(result.is_err());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_search_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/search/advanced"))
@@ -1460,13 +1442,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = search("nonexistent", None, None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_search_with_results() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/search/advanced"))
@@ -1491,13 +1473,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = search("log4j", None, None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_delete_artifact() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("DELETE"))
             .and(path_regex("/api/v1/repositories/.+/artifacts/.+"))
@@ -1509,13 +1491,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = delete("my-repo", "path/to/file", true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_same_instance_copy() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         // Mock for finding the source artifact
         Mock::given(method("GET"))
@@ -1556,6 +1538,6 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = same_instance_copy("src-repo", "pkg/lib-1.0.jar", "dst-repo", &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 }

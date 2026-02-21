@@ -44,4 +44,22 @@ pub(crate) mod test_utils {
             no_input: true,
         }
     }
+
+    /// Set up env vars for wiremock tests. Returns a MutexGuard that must be held for the test.
+    pub fn setup_env(tmp: &TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    /// Clean up env vars after wiremock tests.
+    pub fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
 }

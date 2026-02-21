@@ -622,24 +622,6 @@ mod tests {
 
     static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
 
-    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
-        let guard = crate::test_utils::ENV_LOCK
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            std::env::set_var("AK_CONFIG_DIR", tmp.path());
-            std::env::set_var("AK_TOKEN", "test-token");
-        }
-        guard
-    }
-
-    fn teardown_env() {
-        unsafe {
-            std::env::remove_var("AK_CONFIG_DIR");
-            std::env::remove_var("AK_TOKEN");
-        }
-    }
-
     fn perm_json() -> serde_json::Value {
         json!({
             "id": NIL_UUID,
@@ -658,7 +640,7 @@ mod tests {
     #[tokio::test]
     async fn handler_list_permissions_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/permissions"))
@@ -672,13 +654,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = list_permissions(None, None, 1, 50, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_permissions_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/permissions"))
@@ -692,13 +674,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = list_permissions(None, None, 1, 50, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_permissions_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/permissions"))
@@ -712,13 +694,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
         let result = list_permissions(None, None, 1, 50, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_create_permission_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/permissions"))
@@ -737,13 +719,13 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_delete_permission() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("DELETE"))
             .and(path(format!("/api/v1/permissions/{NIL_UUID}")))
@@ -754,6 +736,6 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = delete_permission(NIL_UUID, true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 }

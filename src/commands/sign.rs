@@ -1155,30 +1155,13 @@ mod tests {
     use wiremock::{Mock, ResponseTemplate};
 
     /// Set up env vars for handler tests; returns a guard that must be held.
-    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
-        let guard = crate::test_utils::ENV_LOCK
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            std::env::set_var("AK_CONFIG_DIR", tmp.path());
-            std::env::set_var("AK_TOKEN", "test-token");
-        }
-        guard
-    }
-
-    fn teardown_env() {
-        unsafe {
-            std::env::remove_var("AK_CONFIG_DIR");
-            std::env::remove_var("AK_TOKEN");
-        }
-    }
 
     static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
 
     #[tokio::test]
     async fn handler_list_keys_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/signing/keys"))
@@ -1192,13 +1175,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_keys(None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_keys_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/signing/keys"))
@@ -1229,13 +1212,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_keys(None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_keys_with_repo_filter() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/signing/keys"))
@@ -1266,13 +1249,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_keys(Some(NIL_UUID), &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_key() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/signing/keys/.+"))
@@ -1298,13 +1281,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_key(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_create_key() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/signing/keys"))
@@ -1339,13 +1322,13 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_create_key_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/signing/keys"))
@@ -1380,13 +1363,13 @@ mod tests {
         )
         .await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_delete_key() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("DELETE"))
             .and(path_regex("/api/v1/signing/keys/.+"))
@@ -1400,13 +1383,13 @@ mod tests {
         // skip_confirm=true because no_input=true in test_global
         let result = delete_key(NIL_UUID, true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_revoke_key() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path_regex("/api/v1/signing/keys/.+/revoke"))
@@ -1419,13 +1402,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = revoke_key(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_revoke_key_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path_regex("/api/v1/signing/keys/.+/revoke"))
@@ -1438,13 +1421,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = revoke_key(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_rotate_key() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path_regex("/api/v1/signing/keys/.+/rotate"))
@@ -1470,13 +1453,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = rotate_key(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_rotate_key_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path_regex("/api/v1/signing/keys/.+/rotate"))
@@ -1502,13 +1485,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = rotate_key(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_config() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/signing/repositories/.+/config"))
@@ -1526,13 +1509,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_config(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_update_config() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path_regex("/api/v1/signing/repositories/.+/config"))
@@ -1552,6 +1535,6 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = update_config(NIL_UUID, true, true, true, Some(NIL_UUID), &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 }

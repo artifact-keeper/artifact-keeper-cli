@@ -1350,30 +1350,13 @@ mod tests {
     use wiremock::{Mock, ResponseTemplate};
 
     /// Set up env vars for handler tests; returns a guard that must be held.
-    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
-        let guard = crate::test_utils::ENV_LOCK
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            std::env::set_var("AK_CONFIG_DIR", tmp.path());
-            std::env::set_var("AK_TOKEN", "test-token");
-        }
-        guard
-    }
-
-    fn teardown_env() {
-        unsafe {
-            std::env::remove_var("AK_CONFIG_DIR");
-            std::env::remove_var("AK_TOKEN");
-        }
-    }
 
     static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
 
     #[tokio::test]
     async fn handler_generate_sbom() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/sbom"))
@@ -1400,13 +1383,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = generate_sbom(NIL_UUID, Some("spdx"), false, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_generate_sbom_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/sbom"))
@@ -1433,13 +1416,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = generate_sbom(NIL_UUID, None, true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_show_sbom() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/sbom/by-artifact/.+"))
@@ -1467,13 +1450,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_sbom(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_sboms_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/sbom"))
@@ -1484,13 +1467,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_sboms(None, None, None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_sboms_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/sbom"))
@@ -1519,13 +1502,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = list_sboms(None, Some("spdx"), None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_get_sbom() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/sbom/[0-9a-f-]+$"))
@@ -1553,13 +1536,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = get_sbom(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_delete_sbom() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("DELETE"))
             .and(path_regex("/api/v1/sbom/.+"))
@@ -1573,13 +1556,13 @@ mod tests {
         // skip_confirm=true because no_input=true in test_global
         let result = delete_sbom(NIL_UUID, true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_get_components_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/sbom/.+/components"))
@@ -1590,13 +1573,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = get_components(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_get_components_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/sbom/.+/components"))
@@ -1623,13 +1606,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = get_components(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_cve_history_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/sbom/cve/history/.+"))
@@ -1640,13 +1623,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = cve_history(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_cve_history_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex("/api/v1/sbom/cve/history/.+"))
@@ -1680,13 +1663,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = cve_history(NIL_UUID, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_cve_trends() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/sbom/cve/trends"))
@@ -1708,13 +1691,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = cve_trends(30, None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_cve_trends_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/sbom/cve/trends"))
@@ -1736,13 +1719,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = cve_trends(90, None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_cve_update_status() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path_regex("/api/v1/sbom/cve/status/.+"))
@@ -1774,13 +1757,13 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = cve_update_status(NIL_UUID, "fixed", Some("Patched in v2"), &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_cve_update_status_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path_regex("/api/v1/sbom/cve/status/.+"))
@@ -1812,6 +1795,6 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = cve_update_status(NIL_UUID, "false_positive", None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 }

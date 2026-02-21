@@ -878,24 +878,6 @@ mod tests {
 
     static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
 
-    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
-        let guard = crate::test_utils::ENV_LOCK
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
-        unsafe {
-            std::env::set_var("AK_CONFIG_DIR", tmp.path());
-            std::env::set_var("AK_TOKEN", "test-token");
-        }
-        guard
-    }
-
-    fn teardown_env() {
-        unsafe {
-            std::env::remove_var("AK_CONFIG_DIR");
-            std::env::remove_var("AK_TOKEN");
-        }
-    }
-
     fn rule_json() -> serde_json::Value {
         json!({
             "id": NIL_UUID,
@@ -913,7 +895,7 @@ mod tests {
     #[tokio::test]
     async fn handler_promote_artifact_json() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path(format!(
@@ -933,13 +915,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = promote_artifact("staging", NIL_UUID, "releases", None, false, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_promote_artifact_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path(format!(
@@ -958,13 +940,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
         let result = promote_artifact("staging", NIL_UUID, "releases", None, false, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_rules_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/promotion-rules"))
@@ -978,13 +960,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = list_rules(None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_rules_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/promotion-rules"))
@@ -998,13 +980,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = list_rules(None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_list_rules_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path("/api/v1/promotion-rules"))
@@ -1018,13 +1000,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
         let result = list_rules(None, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_create_rule_quiet() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("POST"))
             .and(path("/api/v1/promotion-rules"))
@@ -1035,13 +1017,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
         let result = create_rule("staging-to-prod", NIL_UUID, NIL_UUID, false, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_delete_rule() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("DELETE"))
             .and(path(format!("/api/v1/promotion-rules/{NIL_UUID}")))
@@ -1052,13 +1034,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = delete_rule(NIL_UUID, true, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_promotion_history_empty() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex(
@@ -1074,13 +1056,13 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = promotion_history("maven-releases", None, 1, 20, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 
     #[tokio::test]
     async fn handler_promotion_history_with_data() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = setup_env(&tmp);
+        let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
             .and(path_regex(
@@ -1105,6 +1087,6 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = promotion_history("maven-releases", None, 1, 20, &global).await;
         assert!(result.is_ok());
-        teardown_env();
+        crate::test_utils::teardown_env();
     }
 }
