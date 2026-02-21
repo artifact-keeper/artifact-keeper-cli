@@ -24,6 +24,7 @@ pub mod sbom;
 pub mod scan;
 pub mod setup;
 pub mod sign;
+pub mod sso;
 pub mod sync_policy;
 pub mod tui;
 pub mod webhook;

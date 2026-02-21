@@ -232,6 +232,15 @@ pub enum Command {
         command: commands::peer::PeerCommand,
     },
 
+    /// Manage SSO authentication providers (LDAP, OIDC, SAML)
+    #[command(
+        after_help = "Examples:\n  ak sso list\n  ak sso show <id> --type oidc\n  ak sso create ldap corp-ldap --server-url ldaps://ldap.corp.com --user-base-dn ou=users,dc=corp\n  ak sso test <id>\n  ak sso toggle <id> --type ldap --enable"
+    )]
+    Sso {
+        #[command(subcommand)]
+        command: commands::sso::SsoCommand,
+    },
+
     /// Manage sync policies for automated replication
     #[command(
         alias = "sp",
@@ -383,6 +392,7 @@ impl Cli {
             Command::Sbom { command } => command.execute(&global).await,
             Command::License { command } => command.execute(&global).await,
             Command::Peer { command } => command.execute(&global).await,
+            Command::Sso { command } => command.execute(&global).await,
             Command::SyncPolicy { command } => command.execute(&global).await,
             Command::Webhook { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
@@ -1838,6 +1848,119 @@ mod tests {
     fn parse_webhook_redeliver() {
         let cli = parse(&["ak", "webhook", "redeliver", "wh-id", "delivery-id"]).unwrap();
         assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    // ---- SSO command parsing ----
+
+    #[test]
+    fn parse_sso_list() {
+        let cli = parse(&["ak", "sso", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_show() {
+        let cli = parse(&["ak", "sso", "show", "some-id", "--type", "ldap"]).unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_show_oidc() {
+        let cli = parse(&["ak", "sso", "show", "some-id", "--type", "oidc"]).unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_show_saml() {
+        let cli = parse(&["ak", "sso", "show", "some-id", "--type", "saml"]).unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_show_invalid_type() {
+        assert!(parse(&["ak", "sso", "show", "some-id", "--type", "kerberos"]).is_err());
+    }
+
+    #[test]
+    fn parse_sso_create_ldap() {
+        let cli = parse(&[
+            "ak",
+            "sso",
+            "create",
+            "ldap",
+            "corp-ldap",
+            "--server-url",
+            "ldaps://ldap.corp.com",
+            "--user-base-dn",
+            "ou=users,dc=corp",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_create_oidc() {
+        let cli = parse(&[
+            "ak",
+            "sso",
+            "create",
+            "oidc",
+            "okta-sso",
+            "--issuer-url",
+            "https://company.okta.com",
+            "--client-id",
+            "abc123",
+            "--client-secret",
+            "secret",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_create_saml() {
+        let cli = parse(&[
+            "ak",
+            "sso",
+            "create",
+            "saml",
+            "azure-ad",
+            "--entity-id",
+            "https://sts.windows.net/tenant",
+            "--sso-url",
+            "https://login.microsoft.com/saml2",
+            "--certificate",
+            "MIIC...",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_delete() {
+        let cli = parse(&["ak", "sso", "delete", "some-id", "--type", "ldap"]).unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_delete_with_yes() {
+        let cli = parse(&["ak", "sso", "delete", "some-id", "--type", "oidc", "--yes"]).unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_test() {
+        let cli = parse(&["ak", "sso", "test", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
+    }
+
+    #[test]
+    fn parse_sso_toggle_enable() {
+        let cli = parse(&[
+            "ak", "sso", "toggle", "some-id", "--type", "ldap", "--enable",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Sso { .. }));
     }
 
     // ---- Sync policy command parsing ----
