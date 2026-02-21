@@ -1,7 +1,11 @@
 use artifact_keeper_sdk::ClientSecurityExt;
+use artifact_keeper_sdk::types::{
+    DtComponentFull, DtFinding, DtPolicyFull, DtPortfolioMetrics, DtProject, DtProjectMetrics,
+};
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
+use serde_json::Value;
 
 use super::client::client_for;
 use crate::cli::GlobalArgs;
@@ -221,36 +225,7 @@ async fn project_list(global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let entries: Vec<_> = projects
-        .iter()
-        .map(|p| {
-            serde_json::json!({
-                "uuid": p.uuid,
-                "name": p.name,
-                "version": p.version,
-                "last_bom_import": p.last_bom_import,
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["UUID", "NAME", "VERSION", "LAST BOM IMPORT"]);
-
-        for p in &projects {
-            let version = p.version.as_deref().unwrap_or("-");
-            let last_bom = p
-                .last_bom_import
-                .map(format_timestamp)
-                .unwrap_or_else(|| "-".to_string());
-            table.add_row(vec![&p.uuid, &p.name, version, &last_bom]);
-        }
-
-        table.to_string()
-    };
+    let (entries, table_str) = format_projects_table(&projects);
 
     println!(
         "{}",
@@ -339,37 +314,7 @@ async fn project_components(uuid: &str, global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let entries: Vec<_> = components
-        .iter()
-        .map(|c| {
-            serde_json::json!({
-                "uuid": c.uuid,
-                "group": c.group,
-                "name": c.name,
-                "version": c.version,
-                "purl": c.purl,
-                "cpe": c.cpe,
-                "is_internal": c.is_internal,
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["UUID", "GROUP", "NAME", "VERSION", "PURL"]);
-
-        for c in &components {
-            let group = c.group.as_deref().unwrap_or("-");
-            let version = c.version.as_deref().unwrap_or("-");
-            let purl = c.purl.as_deref().unwrap_or("-");
-            table.add_row(vec![&c.uuid, group, &c.name, version, purl]);
-        }
-
-        table.to_string()
-    };
+    let (entries, table_str) = format_dt_components_table(&components);
 
     println!(
         "{}",
@@ -427,61 +372,16 @@ async fn project_findings(
         return Ok(());
     }
 
-    let entries: Vec<_> = filtered
-        .iter()
-        .map(|f| {
-            serde_json::json!({
-                "vuln_id": f.vulnerability.vuln_id,
-                "severity": f.vulnerability.severity,
-                "source": f.vulnerability.source,
-                "component": f.component.name,
-                "component_version": f.component.version,
-                "title": f.vulnerability.title,
-                "cvss_v3": f.vulnerability.cvss_v3_base_score,
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "VULN ID",
-                "SEVERITY",
-                "SOURCE",
-                "COMPONENT",
-                "VERSION",
-                "CVSS v3",
-            ]);
-
-        for f in &filtered {
-            let version = f.component.version.as_deref().unwrap_or("-");
-            let cvss = f
-                .vulnerability
-                .cvss_v3_base_score
-                .map(|s| format!("{s:.1}"))
-                .unwrap_or_else(|| "-".to_string());
-            table.add_row(vec![
-                &f.vulnerability.vuln_id,
-                &f.vulnerability.severity,
-                &f.vulnerability.source,
-                &f.component.name,
-                version,
-                &cvss,
-            ]);
-        }
-
-        table.to_string()
-    };
+    let findings_count = filtered.len();
+    let findings_vec: Vec<_> = filtered.into_iter().cloned().collect();
+    let (entries, table_str) = format_findings_table(&findings_vec);
 
     println!(
         "{}",
         output::render(&entries, &global.format, Some(table_str))
     );
 
-    eprintln!("{} finding(s).", filtered.len());
+    eprintln!("{} finding(s).", findings_count);
 
     Ok(())
 }
@@ -587,29 +487,7 @@ async fn project_metrics(uuid: &str, global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let data = serde_json::json!({
-        "critical": metrics.critical,
-        "high": metrics.high,
-        "medium": metrics.medium,
-        "low": metrics.low,
-        "unassigned": metrics.unassigned,
-        "findings_audited": metrics.findings_audited,
-        "findings_total": metrics.findings_total,
-        "inherited_risk_score": metrics.inherited_risk_score,
-        "policy_violations_total": metrics.policy_violations_total,
-        "suppressions": metrics.suppressions,
-    });
-
-    let table_str = format!(
-        "Critical:     {}\nHigh:         {}\nMedium:       {}\nLow:          {}\nUnassigned:   {}\nAudited:      {}/{}",
-        metrics.critical.unwrap_or(0),
-        metrics.high.unwrap_or(0),
-        metrics.medium.unwrap_or(0),
-        metrics.low.unwrap_or(0),
-        metrics.unassigned.unwrap_or(0),
-        metrics.findings_audited.unwrap_or(0),
-        metrics.findings_total.unwrap_or(0),
-    );
+    let (data, table_str) = format_project_metrics_detail(&metrics);
 
     println!("{}", output::render(&data, &global.format, Some(table_str)));
 
@@ -723,31 +601,7 @@ async fn portfolio_metrics(global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let data = serde_json::json!({
-        "critical": metrics.critical,
-        "high": metrics.high,
-        "medium": metrics.medium,
-        "low": metrics.low,
-        "unassigned": metrics.unassigned,
-        "findings_audited": metrics.findings_audited,
-        "findings_total": metrics.findings_total,
-        "projects": metrics.projects,
-        "inherited_risk_score": metrics.inherited_risk_score,
-        "policy_violations_total": metrics.policy_violations_total,
-        "suppressions": metrics.suppressions,
-    });
-
-    let table_str = format!(
-        "Projects:     {}\nCritical:     {}\nHigh:         {}\nMedium:       {}\nLow:          {}\nUnassigned:   {}\nAudited:      {}/{}",
-        metrics.projects.unwrap_or(0),
-        metrics.critical.unwrap_or(0),
-        metrics.high.unwrap_or(0),
-        metrics.medium.unwrap_or(0),
-        metrics.low.unwrap_or(0),
-        metrics.unassigned.unwrap_or(0),
-        metrics.findings_audited.unwrap_or(0),
-        metrics.findings_total.unwrap_or(0),
-    );
+    let (data, table_str) = format_portfolio_metrics_detail(&metrics);
 
     println!("{}", output::render(&data, &global.format, Some(table_str)));
 
@@ -780,45 +634,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let entries: Vec<_> = policies
-        .iter()
-        .map(|p| {
-            serde_json::json!({
-                "uuid": p.uuid,
-                "name": p.name,
-                "violation_state": p.violation_state,
-                "conditions": p.policy_conditions.len(),
-                "projects": p.projects.len(),
-                "include_children": p.include_children,
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "UUID",
-                "NAME",
-                "VIOLATION STATE",
-                "CONDITIONS",
-                "PROJECTS",
-            ]);
-
-        for p in &policies {
-            table.add_row(vec![
-                &p.uuid,
-                &p.name,
-                &p.violation_state,
-                &p.policy_conditions.len().to_string(),
-                &p.projects.len().to_string(),
-            ]);
-        }
-
-        table.to_string()
-    };
+    let (entries, table_str) = format_dt_policies_table(&policies);
 
     println!(
         "{}",
@@ -898,5 +714,864 @@ fn format_timestamp(epoch_millis: i64) -> String {
     match dt {
         Some(d) => d.format("%Y-%m-%d %H:%M").to_string(),
         None => epoch_millis.to_string(),
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Formatting helpers (pure functions, testable without HTTP)
+// ---------------------------------------------------------------------------
+
+fn format_projects_table(projects: &[DtProject]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = projects
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "uuid": p.uuid,
+                "name": p.name,
+                "version": p.version,
+                "last_bom_import": p.last_bom_import,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec!["UUID", "NAME", "VERSION", "LAST BOM IMPORT"]);
+
+        for p in projects {
+            let version = p.version.as_deref().unwrap_or("-");
+            let last_bom = p
+                .last_bom_import
+                .map(format_timestamp)
+                .unwrap_or_else(|| "-".to_string());
+            table.add_row(vec![&p.uuid, &p.name, version, &last_bom]);
+        }
+
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
+
+fn format_dt_components_table(components: &[DtComponentFull]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = components
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "uuid": c.uuid,
+                "group": c.group,
+                "name": c.name,
+                "version": c.version,
+                "purl": c.purl,
+                "cpe": c.cpe,
+                "is_internal": c.is_internal,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec!["UUID", "GROUP", "NAME", "VERSION", "PURL"]);
+
+        for c in components {
+            let group = c.group.as_deref().unwrap_or("-");
+            let version = c.version.as_deref().unwrap_or("-");
+            let purl = c.purl.as_deref().unwrap_or("-");
+            table.add_row(vec![&c.uuid, group, &c.name, version, purl]);
+        }
+
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
+
+fn format_findings_table(findings: &[DtFinding]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = findings
+        .iter()
+        .map(|f| {
+            serde_json::json!({
+                "vuln_id": f.vulnerability.vuln_id,
+                "severity": f.vulnerability.severity,
+                "source": f.vulnerability.source,
+                "component": f.component.name,
+                "component_version": f.component.version,
+                "title": f.vulnerability.title,
+                "cvss_v3": f.vulnerability.cvss_v3_base_score,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec![
+                "VULN ID",
+                "SEVERITY",
+                "SOURCE",
+                "COMPONENT",
+                "VERSION",
+                "CVSS v3",
+            ]);
+
+        for f in findings {
+            let version = f.component.version.as_deref().unwrap_or("-");
+            let cvss = f
+                .vulnerability
+                .cvss_v3_base_score
+                .map(|s| format!("{s:.1}"))
+                .unwrap_or_else(|| "-".to_string());
+            table.add_row(vec![
+                &f.vulnerability.vuln_id,
+                &f.vulnerability.severity,
+                &f.vulnerability.source,
+                &f.component.name,
+                version,
+                &cvss,
+            ]);
+        }
+
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
+
+fn format_project_metrics_detail(metrics: &DtProjectMetrics) -> (Value, String) {
+    let data = serde_json::json!({
+        "critical": metrics.critical,
+        "high": metrics.high,
+        "medium": metrics.medium,
+        "low": metrics.low,
+        "unassigned": metrics.unassigned,
+        "findings_audited": metrics.findings_audited,
+        "findings_total": metrics.findings_total,
+        "inherited_risk_score": metrics.inherited_risk_score,
+        "policy_violations_total": metrics.policy_violations_total,
+        "suppressions": metrics.suppressions,
+    });
+
+    let table_str = format!(
+        "Critical:     {}\nHigh:         {}\nMedium:       {}\nLow:          {}\nUnassigned:   {}\nAudited:      {}/{}",
+        metrics.critical.unwrap_or(0),
+        metrics.high.unwrap_or(0),
+        metrics.medium.unwrap_or(0),
+        metrics.low.unwrap_or(0),
+        metrics.unassigned.unwrap_or(0),
+        metrics.findings_audited.unwrap_or(0),
+        metrics.findings_total.unwrap_or(0),
+    );
+
+    (data, table_str)
+}
+
+fn format_portfolio_metrics_detail(metrics: &DtPortfolioMetrics) -> (Value, String) {
+    let data = serde_json::json!({
+        "critical": metrics.critical,
+        "high": metrics.high,
+        "medium": metrics.medium,
+        "low": metrics.low,
+        "unassigned": metrics.unassigned,
+        "findings_audited": metrics.findings_audited,
+        "findings_total": metrics.findings_total,
+        "projects": metrics.projects,
+        "inherited_risk_score": metrics.inherited_risk_score,
+        "policy_violations_total": metrics.policy_violations_total,
+        "suppressions": metrics.suppressions,
+    });
+
+    let table_str = format!(
+        "Projects:     {}\nCritical:     {}\nHigh:         {}\nMedium:       {}\nLow:          {}\nUnassigned:   {}\nAudited:      {}/{}",
+        metrics.projects.unwrap_or(0),
+        metrics.critical.unwrap_or(0),
+        metrics.high.unwrap_or(0),
+        metrics.medium.unwrap_or(0),
+        metrics.low.unwrap_or(0),
+        metrics.unassigned.unwrap_or(0),
+        metrics.findings_audited.unwrap_or(0),
+        metrics.findings_total.unwrap_or(0),
+    );
+
+    (data, table_str)
+}
+
+fn format_dt_policies_table(policies: &[DtPolicyFull]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = policies
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "uuid": p.uuid,
+                "name": p.name,
+                "violation_state": p.violation_state,
+                "conditions": p.policy_conditions.len(),
+                "projects": p.projects.len(),
+                "include_children": p.include_children,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec![
+                "UUID",
+                "NAME",
+                "VIOLATION STATE",
+                "CONDITIONS",
+                "PROJECTS",
+            ]);
+
+        for p in policies {
+            table.add_row(vec![
+                &p.uuid,
+                &p.name,
+                &p.violation_state,
+                &p.policy_conditions.len().to_string(),
+                &p.projects.len().to_string(),
+            ]);
+        }
+
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: DtCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- format_timestamp ----
+
+    #[test]
+    fn format_timestamp_known_date() {
+        // 2024-02-21 05:20:00 UTC = 1708492800000 ms
+        let result = format_timestamp(1708492800000);
+        assert!(result.contains("2024"));
+        assert!(result.contains("-"));
+    }
+
+    #[test]
+    fn format_timestamp_zero() {
+        let result = format_timestamp(0);
+        assert_eq!(result, "1970-01-01 00:00");
+    }
+
+    #[test]
+    fn format_timestamp_epoch_start() {
+        let result = format_timestamp(1000);
+        assert_eq!(result, "1970-01-01 00:00");
+    }
+
+    #[test]
+    fn format_timestamp_recent() {
+        // 2025-01-01 00:00:00 UTC
+        let result = format_timestamp(1735689600000);
+        assert!(result.starts_with("2025-01-01"));
+    }
+
+    #[test]
+    fn format_timestamp_negative() {
+        // Negative timestamps represent dates before epoch
+        let result = format_timestamp(-86400000); // 1 day before epoch
+        assert!(result.contains("1969"));
+    }
+
+    // ---- DtCommand top-level ----
+
+    #[test]
+    fn parse_status() {
+        let cli = parse(&["test", "status"]);
+        assert!(matches!(cli.command, DtCommand::Status));
+    }
+
+    #[test]
+    fn parse_metrics() {
+        let cli = parse(&["test", "metrics"]);
+        assert!(matches!(cli.command, DtCommand::Metrics));
+    }
+
+    #[test]
+    fn parse_policies() {
+        let cli = parse(&["test", "policies"]);
+        assert!(matches!(cli.command, DtCommand::Policies));
+    }
+
+    #[test]
+    fn parse_project_subcommand() {
+        let cli = parse(&["test", "project", "list"]);
+        assert!(matches!(cli.command, DtCommand::Project(_)));
+    }
+
+    #[test]
+    fn parse_analyze() {
+        let cli = parse(&[
+            "test",
+            "analyze",
+            "--project",
+            "proj-uuid",
+            "--vulnerability",
+            "vuln-uuid",
+            "--component",
+            "comp-uuid",
+            "--state",
+            "NOT_AFFECTED",
+        ]);
+        if let DtCommand::Analyze {
+            project,
+            vulnerability,
+            component,
+            state,
+            justification,
+            details,
+            suppressed,
+        } = cli.command
+        {
+            assert_eq!(project, "proj-uuid");
+            assert_eq!(vulnerability, "vuln-uuid");
+            assert_eq!(component, "comp-uuid");
+            assert_eq!(state, "NOT_AFFECTED");
+            assert!(justification.is_none());
+            assert!(details.is_none());
+            assert!(suppressed.is_none());
+        } else {
+            panic!("Expected Analyze");
+        }
+    }
+
+    #[test]
+    fn parse_analyze_with_options() {
+        let cli = parse(&[
+            "test",
+            "analyze",
+            "--project",
+            "proj-uuid",
+            "--vulnerability",
+            "vuln-uuid",
+            "--component",
+            "comp-uuid",
+            "--state",
+            "FALSE_POSITIVE",
+            "--justification",
+            "Not exploitable in this context",
+            "--details",
+            "Reviewed by security team",
+            "--suppressed",
+            "true",
+        ]);
+        if let DtCommand::Analyze {
+            justification,
+            details,
+            suppressed,
+            ..
+        } = cli.command
+        {
+            assert_eq!(justification.unwrap(), "Not exploitable in this context");
+            assert_eq!(details.unwrap(), "Reviewed by security team");
+            assert_eq!(suppressed, Some(true));
+        } else {
+            panic!("Expected Analyze with options");
+        }
+    }
+
+    #[test]
+    fn parse_analyze_missing_required() {
+        let result = try_parse(&["test", "analyze", "--project", "uuid"]);
+        assert!(result.is_err());
+    }
+
+    // ---- DtProjectCommand ----
+
+    #[test]
+    fn parse_project_list() {
+        let cli = parse(&["test", "project", "list"]);
+        if let DtCommand::Project(DtProjectCommand::List) = cli.command {
+            // pass
+        } else {
+            panic!("Expected Project List");
+        }
+    }
+
+    #[test]
+    fn parse_project_show() {
+        let cli = parse(&["test", "project", "show", "proj-uuid-123"]);
+        if let DtCommand::Project(DtProjectCommand::Show { uuid }) = cli.command {
+            assert_eq!(uuid, "proj-uuid-123");
+        } else {
+            panic!("Expected Project Show");
+        }
+    }
+
+    #[test]
+    fn parse_project_components() {
+        let cli = parse(&["test", "project", "components", "proj-uuid"]);
+        if let DtCommand::Project(DtProjectCommand::Components { uuid }) = cli.command {
+            assert_eq!(uuid, "proj-uuid");
+        } else {
+            panic!("Expected Project Components");
+        }
+    }
+
+    #[test]
+    fn parse_project_findings() {
+        let cli = parse(&["test", "project", "findings", "proj-uuid"]);
+        if let DtCommand::Project(DtProjectCommand::Findings { uuid, severity }) = cli.command {
+            assert_eq!(uuid, "proj-uuid");
+            assert!(severity.is_none());
+        } else {
+            panic!("Expected Project Findings");
+        }
+    }
+
+    #[test]
+    fn parse_project_findings_with_severity() {
+        let cli = parse(&[
+            "test",
+            "project",
+            "findings",
+            "proj-uuid",
+            "--severity",
+            "CRITICAL",
+        ]);
+        if let DtCommand::Project(DtProjectCommand::Findings { severity, .. }) = cli.command {
+            assert_eq!(severity.unwrap(), "CRITICAL");
+        } else {
+            panic!("Expected Project Findings with severity");
+        }
+    }
+
+    #[test]
+    fn parse_project_violations() {
+        let cli = parse(&["test", "project", "violations", "proj-uuid"]);
+        if let DtCommand::Project(DtProjectCommand::Violations { uuid }) = cli.command {
+            assert_eq!(uuid, "proj-uuid");
+        } else {
+            panic!("Expected Project Violations");
+        }
+    }
+
+    #[test]
+    fn parse_project_metrics() {
+        let cli = parse(&["test", "project", "metrics", "proj-uuid"]);
+        if let DtCommand::Project(DtProjectCommand::Metrics { uuid }) = cli.command {
+            assert_eq!(uuid, "proj-uuid");
+        } else {
+            panic!("Expected Project Metrics");
+        }
+    }
+
+    #[test]
+    fn parse_project_metrics_history_defaults() {
+        let cli = parse(&["test", "project", "metrics-history", "proj-uuid"]);
+        if let DtCommand::Project(DtProjectCommand::MetricsHistory { uuid, days }) = cli.command {
+            assert_eq!(uuid, "proj-uuid");
+            assert_eq!(days, 30);
+        } else {
+            panic!("Expected Project MetricsHistory");
+        }
+    }
+
+    #[test]
+    fn parse_project_metrics_history_custom_days() {
+        let cli = parse(&[
+            "test",
+            "project",
+            "metrics-history",
+            "proj-uuid",
+            "--days",
+            "90",
+        ]);
+        if let DtCommand::Project(DtProjectCommand::MetricsHistory { days, .. }) = cli.command {
+            assert_eq!(days, 90);
+        } else {
+            panic!("Expected Project MetricsHistory with custom days");
+        }
+    }
+
+    // ---- Format function tests ----
+
+    use artifact_keeper_sdk::types::{
+        DtComponent, DtComponentFull, DtFinding, DtPolicyConditionFull, DtPolicyFull,
+        DtPortfolioMetrics, DtProject, DtProjectMetrics, DtVulnerability,
+    };
+
+    fn make_test_project(name: &str, version: Option<&str>) -> DtProject {
+        DtProject {
+            uuid: "proj-uuid-1234".to_string(),
+            name: name.to_string(),
+            version: version.map(|v| v.to_string()),
+            description: Some("A test project".to_string()),
+            last_bom_import: Some(1708492800000), // 2024-02-21
+            last_bom_import_format: Some("CycloneDX".to_string()),
+        }
+    }
+
+    fn make_test_dt_component(name: &str, version: Option<&str>) -> DtComponentFull {
+        DtComponentFull {
+            uuid: "comp-uuid-1234".to_string(),
+            name: name.to_string(),
+            version: version.map(|v| v.to_string()),
+            group: Some("org.example".to_string()),
+            purl: Some(format!("pkg:maven/org.example/{name}")),
+            cpe: None,
+            is_internal: Some(false),
+            resolved_license: None,
+        }
+    }
+
+    fn make_test_finding(vuln_id: &str, severity: &str, cvss: Option<f64>) -> DtFinding {
+        DtFinding {
+            vulnerability: DtVulnerability {
+                uuid: "vuln-uuid-1234".to_string(),
+                vuln_id: vuln_id.to_string(),
+                severity: severity.to_string(),
+                source: "NVD".to_string(),
+                title: Some("Test vulnerability".to_string()),
+                cvss_v3_base_score: cvss,
+                cwe: None,
+                description: None,
+            },
+            component: DtComponent {
+                uuid: "comp-uuid-1234".to_string(),
+                name: "lodash".to_string(),
+                version: Some("4.17.20".to_string()),
+                group: None,
+                purl: None,
+            },
+            analysis: None,
+            attribution: None,
+        }
+    }
+
+    fn make_test_project_metrics(critical: i64, high: i64, medium: i64) -> DtProjectMetrics {
+        DtProjectMetrics {
+            critical: Some(critical),
+            high: Some(high),
+            medium: Some(medium),
+            low: Some(1),
+            unassigned: Some(0),
+            findings_audited: Some(5),
+            findings_total: Some(10),
+            inherited_risk_score: Some(42.5),
+            policy_violations_total: Some(2),
+            suppressions: Some(1),
+            vulnerabilities: Some(critical + high + medium + 1),
+            findings_unaudited: Some(5),
+            first_occurrence: None,
+            last_occurrence: None,
+            policy_violations_fail: None,
+            policy_violations_info: None,
+            policy_violations_warn: None,
+        }
+    }
+
+    fn make_test_portfolio_metrics() -> DtPortfolioMetrics {
+        DtPortfolioMetrics {
+            critical: Some(3),
+            high: Some(10),
+            medium: Some(25),
+            low: Some(50),
+            unassigned: Some(5),
+            findings_audited: Some(20),
+            findings_total: Some(93),
+            projects: Some(12),
+            inherited_risk_score: Some(150.0),
+            policy_violations_total: Some(8),
+            suppressions: Some(3),
+            vulnerabilities: Some(93),
+            findings_unaudited: Some(73),
+            policy_violations_fail: None,
+            policy_violations_info: None,
+            policy_violations_warn: None,
+        }
+    }
+
+    // ---- format_projects_table ----
+
+    #[test]
+    fn format_projects_table_single() {
+        let projects = vec![make_test_project("my-app", Some("1.0.0"))];
+        let (entries, table_str) = format_projects_table(&projects);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["name"], "my-app");
+        assert_eq!(entries[0]["version"], "1.0.0");
+
+        assert!(table_str.contains("UUID"));
+        assert!(table_str.contains("NAME"));
+        assert!(table_str.contains("my-app"));
+        assert!(table_str.contains("1.0.0"));
+    }
+
+    #[test]
+    fn format_projects_table_no_version() {
+        let projects = vec![make_test_project("no-ver", None)];
+        let (entries, table_str) = format_projects_table(&projects);
+
+        assert!(entries[0]["version"].is_null());
+        assert!(table_str.contains("-"));
+    }
+
+    #[test]
+    fn format_projects_table_no_bom_import() {
+        let mut project = make_test_project("no-bom", Some("2.0"));
+        project.last_bom_import = None;
+        let (_entries, table_str) = format_projects_table(&[project]);
+
+        assert!(table_str.contains("-"));
+    }
+
+    #[test]
+    fn format_projects_table_empty() {
+        let (entries, table_str) = format_projects_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("UUID"));
+    }
+
+    // ---- format_dt_components_table ----
+
+    #[test]
+    fn format_dt_components_table_single() {
+        let components = vec![make_test_dt_component("spring-core", Some("5.3.21"))];
+        let (entries, table_str) = format_dt_components_table(&components);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["name"], "spring-core");
+        assert_eq!(entries[0]["group"], "org.example");
+
+        assert!(table_str.contains("spring-core"));
+        assert!(table_str.contains("org.example"));
+    }
+
+    #[test]
+    fn format_dt_components_table_no_optional_fields() {
+        let mut comp = make_test_dt_component("bare-lib", None);
+        comp.group = None;
+        comp.purl = None;
+        let (entries, table_str) = format_dt_components_table(&[comp]);
+
+        assert!(entries[0]["version"].is_null());
+        assert!(entries[0]["group"].is_null());
+        assert!(table_str.contains("-"));
+    }
+
+    #[test]
+    fn format_dt_components_table_empty() {
+        let (entries, table_str) = format_dt_components_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("UUID"));
+    }
+
+    // ---- format_findings_table ----
+
+    #[test]
+    fn format_findings_table_single() {
+        let findings = vec![make_test_finding("CVE-2024-1234", "CRITICAL", Some(9.8))];
+        let (entries, table_str) = format_findings_table(&findings);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["vuln_id"], "CVE-2024-1234");
+        assert_eq!(entries[0]["severity"], "CRITICAL");
+        assert_eq!(entries[0]["source"], "NVD");
+
+        assert!(table_str.contains("CVE-2024-1234"));
+        assert!(table_str.contains("CRITICAL"));
+        assert!(table_str.contains("9.8"));
+    }
+
+    #[test]
+    fn format_findings_table_no_cvss() {
+        let findings = vec![make_test_finding("CVE-2024-0000", "LOW", None)];
+        let (entries, table_str) = format_findings_table(&findings);
+
+        assert!(entries[0]["cvss_v3"].is_null());
+        assert!(table_str.contains("-"));
+    }
+
+    #[test]
+    fn format_findings_table_multiple() {
+        let findings = vec![
+            make_test_finding("CVE-2024-1111", "CRITICAL", Some(9.8)),
+            make_test_finding("CVE-2024-2222", "MEDIUM", Some(5.5)),
+        ];
+        let (entries, table_str) = format_findings_table(&findings);
+
+        assert_eq!(entries.len(), 2);
+        assert!(table_str.contains("CVE-2024-1111"));
+        assert!(table_str.contains("CVE-2024-2222"));
+    }
+
+    #[test]
+    fn format_findings_table_empty() {
+        let (entries, table_str) = format_findings_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("VULN ID"));
+    }
+
+    // ---- format_project_metrics_detail ----
+
+    #[test]
+    fn format_project_metrics_with_values() {
+        let metrics = make_test_project_metrics(5, 10, 20);
+        let (data, table_str) = format_project_metrics_detail(&metrics);
+
+        assert_eq!(data["critical"], 5);
+        assert_eq!(data["high"], 10);
+        assert_eq!(data["medium"], 20);
+
+        assert!(table_str.contains("Critical:"));
+        assert!(table_str.contains("5"));
+        assert!(table_str.contains("10"));
+        assert!(table_str.contains("Audited:"));
+        assert!(table_str.contains("5/10"));
+    }
+
+    #[test]
+    fn format_project_metrics_all_zero() {
+        let metrics = DtProjectMetrics {
+            critical: None,
+            high: None,
+            medium: None,
+            low: None,
+            unassigned: None,
+            findings_audited: None,
+            findings_total: None,
+            inherited_risk_score: None,
+            policy_violations_total: None,
+            suppressions: None,
+            vulnerabilities: None,
+            findings_unaudited: None,
+            first_occurrence: None,
+            last_occurrence: None,
+            policy_violations_fail: None,
+            policy_violations_info: None,
+            policy_violations_warn: None,
+        };
+        let (data, table_str) = format_project_metrics_detail(&metrics);
+
+        assert!(data["critical"].is_null());
+        // When None, defaults to 0 in the table
+        assert!(table_str.contains("0"));
+    }
+
+    // ---- format_portfolio_metrics_detail ----
+
+    #[test]
+    fn format_portfolio_metrics_with_values() {
+        let metrics = make_test_portfolio_metrics();
+        let (data, table_str) = format_portfolio_metrics_detail(&metrics);
+
+        assert_eq!(data["projects"], 12);
+        assert_eq!(data["critical"], 3);
+        assert_eq!(data["high"], 10);
+
+        assert!(table_str.contains("Projects:"));
+        assert!(table_str.contains("12"));
+        assert!(table_str.contains("Critical:"));
+        assert!(table_str.contains("3"));
+        assert!(table_str.contains("Audited:"));
+    }
+
+    #[test]
+    fn format_portfolio_metrics_all_none() {
+        let metrics = DtPortfolioMetrics {
+            critical: None,
+            high: None,
+            medium: None,
+            low: None,
+            unassigned: None,
+            findings_audited: None,
+            findings_total: None,
+            projects: None,
+            inherited_risk_score: None,
+            policy_violations_total: None,
+            suppressions: None,
+            vulnerabilities: None,
+            findings_unaudited: None,
+            policy_violations_fail: None,
+            policy_violations_info: None,
+            policy_violations_warn: None,
+        };
+        let (_data, table_str) = format_portfolio_metrics_detail(&metrics);
+
+        assert!(table_str.contains("0"));
+    }
+
+    // ---- format_dt_policies_table ----
+
+    #[test]
+    fn format_dt_policies_table_single() {
+        let policies = vec![DtPolicyFull {
+            uuid: "pol-uuid-1234".to_string(),
+            name: "security-policy".to_string(),
+            violation_state: "FAIL".to_string(),
+            policy_conditions: vec![DtPolicyConditionFull {
+                uuid: "cond-uuid".to_string(),
+                subject: "SEVERITY".to_string(),
+                operator: "IS".to_string(),
+                value: "CRITICAL".to_string(),
+            }],
+            projects: vec![],
+            tags: vec![],
+            include_children: Some(true),
+        }];
+        let (entries, table_str) = format_dt_policies_table(&policies);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["name"], "security-policy");
+        assert_eq!(entries[0]["violation_state"], "FAIL");
+        assert_eq!(entries[0]["conditions"], 1);
+        assert_eq!(entries[0]["projects"], 0);
+
+        assert!(table_str.contains("security-policy"));
+        assert!(table_str.contains("FAIL"));
+    }
+
+    #[test]
+    fn format_dt_policies_table_empty() {
+        let (entries, table_str) = format_dt_policies_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("UUID"));
+    }
+
+    // ---- additional format_timestamp tests ----
+
+    #[test]
+    fn format_timestamp_large_value() {
+        // Year 2100
+        let result = format_timestamp(4102444800000);
+        assert!(result.contains("2099") || result.contains("2100"));
+    }
+
+    #[test]
+    fn format_timestamp_milliseconds_precision() {
+        // 2024-06-15 12:30:00 UTC = 1718451000000
+        let result = format_timestamp(1718451000000);
+        assert!(result.starts_with("2024-06-15"));
     }
 }

@@ -1,7 +1,9 @@
 use artifact_keeper_sdk::ClientSbomExt;
+use artifact_keeper_sdk::types::LicensePolicyResponse;
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
+use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
@@ -152,63 +154,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let entries: Vec<_> = policies
-        .iter()
-        .map(|p| {
-            serde_json::json!({
-                "id": p.id.to_string(),
-                "name": p.name,
-                "action": p.action,
-                "allow_unknown": p.allow_unknown,
-                "enabled": p.is_enabled,
-                "allowed_licenses": p.allowed_licenses,
-                "denied_licenses": p.denied_licenses,
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "NAME",
-                "ACTION",
-                "ALLOW UNKNOWN",
-                "ENABLED",
-                "ALLOWED",
-                "DENIED",
-            ]);
-
-        for p in &policies {
-            let id_short = &p.id.to_string()[..8];
-            let enabled = if p.is_enabled { "yes" } else { "no" };
-            let allow_unknown = if p.allow_unknown { "yes" } else { "no" };
-            let allowed = if p.allowed_licenses.is_empty() {
-                "-".to_string()
-            } else {
-                p.allowed_licenses.join(", ")
-            };
-            let denied = if p.denied_licenses.is_empty() {
-                "-".to_string()
-            } else {
-                p.denied_licenses.join(", ")
-            };
-            table.add_row(vec![
-                id_short,
-                &p.name,
-                &p.action,
-                allow_unknown,
-                enabled,
-                &allowed,
-                &denied,
-            ]);
-        }
-
-        table.to_string()
-    };
+    let (entries, table_str) = format_policies_table(&policies);
 
     println!(
         "{}",
@@ -233,56 +179,7 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
 
     spinner.finish_and_clear();
 
-    let info = serde_json::json!({
-        "id": policy.id.to_string(),
-        "name": policy.name,
-        "description": policy.description,
-        "action": policy.action,
-        "enabled": policy.is_enabled,
-        "allow_unknown": policy.allow_unknown,
-        "allowed_licenses": policy.allowed_licenses,
-        "denied_licenses": policy.denied_licenses,
-        "repository_id": policy.repository_id.map(|u| u.to_string()),
-        "created_at": policy.created_at.to_rfc3339(),
-        "updated_at": policy.updated_at.map(|u| u.to_rfc3339()),
-    });
-
-    let allowed = if policy.allowed_licenses.is_empty() {
-        "-".to_string()
-    } else {
-        policy.allowed_licenses.join(", ")
-    };
-    let denied = if policy.denied_licenses.is_empty() {
-        "-".to_string()
-    } else {
-        policy.denied_licenses.join(", ")
-    };
-
-    let table_str = format!(
-        "ID:            {}\n\
-         Name:          {}\n\
-         Description:   {}\n\
-         Action:        {}\n\
-         Enabled:       {}\n\
-         Allow Unknown: {}\n\
-         Allowed:       {}\n\
-         Denied:        {}\n\
-         Repository:    {}\n\
-         Created:       {}",
-        policy.id,
-        policy.name,
-        policy.description.as_deref().unwrap_or("-"),
-        policy.action,
-        if policy.is_enabled { "yes" } else { "no" },
-        if policy.allow_unknown { "yes" } else { "no" },
-        allowed,
-        denied,
-        policy
-            .repository_id
-            .map(|u| u.to_string())
-            .unwrap_or_else(|| "global".to_string()),
-        policy.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
-    );
+    let (info, table_str) = format_policy_detail(&policy);
 
     println!("{}", output::render(&info, &global.format, Some(table_str)));
 
@@ -424,4 +321,465 @@ async fn check_compliance(
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Formatting helpers (pure functions, testable without HTTP)
+// ---------------------------------------------------------------------------
+
+fn format_policies_table(policies: &[LicensePolicyResponse]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = policies
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "id": p.id.to_string(),
+                "name": p.name,
+                "action": p.action,
+                "allow_unknown": p.allow_unknown,
+                "enabled": p.is_enabled,
+                "allowed_licenses": p.allowed_licenses,
+                "denied_licenses": p.denied_licenses,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec![
+                "ID",
+                "NAME",
+                "ACTION",
+                "ALLOW UNKNOWN",
+                "ENABLED",
+                "ALLOWED",
+                "DENIED",
+            ]);
+
+        for p in policies {
+            let id_short = &p.id.to_string()[..8];
+            let enabled = if p.is_enabled { "yes" } else { "no" };
+            let allow_unknown = if p.allow_unknown { "yes" } else { "no" };
+            let allowed = if p.allowed_licenses.is_empty() {
+                "-".to_string()
+            } else {
+                p.allowed_licenses.join(", ")
+            };
+            let denied = if p.denied_licenses.is_empty() {
+                "-".to_string()
+            } else {
+                p.denied_licenses.join(", ")
+            };
+            table.add_row(vec![
+                id_short,
+                &p.name,
+                &p.action,
+                allow_unknown,
+                enabled,
+                &allowed,
+                &denied,
+            ]);
+        }
+
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
+
+fn format_policy_detail(policy: &LicensePolicyResponse) -> (Value, String) {
+    let info = serde_json::json!({
+        "id": policy.id.to_string(),
+        "name": policy.name,
+        "description": policy.description,
+        "action": policy.action,
+        "enabled": policy.is_enabled,
+        "allow_unknown": policy.allow_unknown,
+        "allowed_licenses": policy.allowed_licenses,
+        "denied_licenses": policy.denied_licenses,
+        "repository_id": policy.repository_id.map(|u| u.to_string()),
+        "created_at": policy.created_at.to_rfc3339(),
+        "updated_at": policy.updated_at.map(|u| u.to_rfc3339()),
+    });
+
+    let allowed = if policy.allowed_licenses.is_empty() {
+        "-".to_string()
+    } else {
+        policy.allowed_licenses.join(", ")
+    };
+    let denied = if policy.denied_licenses.is_empty() {
+        "-".to_string()
+    } else {
+        policy.denied_licenses.join(", ")
+    };
+
+    let table_str = format!(
+        "ID:            {}\n\
+         Name:          {}\n\
+         Description:   {}\n\
+         Action:        {}\n\
+         Enabled:       {}\n\
+         Allow Unknown: {}\n\
+         Allowed:       {}\n\
+         Denied:        {}\n\
+         Repository:    {}\n\
+         Created:       {}",
+        policy.id,
+        policy.name,
+        policy.description.as_deref().unwrap_or("-"),
+        policy.action,
+        if policy.is_enabled { "yes" } else { "no" },
+        if policy.allow_unknown { "yes" } else { "no" },
+        allowed,
+        denied,
+        policy
+            .repository_id
+            .map(|u| u.to_string())
+            .unwrap_or_else(|| "global".to_string()),
+        policy.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+    );
+
+    (info, table_str)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: LicenseCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- LicenseCommand top-level ----
+
+    #[test]
+    fn parse_policy_subcommand() {
+        let cli = parse(&["test", "policy", "list"]);
+        assert!(matches!(cli.command, LicenseCommand::Policy(_)));
+    }
+
+    #[test]
+    fn parse_check_with_licenses() {
+        let cli = parse(&["test", "check", "--licenses", "MIT,Apache-2.0"]);
+        if let LicenseCommand::Check { licenses, repo } = cli.command {
+            assert_eq!(licenses, vec!["MIT", "Apache-2.0"]);
+            assert!(repo.is_none());
+        } else {
+            panic!("Expected Check");
+        }
+    }
+
+    #[test]
+    fn parse_check_with_repo() {
+        let cli = parse(&[
+            "test",
+            "check",
+            "--licenses",
+            "MIT",
+            "--repo",
+            "00000000-0000-0000-0000-000000000001",
+        ]);
+        if let LicenseCommand::Check { licenses, repo } = cli.command {
+            assert_eq!(licenses, vec!["MIT"]);
+            assert_eq!(repo.unwrap(), "00000000-0000-0000-0000-000000000001");
+        } else {
+            panic!("Expected Check with repo");
+        }
+    }
+
+    #[test]
+    fn parse_check_empty_licenses() {
+        let cli = parse(&["test", "check"]);
+        if let LicenseCommand::Check { licenses, .. } = cli.command {
+            assert!(licenses.is_empty());
+        } else {
+            panic!("Expected Check");
+        }
+    }
+
+    // ---- PolicyCommand ----
+
+    #[test]
+    fn parse_policy_list() {
+        let cli = parse(&["test", "policy", "list"]);
+        if let LicenseCommand::Policy(PolicyCommand::List) = cli.command {
+            // pass
+        } else {
+            panic!("Expected Policy List");
+        }
+    }
+
+    #[test]
+    fn parse_policy_show() {
+        let cli = parse(&["test", "policy", "show", "policy-id-123"]);
+        if let LicenseCommand::Policy(PolicyCommand::Show { id }) = cli.command {
+            assert_eq!(id, "policy-id-123");
+        } else {
+            panic!("Expected Policy Show");
+        }
+    }
+
+    #[test]
+    fn parse_policy_create_minimal() {
+        let cli = parse(&["test", "policy", "create", "my-policy"]);
+        if let LicenseCommand::Policy(PolicyCommand::Create {
+            name,
+            allowed,
+            denied,
+            allow_unknown,
+            action,
+            description,
+            enabled,
+            repo,
+        }) = cli.command
+        {
+            assert_eq!(name, "my-policy");
+            assert!(allowed.is_empty());
+            assert!(denied.is_empty());
+            assert!(!allow_unknown);
+            assert!(action.is_none());
+            assert!(description.is_none());
+            assert!(enabled.is_none());
+            assert!(repo.is_none());
+        } else {
+            panic!("Expected Policy Create");
+        }
+    }
+
+    #[test]
+    fn parse_policy_create_full() {
+        let cli = parse(&[
+            "test",
+            "policy",
+            "create",
+            "strict-policy",
+            "--allowed",
+            "MIT,Apache-2.0",
+            "--denied",
+            "GPL-3.0",
+            "--allow-unknown",
+            "--action",
+            "block",
+            "--description",
+            "Only permissive licenses",
+            "--enabled",
+            "true",
+            "--repo",
+            "00000000-0000-0000-0000-000000000001",
+        ]);
+        if let LicenseCommand::Policy(PolicyCommand::Create {
+            name,
+            allowed,
+            denied,
+            allow_unknown,
+            action,
+            description,
+            enabled,
+            repo,
+        }) = cli.command
+        {
+            assert_eq!(name, "strict-policy");
+            assert_eq!(allowed, vec!["MIT", "Apache-2.0"]);
+            assert_eq!(denied, vec!["GPL-3.0"]);
+            assert!(allow_unknown);
+            assert_eq!(action.unwrap(), "block");
+            assert_eq!(description.unwrap(), "Only permissive licenses");
+            assert_eq!(enabled, Some(true));
+            assert_eq!(repo.unwrap(), "00000000-0000-0000-0000-000000000001");
+        } else {
+            panic!("Expected Policy Create full");
+        }
+    }
+
+    #[test]
+    fn parse_policy_delete() {
+        let cli = parse(&["test", "policy", "delete", "policy-id"]);
+        if let LicenseCommand::Policy(PolicyCommand::Delete { id, yes }) = cli.command {
+            assert_eq!(id, "policy-id");
+            assert!(!yes);
+        } else {
+            panic!("Expected Policy Delete");
+        }
+    }
+
+    #[test]
+    fn parse_policy_delete_with_yes() {
+        let cli = parse(&["test", "policy", "delete", "policy-id", "--yes"]);
+        if let LicenseCommand::Policy(PolicyCommand::Delete { yes, .. }) = cli.command {
+            assert!(yes);
+        } else {
+            panic!("Expected Policy Delete with --yes");
+        }
+    }
+
+    #[test]
+    fn parse_policy_create_missing_name() {
+        let result = try_parse(&["test", "policy", "create"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_check_multiple_licenses_comma_separated() {
+        let cli = parse(&[
+            "test",
+            "check",
+            "--licenses",
+            "MIT,BSD-2-Clause,ISC,Apache-2.0",
+        ]);
+        if let LicenseCommand::Check { licenses, .. } = cli.command {
+            assert_eq!(licenses.len(), 4);
+            assert_eq!(licenses[0], "MIT");
+            assert_eq!(licenses[3], "Apache-2.0");
+        } else {
+            panic!("Expected Check");
+        }
+    }
+
+    // ---- Format function tests ----
+
+    use artifact_keeper_sdk::types::LicensePolicyResponse;
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    fn make_test_policy(
+        name: &str,
+        action: &str,
+        allowed: Vec<&str>,
+        denied: Vec<&str>,
+    ) -> LicensePolicyResponse {
+        LicensePolicyResponse {
+            id: Uuid::nil(),
+            name: name.to_string(),
+            action: action.to_string(),
+            allow_unknown: false,
+            is_enabled: true,
+            allowed_licenses: allowed.into_iter().map(|s| s.to_string()).collect(),
+            denied_licenses: denied.into_iter().map(|s| s.to_string()).collect(),
+            description: Some("Test policy".to_string()),
+            repository_id: None,
+            created_at: Utc::now(),
+            updated_at: None,
+        }
+    }
+
+    #[test]
+    fn format_policies_table_single() {
+        let policies = vec![make_test_policy(
+            "permissive",
+            "warn",
+            vec!["MIT", "Apache-2.0"],
+            vec!["GPL-3.0"],
+        )];
+        let (entries, table_str) = format_policies_table(&policies);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["name"], "permissive");
+        assert_eq!(entries[0]["action"], "warn");
+        assert_eq!(entries[0]["enabled"], true);
+
+        assert!(table_str.contains("NAME"));
+        assert!(table_str.contains("ACTION"));
+        assert!(table_str.contains("permissive"));
+        assert!(table_str.contains("warn"));
+        assert!(table_str.contains("yes"));
+    }
+
+    #[test]
+    fn format_policies_table_multiple() {
+        let policies = vec![
+            make_test_policy("allow-all", "allow", vec![], vec![]),
+            make_test_policy("strict", "block", vec!["MIT"], vec!["GPL-3.0"]),
+        ];
+        let (entries, table_str) = format_policies_table(&policies);
+
+        assert_eq!(entries.len(), 2);
+        assert!(table_str.contains("allow-all"));
+        assert!(table_str.contains("strict"));
+    }
+
+    #[test]
+    fn format_policies_table_empty() {
+        let (entries, table_str) = format_policies_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("NAME"));
+    }
+
+    #[test]
+    fn format_policies_table_empty_licenses_show_dash() {
+        let policies = vec![make_test_policy("no-lists", "allow", vec![], vec![])];
+        let (_entries, table_str) = format_policies_table(&policies);
+
+        // Empty allowed/denied should show "-"
+        assert!(table_str.contains("-"));
+    }
+
+    #[test]
+    fn format_policy_detail_with_licenses() {
+        let policy = make_test_policy(
+            "detailed-policy",
+            "block",
+            vec!["MIT", "BSD-2-Clause"],
+            vec!["GPL-3.0", "AGPL-3.0"],
+        );
+        let (info, table_str) = format_policy_detail(&policy);
+
+        assert_eq!(info["name"], "detailed-policy");
+        assert_eq!(info["action"], "block");
+        assert_eq!(info["enabled"], true);
+        assert_eq!(info["description"], "Test policy");
+
+        assert!(table_str.contains("detailed-policy"));
+        assert!(table_str.contains("block"));
+        assert!(table_str.contains("MIT, BSD-2-Clause"));
+        assert!(table_str.contains("GPL-3.0, AGPL-3.0"));
+        assert!(table_str.contains("global")); // no repo_id
+    }
+
+    #[test]
+    fn format_policy_detail_no_description() {
+        let mut policy = make_test_policy("bare", "warn", vec![], vec![]);
+        policy.description = None;
+        let (info, table_str) = format_policy_detail(&policy);
+
+        assert!(info["description"].is_null());
+        assert!(table_str.contains("Description:"));
+    }
+
+    #[test]
+    fn format_policy_detail_with_repo() {
+        let mut policy = make_test_policy("scoped", "block", vec!["MIT"], vec![]);
+        policy.repository_id = Some(Uuid::nil());
+        let (info, table_str) = format_policy_detail(&policy);
+
+        assert!(info["repository_id"].is_string());
+        assert!(table_str.contains("Repository:"));
+        // Should show UUID instead of "global"
+        assert!(table_str.contains("00000000"));
+    }
+
+    #[test]
+    fn format_policy_detail_disabled() {
+        let mut policy = make_test_policy("disabled-policy", "block", vec![], vec![]);
+        policy.is_enabled = false;
+        policy.allow_unknown = true;
+        let (info, table_str) = format_policy_detail(&policy);
+
+        assert_eq!(info["enabled"], false);
+        assert_eq!(info["allow_unknown"], true);
+        assert!(table_str.contains("Enabled:"));
+        assert!(table_str.contains("Allow Unknown:"));
+    }
 }

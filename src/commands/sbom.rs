@@ -1,7 +1,9 @@
 use artifact_keeper_sdk::ClientSbomExt;
+use artifact_keeper_sdk::types::{ComponentResponse, CveHistoryEntry, SbomResponse};
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
+use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
@@ -342,50 +344,7 @@ async fn list_sboms(
         return Ok(());
     }
 
-    let entries: Vec<_> = sboms
-        .iter()
-        .map(|s| {
-            serde_json::json!({
-                "id": s.id.to_string(),
-                "artifact_id": s.artifact_id.to_string(),
-                "format": s.format,
-                "component_count": s.component_count,
-                "license_count": s.license_count,
-                "generated_at": s.generated_at.to_rfc3339(),
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "ARTIFACT",
-                "FORMAT",
-                "COMPONENTS",
-                "LICENSES",
-                "GENERATED",
-            ]);
-
-        for s in &sboms {
-            let id_short = &s.id.to_string()[..8];
-            let artifact_short = &s.artifact_id.to_string()[..8];
-
-            table.add_row(vec![
-                id_short.to_string(),
-                artifact_short.to_string(),
-                s.format.clone(),
-                s.component_count.to_string(),
-                s.license_count.to_string(),
-                s.generated_at.format("%Y-%m-%d %H:%M").to_string(),
-            ]);
-        }
-
-        table.to_string()
-    };
+    let (entries, table_str) = format_sboms_table(&sboms);
 
     println!(
         "{}",
@@ -511,50 +470,7 @@ async fn get_components(sbom_id: &str, global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let entries: Vec<_> = components
-        .iter()
-        .map(|c| {
-            serde_json::json!({
-                "id": c.id.to_string(),
-                "name": c.name,
-                "version": c.version,
-                "type": c.component_type,
-                "purl": c.purl,
-                "licenses": c.licenses,
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["ID", "NAME", "VERSION", "TYPE", "PURL", "LICENSES"]);
-
-        for c in &components {
-            let id_short = &c.id.to_string()[..8];
-            let version = c.version.as_deref().unwrap_or("-");
-            let ctype = c.component_type.as_deref().unwrap_or("-");
-            let purl = c.purl.as_deref().unwrap_or("-");
-            let licenses = if c.licenses.is_empty() {
-                "-".to_string()
-            } else {
-                c.licenses.join(", ")
-            };
-
-            table.add_row(vec![
-                id_short.to_string(),
-                c.name.clone(),
-                version.to_string(),
-                ctype.to_string(),
-                purl.to_string(),
-                licenses,
-            ]);
-        }
-
-        table.to_string()
-    };
+    let (entries, table_str) = format_components_table(&components);
 
     println!(
         "{}",
@@ -654,55 +570,7 @@ async fn cve_history(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let json_entries: Vec<_> = entries
-        .iter()
-        .map(|e| {
-            serde_json::json!({
-                "id": e.id.to_string(),
-                "cve_id": e.cve_id,
-                "severity": e.severity,
-                "affected_component": e.affected_component,
-                "status": e.status,
-                "cvss_score": e.cvss_score,
-                "first_detected_at": e.first_detected_at.to_rfc3339(),
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "CVE",
-                "SEVERITY",
-                "COMPONENT",
-                "STATUS",
-                "CVSS",
-                "DISCOVERED",
-            ]);
-
-        for e in &entries {
-            let severity = e.severity.as_deref().unwrap_or("-");
-            let component = e.affected_component.as_deref().unwrap_or("-");
-            let cvss = e
-                .cvss_score
-                .map(|s| format!("{s:.1}"))
-                .unwrap_or_else(|| "-".to_string());
-
-            table.add_row(vec![
-                e.cve_id.clone(),
-                severity.to_string(),
-                component.to_string(),
-                e.status.clone(),
-                cvss,
-                e.first_detected_at.format("%Y-%m-%d %H:%M").to_string(),
-            ]);
-        }
-
-        table.to_string()
-    };
+    let (json_entries, table_str) = format_cve_history_table(&entries);
 
     println!(
         "{}",
@@ -842,4 +710,656 @@ async fn cve_update_status(
     println!("{}", output::render(&info, &global.format, Some(table_str)));
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Formatting helpers (pure functions, testable without HTTP)
+// ---------------------------------------------------------------------------
+
+fn format_sboms_table(sboms: &[SbomResponse]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = sboms
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "id": s.id.to_string(),
+                "artifact_id": s.artifact_id.to_string(),
+                "format": s.format,
+                "component_count": s.component_count,
+                "license_count": s.license_count,
+                "generated_at": s.generated_at.to_rfc3339(),
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec![
+                "ID",
+                "ARTIFACT",
+                "FORMAT",
+                "COMPONENTS",
+                "LICENSES",
+                "GENERATED",
+            ]);
+
+        for s in sboms {
+            let id_short = &s.id.to_string()[..8];
+            let artifact_short = &s.artifact_id.to_string()[..8];
+
+            table.add_row(vec![
+                id_short.to_string(),
+                artifact_short.to_string(),
+                s.format.clone(),
+                s.component_count.to_string(),
+                s.license_count.to_string(),
+                s.generated_at.format("%Y-%m-%d %H:%M").to_string(),
+            ]);
+        }
+
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
+
+fn format_components_table(components: &[ComponentResponse]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = components
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "id": c.id.to_string(),
+                "name": c.name,
+                "version": c.version,
+                "type": c.component_type,
+                "purl": c.purl,
+                "licenses": c.licenses,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec!["ID", "NAME", "VERSION", "TYPE", "PURL", "LICENSES"]);
+
+        for c in components {
+            let id_short = &c.id.to_string()[..8];
+            let version = c.version.as_deref().unwrap_or("-");
+            let ctype = c.component_type.as_deref().unwrap_or("-");
+            let purl = c.purl.as_deref().unwrap_or("-");
+            let licenses = if c.licenses.is_empty() {
+                "-".to_string()
+            } else {
+                c.licenses.join(", ")
+            };
+
+            table.add_row(vec![
+                id_short.to_string(),
+                c.name.clone(),
+                version.to_string(),
+                ctype.to_string(),
+                purl.to_string(),
+                licenses,
+            ]);
+        }
+
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
+
+fn format_cve_history_table(entries: &[CveHistoryEntry]) -> (Vec<Value>, String) {
+    let json_entries: Vec<_> = entries
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "id": e.id.to_string(),
+                "cve_id": e.cve_id,
+                "severity": e.severity,
+                "affected_component": e.affected_component,
+                "status": e.status,
+                "cvss_score": e.cvss_score,
+                "first_detected_at": e.first_detected_at.to_rfc3339(),
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec![
+                "CVE",
+                "SEVERITY",
+                "COMPONENT",
+                "STATUS",
+                "CVSS",
+                "DISCOVERED",
+            ]);
+
+        for e in entries {
+            let severity = e.severity.as_deref().unwrap_or("-");
+            let component = e.affected_component.as_deref().unwrap_or("-");
+            let cvss = e
+                .cvss_score
+                .map(|s| format!("{s:.1}"))
+                .unwrap_or_else(|| "-".to_string());
+
+            table.add_row(vec![
+                e.cve_id.clone(),
+                severity.to_string(),
+                component.to_string(),
+                e.status.clone(),
+                cvss,
+                e.first_detected_at.format("%Y-%m-%d %H:%M").to_string(),
+            ]);
+        }
+
+        table.to_string()
+    };
+
+    (json_entries, table_str)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: SbomCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- SbomCommand top-level ----
+
+    #[test]
+    fn parse_generate_minimal() {
+        let cli = parse(&["test", "generate", "00000000-0000-0000-0000-000000000001"]);
+        if let SbomCommand::Generate {
+            artifact_id,
+            sbom_format,
+            force,
+        } = cli.command
+        {
+            assert_eq!(artifact_id, "00000000-0000-0000-0000-000000000001");
+            assert!(sbom_format.is_none());
+            assert!(!force);
+        } else {
+            panic!("Expected Generate");
+        }
+    }
+
+    #[test]
+    fn parse_generate_with_format_and_force() {
+        let cli = parse(&[
+            "test",
+            "generate",
+            "00000000-0000-0000-0000-000000000001",
+            "--sbom-format",
+            "cyclonedx",
+            "--force",
+        ]);
+        if let SbomCommand::Generate {
+            sbom_format, force, ..
+        } = cli.command
+        {
+            assert_eq!(sbom_format.unwrap(), "cyclonedx");
+            assert!(force);
+        } else {
+            panic!("Expected Generate with format and force");
+        }
+    }
+
+    #[test]
+    fn parse_show() {
+        let cli = parse(&["test", "show", "00000000-0000-0000-0000-000000000001"]);
+        if let SbomCommand::Show { artifact_id } = cli.command {
+            assert_eq!(artifact_id, "00000000-0000-0000-0000-000000000001");
+        } else {
+            panic!("Expected Show");
+        }
+    }
+
+    #[test]
+    fn parse_list_no_filters() {
+        let cli = parse(&["test", "list"]);
+        if let SbomCommand::List {
+            repo,
+            sbom_format,
+            artifact,
+        } = cli.command
+        {
+            assert!(repo.is_none());
+            assert!(sbom_format.is_none());
+            assert!(artifact.is_none());
+        } else {
+            panic!("Expected List");
+        }
+    }
+
+    #[test]
+    fn parse_list_with_filters() {
+        let cli = parse(&[
+            "test",
+            "list",
+            "--repo",
+            "00000000-0000-0000-0000-000000000001",
+            "--sbom-format",
+            "spdx",
+            "--artifact",
+            "00000000-0000-0000-0000-000000000002",
+        ]);
+        if let SbomCommand::List {
+            repo,
+            sbom_format,
+            artifact,
+        } = cli.command
+        {
+            assert_eq!(repo.unwrap(), "00000000-0000-0000-0000-000000000001");
+            assert_eq!(sbom_format.unwrap(), "spdx");
+            assert_eq!(artifact.unwrap(), "00000000-0000-0000-0000-000000000002");
+        } else {
+            panic!("Expected List with filters");
+        }
+    }
+
+    #[test]
+    fn parse_get() {
+        let cli = parse(&["test", "get", "sbom-id-123"]);
+        if let SbomCommand::Get { sbom_id } = cli.command {
+            assert_eq!(sbom_id, "sbom-id-123");
+        } else {
+            panic!("Expected Get");
+        }
+    }
+
+    #[test]
+    fn parse_delete() {
+        let cli = parse(&["test", "delete", "sbom-id-123"]);
+        if let SbomCommand::Delete { sbom_id, yes } = cli.command {
+            assert_eq!(sbom_id, "sbom-id-123");
+            assert!(!yes);
+        } else {
+            panic!("Expected Delete");
+        }
+    }
+
+    #[test]
+    fn parse_delete_with_yes() {
+        let cli = parse(&["test", "delete", "sbom-id-123", "--yes"]);
+        if let SbomCommand::Delete { yes, .. } = cli.command {
+            assert!(yes);
+        } else {
+            panic!("Expected Delete with --yes");
+        }
+    }
+
+    #[test]
+    fn parse_components() {
+        let cli = parse(&["test", "components", "sbom-id-123"]);
+        if let SbomCommand::Components { sbom_id } = cli.command {
+            assert_eq!(sbom_id, "sbom-id-123");
+        } else {
+            panic!("Expected Components");
+        }
+    }
+
+    #[test]
+    fn parse_export_minimal() {
+        let cli = parse(&[
+            "test",
+            "export",
+            "sbom-id-123",
+            "--output",
+            "/tmp/sbom.json",
+        ]);
+        if let SbomCommand::Export {
+            sbom_id,
+            output,
+            target_format,
+        } = cli.command
+        {
+            assert_eq!(sbom_id, "sbom-id-123");
+            assert_eq!(output, "/tmp/sbom.json");
+            assert!(target_format.is_none());
+        } else {
+            panic!("Expected Export");
+        }
+    }
+
+    #[test]
+    fn parse_export_with_target_format() {
+        let cli = parse(&[
+            "test",
+            "export",
+            "sbom-id-123",
+            "--output",
+            "/tmp/sbom.json",
+            "--target-format",
+            "cyclonedx",
+        ]);
+        if let SbomCommand::Export { target_format, .. } = cli.command {
+            assert_eq!(target_format.unwrap(), "cyclonedx");
+        } else {
+            panic!("Expected Export with target format");
+        }
+    }
+
+    #[test]
+    fn parse_export_missing_output() {
+        let result = try_parse(&["test", "export", "sbom-id-123"]);
+        assert!(result.is_err());
+    }
+
+    // ---- SbomCveCommand ----
+
+    #[test]
+    fn parse_cve_history() {
+        let cli = parse(&[
+            "test",
+            "cve",
+            "history",
+            "00000000-0000-0000-0000-000000000001",
+        ]);
+        if let SbomCommand::Cve(SbomCveCommand::History { artifact_id }) = cli.command {
+            assert_eq!(artifact_id, "00000000-0000-0000-0000-000000000001");
+        } else {
+            panic!("Expected Cve History");
+        }
+    }
+
+    #[test]
+    fn parse_cve_trends_defaults() {
+        let cli = parse(&["test", "cve", "trends"]);
+        if let SbomCommand::Cve(SbomCveCommand::Trends { days, repo }) = cli.command {
+            assert_eq!(days, 30);
+            assert!(repo.is_none());
+        } else {
+            panic!("Expected Cve Trends");
+        }
+    }
+
+    #[test]
+    fn parse_cve_trends_with_args() {
+        let cli = parse(&[
+            "test",
+            "cve",
+            "trends",
+            "--days",
+            "90",
+            "--repo",
+            "00000000-0000-0000-0000-000000000001",
+        ]);
+        if let SbomCommand::Cve(SbomCveCommand::Trends { days, repo }) = cli.command {
+            assert_eq!(days, 90);
+            assert_eq!(repo.unwrap(), "00000000-0000-0000-0000-000000000001");
+        } else {
+            panic!("Expected Cve Trends with args");
+        }
+    }
+
+    #[test]
+    fn parse_cve_update_status() {
+        let cli = parse(&[
+            "test",
+            "cve",
+            "update-status",
+            "cve-id-123",
+            "--status",
+            "fixed",
+        ]);
+        if let SbomCommand::Cve(SbomCveCommand::UpdateStatus {
+            cve_id,
+            status,
+            reason,
+        }) = cli.command
+        {
+            assert_eq!(cve_id, "cve-id-123");
+            assert_eq!(status, "fixed");
+            assert!(reason.is_none());
+        } else {
+            panic!("Expected Cve UpdateStatus");
+        }
+    }
+
+    #[test]
+    fn parse_cve_update_status_with_reason() {
+        let cli = parse(&[
+            "test",
+            "cve",
+            "update-status",
+            "cve-id-123",
+            "--status",
+            "false_positive",
+            "--reason",
+            "Not applicable to our usage",
+        ]);
+        if let SbomCommand::Cve(SbomCveCommand::UpdateStatus { reason, .. }) = cli.command {
+            assert_eq!(reason.unwrap(), "Not applicable to our usage");
+        } else {
+            panic!("Expected Cve UpdateStatus with reason");
+        }
+    }
+
+    #[test]
+    fn parse_cve_update_status_missing_status() {
+        let result = try_parse(&["test", "cve", "update-status", "cve-id-123"]);
+        assert!(result.is_err());
+    }
+
+    // ---- Format function tests ----
+
+    use artifact_keeper_sdk::types::{ComponentResponse, CveHistoryEntry, SbomResponse};
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    fn make_test_sbom(format: &str, components: i32, licenses: i32) -> SbomResponse {
+        SbomResponse {
+            id: Uuid::nil(),
+            artifact_id: Uuid::nil(),
+            repository_id: Uuid::nil(),
+            format: format.to_string(),
+            format_version: "1.0".to_string(),
+            component_count: components,
+            dependency_count: 0,
+            license_count: licenses,
+            licenses: vec!["MIT".to_string()],
+            content_hash: "sha256:abc".to_string(),
+            generated_at: Utc::now(),
+            created_at: Utc::now(),
+            generator: None,
+            generator_version: None,
+            spec_version: None,
+        }
+    }
+
+    fn make_test_component(name: &str, version: Option<&str>) -> ComponentResponse {
+        ComponentResponse {
+            id: Uuid::nil(),
+            sbom_id: Uuid::nil(),
+            name: name.to_string(),
+            version: version.map(|v| v.to_string()),
+            component_type: Some("library".to_string()),
+            purl: Some(format!("pkg:npm/{name}@{}", version.unwrap_or("0.0.0"))),
+            licenses: vec!["MIT".to_string()],
+            author: None,
+            cpe: None,
+            md5: None,
+            sha1: None,
+            sha256: None,
+            supplier: None,
+        }
+    }
+
+    fn make_test_cve(cve_id: &str, severity: Option<&str>, cvss: Option<f64>) -> CveHistoryEntry {
+        CveHistoryEntry {
+            id: Uuid::nil(),
+            artifact_id: Uuid::nil(),
+            cve_id: cve_id.to_string(),
+            severity: severity.map(|s| s.to_string()),
+            affected_component: Some("lodash".to_string()),
+            status: "open".to_string(),
+            cvss_score: cvss,
+            first_detected_at: Utc::now(),
+            last_detected_at: Utc::now(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+            acknowledged_at: None,
+            acknowledged_by: None,
+            acknowledged_reason: None,
+            affected_version: None,
+            component_id: None,
+            cve_published_at: None,
+            fixed_version: None,
+            sbom_id: None,
+            scan_result_id: None,
+        }
+    }
+
+    #[test]
+    fn format_sboms_table_single() {
+        let sboms = vec![make_test_sbom("spdx", 42, 5)];
+        let (entries, table_str) = format_sboms_table(&sboms);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["format"], "spdx");
+        assert_eq!(entries[0]["component_count"], 42);
+        assert_eq!(entries[0]["license_count"], 5);
+
+        assert!(table_str.contains("FORMAT"));
+        assert!(table_str.contains("COMPONENTS"));
+        assert!(table_str.contains("spdx"));
+        assert!(table_str.contains("42"));
+    }
+
+    #[test]
+    fn format_sboms_table_multiple() {
+        let sboms = vec![
+            make_test_sbom("spdx", 10, 3),
+            make_test_sbom("cyclonedx", 20, 7),
+        ];
+        let (entries, table_str) = format_sboms_table(&sboms);
+
+        assert_eq!(entries.len(), 2);
+        assert!(table_str.contains("spdx"));
+        assert!(table_str.contains("cyclonedx"));
+    }
+
+    #[test]
+    fn format_sboms_table_empty() {
+        let (entries, table_str) = format_sboms_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("ID"));
+    }
+
+    #[test]
+    fn format_components_table_single() {
+        let components = vec![make_test_component("lodash", Some("4.17.21"))];
+        let (entries, table_str) = format_components_table(&components);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["name"], "lodash");
+        assert_eq!(entries[0]["version"], "4.17.21");
+
+        assert!(table_str.contains("NAME"));
+        assert!(table_str.contains("lodash"));
+        assert!(table_str.contains("library"));
+        assert!(table_str.contains("MIT"));
+    }
+
+    #[test]
+    fn format_components_table_no_version() {
+        let components = vec![make_test_component("unknown-pkg", None)];
+        let (entries, table_str) = format_components_table(&components);
+
+        assert!(entries[0]["version"].is_null());
+        assert!(table_str.contains("-"));
+    }
+
+    #[test]
+    fn format_components_table_no_licenses() {
+        let mut comp = make_test_component("bare-pkg", Some("1.0.0"));
+        comp.licenses = vec![];
+        comp.component_type = None;
+        comp.purl = None;
+        let (entries, table_str) = format_components_table(&[comp]);
+
+        let licenses = entries[0]["licenses"].as_array().unwrap();
+        assert!(licenses.is_empty());
+        // The table shows "-" for empty licenses
+        assert!(table_str.contains("-"));
+    }
+
+    #[test]
+    fn format_components_table_empty() {
+        let (entries, table_str) = format_components_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("NAME"));
+    }
+
+    #[test]
+    fn format_cve_history_table_single() {
+        let cves = vec![make_test_cve("CVE-2024-1234", Some("HIGH"), Some(8.5))];
+        let (entries, table_str) = format_cve_history_table(&cves);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["cve_id"], "CVE-2024-1234");
+        assert_eq!(entries[0]["severity"], "HIGH");
+        assert_eq!(entries[0]["status"], "open");
+
+        assert!(table_str.contains("CVE"));
+        assert!(table_str.contains("SEVERITY"));
+        assert!(table_str.contains("CVE-2024-1234"));
+        assert!(table_str.contains("HIGH"));
+        assert!(table_str.contains("8.5"));
+    }
+
+    #[test]
+    fn format_cve_history_table_no_severity() {
+        let cves = vec![make_test_cve("CVE-2024-0000", None, None)];
+        let (entries, table_str) = format_cve_history_table(&cves);
+
+        assert!(entries[0]["severity"].is_null());
+        assert!(entries[0]["cvss_score"].is_null());
+        assert!(table_str.contains("-"));
+    }
+
+    #[test]
+    fn format_cve_history_table_multiple() {
+        let cves = vec![
+            make_test_cve("CVE-2024-1111", Some("CRITICAL"), Some(9.8)),
+            make_test_cve("CVE-2024-2222", Some("LOW"), Some(2.0)),
+        ];
+        let (entries, table_str) = format_cve_history_table(&cves);
+
+        assert_eq!(entries.len(), 2);
+        assert!(table_str.contains("CVE-2024-1111"));
+        assert!(table_str.contains("CVE-2024-2222"));
+        assert!(table_str.contains("CRITICAL"));
+        assert!(table_str.contains("LOW"));
+    }
+
+    #[test]
+    fn format_cve_history_table_empty() {
+        let (entries, table_str) = format_cve_history_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("CVE"));
+    }
 }

@@ -1,8 +1,10 @@
+use artifact_keeper_sdk::types::{DashboardResponse, PolicyResponse, ScoreResponse};
 use artifact_keeper_sdk::{ClientRepositoriesExt, ClientSecurityExt};
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use console::style;
 use miette::Result;
+use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
@@ -636,40 +638,11 @@ async fn show_dashboard(global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let entry = serde_json::json!({
-        "total_scans": d.total_scans,
-        "total_findings": d.total_findings,
-        "critical_findings": d.critical_findings,
-        "high_findings": d.high_findings,
-        "policy_violations_blocked": d.policy_violations_blocked,
-        "repos_with_scanning": d.repos_with_scanning,
-        "repos_grade_a": d.repos_grade_a,
-        "repos_grade_f": d.repos_grade_f,
-    });
-
-    let table_str = format!(
-        "Security Dashboard:\n\
-         \x20 Total Scans:           {}\n\
-         \x20 Total Findings:        {}\n\
-         \x20 Critical:              {}\n\
-         \x20 High:                  {}\n\
-         \x20 Policy Violations:     {}\n\
-         \x20 Repos with Scanning:   {}\n\
-         \x20 Grade A Repos:         {}\n\
-         \x20 Grade F Repos:         {}",
-        d.total_scans,
-        d.total_findings,
-        format_severity_count(d.critical_findings as i32, "CRITICAL"),
-        format_severity_count(d.high_findings as i32, "HIGH"),
-        d.policy_violations_blocked,
-        d.repos_with_scanning,
-        d.repos_grade_a,
-        d.repos_grade_f,
-    );
+    let (entries, table_str) = format_dashboard(&d);
 
     println!(
         "{}",
-        output::render(&[entry], &global.format, Some(table_str))
+        output::render(&entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -702,64 +675,7 @@ async fn show_scores(global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let entries: Vec<_> = items
-        .iter()
-        .map(|s| {
-            serde_json::json!({
-                "repository_id": s.repository_id.to_string(),
-                "grade": s.grade,
-                "score": s.score,
-                "critical": s.critical_count,
-                "high": s.high_count,
-                "medium": s.medium_count,
-                "low": s.low_count,
-                "total_findings": s.total_findings,
-                "acknowledged": s.acknowledged_count,
-                "last_scan_at": s.last_scan_at.map(|t| t.to_rfc3339()),
-                "calculated_at": s.calculated_at.to_rfc3339(),
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "REPO",
-                "GRADE",
-                "CRITICAL",
-                "HIGH",
-                "MEDIUM",
-                "LOW",
-                "SCANNED",
-                "UNSCANNED",
-                "UPDATED",
-            ]);
-
-        for s in &items {
-            let repo_short = &s.repository_id.to_string()[..8];
-            let scanned = s
-                .last_scan_at
-                .map(|t| t.format("%Y-%m-%d").to_string())
-                .unwrap_or_else(|| "-".to_string());
-            let unscanned = s.total_findings - s.acknowledged_count;
-            table.add_row(vec![
-                repo_short,
-                &s.grade,
-                &format_severity_count(s.critical_count, "CRITICAL"),
-                &format_severity_count(s.high_count, "HIGH"),
-                &format_severity_count(s.medium_count, "MEDIUM"),
-                &s.low_count.to_string(),
-                &scanned,
-                &unscanned.to_string(),
-                &s.calculated_at.format("%Y-%m-%d").to_string(),
-            ]);
-        }
-
-        table.to_string()
-    };
+    let (entries, table_str) = format_scores_table(&items);
 
     println!(
         "{}",
@@ -980,57 +896,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    let entries: Vec<_> = items
-        .iter()
-        .map(|p| {
-            serde_json::json!({
-                "id": p.id.to_string(),
-                "name": p.name,
-                "max_severity": p.max_severity,
-                "block_on_fail": p.block_on_fail,
-                "block_unscanned": p.block_unscanned,
-                "is_enabled": p.is_enabled,
-                "require_signature": p.require_signature,
-                "repository_id": p.repository_id.map(|id| id.to_string()),
-                "created_at": p.created_at.to_rfc3339(),
-            })
-        })
-        .collect();
-
-    let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "NAME",
-                "MAX SEV",
-                "BLOCK FAIL",
-                "BLOCK UNSCAN",
-                "ENABLED",
-                "REPO",
-            ]);
-
-        for p in &items {
-            let id_short = &p.id.to_string()[..8];
-            let repo = p
-                .repository_id
-                .map(|id| id.to_string()[..8].to_string())
-                .unwrap_or_else(|| "global".to_string());
-            table.add_row(vec![
-                id_short,
-                &p.name,
-                &p.max_severity,
-                if p.block_on_fail { "yes" } else { "no" },
-                if p.block_unscanned { "yes" } else { "no" },
-                if p.is_enabled { "yes" } else { "no" },
-                &repo,
-            ]);
-        }
-
-        table.to_string()
-    };
+    let (entries, table_str) = format_scan_policies_table(&items);
 
     println!(
         "{}",
@@ -1462,9 +1328,566 @@ fn truncate(s: &str, max: usize) -> String {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Formatting helpers (pure functions, testable without HTTP)
+// ---------------------------------------------------------------------------
+
+fn format_dashboard(d: &DashboardResponse) -> (Vec<Value>, String) {
+    let entry = serde_json::json!({
+        "total_scans": d.total_scans,
+        "total_findings": d.total_findings,
+        "critical_findings": d.critical_findings,
+        "high_findings": d.high_findings,
+        "policy_violations_blocked": d.policy_violations_blocked,
+        "repos_with_scanning": d.repos_with_scanning,
+        "repos_grade_a": d.repos_grade_a,
+        "repos_grade_f": d.repos_grade_f,
+    });
+
+    let table_str = format!(
+        "Security Dashboard:\n\
+         \x20 Total Scans:           {}\n\
+         \x20 Total Findings:        {}\n\
+         \x20 Critical:              {}\n\
+         \x20 High:                  {}\n\
+         \x20 Policy Violations:     {}\n\
+         \x20 Repos with Scanning:   {}\n\
+         \x20 Grade A Repos:         {}\n\
+         \x20 Grade F Repos:         {}",
+        d.total_scans,
+        d.total_findings,
+        format_severity_count(d.critical_findings as i32, "CRITICAL"),
+        format_severity_count(d.high_findings as i32, "HIGH"),
+        d.policy_violations_blocked,
+        d.repos_with_scanning,
+        d.repos_grade_a,
+        d.repos_grade_f,
+    );
+
+    (vec![entry], table_str)
+}
+
+fn format_scores_table(items: &[ScoreResponse]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = items
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "repository_id": s.repository_id.to_string(),
+                "grade": s.grade,
+                "score": s.score,
+                "critical": s.critical_count,
+                "high": s.high_count,
+                "medium": s.medium_count,
+                "low": s.low_count,
+                "total_findings": s.total_findings,
+                "acknowledged": s.acknowledged_count,
+                "last_scan_at": s.last_scan_at.map(|t| t.to_rfc3339()),
+                "calculated_at": s.calculated_at.to_rfc3339(),
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec![
+                "REPO",
+                "GRADE",
+                "CRITICAL",
+                "HIGH",
+                "MEDIUM",
+                "LOW",
+                "SCANNED",
+                "UNSCANNED",
+                "UPDATED",
+            ]);
+
+        for s in items {
+            let repo_short = &s.repository_id.to_string()[..8];
+            let scanned = s
+                .last_scan_at
+                .map(|t| t.format("%Y-%m-%d").to_string())
+                .unwrap_or_else(|| "-".to_string());
+            let unscanned = s.total_findings - s.acknowledged_count;
+            table.add_row(vec![
+                repo_short,
+                &s.grade,
+                &format_severity_count(s.critical_count, "CRITICAL"),
+                &format_severity_count(s.high_count, "HIGH"),
+                &format_severity_count(s.medium_count, "MEDIUM"),
+                &s.low_count.to_string(),
+                &scanned,
+                &unscanned.to_string(),
+                &s.calculated_at.format("%Y-%m-%d").to_string(),
+            ]);
+        }
+
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
+
+fn format_scan_policies_table(items: &[PolicyResponse]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = items
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "id": p.id.to_string(),
+                "name": p.name,
+                "max_severity": p.max_severity,
+                "block_on_fail": p.block_on_fail,
+                "block_unscanned": p.block_unscanned,
+                "is_enabled": p.is_enabled,
+                "require_signature": p.require_signature,
+                "repository_id": p.repository_id.map(|id| id.to_string()),
+                "created_at": p.created_at.to_rfc3339(),
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL_CONDENSED)
+            .set_content_arrangement(ContentArrangement::Dynamic)
+            .set_header(vec![
+                "ID",
+                "NAME",
+                "MAX SEV",
+                "BLOCK FAIL",
+                "BLOCK UNSCAN",
+                "ENABLED",
+                "REPO",
+            ]);
+
+        for p in items {
+            let id_short = &p.id.to_string()[..8];
+            let repo = p
+                .repository_id
+                .map(|id| id.to_string()[..8].to_string())
+                .unwrap_or_else(|| "global".to_string());
+            table.add_row(vec![
+                id_short,
+                &p.name,
+                &p.max_severity,
+                if p.block_on_fail { "yes" } else { "no" },
+                if p.block_unscanned { "yes" } else { "no" },
+                if p.is_enabled { "yes" } else { "no" },
+                &repo,
+            ]);
+        }
+
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: ScanCommand,
+    }
+
+    fn parse_scan(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse_scan(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- ScanCommand clap parsing ----
+
+    #[test]
+    fn parse_run() {
+        let cli = parse_scan(&["test", "run", "my-repo", "pkg/foo-1.0.tar.gz"]);
+        if let ScanCommand::Run { repo, path } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(path, "pkg/foo-1.0.tar.gz");
+        } else {
+            panic!("Expected Run");
+        }
+    }
+
+    #[test]
+    fn parse_list_defaults() {
+        let cli = parse_scan(&["test", "list"]);
+        if let ScanCommand::List {
+            repo,
+            page,
+            per_page,
+        } = cli.command
+        {
+            assert!(repo.is_none());
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 20);
+        } else {
+            panic!("Expected List");
+        }
+    }
+
+    #[test]
+    fn parse_list_with_options() {
+        let cli = parse_scan(&[
+            "test",
+            "list",
+            "--repo",
+            "my-repo",
+            "--page",
+            "3",
+            "--per-page",
+            "50",
+        ]);
+        if let ScanCommand::List {
+            repo,
+            page,
+            per_page,
+        } = cli.command
+        {
+            assert_eq!(repo.unwrap(), "my-repo");
+            assert_eq!(page, 3);
+            assert_eq!(per_page, 50);
+        } else {
+            panic!("Expected List with options");
+        }
+    }
+
+    #[test]
+    fn parse_show_defaults() {
+        let cli = parse_scan(&["test", "show", "scan-id-123"]);
+        if let ScanCommand::Show {
+            id,
+            severity,
+            page,
+            per_page,
+        } = cli.command
+        {
+            assert_eq!(id, "scan-id-123");
+            assert!(severity.is_none());
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 50);
+        } else {
+            panic!("Expected Show");
+        }
+    }
+
+    #[test]
+    fn parse_show_with_severity() {
+        let cli = parse_scan(&["test", "show", "scan-id-123", "--severity", "CRITICAL,HIGH"]);
+        if let ScanCommand::Show { severity, .. } = cli.command {
+            assert_eq!(severity.unwrap(), "CRITICAL,HIGH");
+        } else {
+            panic!("Expected Show with severity");
+        }
+    }
+
+    #[test]
+    fn parse_dashboard() {
+        let cli = parse_scan(&["test", "dashboard"]);
+        assert!(matches!(cli.command, ScanCommand::Dashboard));
+    }
+
+    #[test]
+    fn parse_scores() {
+        let cli = parse_scan(&["test", "scores"]);
+        assert!(matches!(cli.command, ScanCommand::Scores));
+    }
+
+    // ---- ScanConfigCommand ----
+
+    #[test]
+    fn parse_config_list() {
+        let cli = parse_scan(&["test", "config", "list"]);
+        if let ScanCommand::Config {
+            command: ScanConfigCommand::List,
+        } = cli.command
+        {
+            // pass
+        } else {
+            panic!("Expected Config List");
+        }
+    }
+
+    // ---- ScanFindingCommand ----
+
+    #[test]
+    fn parse_finding_ack() {
+        let cli = parse_scan(&[
+            "test",
+            "finding",
+            "ack",
+            "finding-id-123",
+            "--reason",
+            "Accepted risk",
+        ]);
+        if let ScanCommand::Finding {
+            command: ScanFindingCommand::Ack { id, reason },
+        } = cli.command
+        {
+            assert_eq!(id, "finding-id-123");
+            assert_eq!(reason, "Accepted risk");
+        } else {
+            panic!("Expected Finding Ack");
+        }
+    }
+
+    #[test]
+    fn parse_finding_ack_missing_reason() {
+        let result = try_parse_scan(&["test", "finding", "ack", "finding-id"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_finding_revoke() {
+        let cli = parse_scan(&["test", "finding", "revoke", "finding-id-123"]);
+        if let ScanCommand::Finding {
+            command: ScanFindingCommand::Revoke { id },
+        } = cli.command
+        {
+            assert_eq!(id, "finding-id-123");
+        } else {
+            panic!("Expected Finding Revoke");
+        }
+    }
+
+    // ---- ScanPolicyCommand ----
+
+    #[test]
+    fn parse_policy_list() {
+        let cli = parse_scan(&["test", "policy", "list"]);
+        if let ScanCommand::Policy {
+            command: ScanPolicyCommand::List,
+        } = cli.command
+        {
+            // pass
+        } else {
+            panic!("Expected Policy List");
+        }
+    }
+
+    #[test]
+    fn parse_policy_show() {
+        let cli = parse_scan(&["test", "policy", "show", "policy-id"]);
+        if let ScanCommand::Policy {
+            command: ScanPolicyCommand::Show { id },
+        } = cli.command
+        {
+            assert_eq!(id, "policy-id");
+        } else {
+            panic!("Expected Policy Show");
+        }
+    }
+
+    #[test]
+    fn parse_policy_create_minimal() {
+        let cli = parse_scan(&[
+            "test",
+            "policy",
+            "create",
+            "my-policy",
+            "--max-severity",
+            "HIGH",
+        ]);
+        if let ScanCommand::Policy {
+            command:
+                ScanPolicyCommand::Create {
+                    name,
+                    max_severity,
+                    block_on_fail,
+                    block_unscanned,
+                    repo,
+                },
+        } = cli.command
+        {
+            assert_eq!(name, "my-policy");
+            assert_eq!(max_severity, "HIGH");
+            assert!(!block_on_fail);
+            assert!(!block_unscanned);
+            assert!(repo.is_none());
+        } else {
+            panic!("Expected Policy Create");
+        }
+    }
+
+    #[test]
+    fn parse_policy_create_full() {
+        let cli = parse_scan(&[
+            "test",
+            "policy",
+            "create",
+            "strict",
+            "--max-severity",
+            "CRITICAL",
+            "--block-on-fail",
+            "--block-unscanned",
+            "--repo",
+            "00000000-0000-0000-0000-000000000001",
+        ]);
+        if let ScanCommand::Policy {
+            command:
+                ScanPolicyCommand::Create {
+                    block_on_fail,
+                    block_unscanned,
+                    repo,
+                    ..
+                },
+        } = cli.command
+        {
+            assert!(block_on_fail);
+            assert!(block_unscanned);
+            assert_eq!(repo.unwrap(), "00000000-0000-0000-0000-000000000001");
+        } else {
+            panic!("Expected Policy Create full");
+        }
+    }
+
+    #[test]
+    fn parse_policy_update() {
+        let cli = parse_scan(&[
+            "test",
+            "policy",
+            "update",
+            "policy-id",
+            "--name",
+            "updated-name",
+            "--max-severity",
+            "MEDIUM",
+        ]);
+        if let ScanCommand::Policy {
+            command:
+                ScanPolicyCommand::Update {
+                    id,
+                    name,
+                    max_severity,
+                    block_on_fail,
+                    block_unscanned,
+                    enabled,
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "policy-id");
+            assert_eq!(name.unwrap(), "updated-name");
+            assert_eq!(max_severity.unwrap(), "MEDIUM");
+            assert!(block_on_fail.is_none());
+            assert!(block_unscanned.is_none());
+            assert!(enabled.is_none());
+        } else {
+            panic!("Expected Policy Update");
+        }
+    }
+
+    #[test]
+    fn parse_policy_delete() {
+        let cli = parse_scan(&["test", "policy", "delete", "policy-id"]);
+        if let ScanCommand::Policy {
+            command: ScanPolicyCommand::Delete { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "policy-id");
+            assert!(!yes);
+        } else {
+            panic!("Expected Policy Delete");
+        }
+    }
+
+    #[test]
+    fn parse_policy_delete_with_yes() {
+        let cli = parse_scan(&["test", "policy", "delete", "policy-id", "--yes"]);
+        if let ScanCommand::Policy {
+            command: ScanPolicyCommand::Delete { yes, .. },
+        } = cli.command
+        {
+            assert!(yes);
+        } else {
+            panic!("Expected Policy Delete with --yes");
+        }
+    }
+
+    // ---- ScanSecurityCommand ----
+
+    #[test]
+    fn parse_security_show() {
+        let cli = parse_scan(&["test", "security", "show", "my-repo"]);
+        if let ScanCommand::Security {
+            command: ScanSecurityCommand::Show { repo_key },
+        } = cli.command
+        {
+            assert_eq!(repo_key, "my-repo");
+        } else {
+            panic!("Expected Security Show");
+        }
+    }
+
+    #[test]
+    fn parse_security_update_defaults() {
+        let cli = parse_scan(&["test", "security", "update", "my-repo"]);
+        if let ScanCommand::Security {
+            command:
+                ScanSecurityCommand::Update {
+                    repo_key,
+                    scanning_enabled,
+                    scan_on_upload,
+                    scan_on_proxy,
+                    block_on_violation,
+                    severity_threshold,
+                },
+        } = cli.command
+        {
+            assert_eq!(repo_key, "my-repo");
+            assert!(!scanning_enabled);
+            assert!(!scan_on_upload);
+            assert!(!scan_on_proxy);
+            assert!(!block_on_violation);
+            assert_eq!(severity_threshold, "HIGH");
+        } else {
+            panic!("Expected Security Update");
+        }
+    }
+
+    #[test]
+    fn parse_security_update_with_flags() {
+        let cli = parse_scan(&[
+            "test",
+            "security",
+            "update",
+            "my-repo",
+            "--scanning-enabled",
+            "--scan-on-upload",
+            "--scan-on-proxy",
+            "--block-on-violation",
+            "--severity-threshold",
+            "CRITICAL",
+        ]);
+        if let ScanCommand::Security {
+            command:
+                ScanSecurityCommand::Update {
+                    scanning_enabled,
+                    scan_on_upload,
+                    scan_on_proxy,
+                    block_on_violation,
+                    severity_threshold,
+                    ..
+                },
+        } = cli.command
+        {
+            assert!(scanning_enabled);
+            assert!(scan_on_upload);
+            assert!(scan_on_proxy);
+            assert!(block_on_violation);
+            assert_eq!(severity_threshold, "CRITICAL");
+        } else {
+            panic!("Expected Security Update with flags");
+        }
+    }
 
     // ---- truncate ----
 
@@ -1618,5 +2041,202 @@ mod tests {
     fn format_severity_count_nonzero_low() {
         let result = format_severity_count(2, "LOW");
         assert_eq!(result, "2");
+    }
+
+    // ---- Format function tests ----
+
+    use artifact_keeper_sdk::types::{DashboardResponse, PolicyResponse, ScoreResponse};
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    fn make_test_dashboard() -> DashboardResponse {
+        DashboardResponse {
+            total_scans: 150,
+            total_findings: 42,
+            critical_findings: 3,
+            high_findings: 8,
+            policy_violations_blocked: 5,
+            repos_with_scanning: 12,
+            repos_grade_a: 8,
+            repos_grade_f: 1,
+        }
+    }
+
+    fn make_test_score(grade: &str, critical: i32, high: i32) -> ScoreResponse {
+        ScoreResponse {
+            id: Uuid::nil(),
+            repository_id: Uuid::nil(),
+            grade: grade.to_string(),
+            score: 85,
+            critical_count: critical,
+            high_count: high,
+            medium_count: 5,
+            low_count: 10,
+            total_findings: critical + high + 5 + 10,
+            acknowledged_count: 3,
+            last_scan_at: Some(Utc::now()),
+            calculated_at: Utc::now(),
+        }
+    }
+
+    fn make_test_scan_policy(name: &str, max_severity: &str) -> PolicyResponse {
+        PolicyResponse {
+            id: Uuid::nil(),
+            name: name.to_string(),
+            max_severity: max_severity.to_string(),
+            block_on_fail: true,
+            block_unscanned: false,
+            is_enabled: true,
+            require_signature: false,
+            repository_id: None,
+            max_artifact_age_days: None,
+            min_staging_hours: None,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    // ---- format_dashboard ----
+
+    #[test]
+    fn format_dashboard_with_data() {
+        let d = make_test_dashboard();
+        let (entries, table_str) = format_dashboard(&d);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["total_scans"], 150);
+        assert_eq!(entries[0]["total_findings"], 42);
+        assert_eq!(entries[0]["critical_findings"], 3);
+        assert_eq!(entries[0]["repos_grade_a"], 8);
+
+        assert!(table_str.contains("Security Dashboard:"));
+        assert!(table_str.contains("Total Scans:"));
+        assert!(table_str.contains("150"));
+        assert!(table_str.contains("42"));
+        assert!(table_str.contains("Grade A Repos:"));
+        assert!(table_str.contains("8"));
+    }
+
+    #[test]
+    fn format_dashboard_zero_findings() {
+        let d = DashboardResponse {
+            total_scans: 10,
+            total_findings: 0,
+            critical_findings: 0,
+            high_findings: 0,
+            policy_violations_blocked: 0,
+            repos_with_scanning: 5,
+            repos_grade_a: 5,
+            repos_grade_f: 0,
+        };
+        let (entries, table_str) = format_dashboard(&d);
+
+        assert_eq!(entries[0]["total_findings"], 0);
+        assert!(table_str.contains("Security Dashboard:"));
+    }
+
+    // ---- format_scores_table ----
+
+    #[test]
+    fn format_scores_table_single() {
+        let scores = vec![make_test_score("A", 0, 1)];
+        let (entries, table_str) = format_scores_table(&scores);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["grade"], "A");
+        assert_eq!(entries[0]["score"], 85);
+        assert_eq!(entries[0]["critical"], 0);
+        assert_eq!(entries[0]["high"], 1);
+
+        assert!(table_str.contains("REPO"));
+        assert!(table_str.contains("GRADE"));
+    }
+
+    #[test]
+    fn format_scores_table_multiple() {
+        let scores = vec![make_test_score("A", 0, 0), make_test_score("C", 2, 5)];
+        let (entries, table_str) = format_scores_table(&scores);
+
+        assert_eq!(entries.len(), 2);
+        assert!(table_str.contains("GRADE"));
+    }
+
+    #[test]
+    fn format_scores_table_no_last_scan() {
+        let mut score = make_test_score("B", 1, 2);
+        score.last_scan_at = None;
+        let (entries, table_str) = format_scores_table(&[score]);
+
+        assert!(entries[0]["last_scan_at"].is_null());
+        assert!(table_str.contains("-"));
+    }
+
+    #[test]
+    fn format_scores_table_empty() {
+        let (entries, table_str) = format_scores_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("REPO"));
+    }
+
+    // ---- format_scan_policies_table ----
+
+    #[test]
+    fn format_scan_policies_table_single() {
+        let policies = vec![make_test_scan_policy("strict", "HIGH")];
+        let (entries, table_str) = format_scan_policies_table(&policies);
+
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["name"], "strict");
+        assert_eq!(entries[0]["max_severity"], "HIGH");
+        assert_eq!(entries[0]["block_on_fail"], true);
+        assert_eq!(entries[0]["is_enabled"], true);
+
+        assert!(table_str.contains("strict"));
+        assert!(table_str.contains("HIGH"));
+        assert!(table_str.contains("yes"));
+        assert!(table_str.contains("global"));
+    }
+
+    #[test]
+    fn format_scan_policies_table_with_repo() {
+        let mut policy = make_test_scan_policy("repo-policy", "CRITICAL");
+        policy.repository_id = Some(Uuid::nil());
+        let (entries, table_str) = format_scan_policies_table(&[policy]);
+
+        assert!(entries[0]["repository_id"].is_string());
+        // Should show short UUID instead of "global"
+        assert!(table_str.contains("00000000"));
+    }
+
+    #[test]
+    fn format_scan_policies_table_disabled() {
+        let mut policy = make_test_scan_policy("disabled", "LOW");
+        policy.is_enabled = false;
+        policy.block_on_fail = false;
+        policy.block_unscanned = false;
+        let (_entries, table_str) = format_scan_policies_table(&[policy]);
+
+        // "no" should appear for disabled flags
+        assert!(table_str.contains("no"));
+    }
+
+    #[test]
+    fn format_scan_policies_table_empty() {
+        let (entries, table_str) = format_scan_policies_table(&[]);
+        assert!(entries.is_empty());
+        assert!(table_str.contains("NAME"));
+    }
+
+    #[test]
+    fn format_scan_policies_table_multiple() {
+        let policies = vec![
+            make_test_scan_policy("policy-a", "HIGH"),
+            make_test_scan_policy("policy-b", "CRITICAL"),
+        ];
+        let (entries, table_str) = format_scan_policies_table(&policies);
+
+        assert_eq!(entries.len(), 2);
+        assert!(table_str.contains("policy-a"));
+        assert!(table_str.contains("policy-b"));
     }
 }
