@@ -99,7 +99,7 @@ checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 
 [[package]]
 name = "artifact-keeper-cli"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "artifact-keeper-sdk",
  "assert_cmd",
