@@ -850,3 +850,862 @@ async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
 
     Ok(())
 }
+
+/// Format a list of backup entries as a table string.
+fn format_backups_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["ID", "STATUS", "TYPE", "ARTIFACTS", "SIZE", "CREATED"]);
+
+    for b in items {
+        let id = b["id"].as_str().unwrap_or("-");
+        let id_short = if id.len() >= 8 { &id[..8] } else { id };
+        table.add_row(vec![
+            id_short,
+            b["status"].as_str().unwrap_or("-"),
+            b["type"].as_str().unwrap_or("-"),
+            &b["artifacts"]
+                .as_i64()
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "-".into()),
+            b["size"].as_str().unwrap_or("-"),
+            b["created_at"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+/// Format a list of user entries as a table string.
+fn format_users_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            "ID",
+            "USERNAME",
+            "EMAIL",
+            "DISPLAY NAME",
+            "ADMIN",
+            "ACTIVE",
+            "AUTH",
+        ]);
+
+    for u in items {
+        let id = u["id"].as_str().unwrap_or("-");
+        let id_short = if id.len() >= 8 { &id[..8] } else { id };
+        let admin = if u["is_admin"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        };
+        let active = if u["is_active"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        };
+        table.add_row(vec![
+            id_short,
+            u["username"].as_str().unwrap_or("-"),
+            u["email"].as_str().unwrap_or("-"),
+            u["display_name"].as_str().unwrap_or("-"),
+            admin,
+            active,
+            u["auth_provider"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+/// Format a list of plugin entries as a table string.
+fn format_plugins_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            "NAME",
+            "VERSION",
+            "TYPE",
+            "STATUS",
+            "AUTHOR",
+            "INSTALLED",
+        ]);
+
+    for p in items {
+        table.add_row(vec![
+            p["display_name"].as_str().unwrap_or("-"),
+            p["version"].as_str().unwrap_or("-"),
+            p["type"].as_str().unwrap_or("-"),
+            p["status"].as_str().unwrap_or("-"),
+            p["author"].as_str().unwrap_or("-"),
+            p["installed_at"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+/// Format system metrics as a human-readable string.
+fn format_metrics_display(info: &serde_json::Value) -> String {
+    format!(
+        "Artifacts:      {}\n\
+         Downloads:      {}\n\
+         Repositories:   {}\n\
+         Storage:        {}\n\
+         Users:          {}\n\
+         Active Peers:   {}\n\
+         Pending Syncs:  {}",
+        info["total_artifacts"].as_i64().unwrap_or(0),
+        info["total_downloads"].as_i64().unwrap_or(0),
+        info["total_repositories"].as_i64().unwrap_or(0),
+        info["total_storage"].as_str().unwrap_or("0 B"),
+        info["total_users"].as_i64().unwrap_or(0),
+        info["active_peers"].as_i64().unwrap_or(0),
+        info["pending_sync_tasks"].as_i64().unwrap_or(0),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use serde_json::json;
+
+    // ---- TestCli wrapper for parsing ----
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: AdminCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- Backup subcommand parsing ----
+
+    #[test]
+    fn parse_backup_list() {
+        let cli = parse(&["test", "backup", "list"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Backup {
+                command: BackupCommand::List { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_backup_list_defaults() {
+        let cli = parse(&["test", "backup", "list"]);
+        if let AdminCommand::Backup {
+            command: BackupCommand::List { page, per_page },
+        } = cli.command
+        {
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 20);
+        } else {
+            panic!("Expected BackupCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_backup_list_custom_page() {
+        let cli = parse(&["test", "backup", "list", "--page", "3", "--per-page", "10"]);
+        if let AdminCommand::Backup {
+            command: BackupCommand::List { page, per_page },
+        } = cli.command
+        {
+            assert_eq!(page, 3);
+            assert_eq!(per_page, 10);
+        } else {
+            panic!("Expected BackupCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_backup_create() {
+        let cli = parse(&["test", "backup", "create"]);
+        if let AdminCommand::Backup {
+            command: BackupCommand::Create { r#type },
+        } = cli.command
+        {
+            assert_eq!(r#type, "full");
+        } else {
+            panic!("Expected BackupCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_backup_create_incremental() {
+        let cli = parse(&["test", "backup", "create", "--type", "incremental"]);
+        if let AdminCommand::Backup {
+            command: BackupCommand::Create { r#type },
+        } = cli.command
+        {
+            assert_eq!(r#type, "incremental");
+        } else {
+            panic!("Expected BackupCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_backup_restore() {
+        let cli = parse(&["test", "backup", "restore", "abc123"]);
+        if let AdminCommand::Backup {
+            command:
+                BackupCommand::Restore {
+                    id,
+                    database,
+                    artifacts,
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "abc123");
+            assert!(!database);
+            assert!(!artifacts);
+        } else {
+            panic!("Expected BackupCommand::Restore");
+        }
+    }
+
+    #[test]
+    fn parse_backup_restore_with_flags() {
+        let cli = parse(&[
+            "test",
+            "backup",
+            "restore",
+            "abc123",
+            "--database",
+            "--artifacts",
+        ]);
+        if let AdminCommand::Backup {
+            command:
+                BackupCommand::Restore {
+                    id,
+                    database,
+                    artifacts,
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "abc123");
+            assert!(database);
+            assert!(artifacts);
+        } else {
+            panic!("Expected BackupCommand::Restore");
+        }
+    }
+
+    #[test]
+    fn parse_backup_restore_missing_id_fails() {
+        assert!(try_parse(&["test", "backup", "restore"]).is_err());
+    }
+
+    // ---- Cleanup subcommand parsing ----
+
+    #[test]
+    fn parse_cleanup_no_flags() {
+        let cli = parse(&["test", "cleanup"]);
+        if let AdminCommand::Cleanup {
+            audit_logs,
+            old_backups,
+            stale_peers,
+        } = cli.command
+        {
+            assert!(!audit_logs);
+            assert!(!old_backups);
+            assert!(!stale_peers);
+        } else {
+            panic!("Expected AdminCommand::Cleanup");
+        }
+    }
+
+    #[test]
+    fn parse_cleanup_all_flags() {
+        let cli = parse(&[
+            "test",
+            "cleanup",
+            "--audit-logs",
+            "--old-backups",
+            "--stale-peers",
+        ]);
+        if let AdminCommand::Cleanup {
+            audit_logs,
+            old_backups,
+            stale_peers,
+        } = cli.command
+        {
+            assert!(audit_logs);
+            assert!(old_backups);
+            assert!(stale_peers);
+        } else {
+            panic!("Expected AdminCommand::Cleanup");
+        }
+    }
+
+    #[test]
+    fn parse_cleanup_partial_flags() {
+        let cli = parse(&["test", "cleanup", "--audit-logs"]);
+        if let AdminCommand::Cleanup {
+            audit_logs,
+            old_backups,
+            stale_peers,
+        } = cli.command
+        {
+            assert!(audit_logs);
+            assert!(!old_backups);
+            assert!(!stale_peers);
+        } else {
+            panic!("Expected AdminCommand::Cleanup");
+        }
+    }
+
+    // ---- Metrics subcommand parsing ----
+
+    #[test]
+    fn parse_metrics() {
+        let cli = parse(&["test", "metrics"]);
+        assert!(matches!(cli.command, AdminCommand::Metrics));
+    }
+
+    // ---- Users subcommand parsing ----
+
+    #[test]
+    fn parse_users_list() {
+        let cli = parse(&["test", "users", "list"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Users {
+                command: UsersCommand::List { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_users_list_defaults() {
+        let cli = parse(&["test", "users", "list"]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::List {
+                    search,
+                    page,
+                    per_page,
+                },
+        } = cli.command
+        {
+            assert!(search.is_none());
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 20);
+        } else {
+            panic!("Expected UsersCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_users_list_with_search() {
+        let cli = parse(&["test", "users", "list", "--search", "alice"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::List { search, .. },
+        } = cli.command
+        {
+            assert_eq!(search.as_deref(), Some("alice"));
+        } else {
+            panic!("Expected UsersCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_users_create() {
+        let cli = parse(&[
+            "test",
+            "users",
+            "create",
+            "alice",
+            "--email",
+            "alice@example.com",
+        ]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Create {
+                    username,
+                    email,
+                    display_name,
+                    admin,
+                },
+        } = cli.command
+        {
+            assert_eq!(username, "alice");
+            assert_eq!(email, "alice@example.com");
+            assert!(display_name.is_none());
+            assert!(!admin);
+        } else {
+            panic!("Expected UsersCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_users_create_with_all_options() {
+        let cli = parse(&[
+            "test",
+            "users",
+            "create",
+            "alice",
+            "--email",
+            "alice@example.com",
+            "--display-name",
+            "Alice Smith",
+            "--admin",
+        ]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Create {
+                    username,
+                    email,
+                    display_name,
+                    admin,
+                },
+        } = cli.command
+        {
+            assert_eq!(username, "alice");
+            assert_eq!(email, "alice@example.com");
+            assert_eq!(display_name.as_deref(), Some("Alice Smith"));
+            assert!(admin);
+        } else {
+            panic!("Expected UsersCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_users_create_missing_email_fails() {
+        assert!(try_parse(&["test", "users", "create", "alice"]).is_err());
+    }
+
+    #[test]
+    fn parse_users_create_missing_username_fails() {
+        assert!(try_parse(&["test", "users", "create", "--email", "a@b.com"]).is_err());
+    }
+
+    #[test]
+    fn parse_users_update() {
+        let cli = parse(&[
+            "test",
+            "users",
+            "update",
+            "some-id",
+            "--email",
+            "new@example.com",
+        ]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Update {
+                    id,
+                    email,
+                    display_name,
+                    admin,
+                    active,
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "some-id");
+            assert_eq!(email.as_deref(), Some("new@example.com"));
+            assert!(display_name.is_none());
+            assert!(admin.is_none());
+            assert!(active.is_none());
+        } else {
+            panic!("Expected UsersCommand::Update");
+        }
+    }
+
+    #[test]
+    fn parse_users_update_all_options() {
+        let cli = parse(&[
+            "test",
+            "users",
+            "update",
+            "user-id",
+            "--email",
+            "new@test.com",
+            "--display-name",
+            "New Name",
+            "--admin",
+            "true",
+            "--active",
+            "false",
+        ]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Update {
+                    id,
+                    email,
+                    display_name,
+                    admin,
+                    active,
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+            assert_eq!(email.as_deref(), Some("new@test.com"));
+            assert_eq!(display_name.as_deref(), Some("New Name"));
+            assert_eq!(admin, Some(true));
+            assert_eq!(active, Some(false));
+        } else {
+            panic!("Expected UsersCommand::Update");
+        }
+    }
+
+    #[test]
+    fn parse_users_update_missing_id_fails() {
+        assert!(try_parse(&["test", "users", "update"]).is_err());
+    }
+
+    #[test]
+    fn parse_users_delete() {
+        let cli = parse(&["test", "users", "delete", "user-id"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::Delete { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+            assert!(!yes);
+        } else {
+            panic!("Expected UsersCommand::Delete");
+        }
+    }
+
+    #[test]
+    fn parse_users_delete_with_yes() {
+        let cli = parse(&["test", "users", "delete", "user-id", "--yes"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::Delete { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+            assert!(yes);
+        } else {
+            panic!("Expected UsersCommand::Delete");
+        }
+    }
+
+    #[test]
+    fn parse_users_reset_password() {
+        let cli = parse(&["test", "users", "reset-password", "user-id"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::ResetPassword { id },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+        } else {
+            panic!("Expected UsersCommand::ResetPassword");
+        }
+    }
+
+    #[test]
+    fn parse_users_reset_password_missing_id_fails() {
+        assert!(try_parse(&["test", "users", "reset-password"]).is_err());
+    }
+
+    // ---- Plugins subcommand parsing ----
+
+    #[test]
+    fn parse_plugins_list() {
+        let cli = parse(&["test", "plugins", "list"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Plugins {
+                command: PluginsCommand::List
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_plugins_install() {
+        let cli = parse(&[
+            "test",
+            "plugins",
+            "install",
+            "https://github.com/example/plugin.git",
+        ]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Install { url, r#ref },
+        } = cli.command
+        {
+            assert_eq!(url, "https://github.com/example/plugin.git");
+            assert!(r#ref.is_none());
+        } else {
+            panic!("Expected PluginsCommand::Install");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_install_with_ref() {
+        let cli = parse(&[
+            "test",
+            "plugins",
+            "install",
+            "https://github.com/example/plugin.git",
+            "--ref",
+            "v1.0.0",
+        ]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Install { url, r#ref },
+        } = cli.command
+        {
+            assert_eq!(url, "https://github.com/example/plugin.git");
+            assert_eq!(r#ref.as_deref(), Some("v1.0.0"));
+        } else {
+            panic!("Expected PluginsCommand::Install");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_install_missing_url_fails() {
+        assert!(try_parse(&["test", "plugins", "install"]).is_err());
+    }
+
+    #[test]
+    fn parse_plugins_remove() {
+        let cli = parse(&["test", "plugins", "remove", "plugin-id"]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Remove { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "plugin-id");
+            assert!(!yes);
+        } else {
+            panic!("Expected PluginsCommand::Remove");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_remove_with_yes() {
+        let cli = parse(&["test", "plugins", "remove", "plugin-id", "--yes"]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Remove { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "plugin-id");
+            assert!(yes);
+        } else {
+            panic!("Expected PluginsCommand::Remove");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_remove_missing_id_fails() {
+        assert!(try_parse(&["test", "plugins", "remove"]).is_err());
+    }
+
+    // ---- Missing subcommand fails ----
+
+    #[test]
+    fn parse_no_subcommand_fails() {
+        assert!(try_parse(&["test"]).is_err());
+    }
+
+    #[test]
+    fn parse_backup_no_subcommand_fails() {
+        assert!(try_parse(&["test", "backup"]).is_err());
+    }
+
+    #[test]
+    fn parse_users_no_subcommand_fails() {
+        assert!(try_parse(&["test", "users"]).is_err());
+    }
+
+    #[test]
+    fn parse_plugins_no_subcommand_fails() {
+        assert!(try_parse(&["test", "plugins"]).is_err());
+    }
+
+    // ---- Format function tests ----
+
+    #[test]
+    fn format_backups_table_renders() {
+        let items = vec![json!({
+            "id": "12345678-abcd-1234-abcd-123456789012",
+            "status": "completed",
+            "type": "full",
+            "artifacts": 42,
+            "size": "1.5 GB",
+            "created_at": "2026-01-15T10:30:00Z",
+        })];
+        let table = format_backups_table(&items);
+        assert!(table.contains("12345678"));
+        assert!(table.contains("completed"));
+        assert!(table.contains("full"));
+        assert!(table.contains("42"));
+        assert!(table.contains("1.5 GB"));
+    }
+
+    #[test]
+    fn format_backups_table_empty() {
+        let items: Vec<serde_json::Value> = vec![];
+        let table = format_backups_table(&items);
+        // Should still contain headers
+        assert!(table.contains("ID"));
+        assert!(table.contains("STATUS"));
+    }
+
+    #[test]
+    fn format_backups_table_multiple_rows() {
+        let items = vec![
+            json!({
+                "id": "aaaa1111-bbbb-2222-cccc-333344445555",
+                "status": "completed",
+                "type": "full",
+                "artifacts": 10,
+                "size": "500.0 MB",
+                "created_at": "2026-01-01",
+            }),
+            json!({
+                "id": "bbbb2222-cccc-3333-dddd-444455556666",
+                "status": "in_progress",
+                "type": "incremental",
+                "artifacts": 5,
+                "size": "200.0 MB",
+                "created_at": "2026-01-02",
+            }),
+        ];
+        let table = format_backups_table(&items);
+        assert!(table.contains("aaaa1111"));
+        assert!(table.contains("bbbb2222"));
+        assert!(table.contains("completed"));
+        assert!(table.contains("in_progress"));
+    }
+
+    #[test]
+    fn format_users_table_renders() {
+        let items = vec![json!({
+            "id": "12345678-abcd-1234-abcd-123456789012",
+            "username": "alice",
+            "email": "alice@example.com",
+            "display_name": "Alice Smith",
+            "is_admin": true,
+            "is_active": true,
+            "auth_provider": "local",
+        })];
+        let table = format_users_table(&items);
+        assert!(table.contains("12345678"));
+        assert!(table.contains("alice"));
+        assert!(table.contains("alice@example.com"));
+        assert!(table.contains("Alice Smith"));
+        assert!(table.contains("yes"));
+        assert!(table.contains("local"));
+    }
+
+    #[test]
+    fn format_users_table_non_admin_inactive() {
+        let items = vec![json!({
+            "id": "12345678-0000-0000-0000-000000000000",
+            "username": "bob",
+            "email": "bob@example.com",
+            "is_admin": false,
+            "is_active": false,
+            "auth_provider": "ldap",
+        })];
+        let table = format_users_table(&items);
+        assert!(table.contains("bob"));
+        // Should contain "no" for both admin and active
+        let no_count = table.matches("no").count();
+        assert!(no_count >= 2);
+    }
+
+    #[test]
+    fn format_users_table_empty() {
+        let items: Vec<serde_json::Value> = vec![];
+        let table = format_users_table(&items);
+        assert!(table.contains("USERNAME"));
+        assert!(table.contains("EMAIL"));
+    }
+
+    #[test]
+    fn format_plugins_table_renders() {
+        let items = vec![json!({
+            "display_name": "Unity Format",
+            "version": "1.0.0",
+            "type": "format",
+            "status": "active",
+            "author": "AK Team",
+            "installed_at": "2026-01-15",
+        })];
+        let table = format_plugins_table(&items);
+        assert!(table.contains("Unity Format"));
+        assert!(table.contains("1.0.0"));
+        assert!(table.contains("format"));
+        assert!(table.contains("active"));
+        assert!(table.contains("AK Team"));
+    }
+
+    #[test]
+    fn format_plugins_table_missing_author() {
+        let items = vec![json!({
+            "display_name": "Custom Plugin",
+            "version": "0.1.0",
+            "type": "format",
+            "status": "active",
+        })];
+        let table = format_plugins_table(&items);
+        assert!(table.contains("Custom Plugin"));
+        assert!(table.contains("0.1.0"));
+    }
+
+    #[test]
+    fn format_plugins_table_empty() {
+        let items: Vec<serde_json::Value> = vec![];
+        let table = format_plugins_table(&items);
+        assert!(table.contains("NAME"));
+        assert!(table.contains("VERSION"));
+    }
+
+    #[test]
+    fn format_metrics_display_renders() {
+        let info = json!({
+            "total_artifacts": 1500,
+            "total_downloads": 50000,
+            "total_repositories": 25,
+            "total_storage": "12.5 GB",
+            "total_users": 100,
+            "active_peers": 3,
+            "pending_sync_tasks": 0,
+        });
+        let display = format_metrics_display(&info);
+        assert!(display.contains("1500"));
+        assert!(display.contains("50000"));
+        assert!(display.contains("25"));
+        assert!(display.contains("12.5 GB"));
+        assert!(display.contains("100"));
+        assert!(display.contains("Artifacts:"));
+        assert!(display.contains("Downloads:"));
+        assert!(display.contains("Repositories:"));
+        assert!(display.contains("Storage:"));
+        assert!(display.contains("Users:"));
+        assert!(display.contains("Active Peers:"));
+        assert!(display.contains("Pending Syncs:"));
+    }
+
+    #[test]
+    fn format_metrics_display_zeros() {
+        let info = json!({
+            "total_artifacts": 0,
+            "total_downloads": 0,
+            "total_repositories": 0,
+            "total_storage": "0 B",
+            "total_users": 0,
+            "active_peers": 0,
+            "pending_sync_tasks": 0,
+        });
+        let display = format_metrics_display(&info);
+        assert!(display.contains("Artifacts:      0"));
+        assert!(display.contains("Downloads:      0"));
+    }
+}
