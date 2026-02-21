@@ -85,7 +85,7 @@ fn detail_line(label: &str, value: &str) -> Line<'static> {
 // Data model
 // ---------------------------------------------------------------------------
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum Panel {
     Instances,
     Repos,
@@ -1759,4 +1759,230 @@ fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(vertical[1])[1]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -----------------------------------------------------------------------
+    // peer_status_style
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn peer_status_style_online_is_green() {
+        assert_eq!(peer_status_style("online").fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn peer_status_style_active_is_green() {
+        assert_eq!(peer_status_style("active").fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn peer_status_style_connected_is_green() {
+        assert_eq!(peer_status_style("connected").fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn peer_status_style_offline_is_red() {
+        assert_eq!(peer_status_style("offline").fg, Some(Color::Red));
+    }
+
+    #[test]
+    fn peer_status_style_disconnected_is_red() {
+        assert_eq!(peer_status_style("disconnected").fg, Some(Color::Red));
+    }
+
+    #[test]
+    fn peer_status_style_syncing_is_yellow() {
+        assert_eq!(peer_status_style("syncing").fg, Some(Color::Yellow));
+    }
+
+    #[test]
+    fn peer_status_style_unknown_is_dim() {
+        assert_eq!(peer_status_style("unknown").fg, Some(Color::DarkGray));
+    }
+
+    #[test]
+    fn peer_status_style_case_insensitive() {
+        assert_eq!(peer_status_style("ONLINE").fg, Some(Color::Green));
+        assert_eq!(peer_status_style("Offline").fg, Some(Color::Red));
+        assert_eq!(peer_status_style("SYNCING").fg, Some(Color::Yellow));
+    }
+
+    // -----------------------------------------------------------------------
+    // instance_status_color
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn instance_status_online_is_green() {
+        assert_eq!(instance_status_color("online (5 repos)"), Color::Green);
+    }
+
+    #[test]
+    fn instance_status_offline_is_red() {
+        assert_eq!(instance_status_color("offline"), Color::Red);
+    }
+
+    #[test]
+    fn instance_status_error_is_red() {
+        assert_eq!(instance_status_color("error"), Color::Red);
+    }
+
+    #[test]
+    fn instance_status_loading_is_dark_gray() {
+        assert_eq!(instance_status_color("..."), Color::DarkGray);
+    }
+
+    #[test]
+    fn instance_status_other_is_yellow() {
+        assert_eq!(instance_status_color("connecting"), Color::Yellow);
+    }
+
+    // -----------------------------------------------------------------------
+    // severity_style
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn severity_critical_is_bold_red() {
+        let s = severity_style("CRITICAL");
+        assert_eq!(s.fg, Some(Color::Red));
+        assert!(s.add_modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn severity_high_is_red() {
+        assert_eq!(severity_style("HIGH").fg, Some(Color::Red));
+    }
+
+    #[test]
+    fn severity_medium_is_yellow() {
+        assert_eq!(severity_style("MEDIUM").fg, Some(Color::Yellow));
+    }
+
+    #[test]
+    fn severity_low_is_dim() {
+        assert_eq!(severity_style("LOW").fg, Some(Color::DarkGray));
+    }
+
+    #[test]
+    fn severity_case_insensitive() {
+        assert_eq!(severity_style("critical").fg, Some(Color::Red));
+        assert_eq!(severity_style("high").fg, Some(Color::Red));
+        assert_eq!(severity_style("medium").fg, Some(Color::Yellow));
+    }
+
+    // -----------------------------------------------------------------------
+    // Panel navigation
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn panel_equality() {
+        assert_eq!(Panel::Instances, Panel::Instances);
+        assert_eq!(Panel::Replication, Panel::Replication);
+        assert_ne!(Panel::Instances, Panel::Replication);
+    }
+
+    // -----------------------------------------------------------------------
+    // List navigation helpers
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn list_next_empty() {
+        let mut state = ListState::default();
+        list_next(&mut state, 0);
+        assert_eq!(state.selected(), None);
+    }
+
+    #[test]
+    fn list_next_advances() {
+        let mut state = ListState::default();
+        state.select(Some(0));
+        list_next(&mut state, 5);
+        assert_eq!(state.selected(), Some(1));
+    }
+
+    #[test]
+    fn list_next_clamps_at_end() {
+        let mut state = ListState::default();
+        state.select(Some(4));
+        list_next(&mut state, 5);
+        assert_eq!(state.selected(), Some(4));
+    }
+
+    #[test]
+    fn list_next_from_none() {
+        let mut state = ListState::default();
+        list_next(&mut state, 3);
+        assert_eq!(state.selected(), Some(0));
+    }
+
+    #[test]
+    fn list_prev_empty() {
+        let mut state = ListState::default();
+        list_prev(&mut state, 0);
+        assert_eq!(state.selected(), None);
+    }
+
+    #[test]
+    fn list_prev_moves_back() {
+        let mut state = ListState::default();
+        state.select(Some(3));
+        list_prev(&mut state, 5);
+        assert_eq!(state.selected(), Some(2));
+    }
+
+    #[test]
+    fn list_prev_clamps_at_zero() {
+        let mut state = ListState::default();
+        state.select(Some(0));
+        list_prev(&mut state, 5);
+        assert_eq!(state.selected(), Some(0));
+    }
+
+    // -----------------------------------------------------------------------
+    // Style helpers
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn bold_style_has_bold_modifier() {
+        assert!(bold_style().add_modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn hotkey_style_is_yellow_bold() {
+        let s = hotkey_style();
+        assert_eq!(s.fg, Some(Color::Yellow));
+        assert!(s.add_modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn dim_style_is_dark_gray() {
+        assert_eq!(dim_style().fg, Some(Color::DarkGray));
+    }
+
+    #[test]
+    fn cyan_style_is_cyan() {
+        assert_eq!(cyan_style().fg, Some(Color::Cyan));
+    }
+
+    #[test]
+    fn highlight_style_has_dark_gray_bg() {
+        let s = highlight_style();
+        assert_eq!(s.bg, Some(Color::DarkGray));
+        assert!(s.add_modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn panel_border_active_is_cyan() {
+        let s = panel_border_style(&Panel::Repos, &Panel::Repos);
+        assert_eq!(s.fg, Some(Color::Cyan));
+    }
+
+    #[test]
+    fn panel_border_inactive_is_dim() {
+        let s = panel_border_style(&Panel::Repos, &Panel::Artifacts);
+        assert_eq!(s.fg, Some(Color::DarkGray));
+    }
 }
