@@ -778,4 +778,180 @@ mod tests {
         assert!(table_str.contains("Enabled:"));
         assert!(table_str.contains("Allow Unknown:"));
     }
+
+    // ---- wiremock handler tests ----
+
+    use serde_json::json;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, ResponseTemplate};
+
+    static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    fn policy_json() -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "name": "permissive-only",
+            "action": "block",
+            "allow_unknown": false,
+            "is_enabled": true,
+            "allowed_licenses": ["MIT", "Apache-2.0"],
+            "denied_licenses": ["GPL-3.0"],
+            "description": "Allow only permissive licenses",
+            "repository_id": null,
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": null
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/sbom/license-policies"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_policies(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/sbom/license-policies"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([policy_json()])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_policies(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/sbom/license-policies"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([policy_json()])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = list_policies(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/sbom/license-policies/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(policy_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = show_policy(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_policy_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/sbom/license-policies"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(policy_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = create_policy(
+            "permissive-only",
+            vec!["MIT".to_string()],
+            vec![],
+            false,
+            Some("block"),
+            None,
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/sbom/license-policies/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = delete_policy(NIL_UUID, true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_check_compliance_compliant() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/sbom/check-compliance"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "compliant": true,
+                "violations": [],
+                "warnings": []
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = check_compliance(vec!["MIT".to_string()], None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
 }

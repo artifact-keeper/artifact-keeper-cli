@@ -265,7 +265,7 @@ async fn project_show(uuid: &str, global: &GlobalArgs) -> Result<()> {
         "version": project.version,
         "description": project.description,
         "last_bom_import": project.last_bom_import,
-        "last_bom_import_format": project.last_bom_import_format,
+        "lastBomImportFormat": project.last_bom_import_format,
     });
 
     let table_str = format!(
@@ -524,10 +524,10 @@ async fn project_metrics_history(uuid: &str, days: i32, global: &GlobalArgs) -> 
                 "medium": m.medium,
                 "low": m.low,
                 "unassigned": m.unassigned,
-                "findings_total": m.findings_total,
-                "findings_audited": m.findings_audited,
-                "first_occurrence": m.first_occurrence,
-                "last_occurrence": m.last_occurrence,
+                "findingsTotal": m.findings_total,
+                "findingsAudited": m.findings_audited,
+                "firstOccurrence": m.first_occurrence,
+                "lastOccurrence": m.last_occurrence,
             })
         })
         .collect();
@@ -676,10 +676,10 @@ async fn update_analysis(
     }
 
     let data = serde_json::json!({
-        "analysis_state": resp.analysis_state,
-        "is_suppressed": resp.is_suppressed,
-        "analysis_justification": resp.analysis_justification,
-        "analysis_details": resp.analysis_details,
+        "analysisState": resp.analysis_state,
+        "isSuppressed": resp.is_suppressed,
+        "analysisJustification": resp.analysis_justification,
+        "analysisDetails": resp.analysis_details,
     });
 
     let table_str = format!(
@@ -780,7 +780,7 @@ fn format_findings_table(findings: &[DtFinding]) -> (Vec<Value>, String) {
         .iter()
         .map(|f| {
             serde_json::json!({
-                "vuln_id": f.vulnerability.vuln_id,
+                "vulnId": f.vulnerability.vuln_id,
                 "severity": f.vulnerability.severity,
                 "source": f.vulnerability.source,
                 "component": f.component.name,
@@ -831,10 +831,10 @@ fn format_project_metrics_detail(metrics: &DtProjectMetrics) -> (Value, String) 
         "medium": metrics.medium,
         "low": metrics.low,
         "unassigned": metrics.unassigned,
-        "findings_audited": metrics.findings_audited,
-        "findings_total": metrics.findings_total,
-        "inherited_risk_score": metrics.inherited_risk_score,
-        "policy_violations_total": metrics.policy_violations_total,
+        "findingsAudited": metrics.findings_audited,
+        "findingsTotal": metrics.findings_total,
+        "inheritedRiskScore": metrics.inherited_risk_score,
+        "policyViolationsTotal": metrics.policy_violations_total,
         "suppressions": metrics.suppressions,
     });
 
@@ -859,11 +859,11 @@ fn format_portfolio_metrics_detail(metrics: &DtPortfolioMetrics) -> (Value, Stri
         "medium": metrics.medium,
         "low": metrics.low,
         "unassigned": metrics.unassigned,
-        "findings_audited": metrics.findings_audited,
-        "findings_total": metrics.findings_total,
+        "findingsAudited": metrics.findings_audited,
+        "findingsTotal": metrics.findings_total,
         "projects": metrics.projects,
-        "inherited_risk_score": metrics.inherited_risk_score,
-        "policy_violations_total": metrics.policy_violations_total,
+        "inheritedRiskScore": metrics.inherited_risk_score,
+        "policyViolationsTotal": metrics.policy_violations_total,
         "suppressions": metrics.suppressions,
     });
 
@@ -1370,7 +1370,7 @@ mod tests {
         let (entries, table_str) = format_findings_table(&findings);
 
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0]["vuln_id"], "CVE-2024-1234");
+        assert_eq!(entries[0]["vulnId"], "CVE-2024-1234");
         assert_eq!(entries[0]["severity"], "CRITICAL");
         assert_eq!(entries[0]["source"], "NVD");
 
@@ -1548,5 +1548,672 @@ mod tests {
         // 2024-06-15 12:30:00 UTC = 1718451000000
         let result = format_timestamp(1718451000000);
         assert!(result.starts_with("2024-06-15"));
+    }
+
+    // ========================================================================
+    // Wiremock-based handler tests
+    // ========================================================================
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    /// Set up env vars for handler tests; returns a guard that must be held.
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    #[tokio::test]
+    async fn handler_dt_status() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/dependency-track/status"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "enabled": true,
+                "healthy": true,
+                "url": "https://dt.example.com"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = dt_status(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_dt_status_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/dependency-track/status"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "enabled": true,
+                "healthy": false,
+                "url": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = dt_status(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_list_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/dependency-track/projects"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_list(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_list_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/dependency-track/projects"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "uuid": "proj-uuid-1",
+                    "name": "my-project",
+                    "version": "1.0.0",
+                    "description": "test",
+                    "lastBomImport": 1708492800000_i64,
+                    "lastBomImportFormat": "CycloneDX"
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_list(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_show() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        // project_show calls list_projects then filters by uuid
+        Mock::given(method("GET"))
+            .and(path("/api/v1/dependency-track/projects"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "uuid": "proj-uuid-1",
+                    "name": "my-project",
+                    "version": "2.0.0",
+                    "description": "test desc",
+                    "lastBomImport": 1708492800000_i64,
+                    "lastBomImportFormat": "SPDX"
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_show("proj-uuid-1", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_components_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(
+                "/api/v1/dependency-track/projects/.+/components",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_components("some-uuid", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_components_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(
+                "/api/v1/dependency-track/projects/.+/components",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "uuid": "comp-uuid-1",
+                    "name": "spring-core",
+                    "version": "5.3.21",
+                    "group": "org.springframework",
+                    "purl": "pkg:maven/org.springframework/spring-core@5.3.21",
+                    "cpe": null,
+                    "isInternal": false,
+                    "resolvedLicense": null
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_components("some-uuid", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_findings_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/dependency-track/projects/.+/findings"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_findings("some-uuid", None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_findings_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/dependency-track/projects/.+/findings"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "vulnerability": {
+                        "uuid": "vuln-uuid-1",
+                        "vulnId": "CVE-2024-1234",
+                        "severity": "CRITICAL",
+                        "source": "NVD",
+                        "title": "Test vuln",
+                        "cvssV3BaseScore": 9.8,
+                        "cwe": null,
+                        "description": null
+                    },
+                    "component": {
+                        "uuid": "comp-uuid-1",
+                        "name": "lodash",
+                        "version": "4.17.20",
+                        "group": null,
+                        "purl": null
+                    },
+                    "analysis": null,
+                    "attribution": null
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_findings("some-uuid", None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_findings_with_severity_filter() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/dependency-track/projects/.+/findings"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "vulnerability": {
+                        "uuid": "vuln-uuid-1",
+                        "vulnId": "CVE-2024-1234",
+                        "severity": "CRITICAL",
+                        "source": "NVD",
+                        "title": "Test vuln",
+                        "cvssV3BaseScore": 9.8,
+                        "cwe": null,
+                        "description": null
+                    },
+                    "component": {
+                        "uuid": "comp-uuid-1",
+                        "name": "lodash",
+                        "version": "4.17.20",
+                        "group": null,
+                        "purl": null
+                    },
+                    "analysis": null,
+                    "attribution": null
+                },
+                {
+                    "vulnerability": {
+                        "uuid": "vuln-uuid-2",
+                        "vulnId": "CVE-2024-5678",
+                        "severity": "LOW",
+                        "source": "NVD",
+                        "title": "Minor vuln",
+                        "cvssV3BaseScore": 2.0,
+                        "cwe": null,
+                        "description": null
+                    },
+                    "component": {
+                        "uuid": "comp-uuid-2",
+                        "name": "express",
+                        "version": "4.18.0",
+                        "group": null,
+                        "purl": null
+                    },
+                    "analysis": null,
+                    "attribution": null
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_findings("some-uuid", Some("CRITICAL"), &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_violations_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(
+                "/api/v1/dependency-track/projects/.+/violations",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_violations("some-uuid", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_violations_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(
+                "/api/v1/dependency-track/projects/.+/violations",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "uuid": "viol-uuid-1",
+                    "type": "LICENSE",
+                    "component": {
+                        "uuid": "comp-uuid-1",
+                        "name": "gpl-lib",
+                        "version": "1.0.0",
+                        "group": null,
+                        "purl": null
+                    },
+                    "policyCondition": {
+                        "uuid": "cond-uuid-1",
+                        "subject": "LICENSE",
+                        "operator": "IS",
+                        "value": "GPL-3.0",
+                        "policy": {
+                            "uuid": "pol-uuid-1",
+                            "name": "no-gpl",
+                            "violationState": "FAIL"
+                        }
+                    }
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_violations("some-uuid", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_metrics() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/dependency-track/projects/.+/metrics"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "critical": 2,
+                "high": 5,
+                "medium": 10,
+                "low": 20,
+                "unassigned": 1,
+                "findingsAudited": 8,
+                "findingsTotal": 38,
+                "inheritedRiskScore": 75.5,
+                "policyViolationsTotal": 3,
+                "suppressions": 2,
+                "vulnerabilities": 38,
+                "findingsUnaudited": 30,
+                "firstOccurrence": null,
+                "lastOccurrence": null,
+                "policyViolationsFail": null,
+                "policyViolationsInfo": null,
+                "policyViolationsWarn": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_metrics("some-uuid", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_metrics_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/dependency-track/projects/.+/metrics"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "unassigned": 0,
+                "findingsAudited": 0,
+                "findingsTotal": 0,
+                "inheritedRiskScore": 0.0,
+                "policyViolationsTotal": 0,
+                "suppressions": 0,
+                "vulnerabilities": 5,
+                "findingsUnaudited": 0,
+                "firstOccurrence": null,
+                "lastOccurrence": null,
+                "policyViolationsFail": null,
+                "policyViolationsInfo": null,
+                "policyViolationsWarn": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = project_metrics("some-uuid", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_metrics_history_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(
+                "/api/v1/dependency-track/projects/.+/metrics/history",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_metrics_history("some-uuid", 30, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_metrics_history_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(
+                "/api/v1/dependency-track/projects/.+/metrics/history",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "critical": 1,
+                    "high": 3,
+                    "medium": 5,
+                    "low": 10,
+                    "unassigned": 0,
+                    "findingsTotal": 19,
+                    "findingsAudited": 5,
+                    "firstOccurrence": 1708492800000_i64,
+                    "lastOccurrence": 1708579200000_i64
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_metrics_history("some-uuid", 30, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_portfolio_metrics() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/dependency-track/metrics/portfolio"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "critical": 3,
+                "high": 10,
+                "medium": 25,
+                "low": 50,
+                "unassigned": 5,
+                "findingsAudited": 20,
+                "findingsTotal": 93,
+                "projects": 12,
+                "inheritedRiskScore": 150.0,
+                "policyViolationsTotal": 8,
+                "suppressions": 3,
+                "vulnerabilities": 93,
+                "findingsUnaudited": 73,
+                "policyViolationsFail": null,
+                "policyViolationsInfo": null,
+                "policyViolationsWarn": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = portfolio_metrics(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_portfolio_metrics_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/dependency-track/metrics/portfolio"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "critical": 0,
+                "high": 0,
+                "medium": 0,
+                "low": 0,
+                "unassigned": 0,
+                "findingsAudited": 0,
+                "findingsTotal": 0,
+                "projects": 0,
+                "inheritedRiskScore": 0.0,
+                "policyViolationsTotal": 0,
+                "suppressions": 0,
+                "vulnerabilities": 42,
+                "findingsUnaudited": 0,
+                "policyViolationsFail": null,
+                "policyViolationsInfo": null,
+                "policyViolationsWarn": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = portfolio_metrics(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/dependency-track/policies"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_policies(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/dependency-track/policies"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "uuid": "pol-uuid-1",
+                    "name": "security-policy",
+                    "violationState": "FAIL",
+                    "policyConditions": [
+                        {
+                            "uuid": "cond-uuid-1",
+                            "subject": "SEVERITY",
+                            "operator": "IS",
+                            "value": "CRITICAL"
+                        }
+                    ],
+                    "projects": [],
+                    "tags": [],
+                    "includeChildren": true
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_policies(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_analysis() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path("/api/v1/dependency-track/analysis"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "analysisState": "NOT_AFFECTED",
+                "isSuppressed": false,
+                "analysisJustification": "Not exploitable",
+                "analysisDetails": "Reviewed by team"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = update_analysis(
+            "proj-uuid",
+            "vuln-uuid",
+            "comp-uuid",
+            "NOT_AFFECTED",
+            Some("Not exploitable"),
+            Some("Reviewed by team"),
+            Some(false),
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_analysis_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path("/api/v1/dependency-track/analysis"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "analysisState": "FALSE_POSITIVE",
+                "isSuppressed": true,
+                "analysisJustification": null,
+                "analysisDetails": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = update_analysis(
+            "proj-uuid",
+            "vuln-uuid",
+            "comp-uuid",
+            "FALSE_POSITIVE",
+            None,
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
     }
 }

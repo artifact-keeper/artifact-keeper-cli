@@ -381,8 +381,8 @@ async fn execute_policy(id: &str, global: &GlobalArgs) -> Result<()> {
 
 fn format_policy_table(items: &[serde_json::Value]) -> String {
     let mut table = new_table(vec![
-            "ID", "NAME", "TYPE", "ENABLED", "PRIORITY", "LAST RUN",
-        ]);
+        "ID", "NAME", "TYPE", "ENABLED", "PRIORITY", "LAST RUN",
+    ]);
 
     for p in items {
         let id = p["id"].as_str().unwrap_or("-");
@@ -825,5 +825,210 @@ mod tests {
         });
         let detail = format_policy_detail(&item);
         assert!(detail.contains("Items Removed:   0"));
+    }
+
+    // ---- wiremock handler tests ----
+
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, ResponseTemplate};
+
+    static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    fn lifecycle_policy_json() -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "name": "cleanup-old",
+            "policy_type": "retention",
+            "enabled": true,
+            "priority": 10,
+            "description": "Remove old artifacts",
+            "config": {},
+            "repository_id": null,
+            "last_run_at": null,
+            "last_run_items_removed": null,
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    fn execution_result_json() -> serde_json::Value {
+        json!({
+            "policy_id": NIL_UUID,
+            "policy_name": "cleanup-old",
+            "dry_run": false,
+            "artifacts_matched": 10,
+            "artifacts_removed": 5,
+            "bytes_freed": 1048576_i64,
+            "errors": []
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_policies(None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(json!([lifecycle_policy_json()])),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_policies(None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(json!([lifecycle_policy_json()])),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = list_policies(None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/admin/lifecycle/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(lifecycle_policy_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = show_policy(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_policy_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(lifecycle_policy_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = create_policy(
+            "cleanup-old",
+            "high",
+            false,
+            false,
+            None,
+            None,
+            None,
+            false,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/admin/lifecycle/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = delete_policy(NIL_UUID, true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_preview_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/admin/lifecycle/{NIL_UUID}/preview")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(execution_result_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = preview_policy(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_execute_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/admin/lifecycle/{NIL_UUID}/execute")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(execution_result_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = execute_policy(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
     }
 }

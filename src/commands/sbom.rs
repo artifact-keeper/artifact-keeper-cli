@@ -1341,4 +1341,477 @@ mod tests {
         assert!(entries.is_empty());
         assert!(table_str.contains("CVE"));
     }
+
+    // ========================================================================
+    // Wiremock-based handler tests
+    // ========================================================================
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    /// Set up env vars for handler tests; returns a guard that must be held.
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
+    #[tokio::test]
+    async fn handler_generate_sbom() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/sbom"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "artifact_id": NIL_UUID,
+                "repository_id": NIL_UUID,
+                "format": "spdx",
+                "format_version": "2.3",
+                "component_count": 42,
+                "dependency_count": 10,
+                "license_count": 5,
+                "licenses": ["MIT", "Apache-2.0"],
+                "content_hash": "sha256:abc123",
+                "generated_at": "2024-02-21T00:00:00Z",
+                "created_at": "2024-02-21T00:00:00Z",
+                "generator": null,
+                "generator_version": null,
+                "spec_version": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = generate_sbom(NIL_UUID, Some("spdx"), false, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_generate_sbom_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/sbom"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "artifact_id": NIL_UUID,
+                "repository_id": NIL_UUID,
+                "format": "cyclonedx",
+                "format_version": "1.5",
+                "component_count": 10,
+                "dependency_count": 5,
+                "license_count": 2,
+                "licenses": ["MIT"],
+                "content_hash": "sha256:def456",
+                "generated_at": "2024-02-21T00:00:00Z",
+                "created_at": "2024-02-21T00:00:00Z",
+                "generator": null,
+                "generator_version": null,
+                "spec_version": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = generate_sbom(NIL_UUID, None, true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_sbom() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/sbom/by-artifact/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "artifact_id": NIL_UUID,
+                "repository_id": NIL_UUID,
+                "format": "spdx",
+                "format_version": "2.3",
+                "component_count": 42,
+                "dependency_count": 10,
+                "license_count": 3,
+                "licenses": ["MIT", "Apache-2.0", "BSD-3-Clause"],
+                "content_hash": "sha256:abc123",
+                "content": {"packages": []},
+                "generated_at": "2024-02-21T00:00:00Z",
+                "created_at": "2024-02-21T00:00:00Z",
+                "generator": null,
+                "generator_version": null,
+                "spec_version": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_sbom(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_sboms_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/sbom"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_sboms(None, None, None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_sboms_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/sbom"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "id": NIL_UUID,
+                    "artifact_id": NIL_UUID,
+                    "repository_id": NIL_UUID,
+                    "format": "spdx",
+                    "format_version": "2.3",
+                    "component_count": 42,
+                    "dependency_count": 10,
+                    "license_count": 5,
+                    "licenses": ["MIT"],
+                    "content_hash": "sha256:abc",
+                    "generated_at": "2024-02-21T00:00:00Z",
+                    "created_at": "2024-02-21T00:00:00Z",
+                    "generator": null,
+                    "generator_version": null,
+                    "spec_version": null
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_sboms(None, Some("spdx"), None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_get_sbom() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/sbom/[0-9a-f-]+$"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "artifact_id": NIL_UUID,
+                "repository_id": NIL_UUID,
+                "format": "cyclonedx",
+                "format_version": "1.5",
+                "component_count": 20,
+                "dependency_count": 8,
+                "license_count": 2,
+                "licenses": ["MIT", "ISC"],
+                "content_hash": "sha256:xyz",
+                "content": {"components": []},
+                "generated_at": "2024-02-21T00:00:00Z",
+                "created_at": "2024-02-21T00:00:00Z",
+                "generator": null,
+                "generator_version": null,
+                "spec_version": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = get_sbom(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_sbom() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/sbom/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": "SBOM deleted"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        // skip_confirm=true because no_input=true in test_global
+        let result = delete_sbom(NIL_UUID, true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_get_components_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/sbom/.+/components"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = get_components(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_get_components_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/sbom/.+/components"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "id": NIL_UUID,
+                    "sbom_id": NIL_UUID,
+                    "name": "lodash",
+                    "version": "4.17.21",
+                    "component_type": "library",
+                    "purl": "pkg:npm/lodash@4.17.21",
+                    "licenses": ["MIT"],
+                    "author": null,
+                    "cpe": null,
+                    "md5": null,
+                    "sha1": null,
+                    "sha256": null,
+                    "supplier": null
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = get_components(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_cve_history_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/sbom/cve/history/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = cve_history(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_cve_history_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/sbom/cve/history/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "id": NIL_UUID,
+                    "artifact_id": NIL_UUID,
+                    "cve_id": "CVE-2024-1234",
+                    "severity": "HIGH",
+                    "affected_component": "lodash",
+                    "status": "open",
+                    "cvss_score": 8.5,
+                    "first_detected_at": "2024-02-21T00:00:00Z",
+                    "last_detected_at": "2024-02-21T00:00:00Z",
+                    "created_at": "2024-02-21T00:00:00Z",
+                    "updated_at": "2024-02-21T00:00:00Z",
+                    "acknowledged_at": null,
+                    "acknowledged_by": null,
+                    "acknowledged_reason": null,
+                    "affected_version": null,
+                    "component_id": null,
+                    "cve_published_at": null,
+                    "fixed_version": null,
+                    "sbom_id": null,
+                    "scan_result_id": null
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = cve_history(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_cve_trends() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/sbom/cve/trends"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "total_cves": 50,
+                "open_cves": 20,
+                "fixed_cves": 25,
+                "acknowledged_cves": 5,
+                "critical_count": 3,
+                "high_count": 10,
+                "medium_count": 20,
+                "low_count": 17,
+                "avg_days_to_fix": 14.5,
+                "timeline": []
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = cve_trends(30, None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_cve_trends_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/sbom/cve/trends"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "total_cves": 42,
+                "open_cves": 10,
+                "fixed_cves": 30,
+                "acknowledged_cves": 2,
+                "critical_count": 1,
+                "high_count": 5,
+                "medium_count": 15,
+                "low_count": 21,
+                "avg_days_to_fix": null,
+                "timeline": []
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = cve_trends(90, None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_cve_update_status() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/sbom/cve/status/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "artifact_id": NIL_UUID,
+                "cve_id": "CVE-2024-1234",
+                "severity": "HIGH",
+                "affected_component": "lodash",
+                "status": "fixed",
+                "cvss_score": 8.5,
+                "first_detected_at": "2024-02-21T00:00:00Z",
+                "last_detected_at": "2024-02-21T00:00:00Z",
+                "created_at": "2024-02-21T00:00:00Z",
+                "updated_at": "2024-02-21T12:00:00Z",
+                "acknowledged_at": null,
+                "acknowledged_by": null,
+                "acknowledged_reason": null,
+                "affected_version": null,
+                "component_id": null,
+                "cve_published_at": null,
+                "fixed_version": null,
+                "sbom_id": null,
+                "scan_result_id": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = cve_update_status(NIL_UUID, "fixed", Some("Patched in v2"), &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_cve_update_status_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/sbom/cve/status/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "artifact_id": NIL_UUID,
+                "cve_id": "CVE-2024-5678",
+                "severity": "LOW",
+                "affected_component": "express",
+                "status": "false_positive",
+                "cvss_score": 2.0,
+                "first_detected_at": "2024-02-21T00:00:00Z",
+                "last_detected_at": "2024-02-21T00:00:00Z",
+                "created_at": "2024-02-21T00:00:00Z",
+                "updated_at": "2024-02-21T12:00:00Z",
+                "acknowledged_at": null,
+                "acknowledged_by": null,
+                "acknowledged_reason": null,
+                "affected_version": null,
+                "component_id": null,
+                "cve_published_at": null,
+                "fixed_version": null,
+                "sbom_id": null,
+                "scan_result_id": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = cve_update_status(NIL_UUID, "false_positive", None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
 }

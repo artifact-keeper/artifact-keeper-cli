@@ -765,4 +765,222 @@ mod tests {
         // Missing fields should render as "-"
         assert!(table.contains("-"));
     }
+
+    // ---- wiremock handler tests ----
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    fn repo_json(key: &str) -> serde_json::Value {
+        json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "key": key,
+            "name": key,
+            "format": "npm",
+            "repo_type": "local",
+            "is_public": true,
+            "description": "Test repo",
+            "storage_used_bytes": 1024,
+            "quota_bytes": null,
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_list_repos_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 50, "total": 0, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_repos(None, None, None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_repos_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [repo_json("npm-local")],
+                "pagination": { "page": 1, "per_page": 50, "total": 1, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_repos(None, None, None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_repos_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [repo_json("npm-local")],
+                "pagination": { "page": 1, "per_page": 50, "total": 1, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = list_repos(None, None, None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_repo() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories/npm-local"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(repo_json("npm-local")))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_repo("npm-local", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_repo_json() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(repo_json("new-repo")))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = create_repo("new-repo", "npm", "local", None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_repo_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(repo_json("new-repo")))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = create_repo("new-repo", "npm", "local", Some("A test repo"), &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_repo() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path("/api/v1/repositories/old-repo"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        // skip_confirm=true and no_input=true so no prompt
+        let result = delete_repo("old-repo", true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_browse_repo_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/npm-local/artifacts.*"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 100, "total": 0, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = browse_repo("npm-local", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_browse_repo_no_input() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/npm-local/artifacts.*"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "path": "express/4.18.2",
+                    "name": "express",
+                    "size_bytes": 2048_i64,
+                    "content_type": "application/gzip",
+                    "checksum_sha256": "abc123",
+                    "download_count": 0_i64,
+                    "created_at": "2026-01-15T12:00:00Z",
+                    "repository_key": "npm-local"
+                }],
+                "pagination": { "page": 1, "per_page": 100, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = browse_repo("npm-local", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
 }

@@ -368,6 +368,215 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(cmd.execute(&global)).unwrap();
     }
+
+    // ---- wiremock handler tests ----
+
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, ResponseTemplate};
+
+    static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    fn user_json() -> serde_json::Value {
+        serde_json::json!({
+            "id": NIL_UUID,
+            "username": "alice",
+            "email": "alice@example.com",
+            "display_name": "Alice",
+            "is_admin": false,
+            "totp_enabled": false,
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_whoami_json() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/auth/me"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = whoami(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_token_create_json() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/tokens"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "name": "ak-cli-test",
+                "token": "ak_test_abcdef1234567890",
+                "token_prefix": "ak_test_",
+                "scopes": ["*"],
+                "created_at": "2026-01-15T12:00:00Z",
+                "expires_at": "2026-04-15T12:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = token_create(Some("test token"), 90, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_token_create_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/tokens"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "name": "ak-cli-test",
+                "token": "ak_test_abcdef1234567890",
+                "token_prefix": "ak_test_",
+                "scopes": ["*"],
+                "created_at": "2026-01-15T12:00:00Z",
+                "expires_at": "2026-04-15T12:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = token_create(Some("test token"), 90, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_token_list_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        // token_list calls get_current_user first, then list_user_tokens
+        Mock::given(method("GET"))
+            .and(path("/api/v1/auth/me"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/users/{NIL_UUID}/tokens")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": []
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = token_list(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_token_list_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/auth/me"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/users/{NIL_UUID}/tokens")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": [{
+                    "id": NIL_UUID,
+                    "name": "my-token",
+                    "token_prefix": "ak_xxxx_",
+                    "scopes": ["*"],
+                    "created_at": "2026-01-15T12:00:00Z",
+                    "expires_at": "2026-04-15T12:00:00Z",
+                    "last_used_at": null
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = token_list(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_token_list_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/auth/me"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/users/{NIL_UUID}/tokens")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": [{
+                    "id": NIL_UUID,
+                    "name": "my-token",
+                    "token_prefix": "ak_xxxx_",
+                    "scopes": ["*"],
+                    "created_at": "2026-01-15T12:00:00Z",
+                    "expires_at": null,
+                    "last_used_at": null
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = token_list(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_login_no_input_returns_error() {
+        let (_server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        // no_input=true should produce an error for login
+        let result = login(None, false, &global).await;
+        assert!(result.is_err());
+        teardown_env();
+    }
 }
 
 async fn token_list(global: &GlobalArgs) -> Result<()> {

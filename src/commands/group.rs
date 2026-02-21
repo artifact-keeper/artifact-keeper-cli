@@ -634,4 +634,185 @@ mod tests {
         // Null description and dates show as "-"
         assert!(detail.contains("-"));
     }
+
+    // ---- wiremock handler tests ----
+
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, ResponseTemplate};
+
+    static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    fn group_json() -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "name": "developers",
+            "description": "Core dev team",
+            "member_count": 5,
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_list_groups_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/groups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 50, "total": 0, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_groups(None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_groups_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/groups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [group_json()],
+                "pagination": { "page": 1, "per_page": 50, "total": 1, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_groups(None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_groups_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/groups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [group_json()],
+                "pagination": { "page": 1, "per_page": 50, "total": 1, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = list_groups(None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_group() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/groups/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(group_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = show_group(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_group_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/groups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(group_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = create_group("developers", Some("Core dev team"), &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_group() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/groups/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = delete_group(NIL_UUID, true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_add_member() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/groups/{NIL_UUID}/members")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = add_member(NIL_UUID, NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_remove_member() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/groups/{NIL_UUID}/members")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = remove_member(NIL_UUID, NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
 }

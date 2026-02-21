@@ -877,14 +877,14 @@ fn format_backups_table(items: &[serde_json::Value]) -> String {
 /// Format a list of user entries as a table string.
 fn format_users_table(items: &[serde_json::Value]) -> String {
     let mut table = new_table(vec![
-            "ID",
-            "USERNAME",
-            "EMAIL",
-            "DISPLAY NAME",
-            "ADMIN",
-            "ACTIVE",
-            "AUTH",
-        ]);
+        "ID",
+        "USERNAME",
+        "EMAIL",
+        "DISPLAY NAME",
+        "ADMIN",
+        "ACTIVE",
+        "AUTH",
+    ]);
 
     for u in items {
         let id = u["id"].as_str().unwrap_or("-");
@@ -916,13 +916,13 @@ fn format_users_table(items: &[serde_json::Value]) -> String {
 /// Format a list of plugin entries as a table string.
 fn format_plugins_table(items: &[serde_json::Value]) -> String {
     let mut table = new_table(vec![
-            "NAME",
-            "VERSION",
-            "TYPE",
-            "STATUS",
-            "AUTHOR",
-            "INSTALLED",
-        ]);
+        "NAME",
+        "VERSION",
+        "TYPE",
+        "STATUS",
+        "AUTHOR",
+        "INSTALLED",
+    ]);
 
     for p in items {
         table.add_row(vec![
@@ -1695,5 +1695,390 @@ mod tests {
         let display = format_metrics_display(&info);
         assert!(display.contains("Artifacts:      0"));
         assert!(display.contains("Downloads:      0"));
+    }
+
+    // ========================================================================
+    // Wiremock-based handler tests
+    // ========================================================================
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    #[tokio::test]
+    async fn handler_list_backups_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/backups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "total": 0
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_backups(1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_backups_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/backups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "status": "completed",
+                    "type": "full",
+                    "artifact_count": 42,
+                    "size_bytes": 1073741824_i64,
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "completed_at": "2026-01-15T10:30:00Z",
+                    "error_message": null
+                }],
+                "total": 1_i64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_backups(1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_backup() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/backups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "status": "in_progress",
+                "type": "full",
+                "artifact_count": 0_i64,
+                "size_bytes": 0_i64,
+                "created_at": "2026-01-15T10:00:00Z",
+                "completed_at": null,
+                "error_message": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = create_backup("full", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_run_cleanup() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/cleanup"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "audit_logs_deleted": 100,
+                "backups_deleted": 3,
+                "peers_marked_offline": 1
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = run_cleanup(true, true, true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_metrics() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/stats"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "total_artifacts": 1500,
+                "total_downloads": 50000,
+                "total_repositories": 25,
+                "total_storage_bytes": 13421772800_i64,
+                "total_users": 100,
+                "active_peers": 3,
+                "pending_sync_tasks": 0
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_metrics(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_users_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/users"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 20, "total": 0_i64, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_users(None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_users_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/users"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "username": "alice",
+                    "email": "alice@example.com",
+                    "display_name": "Alice Smith",
+                    "is_admin": true,
+                    "is_active": true,
+                    "must_change_password": false,
+                    "auth_provider": "local",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 20, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_users(None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_user() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/users"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "user": {
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "username": "bob",
+                    "email": "bob@example.com",
+                    "display_name": null,
+                    "is_admin": false,
+                    "is_active": true,
+                    "must_change_password": true,
+                    "auth_provider": "local",
+                    "created_at": "2026-01-15T10:00:00Z"
+                },
+                "generated_password": "temp-pass-123"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = create_user("bob", "bob@example.com", None, false, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_user() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("PATCH"))
+            .and(path_regex("/api/v1/users/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "username": "alice",
+                "email": "new@example.com",
+                "display_name": "Alice Updated",
+                "is_admin": true,
+                "is_active": true,
+                "must_change_password": false,
+                "auth_provider": "local",
+                "created_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = update_user(
+            "00000000-0000-0000-0000-000000000001",
+            Some("new@example.com"),
+            None,
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_user() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/users/.+"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = delete_user("00000000-0000-0000-0000-000000000001", true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_reset_password() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/users/.+/password/reset"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "temporary_password": "new-temp-pass-456"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = reset_password("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_plugins_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/plugins"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": []
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_plugins(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_plugins_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/plugins"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "name": "unity-format",
+                    "display_name": "Unity Format",
+                    "version": "1.0.0",
+                    "plugin_type": "format",
+                    "status": "active",
+                    "config_schema": {},
+                    "author": "AK Team",
+                    "installed_at": "2026-01-15T10:00:00Z"
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_plugins(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_install_plugin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/plugins/install/git"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "plugin_id": "00000000-0000-0000-0000-000000000001",
+                "name": "unity-format",
+                "version": "1.0.0",
+                "format_key": "unity",
+                "message": "Plugin installed successfully"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = install_plugin("https://github.com/example/plugin.git", None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_remove_plugin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/plugins/.+"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = remove_plugin("00000000-0000-0000-0000-000000000001", true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
     }
 }

@@ -332,4 +332,143 @@ mod tests {
         let table = format_label_table(&items);
         assert!(table.contains("-"));
     }
+
+    // ---- wiremock handler tests ----
+
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, ResponseTemplate};
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    fn label_json() -> serde_json::Value {
+        json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "key": "env",
+            "value": "production",
+            "repository_id": "00000000-0000-0000-0000-000000000002",
+            "created_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_list_labels_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories/npm-local/labels"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "total": 0_u64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_labels("npm-local", &global).await;
+        assert!(result.is_ok(), "list_labels failed: {:?}", result.err());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_labels_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories/npm-local/labels"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [label_json()],
+                "total": 1_u64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_labels("npm-local", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_labels_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories/npm-local/labels"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [label_json()],
+                "total": 1_u64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = list_labels("npm-local", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_add_label() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/repositories/npm-local/labels/env"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(label_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = add_label("npm-local", "env=production", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_add_label_invalid_format() {
+        let (_server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        // Missing '=' should error
+        let result = add_label("npm-local", "no-equals-sign", &global).await;
+        assert!(result.is_err());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_remove_label() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path("/api/v1/repositories/npm-local/labels/env"))
+            .respond_with(ResponseTemplate::new(204))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = remove_label("npm-local", "env", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
 }

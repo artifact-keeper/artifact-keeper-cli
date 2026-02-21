@@ -586,7 +586,10 @@ mod tests {
         assert!(detail.contains("Review Notes:"));
         // Null fields show as "-"
         let lines: Vec<&str> = detail.lines().collect();
-        let notes_line = lines.iter().find(|l| l.contains("Notes:") && !l.contains("Review")).unwrap();
+        let notes_line = lines
+            .iter()
+            .find(|l| l.contains("Notes:") && !l.contains("Review"))
+            .unwrap();
         assert!(notes_line.contains("-"));
     }
 
@@ -609,5 +612,184 @@ mod tests {
         assert!(detail.contains("approved"));
         assert!(detail.contains("user-2"));
         assert!(detail.contains("LGTM"));
+    }
+
+    // ---- wiremock handler tests ----
+
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, ResponseTemplate};
+
+    static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    fn approval_json() -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "artifact_id": NIL_UUID,
+            "source_repository": "maven-staging",
+            "target_repository": "maven-releases",
+            "status": "pending",
+            "requested_by": NIL_UUID,
+            "requested_at": "2026-01-15T12:00:00Z",
+            "reviewed_by": null,
+            "reviewed_at": null,
+            "notes": "Please promote",
+            "review_notes": null,
+            "policy_result": null
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_list_approvals_pending_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/approval/pending"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 20, "total": 0, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_approvals(None, None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_approvals_pending_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/approval/pending"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [approval_json()],
+                "pagination": { "page": 1, "per_page": 20, "total": 1, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_approvals(None, None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_approvals_history() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/approval/history"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [approval_json()],
+                "pagination": { "page": 1, "per_page": 20, "total": 1, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_approvals(Some("approved"), None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_approvals_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/approval/pending"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [approval_json()],
+                "pagination": { "page": 1, "per_page": 20, "total": 1, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = list_approvals(None, None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_approval() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/approval/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(approval_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = show_approval(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_approve_promotion() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        let mut approved = approval_json();
+        approved["status"] = json!("approved");
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/approval/{NIL_UUID}/approve")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(approved))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = review_promotion(NIL_UUID, Some("LGTM"), true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_reject_promotion() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        let mut rejected = approval_json();
+        rejected["status"] = json!("rejected");
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/approval/{NIL_UUID}/reject")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(rejected))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = review_promotion(NIL_UUID, Some("Needs changes"), false, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
     }
 }

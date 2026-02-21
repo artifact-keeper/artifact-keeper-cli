@@ -561,14 +561,7 @@ mod tests {
 
     #[test]
     fn parse_promote_missing_artifact() {
-        let result = try_parse(&[
-            "test",
-            "promote",
-            "--from",
-            "staging",
-            "--to",
-            "prod",
-        ]);
+        let result = try_parse(&["test", "promote", "--from", "staging", "--to", "prod"]);
         assert!(result.is_err());
     }
 
@@ -600,7 +593,10 @@ mod tests {
             PromotionCommand::Rule {
                 command: PromotionRuleCommand::List { from },
             } => {
-                assert_eq!(from.as_deref(), Some("00000000-0000-0000-0000-000000000001"));
+                assert_eq!(
+                    from.as_deref(),
+                    Some("00000000-0000-0000-0000-000000000001")
+                );
             }
             _ => panic!("expected Rule List"),
         }
@@ -664,15 +660,7 @@ mod tests {
 
     #[test]
     fn parse_rule_create_missing_name() {
-        let result = try_parse(&[
-            "test",
-            "rule",
-            "create",
-            "--from",
-            "id1",
-            "--to",
-            "id2",
-        ]);
+        let result = try_parse(&["test", "rule", "create", "--from", "id1", "--to", "id2"]);
         assert!(result.is_err());
     }
 
@@ -881,5 +869,242 @@ mod tests {
         assert!(table.contains("pkg-b"));
         assert!(table.contains("completed"));
         assert!(table.contains("pending"));
+    }
+
+    // ---- wiremock handler tests ----
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    fn rule_json() -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "name": "staging-to-prod",
+            "source_repo_id": NIL_UUID,
+            "target_repo_id": NIL_UUID,
+            "auto_promote": false,
+            "is_enabled": true,
+            "require_signature": false,
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_promote_artifact_json() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!(
+                "/api/v1/promotion/repositories/staging/artifacts/{NIL_UUID}/promote"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "promoted": true,
+                "source": "staging",
+                "target": "releases",
+                "message": "Promoted successfully",
+                "promotion_id": NIL_UUID,
+                "policy_violations": []
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = promote_artifact("staging", NIL_UUID, "releases", None, false, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_promote_artifact_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!(
+                "/api/v1/promotion/repositories/staging/artifacts/{NIL_UUID}/promote"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "promoted": true,
+                "source": "staging",
+                "target": "releases",
+                "promotion_id": NIL_UUID,
+                "policy_violations": []
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = promote_artifact("staging", NIL_UUID, "releases", None, false, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_rules_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/promotion-rules"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "total": 0
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_rules(None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_rules_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/promotion-rules"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [rule_json()],
+                "total": 1
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_rules(None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_rules_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/promotion-rules"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [rule_json()],
+                "total": 1
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = list_rules(None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_rule_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/promotion-rules"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(rule_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = create_rule("staging-to-prod", NIL_UUID, NIL_UUID, false, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_rule() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/promotion-rules/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = delete_rule(NIL_UUID, true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_promotion_history_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(
+                "/api/v1/promotion/repositories/.*/promotion-history",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 20, "total": 0, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = promotion_history("maven-releases", None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_promotion_history_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(
+                "/api/v1/promotion/repositories/.*/promotion-history",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": NIL_UUID,
+                    "artifact_id": NIL_UUID,
+                    "artifact_path": "com/example/app/1.0.0",
+                    "source_repo_key": "maven-staging",
+                    "target_repo_key": "maven-releases",
+                    "status": "completed",
+                    "promoted_by_username": "admin",
+                    "created_at": "2026-01-15T12:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 20, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = promotion_history("maven-releases", None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
     }
 }

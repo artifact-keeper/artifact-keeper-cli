@@ -440,8 +440,8 @@ async fn delete_gate(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
 
 fn format_gate_table(items: &[serde_json::Value]) -> String {
     let mut table = new_table(vec![
-            "ID", "NAME", "ACTION", "ENABLED", "MAX CRIT", "MAX HIGH",
-        ]);
+        "ID", "NAME", "ACTION", "ENABLED", "MAX CRIT", "MAX HIGH",
+    ]);
 
     for g in items {
         let id = g["id"].as_str().unwrap_or("-");
@@ -732,13 +732,7 @@ mod tests {
 
     #[test]
     fn parse_create_single_required_check() {
-        let cli = parse(&[
-            "test",
-            "create",
-            "basic-gate",
-            "--required-checks",
-            "trivy",
-        ]);
+        let cli = parse(&["test", "create", "basic-gate", "--required-checks", "trivy"]);
         match cli.command {
             QualityGateCommand::Create {
                 required_checks, ..
@@ -981,10 +975,10 @@ mod tests {
         assert!(detail.contains("Block critical vulns"));
         assert!(detail.contains("block"));
         assert!(detail.contains("yes")); // enabled
-        assert!(detail.contains("0"));   // max_critical
-        assert!(detail.contains("5"));   // max_high
-        assert!(detail.contains("20"));  // max_medium
-        assert!(detail.contains("80"));  // min_health_score
+        assert!(detail.contains("0")); // max_critical
+        assert!(detail.contains("5")); // max_high
+        assert!(detail.contains("20")); // max_medium
+        assert!(detail.contains("80")); // min_health_score
         assert!(detail.contains("trivy, grype"));
     }
 
@@ -1031,5 +1025,183 @@ mod tests {
         let detail = format_gate_detail(&item);
         assert!(detail.contains("Required Checks:     -"));
         assert!(detail.contains("Enforce on Promote:  yes"));
+    }
+
+    // ---- wiremock handler tests ----
+
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, ResponseTemplate};
+
+    static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    fn gate_json() -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "name": "security-gate",
+            "description": "Block critical vulns",
+            "action": "block",
+            "is_enabled": true,
+            "max_critical_issues": 0,
+            "max_high_issues": 5,
+            "max_medium_issues": null,
+            "min_health_score": null,
+            "min_metadata_score": null,
+            "min_quality_score": null,
+            "min_security_score": null,
+            "required_checks": ["trivy"],
+            "enforce_on_download": false,
+            "enforce_on_promotion": true,
+            "repository_id": null,
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_list_gates_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/quality/gates"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_gates(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_gates_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/quality/gates"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([gate_json()])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_gates(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_gates_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/quality/gates"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([gate_json()])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = list_gates(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_gate() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/quality/gates/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(gate_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = show_gate(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_gate_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/quality/gates"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(gate_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = create_gate(
+            "security-gate",
+            Some(0),
+            Some(5),
+            None,
+            Some("block"),
+            None,
+            None,
+            vec![],
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_gate() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path(format!("/api/v1/quality/gates/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(gate_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = update_gate(NIL_UUID, Some("renamed"), None, None, None, None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_gate() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/quality/gates/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = delete_gate(NIL_UUID, true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
     }
 }

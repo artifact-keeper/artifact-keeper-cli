@@ -1146,4 +1146,412 @@ mod tests {
         assert!(table_str.contains("no"));
         assert!(table_str.contains("Signing Key:"));
     }
+
+    // ========================================================================
+    // Wiremock-based handler tests
+    // ========================================================================
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    /// Set up env vars for handler tests; returns a guard that must be held.
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
+    #[tokio::test]
+    async fn handler_list_keys_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/signing/keys"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "keys": [],
+                "total": 0
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_keys(None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_keys_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/signing/keys"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "keys": [
+                    {
+                        "id": NIL_UUID,
+                        "name": "release-key",
+                        "algorithm": "ed25519",
+                        "key_type": "signing",
+                        "is_active": true,
+                        "fingerprint": "abc123def456",
+                        "repository_id": NIL_UUID,
+                        "created_at": "2024-02-21T00:00:00Z",
+                        "expires_at": null,
+                        "public_key_pem": "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----",
+                        "key_id": null,
+                        "last_used_at": null,
+                        "uid_email": null,
+                        "uid_name": null
+                    }
+                ],
+                "total": 1
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_keys(None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_keys_with_repo_filter() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/signing/keys"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "keys": [
+                    {
+                        "id": NIL_UUID,
+                        "name": "repo-key",
+                        "algorithm": "rsa-4096",
+                        "key_type": "signing",
+                        "is_active": true,
+                        "fingerprint": "deadbeef",
+                        "repository_id": NIL_UUID,
+                        "created_at": "2024-02-21T00:00:00Z",
+                        "expires_at": null,
+                        "public_key_pem": "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----",
+                        "key_id": null,
+                        "last_used_at": null,
+                        "uid_email": null,
+                        "uid_name": null
+                    }
+                ],
+                "total": 1
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_keys(Some(NIL_UUID), &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_key() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/signing/keys/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "name": "my-key",
+                "algorithm": "ed25519",
+                "key_type": "signing",
+                "is_active": true,
+                "fingerprint": "abc123",
+                "repository_id": NIL_UUID,
+                "created_at": "2024-02-21T00:00:00Z",
+                "expires_at": null,
+                "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA\n-----END PUBLIC KEY-----",
+                "key_id": null,
+                "last_used_at": null,
+                "uid_email": null,
+                "uid_name": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_key(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_key() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/signing/keys"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "name": "new-key",
+                "algorithm": "ed25519",
+                "key_type": "signing",
+                "is_active": true,
+                "fingerprint": "newfingerprint",
+                "repository_id": NIL_UUID,
+                "created_at": "2024-02-21T00:00:00Z",
+                "expires_at": null,
+                "public_key_pem": "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----",
+                "key_id": null,
+                "last_used_at": null,
+                "uid_email": null,
+                "uid_name": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = create_key(
+            "new-key",
+            "ed25519",
+            "signing",
+            NIL_UUID,
+            Some("user@example.com"),
+            Some("Test User"),
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_key_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/signing/keys"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "name": "quiet-key",
+                "algorithm": "rsa-4096",
+                "key_type": "encryption",
+                "is_active": true,
+                "fingerprint": null,
+                "repository_id": NIL_UUID,
+                "created_at": "2024-02-21T00:00:00Z",
+                "expires_at": null,
+                "public_key_pem": "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----",
+                "key_id": null,
+                "last_used_at": null,
+                "uid_email": null,
+                "uid_name": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = create_key(
+            "quiet-key",
+            "rsa-4096",
+            "encryption",
+            NIL_UUID,
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_key() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/signing/keys/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": "Key deleted"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        // skip_confirm=true because no_input=true in test_global
+        let result = delete_key(NIL_UUID, true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_revoke_key() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/signing/keys/.+/revoke"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": "Key revoked successfully"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = revoke_key(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_revoke_key_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/signing/keys/.+/revoke"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": "Key revoked"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = revoke_key(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_rotate_key() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/signing/keys/.+/rotate"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "name": "rotated-key",
+                "algorithm": "ed25519",
+                "key_type": "signing",
+                "is_active": true,
+                "fingerprint": "new-fingerprint",
+                "repository_id": NIL_UUID,
+                "created_at": "2024-02-21T00:00:00Z",
+                "expires_at": null,
+                "public_key_pem": "-----BEGIN PUBLIC KEY-----\nnew-key\n-----END PUBLIC KEY-----",
+                "key_id": null,
+                "last_used_at": null,
+                "uid_email": null,
+                "uid_name": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = rotate_key(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_rotate_key_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/signing/keys/.+/rotate"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "name": "rotated-quiet",
+                "algorithm": "ed25519",
+                "key_type": "signing",
+                "is_active": true,
+                "fingerprint": null,
+                "repository_id": null,
+                "created_at": "2024-02-21T00:00:00Z",
+                "expires_at": null,
+                "public_key_pem": "-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----",
+                "key_id": null,
+                "last_used_at": null,
+                "uid_email": null,
+                "uid_name": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = rotate_key(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_config() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/signing/repositories/.+/config"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "repository_id": NIL_UUID,
+                "require_signatures": true,
+                "sign_metadata": true,
+                "sign_packages": false,
+                "signing_key_id": NIL_UUID,
+                "key": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_config(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_config() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/signing/repositories/.+/config"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "repository_id": NIL_UUID,
+                "require_signatures": true,
+                "sign_metadata": true,
+                "sign_packages": true,
+                "signing_key_id": NIL_UUID,
+                "created_at": "2024-02-21T00:00:00Z",
+                "updated_at": "2024-02-21T12:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = update_config(NIL_UUID, true, true, true, Some(NIL_UUID), &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
 }

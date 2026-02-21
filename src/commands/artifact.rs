@@ -1314,4 +1314,248 @@ mod tests {
         assert!(table.contains("npm"));
         assert!(table.contains("pypi"));
     }
+
+    // ========================================================================
+    // Wiremock-based handler tests
+    // ========================================================================
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    #[tokio::test]
+    async fn handler_list_artifacts_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 50, "total": 0_i64, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list("my-repo", None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_artifacts_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "path": "org/example/lib/1.0/lib-1.0.jar",
+                    "name": "lib",
+                    "version": "1.0",
+                    "size_bytes": 2621440_i64,
+                    "content_type": "application/java-archive",
+                    "checksum_sha256": "abc123def456",
+                    "download_count": 150_i64,
+                    "repository_key": "maven-central",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list("maven-central", None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_artifact_info() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "path": "org/example/lib/1.0/lib-1.0.jar",
+                    "name": "lib",
+                    "version": "1.0",
+                    "size_bytes": 2621440_i64,
+                    "content_type": "application/java-archive",
+                    "checksum_sha256": "abc123def456",
+                    "download_count": 150_i64,
+                    "repository_key": "maven-central",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = info("maven-central", "org/example/lib/1.0/lib-1.0.jar", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_artifact_info_not_found() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 50, "total": 0_i64, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = info("my-repo", "nonexistent", &global).await;
+        assert!(result.is_err());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_search_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/search/advanced"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "facets": { "formats": [], "repositories": [], "content_types": [] },
+                "pagination": { "page": 1, "per_page": 50, "total": 0_i64, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = search("nonexistent", None, None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_search_with_results() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/search/advanced"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "name": "log4j-core",
+                    "path": "org/apache/logging/log4j/log4j-core/2.17.1/log4j-core-2.17.1.jar",
+                    "repository_key": "maven-central",
+                    "format": "maven",
+                    "version": "2.17.1",
+                    "type": "library",
+                    "size_bytes": 1887436_i64,
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "facets": { "formats": [], "repositories": [], "content_types": [] },
+                "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = search("log4j", None, None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_artifact() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        // no_input=true in test_global, so no confirmation prompt
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = delete("my-repo", "path/to/file", true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_same_instance_copy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        // Mock for finding the source artifact
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000099",
+                    "path": "pkg/lib-1.0.jar",
+                    "name": "lib",
+                    "version": "1.0",
+                    "size_bytes": 1024_i64,
+                    "content_type": "application/java-archive",
+                    "checksum_sha256": "abc123",
+                    "download_count": 5_i64,
+                    "repository_key": "src-repo",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 1, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        // Mock for promote_artifact
+        Mock::given(method("POST"))
+            .and(path_regex(
+                "/api/v1/promotion/repositories/.+/artifacts/.+/promote",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "promoted": true,
+                "source": "src-repo",
+                "target": "dst-repo",
+                "policy_violations": [],
+                "message": "Artifact promoted"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = same_instance_copy("src-repo", "pkg/lib-1.0.jar", "dst-repo", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
 }

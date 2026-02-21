@@ -2210,4 +2210,679 @@ mod tests {
         assert!(table_str.contains("policy-a"));
         assert!(table_str.contains("policy-b"));
     }
+
+    // ========================================================================
+    // Wiremock-based handler tests
+    // ========================================================================
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    /// Set up env vars for handler tests; returns a guard that must be held.
+    fn setup_env(tmp: &tempfile::TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
+
+    #[tokio::test]
+    async fn handler_list_scans_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/scans"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": [],
+                "total": 0_i64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_scans(None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_scans_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/scans"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "artifact_id": "00000000-0000-0000-0000-000000000099",
+                    "repository_id": "00000000-0000-0000-0000-000000000002",
+                    "status": "completed",
+                    "scan_type": "trivy",
+                    "findings_count": 3,
+                    "critical_count": 1,
+                    "high_count": 1,
+                    "medium_count": 1,
+                    "low_count": 0,
+                    "info_count": 0,
+                    "artifact_name": "pkg.jar",
+                    "artifact_version": "1.0",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "total": 1_i64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_scans(None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_scans_with_repo_filter() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/security/scans"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": [],
+                "total": 0_i64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = list_scans(Some("my-repo"), 1, 20, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_dashboard() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/dashboard"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "total_scans": 100,
+                "total_findings": 25,
+                "critical_findings": 2,
+                "high_findings": 5,
+                "policy_violations_blocked": 3,
+                "repos_with_scanning": 10,
+                "repos_grade_a": 7,
+                "repos_grade_f": 0
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_dashboard(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_dashboard_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/dashboard"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "total_scans": 10,
+                "total_findings": 0,
+                "critical_findings": 0,
+                "high_findings": 0,
+                "policy_violations_blocked": 0,
+                "repos_with_scanning": 5,
+                "repos_grade_a": 5,
+                "repos_grade_f": 0
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = show_dashboard(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_scores_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/scores"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_scores(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_scores_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/scores"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "repository_id": "00000000-0000-0000-0000-000000000002",
+                    "grade": "A",
+                    "score": 95,
+                    "critical_count": 0,
+                    "high_count": 1,
+                    "medium_count": 3,
+                    "low_count": 5,
+                    "total_findings": 9,
+                    "acknowledged_count": 2,
+                    "last_scan_at": "2026-01-15T10:00:00Z",
+                    "calculated_at": "2026-01-15T10:00:00Z"
+                }])),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_scores(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_scan_configs_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/configs"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_scan_configs(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_scan_configs_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/configs"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "repository_id": "00000000-0000-0000-0000-000000000002",
+                    "scan_enabled": true,
+                    "scan_on_upload": true,
+                    "scan_on_proxy": false,
+                    "block_on_policy_violation": true,
+                    "severity_threshold": "HIGH",
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "updated_at": "2026-01-15T10:00:00Z"
+                }])),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_scan_configs(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/policies"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_policies(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_policies_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/security/policies"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!([{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "name": "strict-policy",
+                    "max_severity": "HIGH",
+                    "block_on_fail": true,
+                    "block_unscanned": false,
+                    "is_enabled": true,
+                    "require_signature": false,
+                    "repository_id": null,
+                    "max_artifact_age_days": null,
+                    "min_staging_hours": null,
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "updated_at": "2026-01-15T10:00:00Z"
+                }])),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_policies(&global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/security/policies/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "name": "test-policy",
+                "max_severity": "CRITICAL",
+                "block_on_fail": true,
+                "block_unscanned": true,
+                "is_enabled": true,
+                "require_signature": false,
+                "repository_id": null,
+                "max_artifact_age_days": null,
+                "min_staging_hours": null,
+                "created_at": "2026-01-15T10:00:00Z",
+                "updated_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_policy("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/security/policies"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "name": "new-policy",
+                "max_severity": "HIGH",
+                "block_on_fail": true,
+                "block_unscanned": false,
+                "is_enabled": true,
+                "require_signature": false,
+                "repository_id": null,
+                "max_artifact_age_days": null,
+                "min_staging_hours": null,
+                "created_at": "2026-01-15T10:00:00Z",
+                "updated_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = create_policy("new-policy", "HIGH", true, false, None, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/security/policies/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        // yes=true to skip confirmation, no_input is also true in test_global
+        let result = delete_policy("00000000-0000-0000-0000-000000000001", true, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_acknowledge_finding() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/security/findings/.+/acknowledge"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "artifact_id": "00000000-0000-0000-0000-000000000099",
+                "severity": "HIGH",
+                "title": "CVE-2024-1234",
+                "cve_id": "CVE-2024-1234",
+                "affected_component": "lodash",
+                "affected_version": "4.17.20",
+                "fixed_version": "4.17.21",
+                "source": "trivy",
+                "is_acknowledged": true,
+                "acknowledged_reason": "Accepted risk",
+                "scan_result_id": "00000000-0000-0000-0000-000000000002",
+                "created_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = acknowledge_finding(
+            "00000000-0000-0000-0000-000000000001",
+            "Accepted risk",
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_revoke_finding() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/security/findings/.+/acknowledge"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "artifact_id": "00000000-0000-0000-0000-000000000099",
+                "severity": "HIGH",
+                "title": "CVE-2024-1234",
+                "cve_id": "CVE-2024-1234",
+                "affected_component": "lodash",
+                "affected_version": "4.17.20",
+                "fixed_version": "4.17.21",
+                "source": "trivy",
+                "is_acknowledged": false,
+                "acknowledged_reason": null,
+                "scan_result_id": "00000000-0000-0000-0000-000000000002",
+                "created_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = revoke_finding("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_repo_security() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/security"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "config": {
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "repository_id": "00000000-0000-0000-0000-000000000002",
+                    "scan_enabled": true,
+                    "scan_on_upload": true,
+                    "scan_on_proxy": false,
+                    "block_on_policy_violation": true,
+                    "severity_threshold": "HIGH",
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "updated_at": "2026-01-15T10:00:00Z"
+                },
+                "score": {
+                    "id": "00000000-0000-0000-0000-000000000003",
+                    "repository_id": "00000000-0000-0000-0000-000000000002",
+                    "grade": "A",
+                    "score": 95,
+                    "critical_count": 0,
+                    "high_count": 1,
+                    "medium_count": 3,
+                    "low_count": 5,
+                    "total_findings": 9,
+                    "acknowledged_count": 2,
+                    "last_scan_at": "2026-01-15T10:00:00Z",
+                    "calculated_at": "2026-01-15T10:00:00Z"
+                }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_repo_security("my-repo", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_repo_security() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path_regex("/api/v1/repositories/.+/security"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "repository_id": "00000000-0000-0000-0000-000000000002",
+                "scan_enabled": true,
+                "scan_on_upload": true,
+                "scan_on_proxy": true,
+                "block_on_policy_violation": true,
+                "severity_threshold": "CRITICAL",
+                "created_at": "2026-01-15T10:00:00Z",
+                "updated_at": "2026-01-15T12:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result =
+            update_repo_security("my-repo", true, true, true, true, "CRITICAL", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_findings() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        let scan_id = "00000000-0000-0000-0000-000000000001";
+
+        // Mock for get_scan
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/security/scans/{scan_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": scan_id,
+                "artifact_id": "00000000-0000-0000-0000-000000000099",
+                "repository_id": "00000000-0000-0000-0000-000000000002",
+                "status": "completed",
+                "scan_type": "trivy",
+                "findings_count": 1,
+                "critical_count": 0,
+                "high_count": 0,
+                "medium_count": 1,
+                "low_count": 0,
+                "info_count": 0,
+                "artifact_name": "pkg.jar",
+                "artifact_version": "1.0",
+                "created_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        // Mock for list_findings
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/security/scans/{scan_id}/findings")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000010",
+                    "artifact_id": "00000000-0000-0000-0000-000000000099",
+                    "severity": "MEDIUM",
+                    "title": "Test finding",
+                    "cve_id": "CVE-2024-9999",
+                    "affected_component": "test-lib",
+                    "affected_version": "1.0.0",
+                    "fixed_version": "1.0.1",
+                    "source": "trivy",
+                    "is_acknowledged": false,
+                    "acknowledged_reason": null,
+                    "scan_result_id": scan_id,
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "total": 1_i64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_findings(scan_id, None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_run_scan() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        // Mock for list_artifacts (finding the artifact)
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000099",
+                    "path": "pkg/foo-1.0.tar.gz",
+                    "name": "foo",
+                    "size_bytes": 1024_i64,
+                    "content_type": "application/gzip",
+                    "checksum_sha256": "abc123",
+                    "download_count": 5_i64,
+                    "repository_key": "my-repo",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 1, "total_pages": 1, "total": 1_i64 }
+            })))
+            .mount(&server)
+            .await;
+
+        // Mock for trigger_scan
+        Mock::given(method("POST"))
+            .and(path("/api/v1/security/scan"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "message": "Scan triggered",
+                "artifacts_queued": 1
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = run_scan("my-repo", "pkg/foo-1.0.tar.gz", &global).await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_policy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = setup_env(&tmp);
+
+        let policy_id = "00000000-0000-0000-0000-000000000001";
+
+        // Mock for get_policy (fetching existing)
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/security/policies/{policy_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": policy_id,
+                "name": "old-name",
+                "max_severity": "HIGH",
+                "block_on_fail": false,
+                "block_unscanned": false,
+                "is_enabled": true,
+                "require_signature": false,
+                "repository_id": null,
+                "max_artifact_age_days": null,
+                "min_staging_hours": null,
+                "created_at": "2026-01-15T10:00:00Z",
+                "updated_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        // Mock for update_policy
+        Mock::given(method("PUT"))
+            .and(path(format!("/api/v1/security/policies/{policy_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": policy_id,
+                "name": "updated-name",
+                "max_severity": "CRITICAL",
+                "block_on_fail": true,
+                "block_unscanned": false,
+                "is_enabled": true,
+                "require_signature": false,
+                "repository_id": null,
+                "max_artifact_age_days": null,
+                "min_staging_hours": null,
+                "created_at": "2026-01-15T10:00:00Z",
+                "updated_at": "2026-01-15T12:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = update_policy(
+            policy_id,
+            Some("updated-name"),
+            Some("CRITICAL"),
+            Some(true),
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        teardown_env();
+    }
 }
