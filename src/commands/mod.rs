@@ -6,6 +6,7 @@ pub mod client;
 pub mod completion;
 pub mod config;
 pub mod doctor;
+pub mod dt;
 pub mod group;
 pub mod helpers;
 pub mod instance;

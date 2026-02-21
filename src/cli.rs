@@ -232,6 +232,16 @@ pub enum Command {
         command: commands::permission::PermissionCommand,
     },
 
+    /// Dependency-Track integration
+    #[command(
+        alias = "dependency-track",
+        after_help = "Examples:\n  ak dt status\n  ak dt project list\n  ak dt project findings <uuid>\n  ak dt metrics"
+    )]
+    Dt {
+        #[command(subcommand)]
+        command: commands::dt::DtCommand,
+    },
+
     /// Administrative operations (backup, cleanup, users, plugins)
     #[command(
         after_help = "Examples:\n  ak admin backup list\n  ak admin backup create --type full\n  ak admin cleanup --audit-logs --old-backups\n  ak admin metrics\n  ak admin users list\n  ak admin plugins list"
@@ -336,6 +346,7 @@ impl Cli {
             Command::Sbom { command } => command.execute(&global).await,
             Command::License { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
+            Command::Dt { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
             Command::Tui => commands::tui::execute(&global).await,
@@ -1357,5 +1368,141 @@ mod tests {
     fn default_color_is_auto() {
         let cli = parse(&["ak", "doctor"]).unwrap();
         assert!(matches!(cli.color, ColorMode::Auto));
+    }
+
+    // ---- DT (Dependency-Track) command parsing ----
+
+    #[test]
+    fn parse_dt_status() {
+        let cli = parse(&["ak", "dt", "status"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_alias_dependency_track() {
+        let cli = parse(&["ak", "dependency-track", "status"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_list() {
+        let cli = parse(&["ak", "dt", "project", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_show() {
+        let cli = parse(&["ak", "dt", "project", "show", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_components() {
+        let cli = parse(&["ak", "dt", "project", "components", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_findings() {
+        let cli = parse(&["ak", "dt", "project", "findings", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_findings_with_severity() {
+        let cli = parse(&[
+            "ak",
+            "dt",
+            "project",
+            "findings",
+            "some-uuid",
+            "--severity",
+            "HIGH",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_violations() {
+        let cli = parse(&["ak", "dt", "project", "violations", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_metrics() {
+        let cli = parse(&["ak", "dt", "project", "metrics", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_metrics_history() {
+        let cli = parse(&[
+            "ak",
+            "dt",
+            "project",
+            "metrics-history",
+            "some-uuid",
+            "--days",
+            "90",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_metrics() {
+        let cli = parse(&["ak", "dt", "metrics"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_policies() {
+        let cli = parse(&["ak", "dt", "policies"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_analyze() {
+        let cli = parse(&[
+            "ak",
+            "dt",
+            "analyze",
+            "--project",
+            "proj-uuid",
+            "--vulnerability",
+            "vuln-uuid",
+            "--component",
+            "comp-uuid",
+            "--state",
+            "NOT_AFFECTED",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_analyze_with_optional_flags() {
+        let cli = parse(&[
+            "ak",
+            "dt",
+            "analyze",
+            "--project",
+            "proj-uuid",
+            "--vulnerability",
+            "vuln-uuid",
+            "--component",
+            "comp-uuid",
+            "--state",
+            "FALSE_POSITIVE",
+            "--justification",
+            "Not applicable",
+            "--details",
+            "This is a test env",
+            "--suppressed",
+            "true",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
     }
 }
