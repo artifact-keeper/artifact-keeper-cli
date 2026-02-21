@@ -3,7 +3,7 @@ members = ["sdk", "xtask"]
 
 [package]
 name = "artifact-keeper-cli"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 description = "CLI/TUI tool for Artifact Keeper — an enterprise artifact registry"
 license = "MIT"
@@ -71,6 +71,7 @@ futures = "0.3"
 assert_cmd = "2"
 predicates = "3"
 tempfile = "3"
+wiremock = "0.6"
 
 [profile.release]
 lto = true

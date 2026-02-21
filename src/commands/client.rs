@@ -92,3 +92,62 @@ pub fn client_for_optional_auth(global: &GlobalArgs) -> Result<artifact_keeper_s
         http_client,
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_client_with_valid_token() {
+        let instance = InstanceConfig {
+            url: "https://example.com".to_string(),
+            api_version: "v1".to_string(),
+        };
+        let cred = StoredCredential {
+            access_token: "test-token-abc123".to_string(),
+            refresh_token: None,
+        };
+
+        let client = build_client("test", &instance, Some(&cred));
+        assert!(client.is_ok());
+    }
+
+    #[test]
+    fn build_client_with_empty_token() {
+        let instance = InstanceConfig {
+            url: "https://example.com".to_string(),
+            api_version: "v1".to_string(),
+        };
+        let cred = StoredCredential {
+            access_token: String::new(),
+            refresh_token: None,
+        };
+
+        // Empty token is technically valid for header construction
+        let client = build_client("test", &instance, Some(&cred));
+        assert!(client.is_ok());
+    }
+
+    #[test]
+    fn build_client_different_urls() {
+        let urls = vec![
+            "https://registry.example.com",
+            "http://localhost:8080",
+            "https://internal.corp.net:8443/api",
+        ];
+
+        for url in urls {
+            let instance = InstanceConfig {
+                url: url.to_string(),
+                api_version: "v1".to_string(),
+            };
+            let cred = StoredCredential {
+                access_token: "token".to_string(),
+                refresh_token: None,
+            };
+
+            let client = build_client("test", &instance, Some(&cred));
+            assert!(client.is_ok(), "Failed to build client for URL: {url}");
+        }
+    }
+}

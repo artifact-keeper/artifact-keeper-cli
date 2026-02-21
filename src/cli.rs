@@ -196,6 +196,33 @@ pub enum Command {
         command: commands::lifecycle::LifecycleCommand,
     },
 
+    /// Signing & key management
+    #[command(
+        after_help = "Examples:\n  ak sign key list\n  ak sign key create my-key --algorithm ed25519 --type signing --repo <uuid>\n  ak sign config show <repo-id>"
+    )]
+    Sign {
+        #[command(subcommand)]
+        command: commands::sign::SignCommand,
+    },
+
+    /// Software Bill of Materials operations
+    #[command(
+        after_help = "Examples:\n  ak sbom generate <artifact-id>\n  ak sbom list --repo <uuid>\n  ak sbom components <sbom-id>\n  ak sbom cve history <artifact-id>"
+    )]
+    Sbom {
+        #[command(subcommand)]
+        command: commands::sbom::SbomCommand,
+    },
+
+    /// License compliance management
+    #[command(
+        after_help = "Examples:\n  ak license policy list\n  ak license policy create strict --allowed MIT,Apache-2.0\n  ak license check --licenses MIT,GPL-3.0"
+    )]
+    License {
+        #[command(subcommand)]
+        command: commands::license::LicenseCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -203,6 +230,16 @@ pub enum Command {
     Permission {
         #[command(subcommand)]
         command: commands::permission::PermissionCommand,
+    },
+
+    /// Dependency-Track integration
+    #[command(
+        alias = "dependency-track",
+        after_help = "Examples:\n  ak dt status\n  ak dt project list\n  ak dt project findings <uuid>\n  ak dt metrics"
+    )]
+    Dt {
+        #[command(subcommand)]
+        command: commands::dt::DtCommand,
     },
 
     /// Administrative operations (backup, cleanup, users, plugins)
@@ -305,7 +342,11 @@ impl Cli {
             Command::QualityGate { command } => command.execute(&global).await,
             Command::Label { command } => command.execute(&global).await,
             Command::Lifecycle { command } => command.execute(&global).await,
+            Command::Sign { command } => command.execute(&global).await,
+            Command::Sbom { command } => command.execute(&global).await,
+            Command::License { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
+            Command::Dt { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
             Command::Tui => commands::tui::execute(&global).await,
@@ -940,6 +981,334 @@ mod tests {
         assert!(matches!(cli.command, Command::Permission { .. }));
     }
 
+    // ---- Sign command parsing ----
+
+    #[test]
+    fn parse_sign_key_list() {
+        parse(&["ak", "sign", "key", "list"]).unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_list_with_repo() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "list",
+            "--repo",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_create() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "create",
+            "my-key",
+            "--algorithm",
+            "ed25519",
+            "--type",
+            "signing",
+            "--repo",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_show() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "show",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_delete() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "delete",
+            "00000000-0000-0000-0000-000000000000",
+            "--yes",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_revoke() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "revoke",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_rotate() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "rotate",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_key_export() {
+        parse(&[
+            "ak",
+            "sign",
+            "key",
+            "export",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_config_show() {
+        parse(&[
+            "ak",
+            "sign",
+            "config",
+            "show",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_config_update() {
+        parse(&[
+            "ak",
+            "sign",
+            "config",
+            "update",
+            "00000000-0000-0000-0000-000000000000",
+            "--require-signatures",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sign_config_export_key() {
+        parse(&[
+            "ak",
+            "sign",
+            "config",
+            "export-key",
+            "00000000-0000-0000-0000-000000000000",
+        ])
+        .unwrap();
+    }
+
+    // ---- SBOM command parsing ----
+
+    #[test]
+    fn parse_sbom_generate() {
+        let cli = parse(&[
+            "ak",
+            "sbom",
+            "generate",
+            "00000000-0000-0000-0000-000000000001",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Sbom { .. }));
+    }
+
+    #[test]
+    fn parse_sbom_generate_with_options() {
+        parse(&[
+            "ak",
+            "sbom",
+            "generate",
+            "00000000-0000-0000-0000-000000000001",
+            "--sbom-format",
+            "spdx",
+            "--force",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_show() {
+        let cli = parse(&["ak", "sbom", "show", "00000000-0000-0000-0000-000000000001"]).unwrap();
+        assert!(matches!(cli.command, Command::Sbom { .. }));
+    }
+
+    #[test]
+    fn parse_sbom_list() {
+        let cli = parse(&["ak", "sbom", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Sbom { .. }));
+    }
+
+    #[test]
+    fn parse_sbom_list_with_filters() {
+        parse(&[
+            "ak",
+            "sbom",
+            "list",
+            "--repo",
+            "00000000-0000-0000-0000-000000000001",
+            "--sbom-format",
+            "cyclonedx",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_get() {
+        let cli = parse(&["ak", "sbom", "get", "00000000-0000-0000-0000-000000000001"]).unwrap();
+        assert!(matches!(cli.command, Command::Sbom { .. }));
+    }
+
+    #[test]
+    fn parse_sbom_delete() {
+        parse(&[
+            "ak",
+            "sbom",
+            "delete",
+            "00000000-0000-0000-0000-000000000001",
+            "--yes",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_components() {
+        parse(&[
+            "ak",
+            "sbom",
+            "components",
+            "00000000-0000-0000-0000-000000000001",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_export() {
+        parse(&[
+            "ak",
+            "sbom",
+            "export",
+            "00000000-0000-0000-0000-000000000001",
+            "--output",
+            "/tmp/sbom.json",
+            "--target-format",
+            "cyclonedx",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_cve_history() {
+        parse(&[
+            "ak",
+            "sbom",
+            "cve",
+            "history",
+            "00000000-0000-0000-0000-000000000001",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_cve_trends() {
+        parse(&["ak", "sbom", "cve", "trends", "--days", "60"]).unwrap();
+    }
+
+    #[test]
+    fn parse_sbom_cve_update_status() {
+        parse(&[
+            "ak",
+            "sbom",
+            "cve",
+            "update-status",
+            "00000000-0000-0000-0000-000000000001",
+            "--status",
+            "acknowledged",
+            "--reason",
+            "Not exploitable in our config",
+        ])
+        .unwrap();
+    }
+
+    // ---- License command parsing ----
+
+    #[test]
+    fn parse_license_policy_list() {
+        let cli = parse(&["ak", "license", "policy", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_policy_show() {
+        let cli = parse(&["ak", "license", "policy", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_policy_create() {
+        let cli = parse(&[
+            "ak",
+            "license",
+            "policy",
+            "create",
+            "strict",
+            "--allowed",
+            "MIT,Apache-2.0",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_policy_create_with_denied() {
+        let cli = parse(&[
+            "ak",
+            "license",
+            "policy",
+            "create",
+            "restrictive",
+            "--allowed",
+            "MIT",
+            "--denied",
+            "GPL-3.0,AGPL-3.0",
+            "--allow-unknown",
+            "--action",
+            "block",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_policy_delete() {
+        let cli = parse(&["ak", "license", "policy", "delete", "some-id", "--yes"]).unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_check() {
+        let cli = parse(&["ak", "license", "check", "--licenses", "MIT,GPL-3.0"]).unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
     // ---- Error cases ----
 
     #[test]
@@ -999,5 +1368,220 @@ mod tests {
     fn default_color_is_auto() {
         let cli = parse(&["ak", "doctor"]).unwrap();
         assert!(matches!(cli.color, ColorMode::Auto));
+    }
+
+    // ---- DT (Dependency-Track) command parsing ----
+
+    #[test]
+    fn parse_dt_status() {
+        let cli = parse(&["ak", "dt", "status"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_alias_dependency_track() {
+        let cli = parse(&["ak", "dependency-track", "status"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_list() {
+        let cli = parse(&["ak", "dt", "project", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_show() {
+        let cli = parse(&["ak", "dt", "project", "show", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_components() {
+        let cli = parse(&["ak", "dt", "project", "components", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_findings() {
+        let cli = parse(&["ak", "dt", "project", "findings", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_findings_with_severity() {
+        let cli = parse(&[
+            "ak",
+            "dt",
+            "project",
+            "findings",
+            "some-uuid",
+            "--severity",
+            "HIGH",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_violations() {
+        let cli = parse(&["ak", "dt", "project", "violations", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_metrics() {
+        let cli = parse(&["ak", "dt", "project", "metrics", "some-uuid"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_project_metrics_history() {
+        let cli = parse(&[
+            "ak",
+            "dt",
+            "project",
+            "metrics-history",
+            "some-uuid",
+            "--days",
+            "90",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_metrics() {
+        let cli = parse(&["ak", "dt", "metrics"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_policies() {
+        let cli = parse(&["ak", "dt", "policies"]).unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_analyze() {
+        let cli = parse(&[
+            "ak",
+            "dt",
+            "analyze",
+            "--project",
+            "proj-uuid",
+            "--vulnerability",
+            "vuln-uuid",
+            "--component",
+            "comp-uuid",
+            "--state",
+            "NOT_AFFECTED",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    #[test]
+    fn parse_dt_analyze_with_optional_flags() {
+        let cli = parse(&[
+            "ak",
+            "dt",
+            "analyze",
+            "--project",
+            "proj-uuid",
+            "--vulnerability",
+            "vuln-uuid",
+            "--component",
+            "comp-uuid",
+            "--state",
+            "FALSE_POSITIVE",
+            "--justification",
+            "Not applicable",
+            "--details",
+            "This is a test env",
+            "--suppressed",
+            "true",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Dt { .. }));
+    }
+
+    // ---- Enhanced scan command parsing ----
+
+    #[test]
+    fn parse_scan_dashboard() {
+        parse(&["ak", "scan", "dashboard"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_scores() {
+        parse(&["ak", "scan", "scores"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_config_list() {
+        parse(&["ak", "scan", "config", "list"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_finding_ack() {
+        parse(&[
+            "ak",
+            "scan",
+            "finding",
+            "ack",
+            "some-id",
+            "--reason",
+            "False positive",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_scan_finding_revoke() {
+        parse(&["ak", "scan", "finding", "revoke", "some-id"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_policy_list() {
+        parse(&["ak", "scan", "policy", "list"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_policy_create() {
+        parse(&[
+            "ak",
+            "scan",
+            "policy",
+            "create",
+            "strict",
+            "--max-severity",
+            "HIGH",
+            "--block-on-fail",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_scan_policy_delete() {
+        parse(&["ak", "scan", "policy", "delete", "some-id", "--yes"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_security_show() {
+        parse(&["ak", "scan", "security", "show", "my-repo"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_security_update() {
+        parse(&[
+            "ak",
+            "scan",
+            "security",
+            "update",
+            "my-repo",
+            "--scanning-enabled",
+        ])
+        .unwrap();
     }
 }

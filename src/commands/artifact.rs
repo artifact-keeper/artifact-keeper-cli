@@ -716,3 +716,828 @@ async fn cross_instance_copy(
 
     Ok(())
 }
+
+/// Format a list of artifact entries as a table string.
+fn format_artifacts_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["PATH", "VERSION", "SIZE", "DOWNLOADS", "CREATED"]);
+
+    for a in items {
+        table.add_row(vec![
+            a["path"].as_str().unwrap_or("-"),
+            a["version"].as_str().unwrap_or("-"),
+            a["size"].as_str().unwrap_or("-"),
+            &a["downloads"]
+                .as_i64()
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "-".into()),
+            a["created_at"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+/// Format search results as a table string.
+fn format_search_results_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["NAME", "REPOSITORY", "FORMAT", "VERSION", "SIZE"]);
+
+    for item in items {
+        table.add_row(vec![
+            item["name"].as_str().unwrap_or("-"),
+            item["repository"].as_str().unwrap_or("-"),
+            item["format"].as_str().unwrap_or("-"),
+            item["version"].as_str().unwrap_or("-"),
+            item["size"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use serde_json::json;
+
+    // ---- TestCli wrapper for parsing ----
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: ArtifactCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- Push subcommand parsing ----
+
+    #[test]
+    fn parse_push_single_file() {
+        let cli = parse(&["test", "push", "my-repo", "package.tar.gz"]);
+        if let ArtifactCommand::Push { repo, files, path } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(files, vec!["package.tar.gz"]);
+            assert!(path.is_none());
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+    }
+
+    #[test]
+    fn parse_push_multiple_files() {
+        let cli = parse(&[
+            "test",
+            "push",
+            "my-repo",
+            "file1.jar",
+            "file2.jar",
+            "file3.jar",
+        ]);
+        if let ArtifactCommand::Push { repo, files, path } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(files, vec!["file1.jar", "file2.jar", "file3.jar"]);
+            assert!(path.is_none());
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+    }
+
+    #[test]
+    fn parse_push_with_path() {
+        let cli = parse(&[
+            "test",
+            "push",
+            "my-repo",
+            "package.tar.gz",
+            "--path",
+            "org/pkg/1.0/",
+        ]);
+        if let ArtifactCommand::Push { repo, files, path } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(files, vec!["package.tar.gz"]);
+            assert_eq!(path.as_deref(), Some("org/pkg/1.0/"));
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+    }
+
+    #[test]
+    fn parse_push_glob_pattern() {
+        let cli = parse(&["test", "push", "my-repo", "*.tar.gz"]);
+        if let ArtifactCommand::Push { repo, files, .. } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(files, vec!["*.tar.gz"]);
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+    }
+
+    #[test]
+    fn parse_push_missing_files_fails() {
+        assert!(try_parse(&["test", "push", "my-repo"]).is_err());
+    }
+
+    #[test]
+    fn parse_push_missing_repo_fails() {
+        assert!(try_parse(&["test", "push"]).is_err());
+    }
+
+    // ---- Pull subcommand parsing ----
+
+    #[test]
+    fn parse_pull() {
+        let cli = parse(&["test", "pull", "my-repo", "org/pkg/1.0/pkg.jar"]);
+        if let ArtifactCommand::Pull { repo, path, output } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(path, "org/pkg/1.0/pkg.jar");
+            assert!(output.is_none());
+        } else {
+            panic!("Expected ArtifactCommand::Pull");
+        }
+    }
+
+    #[test]
+    fn parse_pull_with_output() {
+        let cli = parse(&[
+            "test",
+            "pull",
+            "my-repo",
+            "org/pkg/1.0/pkg.jar",
+            "-o",
+            "local-pkg.jar",
+        ]);
+        if let ArtifactCommand::Pull { repo, path, output } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(path, "org/pkg/1.0/pkg.jar");
+            assert_eq!(output.as_deref(), Some("local-pkg.jar"));
+        } else {
+            panic!("Expected ArtifactCommand::Pull");
+        }
+    }
+
+    #[test]
+    fn parse_pull_with_long_output() {
+        let cli = parse(&[
+            "test",
+            "pull",
+            "my-repo",
+            "path/to/file",
+            "--output",
+            "out.bin",
+        ]);
+        if let ArtifactCommand::Pull { output, .. } = cli.command {
+            assert_eq!(output.as_deref(), Some("out.bin"));
+        } else {
+            panic!("Expected ArtifactCommand::Pull");
+        }
+    }
+
+    #[test]
+    fn parse_pull_missing_path_fails() {
+        assert!(try_parse(&["test", "pull", "my-repo"]).is_err());
+    }
+
+    #[test]
+    fn parse_pull_missing_repo_fails() {
+        assert!(try_parse(&["test", "pull"]).is_err());
+    }
+
+    // ---- List subcommand parsing ----
+
+    #[test]
+    fn parse_list() {
+        let cli = parse(&["test", "list", "my-repo"]);
+        if let ArtifactCommand::List {
+            repo,
+            search,
+            page,
+            per_page,
+        } = cli.command
+        {
+            assert_eq!(repo, "my-repo");
+            assert!(search.is_none());
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 50);
+        } else {
+            panic!("Expected ArtifactCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_list_with_search() {
+        let cli = parse(&["test", "list", "my-repo", "--search", "log4j"]);
+        if let ArtifactCommand::List { search, .. } = cli.command {
+            assert_eq!(search.as_deref(), Some("log4j"));
+        } else {
+            panic!("Expected ArtifactCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_list_custom_pagination() {
+        let cli = parse(&["test", "list", "my-repo", "--page", "3", "--per-page", "25"]);
+        if let ArtifactCommand::List { page, per_page, .. } = cli.command {
+            assert_eq!(page, 3);
+            assert_eq!(per_page, 25);
+        } else {
+            panic!("Expected ArtifactCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_list_missing_repo_fails() {
+        assert!(try_parse(&["test", "list"]).is_err());
+    }
+
+    // ---- Info subcommand parsing ----
+
+    #[test]
+    fn parse_info() {
+        let cli = parse(&["test", "info", "my-repo", "org/pkg/1.0/pkg.jar"]);
+        if let ArtifactCommand::Info { repo, path } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(path, "org/pkg/1.0/pkg.jar");
+        } else {
+            panic!("Expected ArtifactCommand::Info");
+        }
+    }
+
+    #[test]
+    fn parse_info_missing_path_fails() {
+        assert!(try_parse(&["test", "info", "my-repo"]).is_err());
+    }
+
+    #[test]
+    fn parse_info_missing_repo_fails() {
+        assert!(try_parse(&["test", "info"]).is_err());
+    }
+
+    // ---- Delete subcommand parsing ----
+
+    #[test]
+    fn parse_delete() {
+        let cli = parse(&["test", "delete", "my-repo", "org/pkg/1.0/pkg.jar"]);
+        if let ArtifactCommand::Delete { repo, path, yes } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(path, "org/pkg/1.0/pkg.jar");
+            assert!(!yes);
+        } else {
+            panic!("Expected ArtifactCommand::Delete");
+        }
+    }
+
+    #[test]
+    fn parse_delete_with_yes() {
+        let cli = parse(&["test", "delete", "my-repo", "path/to/file", "--yes"]);
+        if let ArtifactCommand::Delete { repo, path, yes } = cli.command {
+            assert_eq!(repo, "my-repo");
+            assert_eq!(path, "path/to/file");
+            assert!(yes);
+        } else {
+            panic!("Expected ArtifactCommand::Delete");
+        }
+    }
+
+    #[test]
+    fn parse_delete_missing_path_fails() {
+        assert!(try_parse(&["test", "delete", "my-repo"]).is_err());
+    }
+
+    // ---- Search subcommand parsing ----
+
+    #[test]
+    fn parse_search() {
+        let cli = parse(&["test", "search", "log4j"]);
+        if let ArtifactCommand::Search {
+            query,
+            repo,
+            pkg_format,
+        } = cli.command
+        {
+            assert_eq!(query, "log4j");
+            assert!(repo.is_none());
+            assert!(pkg_format.is_none());
+        } else {
+            panic!("Expected ArtifactCommand::Search");
+        }
+    }
+
+    #[test]
+    fn parse_search_with_repo_filter() {
+        let cli = parse(&["test", "search", "log4j", "--repo", "maven-central"]);
+        if let ArtifactCommand::Search { query, repo, .. } = cli.command {
+            assert_eq!(query, "log4j");
+            assert_eq!(repo.as_deref(), Some("maven-central"));
+        } else {
+            panic!("Expected ArtifactCommand::Search");
+        }
+    }
+
+    #[test]
+    fn parse_search_with_format_filter() {
+        let cli = parse(&["test", "search", "express", "--pkg-format", "npm"]);
+        if let ArtifactCommand::Search {
+            query, pkg_format, ..
+        } = cli.command
+        {
+            assert_eq!(query, "express");
+            assert_eq!(pkg_format.as_deref(), Some("npm"));
+        } else {
+            panic!("Expected ArtifactCommand::Search");
+        }
+    }
+
+    #[test]
+    fn parse_search_all_options() {
+        let cli = parse(&[
+            "test",
+            "search",
+            "flask",
+            "--repo",
+            "pypi-repo",
+            "--pkg-format",
+            "pypi",
+        ]);
+        if let ArtifactCommand::Search {
+            query,
+            repo,
+            pkg_format,
+        } = cli.command
+        {
+            assert_eq!(query, "flask");
+            assert_eq!(repo.as_deref(), Some("pypi-repo"));
+            assert_eq!(pkg_format.as_deref(), Some("pypi"));
+        } else {
+            panic!("Expected ArtifactCommand::Search");
+        }
+    }
+
+    #[test]
+    fn parse_search_missing_query_fails() {
+        assert!(try_parse(&["test", "search"]).is_err());
+    }
+
+    // ---- Copy subcommand parsing ----
+
+    #[test]
+    fn parse_copy() {
+        let cli = parse(&["test", "copy", "src-repo/path/to/file", "dst-repo"]);
+        if let ArtifactCommand::Copy {
+            source,
+            destination,
+            from_instance,
+            to_instance,
+        } = cli.command
+        {
+            assert_eq!(source, "src-repo/path/to/file");
+            assert_eq!(destination, "dst-repo");
+            assert!(from_instance.is_none());
+            assert!(to_instance.is_none());
+        } else {
+            panic!("Expected ArtifactCommand::Copy");
+        }
+    }
+
+    #[test]
+    fn parse_copy_cross_instance() {
+        let cli = parse(&[
+            "test",
+            "copy",
+            "src/path",
+            "dst/path",
+            "--from-instance",
+            "staging",
+            "--to-instance",
+            "prod",
+        ]);
+        if let ArtifactCommand::Copy {
+            source,
+            destination,
+            from_instance,
+            to_instance,
+        } = cli.command
+        {
+            assert_eq!(source, "src/path");
+            assert_eq!(destination, "dst/path");
+            assert_eq!(from_instance.as_deref(), Some("staging"));
+            assert_eq!(to_instance.as_deref(), Some("prod"));
+        } else {
+            panic!("Expected ArtifactCommand::Copy");
+        }
+    }
+
+    #[test]
+    fn parse_copy_from_instance_only() {
+        let cli = parse(&[
+            "test",
+            "copy",
+            "src/path",
+            "dst/path",
+            "--from-instance",
+            "staging",
+        ]);
+        if let ArtifactCommand::Copy {
+            from_instance,
+            to_instance,
+            ..
+        } = cli.command
+        {
+            assert_eq!(from_instance.as_deref(), Some("staging"));
+            assert!(to_instance.is_none());
+        } else {
+            panic!("Expected ArtifactCommand::Copy");
+        }
+    }
+
+    #[test]
+    fn parse_copy_missing_destination_fails() {
+        assert!(try_parse(&["test", "copy", "src/path"]).is_err());
+    }
+
+    #[test]
+    fn parse_copy_missing_source_fails() {
+        assert!(try_parse(&["test", "copy"]).is_err());
+    }
+
+    // ---- Error cases ----
+
+    #[test]
+    fn parse_no_subcommand_fails() {
+        assert!(try_parse(&["test"]).is_err());
+    }
+
+    #[test]
+    fn parse_unknown_subcommand_fails() {
+        assert!(try_parse(&["test", "unknown"]).is_err());
+    }
+
+    // ---- Format function tests ----
+
+    #[test]
+    fn format_artifacts_table_renders() {
+        let items = vec![json!({
+            "path": "org/example/lib/1.0.0/lib-1.0.0.jar",
+            "version": "1.0.0",
+            "size": "2.5 MB",
+            "downloads": 150,
+            "created_at": "2026-01-15",
+        })];
+        let table = format_artifacts_table(&items);
+        assert!(table.contains("org/example/lib/1.0.0/lib-1.0.0.jar"));
+        assert!(table.contains("1.0.0"));
+        assert!(table.contains("2.5 MB"));
+        assert!(table.contains("150"));
+        assert!(table.contains("2026-01-15"));
+    }
+
+    #[test]
+    fn format_artifacts_table_empty() {
+        let items: Vec<serde_json::Value> = vec![];
+        let table = format_artifacts_table(&items);
+        assert!(table.contains("PATH"));
+        assert!(table.contains("VERSION"));
+        assert!(table.contains("SIZE"));
+        assert!(table.contains("DOWNLOADS"));
+    }
+
+    #[test]
+    fn format_artifacts_table_missing_version() {
+        let items = vec![json!({
+            "path": "my-file.tar.gz",
+            "size": "10.0 KB",
+            "downloads": 5,
+            "created_at": "2026-02-01",
+        })];
+        let table = format_artifacts_table(&items);
+        assert!(table.contains("my-file.tar.gz"));
+        assert!(table.contains("-")); // missing version
+    }
+
+    #[test]
+    fn format_artifacts_table_multiple_rows() {
+        let items = vec![
+            json!({
+                "path": "pkg-a/1.0/a.jar",
+                "version": "1.0",
+                "size": "1.0 MB",
+                "downloads": 100,
+                "created_at": "2026-01-01",
+            }),
+            json!({
+                "path": "pkg-b/2.0/b.whl",
+                "version": "2.0",
+                "size": "500.0 KB",
+                "downloads": 50,
+                "created_at": "2026-01-02",
+            }),
+        ];
+        let table = format_artifacts_table(&items);
+        assert!(table.contains("pkg-a/1.0/a.jar"));
+        assert!(table.contains("pkg-b/2.0/b.whl"));
+        assert!(table.contains("100"));
+        assert!(table.contains("50"));
+    }
+
+    #[test]
+    fn format_search_results_table_renders() {
+        let items = vec![json!({
+            "name": "log4j-core",
+            "repository": "maven-central",
+            "format": "maven",
+            "version": "2.17.1",
+            "size": "1.8 MB",
+        })];
+        let table = format_search_results_table(&items);
+        assert!(table.contains("log4j-core"));
+        assert!(table.contains("maven-central"));
+        assert!(table.contains("maven"));
+        assert!(table.contains("2.17.1"));
+        assert!(table.contains("1.8 MB"));
+    }
+
+    #[test]
+    fn format_search_results_table_empty() {
+        let items: Vec<serde_json::Value> = vec![];
+        let table = format_search_results_table(&items);
+        assert!(table.contains("NAME"));
+        assert!(table.contains("REPOSITORY"));
+        assert!(table.contains("FORMAT"));
+    }
+
+    #[test]
+    fn format_search_results_table_missing_optional_fields() {
+        let items = vec![json!({
+            "name": "my-package",
+            "repository": "local-repo",
+        })];
+        let table = format_search_results_table(&items);
+        assert!(table.contains("my-package"));
+        assert!(table.contains("local-repo"));
+    }
+
+    #[test]
+    fn format_search_results_multiple() {
+        let items = vec![
+            json!({
+                "name": "express",
+                "repository": "npm-repo",
+                "format": "npm",
+                "version": "4.18.2",
+                "size": "200.0 KB",
+            }),
+            json!({
+                "name": "flask",
+                "repository": "pypi-repo",
+                "format": "pypi",
+                "version": "3.0.0",
+                "size": "100.0 KB",
+            }),
+        ];
+        let table = format_search_results_table(&items);
+        assert!(table.contains("express"));
+        assert!(table.contains("flask"));
+        assert!(table.contains("npm"));
+        assert!(table.contains("pypi"));
+    }
+
+    // ========================================================================
+    // Wiremock-based handler tests
+    // ========================================================================
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    #[tokio::test]
+    async fn handler_list_artifacts_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 50, "total": 0_i64, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list("my-repo", None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_artifacts_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "path": "org/example/lib/1.0/lib-1.0.jar",
+                    "name": "lib",
+                    "version": "1.0",
+                    "size_bytes": 2621440_i64,
+                    "content_type": "application/java-archive",
+                    "checksum_sha256": "abc123def456",
+                    "download_count": 150_i64,
+                    "repository_key": "maven-central",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list("maven-central", None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_artifact_info() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "path": "org/example/lib/1.0/lib-1.0.jar",
+                    "name": "lib",
+                    "version": "1.0",
+                    "size_bytes": 2621440_i64,
+                    "content_type": "application/java-archive",
+                    "checksum_sha256": "abc123def456",
+                    "download_count": 150_i64,
+                    "repository_key": "maven-central",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = info("maven-central", "org/example/lib/1.0/lib-1.0.jar", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_artifact_info_not_found() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 50, "total": 0_i64, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = info("my-repo", "nonexistent", &global).await;
+        assert!(result.is_err());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_search_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/search/advanced"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "facets": { "formats": [], "repositories": [], "content_types": [] },
+                "pagination": { "page": 1, "per_page": 50, "total": 0_i64, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = search("nonexistent", None, None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_search_with_results() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/search/advanced"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "name": "log4j-core",
+                    "path": "org/apache/logging/log4j/log4j-core/2.17.1/log4j-core-2.17.1.jar",
+                    "repository_key": "maven-central",
+                    "format": "maven",
+                    "version": "2.17.1",
+                    "type": "library",
+                    "size_bytes": 1887436_i64,
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "facets": { "formats": [], "repositories": [], "content_types": [] },
+                "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = search("log4j", None, None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_artifact() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        // no_input=true in test_global, so no confirmation prompt
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = delete("my-repo", "path/to/file", true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_same_instance_copy() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        // Mock for finding the source artifact
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000099",
+                    "path": "pkg/lib-1.0.jar",
+                    "name": "lib",
+                    "version": "1.0",
+                    "size_bytes": 1024_i64,
+                    "content_type": "application/java-archive",
+                    "checksum_sha256": "abc123",
+                    "download_count": 5_i64,
+                    "repository_key": "src-repo",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 1, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        // Mock for promote_artifact
+        Mock::given(method("POST"))
+            .and(path_regex(
+                "/api/v1/promotion/repositories/.+/artifacts/.+/promote",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "promoted": true,
+                "source": "src-repo",
+                "target": "dst-repo",
+                "policy_violations": [],
+                "message": "Artifact promoted"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = same_instance_copy("src-repo", "pkg/lib-1.0.jar", "dst-repo", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+}

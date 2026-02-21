@@ -1,12 +1,10 @@
 use artifact_keeper_sdk::{ClientAdminExt, ClientPluginsExt, ClientUsersExt};
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_uuid};
+use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
 
 #[derive(Subcommand)]
@@ -250,7 +248,7 @@ async fn list_backups(page: i32, per_page: i32, global: &GlobalArgs) -> Result<(
         .per_page(per_page)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list backups: {e}")))?;
+        .map_err(|e| sdk_err("list backups", e))?;
 
     spinner.finish_and_clear();
 
@@ -285,18 +283,14 @@ async fn list_backups(page: i32, per_page: i32, global: &GlobalArgs) -> Result<(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["ID", "STATUS", "TYPE", "ARTIFACTS", "SIZE", "CREATED"]);
+        let mut table = new_table(vec!["ID", "STATUS", "TYPE", "ARTIFACTS", "SIZE", "CREATED"]);
 
         for b in &resp.items {
-            let id_short = &b.id.to_string()[..8];
+            let id_short = short_id(&b.id);
             let size = format_bytes(b.size_bytes);
             let created = b.created_at.format("%Y-%m-%d %H:%M").to_string();
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &b.status,
                 &b.type_,
                 &b.artifact_count.to_string(),
@@ -332,7 +326,7 @@ async fn create_backup(backup_type: &str, global: &GlobalArgs) -> Result<()> {
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create backup: {e}")))?;
+        .map_err(|e| sdk_err("create backup", e))?;
 
     spinner.finish_and_clear();
 
@@ -389,7 +383,7 @@ async fn restore_backup(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to restore backup: {e}")))?;
+        .map_err(|e| sdk_err("restore backup", e))?;
 
     spinner.finish_and_clear();
 
@@ -429,7 +423,7 @@ async fn run_cleanup(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Cleanup failed: {e}")))?;
+        .map_err(|e| sdk_err("run cleanup", e))?;
 
     spinner.finish_and_clear();
 
@@ -458,7 +452,7 @@ async fn show_metrics(global: &GlobalArgs) -> Result<()> {
         .get_system_stats()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get metrics: {e}")))?;
+        .map_err(|e| sdk_err("get metrics", e))?;
 
     spinner.finish_and_clear();
 
@@ -509,10 +503,7 @@ async fn list_users(
         req = req.search(q);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list users: {e}")))?;
+    let resp = req.send().await.map_err(|e| sdk_err("list users", e))?;
 
     spinner.finish_and_clear();
 
@@ -545,27 +536,23 @@ async fn list_users(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "USERNAME",
-                "EMAIL",
-                "DISPLAY NAME",
-                "ADMIN",
-                "ACTIVE",
-                "AUTH",
-            ]);
+        let mut table = new_table(vec![
+            "ID",
+            "USERNAME",
+            "EMAIL",
+            "DISPLAY NAME",
+            "ADMIN",
+            "ACTIVE",
+            "AUTH",
+        ]);
 
         for u in &resp.items {
-            let id_short = &u.id.to_string()[..8];
+            let id_short = short_id(&u.id);
             let display = u.display_name.as_deref().unwrap_or("-");
             let admin = if u.is_admin { "yes" } else { "no" };
             let active = if u.is_active { "yes" } else { "no" };
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &u.username,
                 &u.email,
                 display,
@@ -616,7 +603,7 @@ async fn create_user(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create user: {e}")))?;
+        .map_err(|e| sdk_err("create user", e))?;
 
     spinner.finish_and_clear();
 
@@ -665,7 +652,7 @@ async fn update_user(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to update user: {e}")))?;
+        .map_err(|e| sdk_err("update user", e))?;
 
     spinner.finish_and_clear();
     eprintln!("User '{}' updated (ID: {}).", user.username, user.id);
@@ -693,7 +680,7 @@ async fn delete_user(user_id: &str, skip_confirm: bool, global: &GlobalArgs) -> 
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete user: {e}")))?;
+        .map_err(|e| sdk_err("delete user", e))?;
 
     spinner.finish_and_clear();
     eprintln!("User {user_id} deleted.");
@@ -709,7 +696,7 @@ async fn list_plugins(global: &GlobalArgs) -> Result<()> {
         .list_plugins()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list plugins: {e}")))?;
+        .map_err(|e| sdk_err("list plugins", e))?;
 
     spinner.finish_and_clear();
 
@@ -743,18 +730,14 @@ async fn list_plugins(global: &GlobalArgs) -> Result<()> {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "NAME",
-                "VERSION",
-                "TYPE",
-                "STATUS",
-                "AUTHOR",
-                "INSTALLED",
-            ]);
+        let mut table = new_table(vec![
+            "NAME",
+            "VERSION",
+            "TYPE",
+            "STATUS",
+            "AUTHOR",
+            "INSTALLED",
+        ]);
 
         for p in &resp.items {
             let author = p.author.as_deref().unwrap_or("-");
@@ -794,7 +777,7 @@ async fn install_plugin(url: &str, git_ref: Option<&str>, global: &GlobalArgs) -
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to install plugin: {e}")))?;
+        .map_err(|e| sdk_err("install plugin", e))?;
 
     spinner.finish_and_clear();
 
@@ -832,7 +815,7 @@ async fn remove_plugin(plugin_id: &str, skip_confirm: bool, global: &GlobalArgs)
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to remove plugin: {e}")))?;
+        .map_err(|e| sdk_err("remove plugin", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Plugin {plugin_id} removed.");
@@ -852,7 +835,7 @@ async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to reset password: {e}")))?;
+        .map_err(|e| sdk_err("reset password", e))?;
 
     spinner.finish_and_clear();
 
@@ -866,4 +849,1218 @@ async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
     eprintln!("(User will be prompted to change on first login.)");
 
     Ok(())
+}
+
+/// Format a list of backup entries as a table string.
+fn format_backups_table(items: &[serde_json::Value]) -> String {
+    let mut table = new_table(vec!["ID", "STATUS", "TYPE", "ARTIFACTS", "SIZE", "CREATED"]);
+
+    for b in items {
+        let id = b["id"].as_str().unwrap_or("-");
+        let id_short = if id.len() >= 8 { &id[..8] } else { id };
+        table.add_row(vec![
+            id_short,
+            b["status"].as_str().unwrap_or("-"),
+            b["type"].as_str().unwrap_or("-"),
+            &b["artifacts"]
+                .as_i64()
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "-".into()),
+            b["size"].as_str().unwrap_or("-"),
+            b["created_at"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+/// Format a list of user entries as a table string.
+fn format_users_table(items: &[serde_json::Value]) -> String {
+    let mut table = new_table(vec![
+        "ID",
+        "USERNAME",
+        "EMAIL",
+        "DISPLAY NAME",
+        "ADMIN",
+        "ACTIVE",
+        "AUTH",
+    ]);
+
+    for u in items {
+        let id = u["id"].as_str().unwrap_or("-");
+        let id_short = if id.len() >= 8 { &id[..8] } else { id };
+        let admin = if u["is_admin"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        };
+        let active = if u["is_active"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        };
+        table.add_row(vec![
+            id_short,
+            u["username"].as_str().unwrap_or("-"),
+            u["email"].as_str().unwrap_or("-"),
+            u["display_name"].as_str().unwrap_or("-"),
+            admin,
+            active,
+            u["auth_provider"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+/// Format a list of plugin entries as a table string.
+fn format_plugins_table(items: &[serde_json::Value]) -> String {
+    let mut table = new_table(vec![
+        "NAME",
+        "VERSION",
+        "TYPE",
+        "STATUS",
+        "AUTHOR",
+        "INSTALLED",
+    ]);
+
+    for p in items {
+        table.add_row(vec![
+            p["display_name"].as_str().unwrap_or("-"),
+            p["version"].as_str().unwrap_or("-"),
+            p["type"].as_str().unwrap_or("-"),
+            p["status"].as_str().unwrap_or("-"),
+            p["author"].as_str().unwrap_or("-"),
+            p["installed_at"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+/// Format system metrics as a human-readable string.
+fn format_metrics_display(info: &serde_json::Value) -> String {
+    format!(
+        "Artifacts:      {}\n\
+         Downloads:      {}\n\
+         Repositories:   {}\n\
+         Storage:        {}\n\
+         Users:          {}\n\
+         Active Peers:   {}\n\
+         Pending Syncs:  {}",
+        info["total_artifacts"].as_i64().unwrap_or(0),
+        info["total_downloads"].as_i64().unwrap_or(0),
+        info["total_repositories"].as_i64().unwrap_or(0),
+        info["total_storage"].as_str().unwrap_or("0 B"),
+        info["total_users"].as_i64().unwrap_or(0),
+        info["active_peers"].as_i64().unwrap_or(0),
+        info["pending_sync_tasks"].as_i64().unwrap_or(0),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use serde_json::json;
+
+    // ---- TestCli wrapper for parsing ----
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: AdminCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- Backup subcommand parsing ----
+
+    #[test]
+    fn parse_backup_list() {
+        let cli = parse(&["test", "backup", "list"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Backup {
+                command: BackupCommand::List { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_backup_list_defaults() {
+        let cli = parse(&["test", "backup", "list"]);
+        if let AdminCommand::Backup {
+            command: BackupCommand::List { page, per_page },
+        } = cli.command
+        {
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 20);
+        } else {
+            panic!("Expected BackupCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_backup_list_custom_page() {
+        let cli = parse(&["test", "backup", "list", "--page", "3", "--per-page", "10"]);
+        if let AdminCommand::Backup {
+            command: BackupCommand::List { page, per_page },
+        } = cli.command
+        {
+            assert_eq!(page, 3);
+            assert_eq!(per_page, 10);
+        } else {
+            panic!("Expected BackupCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_backup_create() {
+        let cli = parse(&["test", "backup", "create"]);
+        if let AdminCommand::Backup {
+            command: BackupCommand::Create { r#type },
+        } = cli.command
+        {
+            assert_eq!(r#type, "full");
+        } else {
+            panic!("Expected BackupCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_backup_create_incremental() {
+        let cli = parse(&["test", "backup", "create", "--type", "incremental"]);
+        if let AdminCommand::Backup {
+            command: BackupCommand::Create { r#type },
+        } = cli.command
+        {
+            assert_eq!(r#type, "incremental");
+        } else {
+            panic!("Expected BackupCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_backup_restore() {
+        let cli = parse(&["test", "backup", "restore", "abc123"]);
+        if let AdminCommand::Backup {
+            command:
+                BackupCommand::Restore {
+                    id,
+                    database,
+                    artifacts,
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "abc123");
+            assert!(!database);
+            assert!(!artifacts);
+        } else {
+            panic!("Expected BackupCommand::Restore");
+        }
+    }
+
+    #[test]
+    fn parse_backup_restore_with_flags() {
+        let cli = parse(&[
+            "test",
+            "backup",
+            "restore",
+            "abc123",
+            "--database",
+            "--artifacts",
+        ]);
+        if let AdminCommand::Backup {
+            command:
+                BackupCommand::Restore {
+                    id,
+                    database,
+                    artifacts,
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "abc123");
+            assert!(database);
+            assert!(artifacts);
+        } else {
+            panic!("Expected BackupCommand::Restore");
+        }
+    }
+
+    #[test]
+    fn parse_backup_restore_missing_id_fails() {
+        assert!(try_parse(&["test", "backup", "restore"]).is_err());
+    }
+
+    // ---- Cleanup subcommand parsing ----
+
+    #[test]
+    fn parse_cleanup_no_flags() {
+        let cli = parse(&["test", "cleanup"]);
+        if let AdminCommand::Cleanup {
+            audit_logs,
+            old_backups,
+            stale_peers,
+        } = cli.command
+        {
+            assert!(!audit_logs);
+            assert!(!old_backups);
+            assert!(!stale_peers);
+        } else {
+            panic!("Expected AdminCommand::Cleanup");
+        }
+    }
+
+    #[test]
+    fn parse_cleanup_all_flags() {
+        let cli = parse(&[
+            "test",
+            "cleanup",
+            "--audit-logs",
+            "--old-backups",
+            "--stale-peers",
+        ]);
+        if let AdminCommand::Cleanup {
+            audit_logs,
+            old_backups,
+            stale_peers,
+        } = cli.command
+        {
+            assert!(audit_logs);
+            assert!(old_backups);
+            assert!(stale_peers);
+        } else {
+            panic!("Expected AdminCommand::Cleanup");
+        }
+    }
+
+    #[test]
+    fn parse_cleanup_partial_flags() {
+        let cli = parse(&["test", "cleanup", "--audit-logs"]);
+        if let AdminCommand::Cleanup {
+            audit_logs,
+            old_backups,
+            stale_peers,
+        } = cli.command
+        {
+            assert!(audit_logs);
+            assert!(!old_backups);
+            assert!(!stale_peers);
+        } else {
+            panic!("Expected AdminCommand::Cleanup");
+        }
+    }
+
+    // ---- Metrics subcommand parsing ----
+
+    #[test]
+    fn parse_metrics() {
+        let cli = parse(&["test", "metrics"]);
+        assert!(matches!(cli.command, AdminCommand::Metrics));
+    }
+
+    // ---- Users subcommand parsing ----
+
+    #[test]
+    fn parse_users_list() {
+        let cli = parse(&["test", "users", "list"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Users {
+                command: UsersCommand::List { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_users_list_defaults() {
+        let cli = parse(&["test", "users", "list"]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::List {
+                    search,
+                    page,
+                    per_page,
+                },
+        } = cli.command
+        {
+            assert!(search.is_none());
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 20);
+        } else {
+            panic!("Expected UsersCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_users_list_with_search() {
+        let cli = parse(&["test", "users", "list", "--search", "alice"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::List { search, .. },
+        } = cli.command
+        {
+            assert_eq!(search.as_deref(), Some("alice"));
+        } else {
+            panic!("Expected UsersCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_users_create() {
+        let cli = parse(&[
+            "test",
+            "users",
+            "create",
+            "alice",
+            "--email",
+            "alice@example.com",
+        ]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Create {
+                    username,
+                    email,
+                    display_name,
+                    admin,
+                },
+        } = cli.command
+        {
+            assert_eq!(username, "alice");
+            assert_eq!(email, "alice@example.com");
+            assert!(display_name.is_none());
+            assert!(!admin);
+        } else {
+            panic!("Expected UsersCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_users_create_with_all_options() {
+        let cli = parse(&[
+            "test",
+            "users",
+            "create",
+            "alice",
+            "--email",
+            "alice@example.com",
+            "--display-name",
+            "Alice Smith",
+            "--admin",
+        ]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Create {
+                    username,
+                    email,
+                    display_name,
+                    admin,
+                },
+        } = cli.command
+        {
+            assert_eq!(username, "alice");
+            assert_eq!(email, "alice@example.com");
+            assert_eq!(display_name.as_deref(), Some("Alice Smith"));
+            assert!(admin);
+        } else {
+            panic!("Expected UsersCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_users_create_missing_email_fails() {
+        assert!(try_parse(&["test", "users", "create", "alice"]).is_err());
+    }
+
+    #[test]
+    fn parse_users_create_missing_username_fails() {
+        assert!(try_parse(&["test", "users", "create", "--email", "a@b.com"]).is_err());
+    }
+
+    #[test]
+    fn parse_users_update() {
+        let cli = parse(&[
+            "test",
+            "users",
+            "update",
+            "some-id",
+            "--email",
+            "new@example.com",
+        ]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Update {
+                    id,
+                    email,
+                    display_name,
+                    admin,
+                    active,
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "some-id");
+            assert_eq!(email.as_deref(), Some("new@example.com"));
+            assert!(display_name.is_none());
+            assert!(admin.is_none());
+            assert!(active.is_none());
+        } else {
+            panic!("Expected UsersCommand::Update");
+        }
+    }
+
+    #[test]
+    fn parse_users_update_all_options() {
+        let cli = parse(&[
+            "test",
+            "users",
+            "update",
+            "user-id",
+            "--email",
+            "new@test.com",
+            "--display-name",
+            "New Name",
+            "--admin",
+            "true",
+            "--active",
+            "false",
+        ]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Update {
+                    id,
+                    email,
+                    display_name,
+                    admin,
+                    active,
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+            assert_eq!(email.as_deref(), Some("new@test.com"));
+            assert_eq!(display_name.as_deref(), Some("New Name"));
+            assert_eq!(admin, Some(true));
+            assert_eq!(active, Some(false));
+        } else {
+            panic!("Expected UsersCommand::Update");
+        }
+    }
+
+    #[test]
+    fn parse_users_update_missing_id_fails() {
+        assert!(try_parse(&["test", "users", "update"]).is_err());
+    }
+
+    #[test]
+    fn parse_users_delete() {
+        let cli = parse(&["test", "users", "delete", "user-id"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::Delete { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+            assert!(!yes);
+        } else {
+            panic!("Expected UsersCommand::Delete");
+        }
+    }
+
+    #[test]
+    fn parse_users_delete_with_yes() {
+        let cli = parse(&["test", "users", "delete", "user-id", "--yes"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::Delete { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+            assert!(yes);
+        } else {
+            panic!("Expected UsersCommand::Delete");
+        }
+    }
+
+    #[test]
+    fn parse_users_reset_password() {
+        let cli = parse(&["test", "users", "reset-password", "user-id"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::ResetPassword { id },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+        } else {
+            panic!("Expected UsersCommand::ResetPassword");
+        }
+    }
+
+    #[test]
+    fn parse_users_reset_password_missing_id_fails() {
+        assert!(try_parse(&["test", "users", "reset-password"]).is_err());
+    }
+
+    // ---- Plugins subcommand parsing ----
+
+    #[test]
+    fn parse_plugins_list() {
+        let cli = parse(&["test", "plugins", "list"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Plugins {
+                command: PluginsCommand::List
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_plugins_install() {
+        let cli = parse(&[
+            "test",
+            "plugins",
+            "install",
+            "https://github.com/example/plugin.git",
+        ]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Install { url, r#ref },
+        } = cli.command
+        {
+            assert_eq!(url, "https://github.com/example/plugin.git");
+            assert!(r#ref.is_none());
+        } else {
+            panic!("Expected PluginsCommand::Install");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_install_with_ref() {
+        let cli = parse(&[
+            "test",
+            "plugins",
+            "install",
+            "https://github.com/example/plugin.git",
+            "--ref",
+            "v1.0.0",
+        ]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Install { url, r#ref },
+        } = cli.command
+        {
+            assert_eq!(url, "https://github.com/example/plugin.git");
+            assert_eq!(r#ref.as_deref(), Some("v1.0.0"));
+        } else {
+            panic!("Expected PluginsCommand::Install");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_install_missing_url_fails() {
+        assert!(try_parse(&["test", "plugins", "install"]).is_err());
+    }
+
+    #[test]
+    fn parse_plugins_remove() {
+        let cli = parse(&["test", "plugins", "remove", "plugin-id"]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Remove { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "plugin-id");
+            assert!(!yes);
+        } else {
+            panic!("Expected PluginsCommand::Remove");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_remove_with_yes() {
+        let cli = parse(&["test", "plugins", "remove", "plugin-id", "--yes"]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Remove { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "plugin-id");
+            assert!(yes);
+        } else {
+            panic!("Expected PluginsCommand::Remove");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_remove_missing_id_fails() {
+        assert!(try_parse(&["test", "plugins", "remove"]).is_err());
+    }
+
+    // ---- Missing subcommand fails ----
+
+    #[test]
+    fn parse_no_subcommand_fails() {
+        assert!(try_parse(&["test"]).is_err());
+    }
+
+    #[test]
+    fn parse_backup_no_subcommand_fails() {
+        assert!(try_parse(&["test", "backup"]).is_err());
+    }
+
+    #[test]
+    fn parse_users_no_subcommand_fails() {
+        assert!(try_parse(&["test", "users"]).is_err());
+    }
+
+    #[test]
+    fn parse_plugins_no_subcommand_fails() {
+        assert!(try_parse(&["test", "plugins"]).is_err());
+    }
+
+    // ---- Format function tests ----
+
+    #[test]
+    fn format_backups_table_renders() {
+        let items = vec![json!({
+            "id": "12345678-abcd-1234-abcd-123456789012",
+            "status": "completed",
+            "type": "full",
+            "artifacts": 42,
+            "size": "1.5 GB",
+            "created_at": "2026-01-15T10:30:00Z",
+        })];
+        let table = format_backups_table(&items);
+        assert!(table.contains("12345678"));
+        assert!(table.contains("completed"));
+        assert!(table.contains("full"));
+        assert!(table.contains("42"));
+        assert!(table.contains("1.5 GB"));
+    }
+
+    #[test]
+    fn format_backups_table_empty() {
+        let items: Vec<serde_json::Value> = vec![];
+        let table = format_backups_table(&items);
+        // Should still contain headers
+        assert!(table.contains("ID"));
+        assert!(table.contains("STATUS"));
+    }
+
+    #[test]
+    fn format_backups_table_multiple_rows() {
+        let items = vec![
+            json!({
+                "id": "aaaa1111-bbbb-2222-cccc-333344445555",
+                "status": "completed",
+                "type": "full",
+                "artifacts": 10,
+                "size": "500.0 MB",
+                "created_at": "2026-01-01",
+            }),
+            json!({
+                "id": "bbbb2222-cccc-3333-dddd-444455556666",
+                "status": "in_progress",
+                "type": "incremental",
+                "artifacts": 5,
+                "size": "200.0 MB",
+                "created_at": "2026-01-02",
+            }),
+        ];
+        let table = format_backups_table(&items);
+        assert!(table.contains("aaaa1111"));
+        assert!(table.contains("bbbb2222"));
+        assert!(table.contains("completed"));
+        assert!(table.contains("in_progress"));
+    }
+
+    #[test]
+    fn format_users_table_renders() {
+        let items = vec![json!({
+            "id": "12345678-abcd-1234-abcd-123456789012",
+            "username": "alice",
+            "email": "alice@example.com",
+            "display_name": "Alice Smith",
+            "is_admin": true,
+            "is_active": true,
+            "auth_provider": "local",
+        })];
+        let table = format_users_table(&items);
+        assert!(table.contains("12345678"));
+        assert!(table.contains("alice"));
+        assert!(table.contains("alice@example.com"));
+        assert!(table.contains("Alice Smith"));
+        assert!(table.contains("yes"));
+        assert!(table.contains("local"));
+    }
+
+    #[test]
+    fn format_users_table_non_admin_inactive() {
+        let items = vec![json!({
+            "id": "12345678-0000-0000-0000-000000000000",
+            "username": "bob",
+            "email": "bob@example.com",
+            "is_admin": false,
+            "is_active": false,
+            "auth_provider": "ldap",
+        })];
+        let table = format_users_table(&items);
+        assert!(table.contains("bob"));
+        // Should contain "no" for both admin and active
+        let no_count = table.matches("no").count();
+        assert!(no_count >= 2);
+    }
+
+    #[test]
+    fn format_users_table_empty() {
+        let items: Vec<serde_json::Value> = vec![];
+        let table = format_users_table(&items);
+        assert!(table.contains("USERNAME"));
+        assert!(table.contains("EMAIL"));
+    }
+
+    #[test]
+    fn format_plugins_table_renders() {
+        let items = vec![json!({
+            "display_name": "Unity Format",
+            "version": "1.0.0",
+            "type": "format",
+            "status": "active",
+            "author": "AK Team",
+            "installed_at": "2026-01-15",
+        })];
+        let table = format_plugins_table(&items);
+        assert!(table.contains("Unity Format"));
+        assert!(table.contains("1.0.0"));
+        assert!(table.contains("format"));
+        assert!(table.contains("active"));
+        assert!(table.contains("AK Team"));
+    }
+
+    #[test]
+    fn format_plugins_table_missing_author() {
+        let items = vec![json!({
+            "display_name": "Custom Plugin",
+            "version": "0.1.0",
+            "type": "format",
+            "status": "active",
+        })];
+        let table = format_plugins_table(&items);
+        assert!(table.contains("Custom Plugin"));
+        assert!(table.contains("0.1.0"));
+    }
+
+    #[test]
+    fn format_plugins_table_empty() {
+        let items: Vec<serde_json::Value> = vec![];
+        let table = format_plugins_table(&items);
+        assert!(table.contains("NAME"));
+        assert!(table.contains("VERSION"));
+    }
+
+    #[test]
+    fn format_metrics_display_renders() {
+        let info = json!({
+            "total_artifacts": 1500,
+            "total_downloads": 50000,
+            "total_repositories": 25,
+            "total_storage": "12.5 GB",
+            "total_users": 100,
+            "active_peers": 3,
+            "pending_sync_tasks": 0,
+        });
+        let display = format_metrics_display(&info);
+        assert!(display.contains("1500"));
+        assert!(display.contains("50000"));
+        assert!(display.contains("25"));
+        assert!(display.contains("12.5 GB"));
+        assert!(display.contains("100"));
+        assert!(display.contains("Artifacts:"));
+        assert!(display.contains("Downloads:"));
+        assert!(display.contains("Repositories:"));
+        assert!(display.contains("Storage:"));
+        assert!(display.contains("Users:"));
+        assert!(display.contains("Active Peers:"));
+        assert!(display.contains("Pending Syncs:"));
+    }
+
+    #[test]
+    fn format_metrics_display_zeros() {
+        let info = json!({
+            "total_artifacts": 0,
+            "total_downloads": 0,
+            "total_repositories": 0,
+            "total_storage": "0 B",
+            "total_users": 0,
+            "active_peers": 0,
+            "pending_sync_tasks": 0,
+        });
+        let display = format_metrics_display(&info);
+        assert!(display.contains("Artifacts:      0"));
+        assert!(display.contains("Downloads:      0"));
+    }
+
+    // ========================================================================
+    // Wiremock-based handler tests
+    // ========================================================================
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    #[tokio::test]
+    async fn handler_list_backups_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/backups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "total": 0
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_backups(1, 20, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_backups_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/backups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "status": "completed",
+                    "type": "full",
+                    "artifact_count": 42,
+                    "size_bytes": 1073741824_i64,
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "completed_at": "2026-01-15T10:30:00Z",
+                    "error_message": null
+                }],
+                "total": 1_i64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_backups(1, 20, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_backup() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/backups"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "status": "in_progress",
+                "type": "full",
+                "artifact_count": 0_i64,
+                "size_bytes": 0_i64,
+                "created_at": "2026-01-15T10:00:00Z",
+                "completed_at": null,
+                "error_message": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = create_backup("full", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_run_cleanup() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/cleanup"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "audit_logs_deleted": 100,
+                "backups_deleted": 3,
+                "peers_marked_offline": 1
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = run_cleanup(true, true, true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_metrics() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/stats"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "total_artifacts": 1500,
+                "total_downloads": 50000,
+                "total_repositories": 25,
+                "total_storage_bytes": 13421772800_i64,
+                "total_users": 100,
+                "active_peers": 3,
+                "pending_sync_tasks": 0
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_metrics(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_users_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/users"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 20, "total": 0_i64, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_users(None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_users_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/users"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "username": "alice",
+                    "email": "alice@example.com",
+                    "display_name": "Alice Smith",
+                    "is_admin": true,
+                    "is_active": true,
+                    "must_change_password": false,
+                    "auth_provider": "local",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "pagination": { "page": 1, "per_page": 20, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_users(None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_user() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/users"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "user": {
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "username": "bob",
+                    "email": "bob@example.com",
+                    "display_name": null,
+                    "is_admin": false,
+                    "is_active": true,
+                    "must_change_password": true,
+                    "auth_provider": "local",
+                    "created_at": "2026-01-15T10:00:00Z"
+                },
+                "generated_password": "temp-pass-123"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = create_user("bob", "bob@example.com", None, false, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_user() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PATCH"))
+            .and(path_regex("/api/v1/users/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "username": "alice",
+                "email": "new@example.com",
+                "display_name": "Alice Updated",
+                "is_admin": true,
+                "is_active": true,
+                "must_change_password": false,
+                "auth_provider": "local",
+                "created_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = update_user(
+            "00000000-0000-0000-0000-000000000001",
+            Some("new@example.com"),
+            None,
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_user() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/users/.+"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = delete_user("00000000-0000-0000-0000-000000000001", true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_reset_password() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/users/.+/password/reset"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "temporary_password": "new-temp-pass-456"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = reset_password("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_plugins_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/plugins"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": []
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_plugins(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_plugins_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/plugins"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "name": "unity-format",
+                    "display_name": "Unity Format",
+                    "version": "1.0.0",
+                    "plugin_type": "format",
+                    "status": "active",
+                    "config_schema": {},
+                    "author": "AK Team",
+                    "installed_at": "2026-01-15T10:00:00Z"
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_plugins(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_install_plugin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/plugins/install/git"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "plugin_id": "00000000-0000-0000-0000-000000000001",
+                "name": "unity-format",
+                "version": "1.0.0",
+                "format_key": "unity",
+                "message": "Plugin installed successfully"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = install_plugin("https://github.com/example/plugin.git", None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_remove_plugin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/plugins/.+"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = remove_plugin("00000000-0000-0000-0000-000000000001", true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
 }

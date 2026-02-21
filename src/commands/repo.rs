@@ -384,3 +384,585 @@ async fn browse_repo(key: &str, global: &GlobalArgs) -> Result<()> {
 
     Ok(())
 }
+
+/// Format a list of repository entries as a table string.
+fn format_repos_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["KEY", "NAME", "FORMAT", "TYPE", "PUBLIC", "STORAGE"]);
+
+    for r in items {
+        let public = if r["public"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        };
+        table.add_row(vec![
+            r["key"].as_str().unwrap_or("-"),
+            r["name"].as_str().unwrap_or("-"),
+            r["format"].as_str().unwrap_or("-"),
+            r["type"].as_str().unwrap_or("-"),
+            public,
+            r["storage_used"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use serde_json::json;
+
+    // ---- TestCli wrapper for parsing ----
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: RepoCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- List subcommand parsing ----
+
+    #[test]
+    fn parse_list() {
+        let cli = parse(&["test", "list"]);
+        assert!(matches!(cli.command, RepoCommand::List { .. }));
+    }
+
+    #[test]
+    fn parse_list_defaults() {
+        let cli = parse(&["test", "list"]);
+        if let RepoCommand::List {
+            pkg_format,
+            repo_type,
+            search,
+            page,
+            per_page,
+        } = cli.command
+        {
+            assert!(pkg_format.is_none());
+            assert!(repo_type.is_none());
+            assert!(search.is_none());
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 50);
+        } else {
+            panic!("Expected RepoCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_list_with_format_filter() {
+        let cli = parse(&["test", "list", "--pkg-format", "npm"]);
+        if let RepoCommand::List { pkg_format, .. } = cli.command {
+            assert_eq!(pkg_format.as_deref(), Some("npm"));
+        } else {
+            panic!("Expected RepoCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_list_with_type_filter() {
+        let cli = parse(&["test", "list", "--repo-type", "local"]);
+        if let RepoCommand::List { repo_type, .. } = cli.command {
+            assert_eq!(repo_type.as_deref(), Some("local"));
+        } else {
+            panic!("Expected RepoCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_list_with_search() {
+        let cli = parse(&["test", "list", "--search", "my-repo"]);
+        if let RepoCommand::List { search, .. } = cli.command {
+            assert_eq!(search.as_deref(), Some("my-repo"));
+        } else {
+            panic!("Expected RepoCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_list_custom_pagination() {
+        let cli = parse(&["test", "list", "--page", "5", "--per-page", "25"]);
+        if let RepoCommand::List { page, per_page, .. } = cli.command {
+            assert_eq!(page, 5);
+            assert_eq!(per_page, 25);
+        } else {
+            panic!("Expected RepoCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_list_all_options() {
+        let cli = parse(&[
+            "test",
+            "list",
+            "--pkg-format",
+            "maven",
+            "--repo-type",
+            "remote",
+            "--search",
+            "libs",
+            "--page",
+            "2",
+            "--per-page",
+            "10",
+        ]);
+        if let RepoCommand::List {
+            pkg_format,
+            repo_type,
+            search,
+            page,
+            per_page,
+        } = cli.command
+        {
+            assert_eq!(pkg_format.as_deref(), Some("maven"));
+            assert_eq!(repo_type.as_deref(), Some("remote"));
+            assert_eq!(search.as_deref(), Some("libs"));
+            assert_eq!(page, 2);
+            assert_eq!(per_page, 10);
+        } else {
+            panic!("Expected RepoCommand::List");
+        }
+    }
+
+    // ---- Show subcommand parsing ----
+
+    #[test]
+    fn parse_show() {
+        let cli = parse(&["test", "show", "my-npm-repo"]);
+        if let RepoCommand::Show { key } = cli.command {
+            assert_eq!(key, "my-npm-repo");
+        } else {
+            panic!("Expected RepoCommand::Show");
+        }
+    }
+
+    #[test]
+    fn parse_show_missing_key_fails() {
+        assert!(try_parse(&["test", "show"]).is_err());
+    }
+
+    // ---- Create subcommand parsing ----
+
+    #[test]
+    fn parse_create() {
+        let cli = parse(&["test", "create", "my-repo", "--pkg-format", "npm"]);
+        if let RepoCommand::Create {
+            key,
+            pkg_format,
+            repo_type,
+            description,
+        } = cli.command
+        {
+            assert_eq!(key, "my-repo");
+            assert_eq!(pkg_format, "npm");
+            assert_eq!(repo_type, "local"); // default
+            assert!(description.is_none());
+        } else {
+            panic!("Expected RepoCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_create_with_all_options() {
+        let cli = parse(&[
+            "test",
+            "create",
+            "my-pypi",
+            "--pkg-format",
+            "pypi",
+            "--repo-type",
+            "remote",
+            "--description",
+            "Python packages mirror",
+        ]);
+        if let RepoCommand::Create {
+            key,
+            pkg_format,
+            repo_type,
+            description,
+        } = cli.command
+        {
+            assert_eq!(key, "my-pypi");
+            assert_eq!(pkg_format, "pypi");
+            assert_eq!(repo_type, "remote");
+            assert_eq!(description.as_deref(), Some("Python packages mirror"));
+        } else {
+            panic!("Expected RepoCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_create_missing_format_fails() {
+        assert!(try_parse(&["test", "create", "key"]).is_err());
+    }
+
+    #[test]
+    fn parse_create_missing_key_fails() {
+        assert!(try_parse(&["test", "create", "--pkg-format", "npm"]).is_err());
+    }
+
+    // ---- Delete subcommand parsing ----
+
+    #[test]
+    fn parse_delete() {
+        let cli = parse(&["test", "delete", "my-repo"]);
+        if let RepoCommand::Delete { key, yes } = cli.command {
+            assert_eq!(key, "my-repo");
+            assert!(!yes);
+        } else {
+            panic!("Expected RepoCommand::Delete");
+        }
+    }
+
+    #[test]
+    fn parse_delete_with_yes() {
+        let cli = parse(&["test", "delete", "my-repo", "--yes"]);
+        if let RepoCommand::Delete { key, yes } = cli.command {
+            assert_eq!(key, "my-repo");
+            assert!(yes);
+        } else {
+            panic!("Expected RepoCommand::Delete");
+        }
+    }
+
+    #[test]
+    fn parse_delete_missing_key_fails() {
+        assert!(try_parse(&["test", "delete"]).is_err());
+    }
+
+    // ---- Browse subcommand parsing ----
+
+    #[test]
+    fn parse_browse() {
+        let cli = parse(&["test", "browse", "my-repo"]);
+        if let RepoCommand::Browse { key } = cli.command {
+            assert_eq!(key, "my-repo");
+        } else {
+            panic!("Expected RepoCommand::Browse");
+        }
+    }
+
+    #[test]
+    fn parse_browse_missing_key_fails() {
+        assert!(try_parse(&["test", "browse"]).is_err());
+    }
+
+    // ---- Error cases ----
+
+    #[test]
+    fn parse_no_subcommand_fails() {
+        assert!(try_parse(&["test"]).is_err());
+    }
+
+    #[test]
+    fn parse_unknown_subcommand_fails() {
+        assert!(try_parse(&["test", "unknown"]).is_err());
+    }
+
+    // ---- Format function tests ----
+
+    #[test]
+    fn format_repos_table_renders() {
+        let items = vec![json!({
+            "key": "my-npm-repo",
+            "name": "My NPM Repo",
+            "format": "npm",
+            "type": "local",
+            "public": true,
+            "storage_used": "1.5 GB",
+        })];
+        let table = format_repos_table(&items);
+        assert!(table.contains("my-npm-repo"));
+        assert!(table.contains("My NPM Repo"));
+        assert!(table.contains("npm"));
+        assert!(table.contains("local"));
+        assert!(table.contains("yes"));
+        assert!(table.contains("1.5 GB"));
+    }
+
+    #[test]
+    fn format_repos_table_private_repo() {
+        let items = vec![json!({
+            "key": "internal-maven",
+            "name": "Internal Maven",
+            "format": "maven",
+            "type": "local",
+            "public": false,
+            "storage_used": "500.0 MB",
+        })];
+        let table = format_repos_table(&items);
+        assert!(table.contains("internal-maven"));
+        assert!(table.contains("no"));
+    }
+
+    #[test]
+    fn format_repos_table_empty() {
+        let items: Vec<serde_json::Value> = vec![];
+        let table = format_repos_table(&items);
+        assert!(table.contains("KEY"));
+        assert!(table.contains("FORMAT"));
+        assert!(table.contains("TYPE"));
+    }
+
+    #[test]
+    fn format_repos_table_multiple_rows() {
+        let items = vec![
+            json!({
+                "key": "npm-repo",
+                "name": "NPM",
+                "format": "npm",
+                "type": "local",
+                "public": true,
+                "storage_used": "1.0 GB",
+            }),
+            json!({
+                "key": "pypi-repo",
+                "name": "PyPI",
+                "format": "pypi",
+                "type": "remote",
+                "public": false,
+                "storage_used": "500.0 MB",
+            }),
+            json!({
+                "key": "docker-repo",
+                "name": "Docker",
+                "format": "docker",
+                "type": "virtual",
+                "public": true,
+                "storage_used": "10.0 GB",
+            }),
+        ];
+        let table = format_repos_table(&items);
+        assert!(table.contains("npm-repo"));
+        assert!(table.contains("pypi-repo"));
+        assert!(table.contains("docker-repo"));
+        assert!(table.contains("npm"));
+        assert!(table.contains("pypi"));
+        assert!(table.contains("docker"));
+    }
+
+    #[test]
+    fn format_repos_table_missing_fields_use_dash() {
+        let items = vec![json!({
+            "key": "test-repo",
+        })];
+        let table = format_repos_table(&items);
+        assert!(table.contains("test-repo"));
+        // Missing fields should render as "-"
+        assert!(table.contains("-"));
+    }
+
+    // ---- wiremock handler tests ----
+
+    use wiremock::matchers::{method, path, path_regex};
+    use wiremock::{Mock, ResponseTemplate};
+
+    fn repo_json(key: &str) -> serde_json::Value {
+        json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "key": key,
+            "name": key,
+            "format": "npm",
+            "repo_type": "local",
+            "is_public": true,
+            "description": "Test repo",
+            "storage_used_bytes": 1024,
+            "quota_bytes": null,
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_list_repos_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 50, "total": 0, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_repos(None, None, None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_repos_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [repo_json("npm-local")],
+                "pagination": { "page": 1, "per_page": 50, "total": 1, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_repos(None, None, None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_repos_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [repo_json("npm-local")],
+                "pagination": { "page": 1, "per_page": 50, "total": 1, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = list_repos(None, None, None, 1, 50, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_repo() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/repositories/npm-local"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(repo_json("npm-local")))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_repo("npm-local", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_repo_json() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(repo_json("new-repo")))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = create_repo("new-repo", "npm", "local", None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_repo_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/repositories"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(repo_json("new-repo")))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = create_repo("new-repo", "npm", "local", Some("A test repo"), &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_repo() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path("/api/v1/repositories/old-repo"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        // skip_confirm=true and no_input=true so no prompt
+        let result = delete_repo("old-repo", true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_browse_repo_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/npm-local/artifacts.*"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [],
+                "pagination": { "page": 1, "per_page": 100, "total": 0, "total_pages": 0 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = browse_repo("npm-local", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_browse_repo_no_input() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/repositories/npm-local/artifacts.*"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "path": "express/4.18.2",
+                    "name": "express",
+                    "size_bytes": 2048_i64,
+                    "content_type": "application/gzip",
+                    "checksum_sha256": "abc123",
+                    "download_count": 0_i64,
+                    "created_at": "2026-01-15T12:00:00Z",
+                    "repository_key": "npm-local"
+                }],
+                "pagination": { "page": 1, "per_page": 100, "total": 1_i64, "total_pages": 1 }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = browse_repo("npm-local", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+}

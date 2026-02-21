@@ -18,4 +18,48 @@ async fn main() -> Result<()> {
 pub(crate) mod test_utils {
     use std::sync::Mutex;
     pub static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    use crate::cli::GlobalArgs;
+    use crate::output::OutputFormat;
+    use tempfile::TempDir;
+    use wiremock::MockServer;
+
+    /// Start a wiremock server and create a temp config directory pointing at it.
+    pub async fn mock_setup() -> (MockServer, TempDir) {
+        let server = MockServer::start().await;
+        let tmp = TempDir::new().unwrap();
+        let config = format!(
+            "default_instance = \"test\"\n[instances.test]\nurl = \"{}\"\napi_version = \"v1\"\n",
+            server.uri()
+        );
+        std::fs::write(tmp.path().join("config.toml"), config).unwrap();
+        (server, tmp)
+    }
+
+    /// Build a GlobalArgs suitable for tests (non-interactive, quiet or json output).
+    pub fn test_global(format: OutputFormat) -> GlobalArgs {
+        GlobalArgs {
+            format,
+            instance: Some("test".to_string()),
+            no_input: true,
+        }
+    }
+
+    /// Set up env vars for wiremock tests. Returns a MutexGuard that must be held for the test.
+    pub fn setup_env(tmp: &TempDir) -> std::sync::MutexGuard<'static, ()> {
+        let guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe {
+            std::env::set_var("AK_CONFIG_DIR", tmp.path());
+            std::env::set_var("AK_TOKEN", "test-token");
+        }
+        guard
+    }
+
+    /// Clean up env vars after wiremock tests.
+    pub fn teardown_env() {
+        unsafe {
+            std::env::remove_var("AK_CONFIG_DIR");
+            std::env::remove_var("AK_TOKEN");
+        }
+    }
 }

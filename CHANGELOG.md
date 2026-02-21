@@ -5,6 +5,17 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-02-21
+
+### Added
+
+- **Signing and key management** - `ak sign key list`, `show`, `create`, `delete`, `revoke`, `rotate`, `export` for managing signing keys; `ak sign config show/update/export-key` for repository signing configuration
+- **SBOM operations** - `ak sbom generate`, `show`, `list`, `get`, `delete`, `components`, `export` for SBOM lifecycle; `ak sbom cve history/trends/update-status` for CVE tracking and triage
+- **License compliance** - `ak license policy list`, `show`, `create`, `delete` for managing license policies; `ak license check` for CI-friendly compliance checking (exits non-zero on violations)
+- **Dependency-Track integration** - `ak dt status`, `project list/show/components/findings/violations/metrics/metrics-history`, `metrics`, `policies`, `analyze` for vulnerability management (alias: `ak dependency-track`)
+- **Enhanced scanning** - `ak scan dashboard` and `scores` for security overview; `ak scan finding ack/revoke` for finding triage; `ak scan policy list/show/create/update/delete` for scan policy management; `ak scan security show/update` for repository security config
+- **TUI security panel** - new panel (press 4 or Tab) showing security dashboard, recent scans with drill-down into individual findings
+
 ## [0.5.0] - 2026-02-21
 
 ### Added
