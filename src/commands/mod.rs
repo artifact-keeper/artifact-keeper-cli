@@ -8,6 +8,7 @@ pub mod config;
 pub mod doctor;
 pub mod group;
 pub mod instance;
+pub mod label;
 pub mod lifecycle;
 pub mod migrate;
 pub mod permission;

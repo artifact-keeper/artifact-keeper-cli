@@ -178,6 +178,15 @@ pub enum Command {
         command: commands::quality_gate::QualityGateCommand,
     },
 
+    /// Tag repositories with key-value labels
+    #[command(
+        after_help = "Examples:\n  ak label repo list my-repo\n  ak label repo add my-repo env=production\n  ak label repo remove my-repo env"
+    )]
+    Label {
+        #[command(subcommand)]
+        command: commands::label::LabelCommand,
+    },
+
     /// Manage lifecycle and retention policies
     #[command(
         after_help = "Examples:\n  ak lifecycle list\n  ak lifecycle show <policy-id>\n  ak lifecycle create my-policy --max-severity high --block-on-fail\n  ak lifecycle preview <policy-id>\n  ak lifecycle execute <policy-id>"
@@ -294,6 +303,7 @@ impl Cli {
             Command::Approval { command } => command.execute(&global).await,
             Command::Promotion { command } => command.execute(&global).await,
             Command::QualityGate { command } => command.execute(&global).await,
+            Command::Label { command } => command.execute(&global).await,
             Command::Lifecycle { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
@@ -670,6 +680,26 @@ mod tests {
     fn parse_group_remove_member() {
         let cli = parse(&["ak", "group", "remove-member", "group-id", "user-id"]).unwrap();
         assert!(matches!(cli.command, Command::Group { .. }));
+    }
+
+    // ---- Label command parsing ----
+
+    #[test]
+    fn parse_label_repo_list() {
+        let cli = parse(&["ak", "label", "repo", "list", "my-repo"]).unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
+    }
+
+    #[test]
+    fn parse_label_repo_add() {
+        let cli = parse(&["ak", "label", "repo", "add", "my-repo", "env=prod"]).unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
+    }
+
+    #[test]
+    fn parse_label_repo_remove() {
+        let cli = parse(&["ak", "label", "repo", "remove", "my-repo", "env"]).unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
     }
 
     // ---- Lifecycle command parsing ----
