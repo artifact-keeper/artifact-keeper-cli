@@ -1,4 +1,4 @@
-use artifact_keeper_sdk::{ClientAdminExt, ClientPluginsExt, ClientUsersExt};
+use artifact_keeper_sdk::{ClientAdminExt, ClientPluginsExt, ClientTelemetryExt, ClientUsersExt};
 use clap::Subcommand;
 use miette::Result;
 
@@ -43,6 +43,24 @@ pub enum AdminCommand {
     Plugins {
         #[command(subcommand)]
         command: PluginsCommand,
+    },
+
+    /// Trigger search index rebuild
+    Reindex,
+
+    /// Show system statistics
+    Stats,
+
+    /// Manage server settings
+    Settings {
+        #[command(subcommand)]
+        command: SettingsCommand,
+    },
+
+    /// Manage telemetry and crash reports
+    Telemetry {
+        #[command(subcommand)]
+        command: TelemetryCommand,
     },
 }
 
@@ -175,6 +193,61 @@ pub enum PluginsCommand {
     },
 }
 
+#[derive(Subcommand)]
+pub enum SettingsCommand {
+    /// Show current server settings
+    Show,
+    /// Update server settings (provide JSON body)
+    Update {
+        /// Settings JSON
+        #[arg(long)]
+        json: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum TelemetryCommand {
+    /// Show telemetry settings
+    Show,
+    /// Update telemetry settings
+    Update {
+        /// Enable or disable telemetry
+        #[arg(long)]
+        enabled: Option<bool>,
+
+        /// Include logs in telemetry data
+        #[arg(long)]
+        include_logs: Option<bool>,
+
+        /// Review telemetry data before sending
+        #[arg(long)]
+        review_before_send: Option<bool>,
+
+        /// Scrub level for sensitive data
+        #[arg(long)]
+        scrub_level: Option<String>,
+    },
+    /// List crash reports
+    Crashes {
+        /// Show only pending (unsubmitted) crash reports
+        #[arg(long)]
+        pending: bool,
+
+        /// Page number
+        #[arg(long, default_value = "1")]
+        page: i32,
+
+        /// Results per page
+        #[arg(long, default_value = "20")]
+        per_page: i32,
+    },
+    /// Submit crash reports
+    Submit {
+        /// Crash report IDs (comma-separated)
+        ids: String,
+    },
+}
+
 impl AdminCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
@@ -233,6 +306,36 @@ impl AdminCommand {
                     install_plugin(&url, r#ref.as_deref(), global).await
                 }
                 PluginsCommand::Remove { id, yes } => remove_plugin(&id, yes, global).await,
+            },
+            Self::Reindex => trigger_reindex(global).await,
+            Self::Stats => show_stats(global).await,
+            Self::Settings { command } => match command {
+                SettingsCommand::Show => show_settings(global).await,
+                SettingsCommand::Update { json } => update_settings(&json, global).await,
+            },
+            Self::Telemetry { command } => match command {
+                TelemetryCommand::Show => show_telemetry(global).await,
+                TelemetryCommand::Update {
+                    enabled,
+                    include_logs,
+                    review_before_send,
+                    scrub_level,
+                } => {
+                    update_telemetry(
+                        enabled,
+                        include_logs,
+                        review_before_send,
+                        scrub_level,
+                        global,
+                    )
+                    .await
+                }
+                TelemetryCommand::Crashes {
+                    pending,
+                    page,
+                    per_page,
+                } => list_crashes(pending, page, per_page, global).await,
+                TelemetryCommand::Submit { ids } => submit_crashes(&ids, global).await,
             },
         }
     }
@@ -849,6 +952,404 @@ async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
     eprintln!("(User will be prompted to change on first login.)");
 
     Ok(())
+}
+
+async fn trigger_reindex(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Triggering search reindex...");
+
+    let resp = client
+        .trigger_reindex()
+        .send()
+        .await
+        .map_err(|e| sdk_err("trigger reindex", e))?;
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({
+            "message": resp.message,
+            "artifacts_indexed": resp.artifacts_indexed,
+            "repositories_indexed": resp.repositories_indexed,
+        });
+        println!("{}", output::render(&info, &global.format, None));
+    } else {
+        eprintln!("{}", resp.message);
+        eprintln!("Artifacts indexed:     {}", resp.artifacts_indexed);
+        eprintln!("Repositories indexed:  {}", resp.repositories_indexed);
+    }
+
+    Ok(())
+}
+
+async fn show_stats(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching system stats...");
+
+    let stats = client
+        .get_system_stats()
+        .send()
+        .await
+        .map_err(|e| sdk_err("get system stats", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "total_artifacts": stats.total_artifacts,
+        "total_downloads": stats.total_downloads,
+        "total_repositories": stats.total_repositories,
+        "total_storage": format_bytes(stats.total_storage_bytes),
+        "total_storage_bytes": stats.total_storage_bytes,
+        "total_users": stats.total_users,
+        "active_peers": stats.active_peers,
+        "pending_sync_tasks": stats.pending_sync_tasks,
+    });
+
+    let table_str = format!(
+        "Artifacts:      {}\n\
+         Downloads:      {}\n\
+         Repositories:   {}\n\
+         Storage:        {}\n\
+         Users:          {}\n\
+         Active Peers:   {}\n\
+         Pending Syncs:  {}",
+        stats.total_artifacts,
+        stats.total_downloads,
+        stats.total_repositories,
+        format_bytes(stats.total_storage_bytes),
+        stats.total_users,
+        stats.active_peers,
+        stats.pending_sync_tasks,
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn show_settings(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching settings...");
+
+    let settings = client
+        .get_settings()
+        .send()
+        .await
+        .map_err(|e| sdk_err("get settings", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "allow_anonymous_download": settings.allow_anonymous_download,
+        "audit_retention_days": settings.audit_retention_days,
+        "backup_retention_count": settings.backup_retention_count,
+        "edge_stale_threshold_minutes": settings.edge_stale_threshold_minutes,
+        "max_upload_size_bytes": settings.max_upload_size_bytes,
+        "retention_days": settings.retention_days,
+    });
+
+    let table_str = format!(
+        "Allow Anonymous Download:    {}\n\
+         Audit Retention (days):      {}\n\
+         Backup Retention (count):    {}\n\
+         Edge Stale Threshold (min):  {}\n\
+         Max Upload Size:             {}\n\
+         Retention (days):            {}",
+        settings.allow_anonymous_download,
+        settings.audit_retention_days,
+        settings.backup_retention_count,
+        settings.edge_stale_threshold_minutes,
+        format_bytes(settings.max_upload_size_bytes),
+        settings.retention_days,
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+
+    let body: artifact_keeper_sdk::types::SystemSettings = serde_json::from_str(json_str)
+        .map_err(|e| crate::error::AkError::ConfigError(format!("Invalid settings JSON: {e}")))?;
+
+    let spinner = output::spinner("Updating settings...");
+
+    let settings = client
+        .update_settings()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update settings", e))?;
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({
+            "allow_anonymous_download": settings.allow_anonymous_download,
+            "audit_retention_days": settings.audit_retention_days,
+            "backup_retention_count": settings.backup_retention_count,
+            "edge_stale_threshold_minutes": settings.edge_stale_threshold_minutes,
+            "max_upload_size_bytes": settings.max_upload_size_bytes,
+            "retention_days": settings.retention_days,
+        });
+        println!("{}", output::render(&info, &global.format, None));
+    } else {
+        eprintln!("Settings updated.");
+    }
+
+    Ok(())
+}
+
+async fn show_telemetry(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching telemetry settings...");
+
+    let settings = client
+        .get_telemetry_settings()
+        .send()
+        .await
+        .map_err(|e| sdk_err("get telemetry settings", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "enabled": settings.enabled,
+        "include_logs": settings.include_logs,
+        "review_before_send": settings.review_before_send,
+        "scrub_level": settings.scrub_level,
+    });
+
+    let table_str = format_telemetry_settings(&settings);
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn update_telemetry(
+    enabled: Option<bool>,
+    include_logs: Option<bool>,
+    review_before_send: Option<bool>,
+    scrub_level: Option<String>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+
+    // First fetch current settings so we can merge partial updates.
+    let current = client
+        .get_telemetry_settings()
+        .send()
+        .await
+        .map_err(|e| sdk_err("get telemetry settings", e))?;
+
+    let body = artifact_keeper_sdk::types::TelemetrySettings {
+        enabled: enabled.unwrap_or(current.enabled),
+        include_logs: include_logs.unwrap_or(current.include_logs),
+        review_before_send: review_before_send.unwrap_or(current.review_before_send),
+        scrub_level: scrub_level.unwrap_or_else(|| current.scrub_level.clone()),
+    };
+
+    let spinner = output::spinner("Updating telemetry settings...");
+
+    let settings = client
+        .update_telemetry_settings()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update telemetry settings", e))?;
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({
+            "enabled": settings.enabled,
+            "include_logs": settings.include_logs,
+            "review_before_send": settings.review_before_send,
+            "scrub_level": settings.scrub_level,
+        });
+        println!("{}", output::render(&info, &global.format, None));
+    } else {
+        eprintln!("Telemetry settings updated.");
+        eprintln!("{}", format_telemetry_settings(&settings));
+    }
+
+    Ok(())
+}
+
+async fn list_crashes(pending: bool, page: i32, per_page: i32, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching crash reports...");
+
+    if pending {
+        let items = client
+            .list_pending_crashes()
+            .send()
+            .await
+            .map_err(|e| sdk_err("list pending crashes", e))?;
+        let items = items.into_inner();
+
+        spinner.finish_and_clear();
+
+        if items.is_empty() {
+            eprintln!("No pending crash reports.");
+            return Ok(());
+        }
+
+        if matches!(global.format, OutputFormat::Quiet) {
+            for c in &items {
+                println!("{}", c.id);
+            }
+            return Ok(());
+        }
+
+        let entries: Vec<_> = items.iter().map(crash_report_json).collect();
+
+        let table_str = format_crashes_table(&items);
+
+        println!(
+            "{}",
+            output::render(&entries, &global.format, Some(table_str))
+        );
+
+        eprintln!("{} pending crash reports.", items.len());
+    } else {
+        let resp = client
+            .list_crashes()
+            .page(page)
+            .per_page(per_page)
+            .send()
+            .await
+            .map_err(|e| sdk_err("list crashes", e))?;
+
+        spinner.finish_and_clear();
+
+        if resp.items.is_empty() {
+            eprintln!("No crash reports found.");
+            return Ok(());
+        }
+
+        if matches!(global.format, OutputFormat::Quiet) {
+            for c in &resp.items {
+                println!("{}", c.id);
+            }
+            return Ok(());
+        }
+
+        let entries: Vec<_> = resp.items.iter().map(crash_report_json).collect();
+
+        let table_str = format_crashes_table(&resp.items);
+
+        println!(
+            "{}",
+            output::render(&entries, &global.format, Some(table_str))
+        );
+
+        eprintln!("{} crash reports total.", resp.total);
+    }
+
+    Ok(())
+}
+
+async fn submit_crashes(ids_str: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+
+    let ids: Vec<uuid::Uuid> = ids_str
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| {
+            s.parse()
+                .map_err(|_| crate::error::AkError::ConfigError(format!("Invalid crash ID: {s}")))
+        })
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+
+    if ids.is_empty() {
+        return Err(crate::error::AkError::ConfigError(
+            "No crash report IDs provided.".to_string(),
+        )
+        .into());
+    }
+
+    let spinner = output::spinner("Submitting crash reports...");
+
+    let body = artifact_keeper_sdk::types::SubmitCrashesRequest { ids };
+
+    let resp = client
+        .submit_crashes()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("submit crashes", e))?;
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({
+            "marked_submitted": resp.marked_submitted,
+        });
+        println!("{}", output::render(&info, &global.format, None));
+    } else {
+        eprintln!("{} crash report(s) submitted.", resp.marked_submitted);
+    }
+
+    Ok(())
+}
+
+fn crash_report_json(c: &artifact_keeper_sdk::types::CrashReport) -> serde_json::Value {
+    serde_json::json!({
+        "id": c.id.to_string(),
+        "severity": c.severity,
+        "error_type": c.error_type,
+        "error_message": c.error_message,
+        "component": c.component,
+        "app_version": c.app_version,
+        "occurrence_count": c.occurrence_count,
+        "submitted": c.submitted,
+        "created_at": c.created_at.to_rfc3339(),
+        "last_seen_at": c.last_seen_at.to_rfc3339(),
+    })
+}
+
+fn format_telemetry_settings(s: &artifact_keeper_sdk::types::TelemetrySettings) -> String {
+    format!(
+        "Enabled:              {}\n\
+         Include Logs:         {}\n\
+         Review Before Send:   {}\n\
+         Scrub Level:          {}",
+        s.enabled, s.include_logs, s.review_before_send, s.scrub_level,
+    )
+}
+
+fn format_crashes_table(items: &[artifact_keeper_sdk::types::CrashReport]) -> String {
+    let mut table = new_table(vec![
+        "ID",
+        "SEVERITY",
+        "TYPE",
+        "COMPONENT",
+        "COUNT",
+        "SUBMITTED",
+        "LAST SEEN",
+    ]);
+
+    for c in items {
+        let id_short = short_id(&c.id);
+        let count = c.occurrence_count.to_string();
+        let submitted = if c.submitted { "yes" } else { "no" };
+        let last_seen = c.last_seen_at.format("%Y-%m-%d %H:%M").to_string();
+        table.add_row(vec![
+            &id_short,
+            &c.severity,
+            &c.error_type,
+            &c.component,
+            &count,
+            submitted,
+            &last_seen,
+        ]);
+    }
+
+    table.to_string()
 }
 
 /// Format a list of backup entries as a table string.
@@ -1493,6 +1994,202 @@ mod tests {
         assert!(try_parse(&["test", "plugins", "remove"]).is_err());
     }
 
+    // ---- Reindex subcommand parsing ----
+
+    #[test]
+    fn parse_reindex() {
+        let cli = parse(&["test", "reindex"]);
+        assert!(matches!(cli.command, AdminCommand::Reindex));
+    }
+
+    // ---- Stats subcommand parsing ----
+
+    #[test]
+    fn parse_stats() {
+        let cli = parse(&["test", "stats"]);
+        assert!(matches!(cli.command, AdminCommand::Stats));
+    }
+
+    // ---- Settings subcommand parsing ----
+
+    #[test]
+    fn parse_settings_show() {
+        let cli = parse(&["test", "settings", "show"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Settings {
+                command: SettingsCommand::Show
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_settings_update() {
+        let cli = parse(&[
+            "test",
+            "settings",
+            "update",
+            "--json",
+            "{\"retention_days\": 30}",
+        ]);
+        if let AdminCommand::Settings {
+            command: SettingsCommand::Update { json },
+        } = cli.command
+        {
+            assert_eq!(json, "{\"retention_days\": 30}");
+        } else {
+            panic!("Expected SettingsCommand::Update");
+        }
+    }
+
+    #[test]
+    fn parse_settings_update_missing_json_fails() {
+        assert!(try_parse(&["test", "settings", "update"]).is_err());
+    }
+
+    #[test]
+    fn parse_settings_no_subcommand_fails() {
+        assert!(try_parse(&["test", "settings"]).is_err());
+    }
+
+    // ---- Telemetry subcommand parsing ----
+
+    #[test]
+    fn parse_telemetry_show() {
+        let cli = parse(&["test", "telemetry", "show"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Telemetry {
+                command: TelemetryCommand::Show
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_telemetry_update_no_flags() {
+        let cli = parse(&["test", "telemetry", "update"]);
+        if let AdminCommand::Telemetry {
+            command:
+                TelemetryCommand::Update {
+                    enabled,
+                    include_logs,
+                    review_before_send,
+                    scrub_level,
+                },
+        } = cli.command
+        {
+            assert!(enabled.is_none());
+            assert!(include_logs.is_none());
+            assert!(review_before_send.is_none());
+            assert!(scrub_level.is_none());
+        } else {
+            panic!("Expected TelemetryCommand::Update");
+        }
+    }
+
+    #[test]
+    fn parse_telemetry_update_all_flags() {
+        let cli = parse(&[
+            "test",
+            "telemetry",
+            "update",
+            "--enabled",
+            "true",
+            "--include-logs",
+            "false",
+            "--review-before-send",
+            "true",
+            "--scrub-level",
+            "full",
+        ]);
+        if let AdminCommand::Telemetry {
+            command:
+                TelemetryCommand::Update {
+                    enabled,
+                    include_logs,
+                    review_before_send,
+                    scrub_level,
+                },
+        } = cli.command
+        {
+            assert_eq!(enabled, Some(true));
+            assert_eq!(include_logs, Some(false));
+            assert_eq!(review_before_send, Some(true));
+            assert_eq!(scrub_level.as_deref(), Some("full"));
+        } else {
+            panic!("Expected TelemetryCommand::Update");
+        }
+    }
+
+    #[test]
+    fn parse_telemetry_crashes_defaults() {
+        let cli = parse(&["test", "telemetry", "crashes"]);
+        if let AdminCommand::Telemetry {
+            command:
+                TelemetryCommand::Crashes {
+                    pending,
+                    page,
+                    per_page,
+                },
+        } = cli.command
+        {
+            assert!(!pending);
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 20);
+        } else {
+            panic!("Expected TelemetryCommand::Crashes");
+        }
+    }
+
+    #[test]
+    fn parse_telemetry_crashes_with_pending() {
+        let cli = parse(&["test", "telemetry", "crashes", "--pending"]);
+        if let AdminCommand::Telemetry {
+            command:
+                TelemetryCommand::Crashes {
+                    pending,
+                    page,
+                    per_page,
+                },
+        } = cli.command
+        {
+            assert!(pending);
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 20);
+        } else {
+            panic!("Expected TelemetryCommand::Crashes");
+        }
+    }
+
+    #[test]
+    fn parse_telemetry_submit() {
+        let cli = parse(&[
+            "test",
+            "telemetry",
+            "submit",
+            "00000000-0000-0000-0000-000000000001,00000000-0000-0000-0000-000000000002",
+        ]);
+        if let AdminCommand::Telemetry {
+            command: TelemetryCommand::Submit { ids },
+        } = cli.command
+        {
+            assert!(ids.contains("00000000-0000-0000-0000-000000000001"));
+            assert!(ids.contains("00000000-0000-0000-0000-000000000002"));
+        } else {
+            panic!("Expected TelemetryCommand::Submit");
+        }
+    }
+
+    #[test]
+    fn parse_telemetry_submit_missing_ids_fails() {
+        assert!(try_parse(&["test", "telemetry", "submit"]).is_err());
+    }
+
+    #[test]
+    fn parse_telemetry_no_subcommand_fails() {
+        assert!(try_parse(&["test", "telemetry"]).is_err());
+    }
+
     // ---- Missing subcommand fails ----
 
     #[test]
@@ -2060,6 +2757,330 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = remove_plugin("00000000-0000-0000-0000-000000000001", true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    // ---- Format function tests for telemetry / crashes ----
+
+    #[test]
+    fn format_telemetry_settings_renders() {
+        let settings = artifact_keeper_sdk::types::TelemetrySettings {
+            enabled: true,
+            include_logs: false,
+            review_before_send: true,
+            scrub_level: "full".to_string(),
+        };
+        let output = format_telemetry_settings(&settings);
+        assert!(output.contains("Enabled:"));
+        assert!(output.contains("true"));
+        assert!(output.contains("Include Logs:"));
+        assert!(output.contains("false"));
+        assert!(output.contains("Review Before Send:"));
+        assert!(output.contains("Scrub Level:"));
+        assert!(output.contains("full"));
+    }
+
+    #[test]
+    fn format_telemetry_settings_disabled() {
+        let settings = artifact_keeper_sdk::types::TelemetrySettings {
+            enabled: false,
+            include_logs: false,
+            review_before_send: false,
+            scrub_level: "none".to_string(),
+        };
+        let output = format_telemetry_settings(&settings);
+        assert!(output.contains("Enabled:"));
+        // The "false" for enabled should appear
+        let false_count = output.matches("false").count();
+        assert!(false_count >= 3);
+        assert!(output.contains("none"));
+    }
+
+    #[test]
+    fn format_crashes_table_empty() {
+        let items: Vec<artifact_keeper_sdk::types::CrashReport> = vec![];
+        let table = format_crashes_table(&items);
+        assert!(table.contains("ID"));
+        assert!(table.contains("SEVERITY"));
+        assert!(table.contains("TYPE"));
+        assert!(table.contains("COMPONENT"));
+    }
+
+    #[test]
+    fn format_crashes_table_with_data() {
+        use chrono::Utc;
+        let items = vec![artifact_keeper_sdk::types::CrashReport {
+            id: uuid::Uuid::parse_str("12345678-abcd-1234-abcd-123456789012").unwrap(),
+            severity: "critical".to_string(),
+            error_type: "panic".to_string(),
+            error_message: "index out of bounds".to_string(),
+            component: "storage".to_string(),
+            app_version: "1.0.0".to_string(),
+            occurrence_count: 5,
+            submitted: false,
+            created_at: Utc::now(),
+            first_seen_at: Utc::now(),
+            last_seen_at: Utc::now(),
+            error_signature: "abc123".to_string(),
+            context: serde_json::Map::new(),
+            os_info: None,
+            stack_trace: None,
+            submission_error: None,
+            submitted_at: None,
+            uptime_seconds: None,
+        }];
+        let table = format_crashes_table(&items);
+        assert!(table.contains("12345678"));
+        assert!(table.contains("critical"));
+        assert!(table.contains("panic"));
+        assert!(table.contains("storage"));
+        assert!(table.contains("5"));
+        assert!(table.contains("no"));
+    }
+
+    #[test]
+    fn format_crashes_table_submitted() {
+        use chrono::Utc;
+        let items = vec![artifact_keeper_sdk::types::CrashReport {
+            id: uuid::Uuid::parse_str("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee").unwrap(),
+            severity: "warning".to_string(),
+            error_type: "timeout".to_string(),
+            error_message: "request timed out".to_string(),
+            component: "api".to_string(),
+            app_version: "1.1.0".to_string(),
+            occurrence_count: 1,
+            submitted: true,
+            created_at: Utc::now(),
+            first_seen_at: Utc::now(),
+            last_seen_at: Utc::now(),
+            error_signature: "def456".to_string(),
+            context: serde_json::Map::new(),
+            os_info: Some("Linux 5.15".to_string()),
+            stack_trace: None,
+            submission_error: None,
+            submitted_at: Some(Utc::now()),
+            uptime_seconds: Some(3600),
+        }];
+        let table = format_crashes_table(&items);
+        assert!(table.contains("aaaaaaaa"));
+        assert!(table.contains("warning"));
+        assert!(table.contains("yes"));
+    }
+
+    // ---- Wiremock handler tests for new subcommands ----
+
+    #[tokio::test]
+    async fn handler_trigger_reindex() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/reindex"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "message": "Reindex completed",
+                "artifacts_indexed": 500,
+                "repositories_indexed": 10
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = trigger_reindex(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_stats() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/stats"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "total_artifacts": 1500,
+                "total_downloads": 50000,
+                "total_repositories": 25,
+                "total_storage_bytes": 13421772800_i64,
+                "total_users": 100,
+                "active_peers": 3,
+                "pending_sync_tasks": 0
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_stats(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_settings() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/settings"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "allow_anonymous_download": false,
+                "audit_retention_days": 90,
+                "backup_retention_count": 5,
+                "edge_stale_threshold_minutes": 30,
+                "max_upload_size_bytes": 1073741824_i64,
+                "retention_days": 365
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_settings(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_settings() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/settings"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "allow_anonymous_download": true,
+                "audit_retention_days": 60,
+                "backup_retention_count": 3,
+                "edge_stale_threshold_minutes": 15,
+                "max_upload_size_bytes": 536870912_i64,
+                "retention_days": 180
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let json_str = r#"{"allow_anonymous_download":true,"audit_retention_days":60,"backup_retention_count":3,"edge_stale_threshold_minutes":15,"max_upload_size_bytes":536870912,"retention_days":180}"#;
+        let result = update_settings(json_str, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_telemetry() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/telemetry/settings"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "enabled": true,
+                "include_logs": false,
+                "review_before_send": true,
+                "scrub_level": "full"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_telemetry(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_telemetry() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        // The update handler first fetches current settings, then posts the update
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/telemetry/settings"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "enabled": true,
+                "include_logs": false,
+                "review_before_send": true,
+                "scrub_level": "full"
+            })))
+            .mount(&server)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/telemetry/settings"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "enabled": false,
+                "include_logs": true,
+                "review_before_send": false,
+                "scrub_level": "minimal"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = update_telemetry(
+            Some(false),
+            Some(true),
+            Some(false),
+            Some("minimal".to_string()),
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_crashes() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/telemetry/crashes"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "severity": "critical",
+                    "error_type": "panic",
+                    "error_message": "index out of bounds",
+                    "error_signature": "abc123",
+                    "component": "storage",
+                    "app_version": "1.0.0",
+                    "occurrence_count": 5,
+                    "submitted": false,
+                    "context": {},
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "first_seen_at": "2026-01-15T10:00:00Z",
+                    "last_seen_at": "2026-01-15T12:00:00Z"
+                }],
+                "total": 1_i64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_crashes(false, 1, 20, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_submit_crashes() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/telemetry/crashes/submit"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "marked_submitted": 2
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = submit_crashes(
+            "00000000-0000-0000-0000-000000000001,00000000-0000-0000-0000-000000000002",
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

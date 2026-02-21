@@ -269,6 +269,15 @@ pub enum Command {
         command: commands::permission::PermissionCommand,
     },
 
+    /// Manage your user profile and API tokens
+    #[command(
+        after_help = "Examples:\n  ak profile show\n  ak profile update --display-name \"Alice Smith\"\n  ak profile change-password\n  ak profile tokens list\n  ak profile tokens create ci-token --scopes read,write"
+    )]
+    Profile {
+        #[command(subcommand)]
+        command: commands::profile::ProfileCommand,
+    },
+
     /// Dependency-Track integration
     #[command(
         alias = "dependency-track",
@@ -304,6 +313,15 @@ pub enum Command {
     Config {
         #[command(subcommand)]
         command: commands::config::ConfigCommand,
+    },
+
+    /// Manage two-factor authentication (TOTP)
+    #[command(
+        after_help = "Examples:\n  ak totp setup\n  ak totp enable --code 123456\n  ak totp disable --password mypass --code 123456\n  ak totp status"
+    )]
+    Totp {
+        #[command(subcommand)]
+        command: commands::totp::TotpCommand,
     },
 
     /// Launch interactive TUI dashboard
@@ -396,10 +414,12 @@ impl Cli {
             Command::SyncPolicy { command } => command.execute(&global).await,
             Command::Webhook { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
+            Command::Profile { command } => command.execute(&global).await,
             Command::Dt { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Analytics { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
+            Command::Totp { command } => command.execute(&global).await,
             Command::Tui => commands::tui::execute(&global).await,
             Command::Completion { shell } => commands::completion::execute(shell),
             Command::ManPages { dir } => commands::completion::generate_man_pages(&dir),
@@ -664,6 +684,85 @@ mod tests {
     #[test]
     fn parse_admin_plugins_list() {
         let cli = parse(&["ak", "admin", "plugins", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_reindex() {
+        let cli = parse(&["ak", "admin", "reindex"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_stats() {
+        let cli = parse(&["ak", "admin", "stats"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_settings_show() {
+        let cli = parse(&["ak", "admin", "settings", "show"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_settings_update() {
+        let cli = parse(&[
+            "ak",
+            "admin",
+            "settings",
+            "update",
+            "--json",
+            "{\"retention_days\":30}",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_telemetry_show() {
+        let cli = parse(&["ak", "admin", "telemetry", "show"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_telemetry_update() {
+        let cli = parse(&[
+            "ak",
+            "admin",
+            "telemetry",
+            "update",
+            "--enabled",
+            "true",
+            "--scrub-level",
+            "full",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_telemetry_crashes() {
+        let cli = parse(&["ak", "admin", "telemetry", "crashes"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_telemetry_crashes_pending() {
+        let cli = parse(&["ak", "admin", "telemetry", "crashes", "--pending"]).unwrap();
+        assert!(matches!(cli.command, Command::Admin { .. }));
+    }
+
+    #[test]
+    fn parse_admin_telemetry_submit() {
+        let cli = parse(&[
+            "ak",
+            "admin",
+            "telemetry",
+            "submit",
+            "00000000-0000-0000-0000-000000000001",
+        ])
+        .unwrap();
         assert!(matches!(cli.command, Command::Admin { .. }));
     }
 
@@ -1030,6 +1129,76 @@ mod tests {
     fn parse_permission_delete() {
         let cli = parse(&["ak", "permission", "delete", "some-id"]).unwrap();
         assert!(matches!(cli.command, Command::Permission { .. }));
+    }
+
+    // ---- Profile command parsing ----
+
+    #[test]
+    fn parse_profile_show() {
+        let cli = parse(&["ak", "profile", "show"]).unwrap();
+        assert!(matches!(cli.command, Command::Profile { .. }));
+    }
+
+    #[test]
+    fn parse_profile_update() {
+        let cli = parse(&["ak", "profile", "update", "--display-name", "Alice Smith"]).unwrap();
+        assert!(matches!(cli.command, Command::Profile { .. }));
+    }
+
+    #[test]
+    fn parse_profile_update_email() {
+        let cli = parse(&["ak", "profile", "update", "--email", "alice@example.com"]).unwrap();
+        assert!(matches!(cli.command, Command::Profile { .. }));
+    }
+
+    #[test]
+    fn parse_profile_change_password() {
+        let cli = parse(&["ak", "profile", "change-password"]).unwrap();
+        assert!(matches!(cli.command, Command::Profile { .. }));
+    }
+
+    #[test]
+    fn parse_profile_tokens_list() {
+        let cli = parse(&["ak", "profile", "tokens", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Profile { .. }));
+    }
+
+    #[test]
+    fn parse_profile_tokens_create() {
+        let cli = parse(&[
+            "ak",
+            "profile",
+            "tokens",
+            "create",
+            "ci-token",
+            "--scopes",
+            "read,write",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Profile { .. }));
+    }
+
+    #[test]
+    fn parse_profile_tokens_create_with_expiry() {
+        let cli = parse(&[
+            "ak",
+            "profile",
+            "tokens",
+            "create",
+            "deploy-token",
+            "--scopes",
+            "read",
+            "--expires-in-days",
+            "90",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Profile { .. }));
+    }
+
+    #[test]
+    fn parse_profile_tokens_revoke() {
+        let cli = parse(&["ak", "profile", "tokens", "revoke", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Profile { .. }));
     }
 
     // ---- Sign command parsing ----
@@ -2097,5 +2266,45 @@ mod tests {
     fn parse_analytics_snapshot() {
         let cli = parse(&["ak", "analytics", "snapshot"]).unwrap();
         assert!(matches!(cli.command, Command::Analytics { .. }));
+    }
+
+    // ---- TOTP command parsing ----
+
+    #[test]
+    fn parse_totp_setup() {
+        let cli = parse(&["ak", "totp", "setup"]).unwrap();
+        assert!(matches!(cli.command, Command::Totp { .. }));
+    }
+
+    #[test]
+    fn parse_totp_enable() {
+        let cli = parse(&["ak", "totp", "enable", "--code", "123456"]).unwrap();
+        assert!(matches!(cli.command, Command::Totp { .. }));
+    }
+
+    #[test]
+    fn parse_totp_disable() {
+        let cli = parse(&[
+            "ak",
+            "totp",
+            "disable",
+            "--password",
+            "mypass",
+            "--code",
+            "654321",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Totp { .. }));
+    }
+
+    #[test]
+    fn parse_totp_status() {
+        let cli = parse(&["ak", "totp", "status"]).unwrap();
+        assert!(matches!(cli.command, Command::Totp { .. }));
+    }
+
+    #[test]
+    fn parse_totp_enable_missing_code() {
+        assert!(parse(&["ak", "totp", "enable"]).is_err());
     }
 }
