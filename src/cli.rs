@@ -1505,4 +1505,83 @@ mod tests {
         .unwrap();
         assert!(matches!(cli.command, Command::Dt { .. }));
     }
+
+    // ---- Enhanced scan command parsing ----
+
+    #[test]
+    fn parse_scan_dashboard() {
+        parse(&["ak", "scan", "dashboard"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_scores() {
+        parse(&["ak", "scan", "scores"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_config_list() {
+        parse(&["ak", "scan", "config", "list"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_finding_ack() {
+        parse(&[
+            "ak",
+            "scan",
+            "finding",
+            "ack",
+            "some-id",
+            "--reason",
+            "False positive",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_scan_finding_revoke() {
+        parse(&["ak", "scan", "finding", "revoke", "some-id"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_policy_list() {
+        parse(&["ak", "scan", "policy", "list"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_policy_create() {
+        parse(&[
+            "ak",
+            "scan",
+            "policy",
+            "create",
+            "strict",
+            "--max-severity",
+            "HIGH",
+            "--block-on-fail",
+        ])
+        .unwrap();
+    }
+
+    #[test]
+    fn parse_scan_policy_delete() {
+        parse(&["ak", "scan", "policy", "delete", "some-id", "--yes"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_security_show() {
+        parse(&["ak", "scan", "security", "show", "my-repo"]).unwrap();
+    }
+
+    #[test]
+    fn parse_scan_security_update() {
+        parse(&[
+            "ak",
+            "scan",
+            "security",
+            "update",
+            "my-repo",
+            "--scanning-enabled",
+        ])
+        .unwrap();
+    }
 }
