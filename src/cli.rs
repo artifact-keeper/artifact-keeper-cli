@@ -223,6 +223,34 @@ pub enum Command {
         command: commands::license::LicenseCommand,
     },
 
+    /// Manage federation peer instances
+    #[command(
+        after_help = "Examples:\n  ak peer list\n  ak peer list --status active --region us-east-1\n  ak peer show <peer-id>\n  ak peer register my-peer --url https://peer.example.com --api-key <key>\n  ak peer unregister <peer-id>\n  ak peer test <peer-id>\n  ak peer sync <peer-id>\n  ak peer tasks <peer-id>"
+    )]
+    Peer {
+        #[command(subcommand)]
+        command: commands::peer::PeerCommand,
+    },
+
+    /// Manage sync policies for automated replication
+    #[command(
+        alias = "sp",
+        after_help = "Examples:\n  ak sync-policy list\n  ak sync-policy create my-policy --mode push\n  ak sync-policy toggle <id> --enable\n  ak sync-policy preview --repo-selector '{\"match_keys\":[\"npm-*\"]}'"
+    )]
+    SyncPolicy {
+        #[command(subcommand)]
+        command: commands::sync_policy::SyncPolicyCommand,
+    },
+
+    /// Manage webhooks for event-driven integrations
+    #[command(
+        after_help = "Examples:\n  ak webhook list\n  ak webhook create deploy-hook --url https://ci.company.com/hook --events artifact.pushed,artifact.promoted\n  ak webhook test <id>\n  ak webhook deliveries <id>"
+    )]
+    Webhook {
+        #[command(subcommand)]
+        command: commands::webhook::WebhookCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -345,6 +373,9 @@ impl Cli {
             Command::Sign { command } => command.execute(&global).await,
             Command::Sbom { command } => command.execute(&global).await,
             Command::License { command } => command.execute(&global).await,
+            Command::Peer { command } => command.execute(&global).await,
+            Command::SyncPolicy { command } => command.execute(&global).await,
+            Command::Webhook { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Dt { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
@@ -1583,5 +1614,275 @@ mod tests {
             "--scanning-enabled",
         ])
         .unwrap();
+    }
+
+    // ---- Peer command parsing ----
+
+    #[test]
+    fn parse_peer_list() {
+        let cli = parse(&["ak", "peer", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_list_with_filters() {
+        let cli = parse(&[
+            "ak", "peer", "list", "--status", "online", "--region", "us-east",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_show() {
+        let cli = parse(&["ak", "peer", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_register() {
+        let cli = parse(&[
+            "ak",
+            "peer",
+            "register",
+            "edge-1",
+            "--url",
+            "https://edge.example.com",
+            "--api-key",
+            "secret123",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_register_with_region() {
+        let cli = parse(&[
+            "ak",
+            "peer",
+            "register",
+            "edge-1",
+            "--url",
+            "https://edge.example.com",
+            "--api-key",
+            "secret123",
+            "--region",
+            "eu-west",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_unregister() {
+        let cli = parse(&["ak", "peer", "unregister", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_unregister_with_yes() {
+        let cli = parse(&["ak", "peer", "unregister", "some-id", "--yes"]).unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_test() {
+        let cli = parse(&["ak", "peer", "test", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_sync() {
+        let cli = parse(&["ak", "peer", "sync", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_tasks() {
+        let cli = parse(&["ak", "peer", "tasks", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    #[test]
+    fn parse_peer_tasks_with_status() {
+        let cli = parse(&["ak", "peer", "tasks", "some-id", "--status", "pending"]).unwrap();
+        assert!(matches!(cli.command, Command::Peer { .. }));
+    }
+
+    // ---- Webhook command parsing ----
+
+    #[test]
+    fn parse_webhook_list() {
+        let cli = parse(&["ak", "webhook", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_list_with_filters() {
+        let cli = parse(&[
+            "ak",
+            "webhook",
+            "list",
+            "--repo",
+            "some-uuid",
+            "--enabled",
+            "true",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_show() {
+        let cli = parse(&["ak", "webhook", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_create() {
+        let cli = parse(&[
+            "ak",
+            "webhook",
+            "create",
+            "deploy-hook",
+            "--url",
+            "https://ci.example.com/hook",
+            "--events",
+            "artifact.pushed,artifact.promoted",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_create_with_secret() {
+        let cli = parse(&[
+            "ak",
+            "webhook",
+            "create",
+            "secure-hook",
+            "--url",
+            "https://ci.example.com/hook",
+            "--events",
+            "artifact.pushed",
+            "--secret",
+            "mysecret",
+            "--repo",
+            "some-uuid",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_delete() {
+        let cli = parse(&["ak", "webhook", "delete", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_delete_with_yes() {
+        let cli = parse(&["ak", "webhook", "delete", "some-id", "--yes"]).unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_test() {
+        let cli = parse(&["ak", "webhook", "test", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_enable() {
+        let cli = parse(&["ak", "webhook", "enable", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_disable() {
+        let cli = parse(&["ak", "webhook", "disable", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_deliveries() {
+        let cli = parse(&["ak", "webhook", "deliveries", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_deliveries_with_status() {
+        let cli = parse(&[
+            "ak",
+            "webhook",
+            "deliveries",
+            "some-id",
+            "--status",
+            "failed",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    #[test]
+    fn parse_webhook_redeliver() {
+        let cli = parse(&["ak", "webhook", "redeliver", "wh-id", "delivery-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Webhook { .. }));
+    }
+
+    // ---- Sync policy command parsing ----
+
+    #[test]
+    fn parse_sync_policy_list() {
+        let cli = parse(&["ak", "sync-policy", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_show() {
+        let cli = parse(&["ak", "sync-policy", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_create() {
+        let cli = parse(&["ak", "sync-policy", "create", "my-policy", "--mode", "push"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_toggle() {
+        let cli = parse(&["ak", "sync-policy", "toggle", "some-id", "--enable"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_delete() {
+        let cli = parse(&["ak", "sync-policy", "delete", "some-id", "--yes"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_evaluate() {
+        let cli = parse(&["ak", "sync-policy", "evaluate"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_preview() {
+        let cli = parse(&["ak", "sync-policy", "preview"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_alias_sp() {
+        let cli = parse(&["ak", "sp", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_alias_sp_create() {
+        let cli = parse(&["ak", "sp", "create", "my-policy", "--mode", "push"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
     }
 }

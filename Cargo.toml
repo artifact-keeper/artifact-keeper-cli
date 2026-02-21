@@ -3,7 +3,7 @@ members = ["sdk", "xtask"]
 
 [package]
 name = "artifact-keeper-cli"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2024"
 description = "CLI/TUI tool for Artifact Keeper — an enterprise artifact registry"
 license = "MIT"

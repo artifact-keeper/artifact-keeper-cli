@@ -1,10 +1,12 @@
 use std::io;
 
 use artifact_keeper_sdk::types::{
-    DashboardResponse, FacetsResponse, FindingResponse, PaginationInfo, ScanResponse,
-    SearchResultItem,
+    DashboardResponse, FacetsResponse, FindingResponse, PaginationInfo, PeerInstanceResponse,
+    ScanResponse, SearchResultItem, SyncPolicyResponse,
 };
-use artifact_keeper_sdk::{ClientRepositoriesExt, ClientSearchExt, ClientSecurityExt};
+use artifact_keeper_sdk::{
+    ClientPeersExt, ClientRepositoriesExt, ClientSearchExt, ClientSecurityExt,
+};
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -83,12 +85,13 @@ fn detail_line(label: &str, value: &str) -> Line<'static> {
 // Data model
 // ---------------------------------------------------------------------------
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum Panel {
     Instances,
     Repos,
     Artifacts,
     Security,
+    Replication,
 }
 
 struct InstanceEntry {
@@ -120,6 +123,14 @@ struct SecurityState {
     showing_findings: bool,
 }
 
+#[derive(Default)]
+struct ReplicationState {
+    peers: Vec<PeerInstanceResponse>,
+    peer_list_state: ListState,
+    policies: Vec<SyncPolicyResponse>,
+    loaded: bool,
+}
+
 struct App {
     active_panel: Panel,
     instances: Vec<InstanceEntry>,
@@ -147,6 +158,8 @@ struct App {
     global_search_submitted: bool,
     // Security panel state
     security: SecurityState,
+    // Replication panel state
+    replication: ReplicationState,
 }
 
 impl App {
@@ -189,6 +202,7 @@ impl App {
             global_search_state: ListState::default(),
             global_search_submitted: false,
             security: SecurityState::default(),
+            replication: ReplicationState::default(),
         }
     }
 
@@ -226,6 +240,10 @@ impl App {
                     )
                 }
             }
+            Panel::Replication => (
+                &mut self.replication.peer_list_state,
+                self.replication.peers.len(),
+            ),
         }
     }
 
@@ -245,6 +263,7 @@ impl App {
             Panel::Repos => self.active_panel = Panel::Instances,
             Panel::Artifacts => self.active_panel = Panel::Repos,
             Panel::Security => self.active_panel = Panel::Artifacts,
+            Panel::Replication => self.active_panel = Panel::Security,
         }
     }
 
@@ -252,6 +271,8 @@ impl App {
         match self.active_panel {
             Panel::Instances if !self.repos.is_empty() => self.active_panel = Panel::Repos,
             Panel::Repos if !self.artifacts.is_empty() => self.active_panel = Panel::Artifacts,
+            Panel::Artifacts => self.active_panel = Panel::Security,
+            Panel::Security => self.active_panel = Panel::Replication,
             _ => {}
         }
     }
@@ -562,6 +583,51 @@ impl App {
         self.loading = false;
     }
 
+    async fn load_replication_data(&mut self) {
+        let instance_name = match self.selected_instance() {
+            Some(i) => i.name.clone(),
+            None => return,
+        };
+
+        let client = match self.build_cached_client(&instance_name) {
+            Some(c) => c,
+            None => {
+                self.status_message = format!("Failed to connect to {instance_name}");
+                return;
+            }
+        };
+
+        self.loading = true;
+        self.status_message = "Loading replication data...".to_string();
+
+        match client.list_peers().per_page(50).send().await {
+            Ok(resp) => {
+                let inner = resp.into_inner();
+                self.replication.peers = inner.items;
+                self.replication.peer_list_state = ListState::default();
+                if !self.replication.peers.is_empty() {
+                    self.replication.peer_list_state.select(Some(0));
+                }
+            }
+            Err(e) => {
+                self.status_message = format!("Failed to load peers: {e}");
+                self.replication.peers.clear();
+            }
+        }
+
+        if let Ok(resp) = client.list_sync_policies().send().await {
+            let inner = resp.into_inner();
+            self.replication.policies = inner.items;
+        }
+
+        self.replication.loaded = true;
+        let peer_count = self.replication.peers.len();
+        let policy_count = self.replication.policies.len();
+        self.status_message =
+            format!("{peer_count} peers, {policy_count} sync policies on {instance_name}");
+        self.loading = false;
+    }
+
     async fn load_findings(&mut self) {
         let scan_id = match self
             .security
@@ -767,11 +833,15 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                     Panel::Instances => Panel::Repos,
                     Panel::Repos => Panel::Artifacts,
                     Panel::Artifacts => Panel::Security,
-                    Panel::Security => Panel::Instances,
+                    Panel::Security => Panel::Replication,
+                    Panel::Replication => Panel::Instances,
                 };
                 if next == Panel::Security && app.security.dashboard.is_none() {
                     app.active_panel = next;
                     app.load_security_data().await;
+                } else if next == Panel::Replication && !app.replication.loaded {
+                    app.active_panel = next;
+                    app.load_replication_data().await;
                 } else {
                     app.active_panel = next;
                 }
@@ -797,6 +867,7 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                         app.load_findings().await;
                     }
                 }
+                Panel::Replication => {}
             },
             KeyCode::Esc => {
                 if app.active_panel == Panel::Security && app.security.showing_findings {
@@ -814,6 +885,14 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                     app.active_panel = Panel::Security;
                 }
             }
+            KeyCode::Char('5') => {
+                if !app.replication.loaded {
+                    app.active_panel = Panel::Replication;
+                    app.load_replication_data().await;
+                } else {
+                    app.active_panel = Panel::Replication;
+                }
+            }
             KeyCode::Char('s') | KeyCode::Char('S') => {
                 app.global_searching = true;
                 app.global_search_submitted = false;
@@ -827,6 +906,10 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                 if app.active_panel == Panel::Security {
                     app.security.dashboard = None;
                     app.load_security_data().await;
+                }
+                if app.active_panel == Panel::Replication {
+                    app.replication.loaded = false;
+                    app.load_replication_data().await;
                 }
                 app.status_message = "Refreshed".to_string();
             }
@@ -853,6 +936,8 @@ fn draw(f: &mut Frame, app: &mut App) {
         draw_global_search(f, app, main_layout[0]);
     } else if app.active_panel == Panel::Security {
         draw_security_panel(f, app, main_layout[0]);
+    } else if app.active_panel == Panel::Replication {
+        draw_replication_panel(f, app, main_layout[0]);
     } else if app.detail_view {
         draw_detail(f, app, main_layout[0]);
     } else {
@@ -1058,6 +1143,11 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
         spans.extend(hotkey_span("Tab", " next panel"));
         spans.extend(hotkey_span("r", "efresh"));
         spans.extend(hotkey_span("?", "help"));
+    } else if app.active_panel == Panel::Replication {
+        spans.extend(hotkey_span(" q", "uit"));
+        spans.extend(hotkey_span("Tab", " next panel"));
+        spans.extend(hotkey_span("r", "efresh"));
+        spans.extend(hotkey_span("?", "help"));
     } else {
         spans.extend(hotkey_span(" q", "uit"));
         spans.extend(hotkey_span("s", " search all"));
@@ -1086,8 +1176,9 @@ fn draw_help_overlay(f: &mut Frame, area: Rect) {
         Line::from("  k/Up        Move up in list"),
         Line::from("  Enter       Select / expand / drill into findings"),
         Line::from("  Esc         Back (findings to scans)"),
-        Line::from("  Tab         Cycle panels (1-4)"),
+        Line::from("  Tab         Cycle panels (1-5)"),
         Line::from("  4           Jump to Security panel"),
+        Line::from("  5           Jump to Replication panel"),
         Line::from(""),
         Line::from("  s           Global search (all repos)"),
         Line::from("  /           Filter artifacts in repo"),
@@ -1489,6 +1580,155 @@ fn draw_findings_list(f: &mut Frame, app: &mut App, area: Rect) {
 }
 
 // ---------------------------------------------------------------------------
+// Replication panel drawing
+// ---------------------------------------------------------------------------
+
+fn peer_status_style(status: &str) -> Style {
+    match status.to_lowercase().as_str() {
+        "online" | "active" | "connected" => Style::default().fg(Color::Green),
+        "offline" | "disconnected" => Style::default().fg(Color::Red),
+        "syncing" => Style::default().fg(Color::Yellow),
+        _ => dim_style(),
+    }
+}
+
+fn draw_replication_panel(f: &mut Frame, app: &mut App, area: Rect) {
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    // Left: peer list
+    if app.replication.peers.is_empty() {
+        let block = Block::default()
+            .title(" Peers ")
+            .borders(Borders::ALL)
+            .border_style(cyan_style());
+        let msg = Paragraph::new("No peers found. Run `ak peer register` to add a peer.")
+            .block(block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(msg, layout[0]);
+    } else {
+        let title = format!(" Peers ({}) ", app.replication.peers.len());
+        let items: Vec<ListItem> = app
+            .replication
+            .peers
+            .iter()
+            .map(|peer| {
+                let cache_pct = if peer.cache_usage_percent > 0.0 {
+                    format!(" {:.0}%", peer.cache_usage_percent)
+                } else {
+                    String::new()
+                };
+                let region = peer
+                    .region
+                    .as_deref()
+                    .map(|r| format!(" [{r}]"))
+                    .unwrap_or_default();
+
+                ListItem::new(Line::from(vec![
+                    Span::raw(&peer.name),
+                    Span::raw("  "),
+                    Span::styled(&peer.status, peer_status_style(&peer.status)),
+                    Span::styled(region, Style::default().fg(Color::Magenta)),
+                    Span::styled(cache_pct, dim_style()),
+                ]))
+            })
+            .collect();
+
+        render_panel(
+            f,
+            &title,
+            items,
+            cyan_style(),
+            &mut app.replication.peer_list_state,
+            layout[0],
+        );
+    }
+
+    // Right: sync policies
+    let mut lines: Vec<Line> = Vec::new();
+
+    lines.push(Line::from(Span::styled("Sync Policies", bold_style())));
+    lines.push(Line::from(""));
+
+    if app.replication.policies.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "No sync policies configured.",
+            dim_style(),
+        )));
+    } else {
+        for policy in &app.replication.policies {
+            let enabled = if policy.enabled { "ON" } else { "OFF" };
+            let enabled_style = if policy.enabled {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default().fg(Color::Red)
+            };
+            let mode = &policy.replication_mode;
+
+            lines.push(Line::from(vec![
+                Span::styled(&policy.name, bold_style()),
+                Span::raw("  "),
+                Span::styled(enabled, enabled_style),
+                Span::raw("  "),
+                Span::styled(mode, Style::default().fg(Color::Magenta)),
+                Span::raw(format!("  pri:{}", policy.priority)),
+            ]));
+
+            if !policy.description.is_empty() {
+                lines.push(Line::from(vec![
+                    Span::raw("  "),
+                    Span::styled(&policy.description, dim_style()),
+                ]));
+            }
+        }
+    }
+
+    // Show selected peer detail below policies
+    if let Some(idx) = app.replication.peer_list_state.selected() {
+        if let Some(peer) = app.replication.peers.get(idx) {
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled("Selected Peer", bold_style())));
+            lines.push(detail_line("  Name:     ", &peer.name));
+            lines.push(detail_line("  Endpoint: ", &peer.endpoint_url));
+            lines.push(detail_line("  Status:   ", &peer.status));
+
+            if let Some(ref region) = peer.region {
+                lines.push(detail_line("  Region:   ", region));
+            }
+            if peer.cache_size_bytes > 0 {
+                lines.push(detail_line(
+                    "  Cache:    ",
+                    &format!(
+                        "{} / {}",
+                        format_bytes(peer.cache_used_bytes),
+                        format_bytes(peer.cache_size_bytes)
+                    ),
+                ));
+            }
+            if let Some(ref ts) = peer.last_sync_at {
+                lines.push(detail_line(
+                    "  Last sync: ",
+                    &ts.format("%Y-%m-%d %H:%M").to_string(),
+                ));
+            }
+        }
+    }
+
+    let block = Block::default()
+        .title(" Policies & Details ")
+        .borders(Borders::ALL)
+        .border_style(dim_style());
+
+    let paragraph = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
+
+    f.render_widget(paragraph, layout[1]);
+}
+
+// ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
 
@@ -1519,4 +1759,230 @@ fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
             Constraint::Percentage((100 - percent_x) / 2),
         ])
         .split(vertical[1])[1]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // -----------------------------------------------------------------------
+    // peer_status_style
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn peer_status_style_online_is_green() {
+        assert_eq!(peer_status_style("online").fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn peer_status_style_active_is_green() {
+        assert_eq!(peer_status_style("active").fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn peer_status_style_connected_is_green() {
+        assert_eq!(peer_status_style("connected").fg, Some(Color::Green));
+    }
+
+    #[test]
+    fn peer_status_style_offline_is_red() {
+        assert_eq!(peer_status_style("offline").fg, Some(Color::Red));
+    }
+
+    #[test]
+    fn peer_status_style_disconnected_is_red() {
+        assert_eq!(peer_status_style("disconnected").fg, Some(Color::Red));
+    }
+
+    #[test]
+    fn peer_status_style_syncing_is_yellow() {
+        assert_eq!(peer_status_style("syncing").fg, Some(Color::Yellow));
+    }
+
+    #[test]
+    fn peer_status_style_unknown_is_dim() {
+        assert_eq!(peer_status_style("unknown").fg, Some(Color::DarkGray));
+    }
+
+    #[test]
+    fn peer_status_style_case_insensitive() {
+        assert_eq!(peer_status_style("ONLINE").fg, Some(Color::Green));
+        assert_eq!(peer_status_style("Offline").fg, Some(Color::Red));
+        assert_eq!(peer_status_style("SYNCING").fg, Some(Color::Yellow));
+    }
+
+    // -----------------------------------------------------------------------
+    // instance_status_color
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn instance_status_online_is_green() {
+        assert_eq!(instance_status_color("online (5 repos)"), Color::Green);
+    }
+
+    #[test]
+    fn instance_status_offline_is_red() {
+        assert_eq!(instance_status_color("offline"), Color::Red);
+    }
+
+    #[test]
+    fn instance_status_error_is_red() {
+        assert_eq!(instance_status_color("error"), Color::Red);
+    }
+
+    #[test]
+    fn instance_status_loading_is_dark_gray() {
+        assert_eq!(instance_status_color("..."), Color::DarkGray);
+    }
+
+    #[test]
+    fn instance_status_other_is_yellow() {
+        assert_eq!(instance_status_color("connecting"), Color::Yellow);
+    }
+
+    // -----------------------------------------------------------------------
+    // severity_style
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn severity_critical_is_bold_red() {
+        let s = severity_style("CRITICAL");
+        assert_eq!(s.fg, Some(Color::Red));
+        assert!(s.add_modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn severity_high_is_red() {
+        assert_eq!(severity_style("HIGH").fg, Some(Color::Red));
+    }
+
+    #[test]
+    fn severity_medium_is_yellow() {
+        assert_eq!(severity_style("MEDIUM").fg, Some(Color::Yellow));
+    }
+
+    #[test]
+    fn severity_low_is_dim() {
+        assert_eq!(severity_style("LOW").fg, Some(Color::DarkGray));
+    }
+
+    #[test]
+    fn severity_case_insensitive() {
+        assert_eq!(severity_style("critical").fg, Some(Color::Red));
+        assert_eq!(severity_style("high").fg, Some(Color::Red));
+        assert_eq!(severity_style("medium").fg, Some(Color::Yellow));
+    }
+
+    // -----------------------------------------------------------------------
+    // Panel navigation
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn panel_equality() {
+        assert_eq!(Panel::Instances, Panel::Instances);
+        assert_eq!(Panel::Replication, Panel::Replication);
+        assert_ne!(Panel::Instances, Panel::Replication);
+    }
+
+    // -----------------------------------------------------------------------
+    // List navigation helpers
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn list_next_empty() {
+        let mut state = ListState::default();
+        list_next(&mut state, 0);
+        assert_eq!(state.selected(), None);
+    }
+
+    #[test]
+    fn list_next_advances() {
+        let mut state = ListState::default();
+        state.select(Some(0));
+        list_next(&mut state, 5);
+        assert_eq!(state.selected(), Some(1));
+    }
+
+    #[test]
+    fn list_next_clamps_at_end() {
+        let mut state = ListState::default();
+        state.select(Some(4));
+        list_next(&mut state, 5);
+        assert_eq!(state.selected(), Some(4));
+    }
+
+    #[test]
+    fn list_next_from_none() {
+        let mut state = ListState::default();
+        list_next(&mut state, 3);
+        assert_eq!(state.selected(), Some(0));
+    }
+
+    #[test]
+    fn list_prev_empty() {
+        let mut state = ListState::default();
+        list_prev(&mut state, 0);
+        assert_eq!(state.selected(), None);
+    }
+
+    #[test]
+    fn list_prev_moves_back() {
+        let mut state = ListState::default();
+        state.select(Some(3));
+        list_prev(&mut state, 5);
+        assert_eq!(state.selected(), Some(2));
+    }
+
+    #[test]
+    fn list_prev_clamps_at_zero() {
+        let mut state = ListState::default();
+        state.select(Some(0));
+        list_prev(&mut state, 5);
+        assert_eq!(state.selected(), Some(0));
+    }
+
+    // -----------------------------------------------------------------------
+    // Style helpers
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn bold_style_has_bold_modifier() {
+        assert!(bold_style().add_modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn hotkey_style_is_yellow_bold() {
+        let s = hotkey_style();
+        assert_eq!(s.fg, Some(Color::Yellow));
+        assert!(s.add_modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn dim_style_is_dark_gray() {
+        assert_eq!(dim_style().fg, Some(Color::DarkGray));
+    }
+
+    #[test]
+    fn cyan_style_is_cyan() {
+        assert_eq!(cyan_style().fg, Some(Color::Cyan));
+    }
+
+    #[test]
+    fn highlight_style_has_dark_gray_bg() {
+        let s = highlight_style();
+        assert_eq!(s.bg, Some(Color::DarkGray));
+        assert!(s.add_modifier.contains(Modifier::BOLD));
+    }
+
+    #[test]
+    fn panel_border_active_is_cyan() {
+        let s = panel_border_style(&Panel::Repos, &Panel::Repos);
+        assert_eq!(s.fg, Some(Color::Cyan));
+    }
+
+    #[test]
+    fn panel_border_inactive_is_dim() {
+        let s = panel_border_style(&Panel::Repos, &Panel::Artifacts);
+        assert_eq!(s.fg, Some(Color::DarkGray));
+    }
 }
