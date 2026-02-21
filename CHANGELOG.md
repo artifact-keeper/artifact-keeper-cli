@@ -5,6 +5,19 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-21
+
+### Added
+
+- **Group management** — `ak group list`, `show`, `create`, `delete`, `add-member`, `remove-member` for managing user groups and membership
+- **Permission management** — `ak permission list`, `create`, `delete` with filtering by target type and principal type for fine-grained access control
+- **Promotion workflows** — `ak promotion promote` to move artifacts between repositories, `ak promotion rule list/create/delete` for automated promotion rules, `ak promotion history` to view promotion audit trail
+- **Approval workflows** — `ak approval list`, `show`, `approve`, `reject` for promotion approval gates with optional notes
+- **Quality gates** — `ak quality-gate list`, `show`, `create`, `update`, `delete`, `check` (alias: `ak qg`) for defining and evaluating artifact quality thresholds; `check` exits non-zero on failure for CI integration
+- **Lifecycle policies** — `ak lifecycle list`, `show`, `create`, `delete`, `preview`, `execute` for managing security-based lifecycle policies with dry-run preview support
+- **Repository labels** — `ak label repo list`, `add`, `remove` for tagging repositories with key=value labels
+- **Admin user management** — `ak admin users update` (email, display name, admin/active flags) and `ak admin users reset-password` subcommands
+
 ## [0.4.2] - 2026-02-16
 
 ### Changed
@@ -71,6 +84,8 @@ Initial release of the Artifact Keeper CLI.
 - Covers 250+ API endpoints across all backend features
 - OpenAPI 3.1 → 3.0 conversion handled automatically by the xtask
 
+[0.5.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.5.0
+[0.4.2]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.4.2
 [0.4.1]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.4.1
 [0.4.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.4.0
 [0.3.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.3.0
