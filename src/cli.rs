@@ -214,6 +214,15 @@ pub enum Command {
         command: commands::sbom::SbomCommand,
     },
 
+    /// License compliance management
+    #[command(
+        after_help = "Examples:\n  ak license policy list\n  ak license policy create strict --allowed MIT,Apache-2.0\n  ak license check --licenses MIT,GPL-3.0"
+    )]
+    License {
+        #[command(subcommand)]
+        command: commands::license::LicenseCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -325,6 +334,7 @@ impl Cli {
             Command::Lifecycle { command } => command.execute(&global).await,
             Command::Sign { command } => command.execute(&global).await,
             Command::Sbom { command } => command.execute(&global).await,
+            Command::License { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
             Command::Config { command } => command.execute(&global).await,
@@ -1225,6 +1235,67 @@ mod tests {
             "Not exploitable in our config",
         ])
         .unwrap();
+    }
+
+    // ---- License command parsing ----
+
+    #[test]
+    fn parse_license_policy_list() {
+        let cli = parse(&["ak", "license", "policy", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_policy_show() {
+        let cli = parse(&["ak", "license", "policy", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_policy_create() {
+        let cli = parse(&[
+            "ak",
+            "license",
+            "policy",
+            "create",
+            "strict",
+            "--allowed",
+            "MIT,Apache-2.0",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_policy_create_with_denied() {
+        let cli = parse(&[
+            "ak",
+            "license",
+            "policy",
+            "create",
+            "restrictive",
+            "--allowed",
+            "MIT",
+            "--denied",
+            "GPL-3.0,AGPL-3.0",
+            "--allow-unknown",
+            "--action",
+            "block",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_policy_delete() {
+        let cli = parse(&["ak", "license", "policy", "delete", "some-id", "--yes"]).unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
+    }
+
+    #[test]
+    fn parse_license_check() {
+        let cli = parse(&["ak", "license", "check", "--licenses", "MIT,GPL-3.0"]).unwrap();
+        assert!(matches!(cli.command, Command::License { .. }));
     }
 
     // ---- Error cases ----
