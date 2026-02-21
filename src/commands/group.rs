@@ -288,6 +288,45 @@ async fn add_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Resul
     Ok(())
 }
 
+fn format_group_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["ID", "NAME", "DESCRIPTION", "MEMBERS", "CREATED"]);
+
+    for g in items {
+        let id = g["id"].as_str().unwrap_or("-");
+        let id_short = if id.len() >= 8 { &id[..8] } else { id };
+        table.add_row(vec![
+            id_short,
+            g["name"].as_str().unwrap_or("-"),
+            g["description"].as_str().unwrap_or("-"),
+            &g["member_count"].to_string(),
+            g["created_at"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+fn format_group_detail(item: &serde_json::Value) -> String {
+    format!(
+        "ID:           {}\n\
+         Name:         {}\n\
+         Description:  {}\n\
+         Members:      {}\n\
+         Created:      {}\n\
+         Updated:      {}",
+        item["id"].as_str().unwrap_or("-"),
+        item["name"].as_str().unwrap_or("-"),
+        item["description"].as_str().unwrap_or("-"),
+        item["member_count"],
+        item["created_at"].as_str().unwrap_or("-"),
+        item["updated_at"].as_str().unwrap_or("-"),
+    )
+}
+
 async fn remove_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Result<()> {
     let gid = parse_uuid(group_id, "group")?;
     let uid = parse_uuid(user_id, "user")?;
@@ -311,4 +350,292 @@ async fn remove_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Re
     eprintln!("Removed user {user_id} from group {group_id}.");
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use serde_json::json;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: GroupCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- parsing: list ----
+
+    #[test]
+    fn parse_list_defaults() {
+        let cli = parse(&["test", "list"]);
+        match cli.command {
+            GroupCommand::List {
+                search,
+                page,
+                per_page,
+            } => {
+                assert!(search.is_none());
+                assert_eq!(page, 1);
+                assert_eq!(per_page, 50);
+            }
+            _ => panic!("expected List"),
+        }
+    }
+
+    #[test]
+    fn parse_list_with_search() {
+        let cli = parse(&["test", "list", "--search", "admins"]);
+        match cli.command {
+            GroupCommand::List { search, .. } => {
+                assert_eq!(search.as_deref(), Some("admins"));
+            }
+            _ => panic!("expected List"),
+        }
+    }
+
+    #[test]
+    fn parse_list_with_pagination() {
+        let cli = parse(&["test", "list", "--page", "3", "--per-page", "25"]);
+        match cli.command {
+            GroupCommand::List { page, per_page, .. } => {
+                assert_eq!(page, 3);
+                assert_eq!(per_page, 25);
+            }
+            _ => panic!("expected List"),
+        }
+    }
+
+    // ---- parsing: show ----
+
+    #[test]
+    fn parse_show() {
+        let cli = parse(&["test", "show", "00000000-0000-0000-0000-000000000001"]);
+        match cli.command {
+            GroupCommand::Show { id } => {
+                assert_eq!(id, "00000000-0000-0000-0000-000000000001");
+            }
+            _ => panic!("expected Show"),
+        }
+    }
+
+    #[test]
+    fn parse_show_missing_id() {
+        let result = try_parse(&["test", "show"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: create ----
+
+    #[test]
+    fn parse_create_minimal() {
+        let cli = parse(&["test", "create", "developers"]);
+        match cli.command {
+            GroupCommand::Create { name, description } => {
+                assert_eq!(name, "developers");
+                assert!(description.is_none());
+            }
+            _ => panic!("expected Create"),
+        }
+    }
+
+    #[test]
+    fn parse_create_with_description() {
+        let cli = parse(&[
+            "test",
+            "create",
+            "developers",
+            "--description",
+            "Core dev team",
+        ]);
+        match cli.command {
+            GroupCommand::Create { name, description } => {
+                assert_eq!(name, "developers");
+                assert_eq!(description.as_deref(), Some("Core dev team"));
+            }
+            _ => panic!("expected Create"),
+        }
+    }
+
+    #[test]
+    fn parse_create_missing_name() {
+        let result = try_parse(&["test", "create"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: delete ----
+
+    #[test]
+    fn parse_delete_no_yes() {
+        let cli = parse(&["test", "delete", "some-id"]);
+        match cli.command {
+            GroupCommand::Delete { id, yes } => {
+                assert_eq!(id, "some-id");
+                assert!(!yes);
+            }
+            _ => panic!("expected Delete"),
+        }
+    }
+
+    #[test]
+    fn parse_delete_with_yes() {
+        let cli = parse(&["test", "delete", "some-id", "--yes"]);
+        match cli.command {
+            GroupCommand::Delete { yes, .. } => {
+                assert!(yes);
+            }
+            _ => panic!("expected Delete"),
+        }
+    }
+
+    #[test]
+    fn parse_delete_missing_id() {
+        let result = try_parse(&["test", "delete"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: add-member ----
+
+    #[test]
+    fn parse_add_member() {
+        let cli = parse(&["test", "add-member", "group-id", "user-id"]);
+        match cli.command {
+            GroupCommand::AddMember { group, user } => {
+                assert_eq!(group, "group-id");
+                assert_eq!(user, "user-id");
+            }
+            _ => panic!("expected AddMember"),
+        }
+    }
+
+    #[test]
+    fn parse_add_member_missing_user() {
+        let result = try_parse(&["test", "add-member", "group-id"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_add_member_missing_both() {
+        let result = try_parse(&["test", "add-member"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: remove-member ----
+
+    #[test]
+    fn parse_remove_member() {
+        let cli = parse(&["test", "remove-member", "group-id", "user-id"]);
+        match cli.command {
+            GroupCommand::RemoveMember { group, user } => {
+                assert_eq!(group, "group-id");
+                assert_eq!(user, "user-id");
+            }
+            _ => panic!("expected RemoveMember"),
+        }
+    }
+
+    #[test]
+    fn parse_remove_member_missing_user() {
+        let result = try_parse(&["test", "remove-member", "group-id"]);
+        assert!(result.is_err());
+    }
+
+    // ---- format functions ----
+
+    #[test]
+    fn format_group_table_renders() {
+        let items = vec![json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "developers",
+            "description": "Core dev team",
+            "member_count": 5,
+            "created_at": "2026-01-15",
+        })];
+        let table = format_group_table(&items);
+        assert!(table.contains("00000000"));
+        assert!(table.contains("developers"));
+        assert!(table.contains("Core dev team"));
+        assert!(table.contains("5"));
+    }
+
+    #[test]
+    fn format_group_table_multiple_rows() {
+        let items = vec![
+            json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "name": "admins",
+                "description": null,
+                "member_count": 2,
+                "created_at": "2026-01-01",
+            }),
+            json!({
+                "id": "11111111-1111-1111-1111-111111111111",
+                "name": "devs",
+                "description": "Developers",
+                "member_count": 10,
+                "created_at": "2026-02-01",
+            }),
+        ];
+        let table = format_group_table(&items);
+        assert!(table.contains("admins"));
+        assert!(table.contains("devs"));
+        assert!(table.contains("Developers"));
+    }
+
+    #[test]
+    fn format_group_table_null_description() {
+        let items = vec![json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "test",
+            "description": null,
+            "member_count": 0,
+            "created_at": "2026-01-01",
+        })];
+        let table = format_group_table(&items);
+        assert!(table.contains("-"));
+    }
+
+    #[test]
+    fn format_group_detail_renders() {
+        let item = json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "developers",
+            "description": "Core dev team",
+            "member_count": 5,
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": "2026-01-20T12:00:00Z",
+        });
+        let detail = format_group_detail(&item);
+        assert!(detail.contains("00000000-0000-0000-0000-000000000001"));
+        assert!(detail.contains("developers"));
+        assert!(detail.contains("Core dev team"));
+        assert!(detail.contains("5"));
+        assert!(detail.contains("2026-01-15"));
+        assert!(detail.contains("2026-01-20"));
+    }
+
+    #[test]
+    fn format_group_detail_null_fields() {
+        let item = json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "test",
+            "description": null,
+            "member_count": 0,
+            "created_at": null,
+            "updated_at": null,
+        });
+        let detail = format_group_detail(&item);
+        assert!(detail.contains("Name:"));
+        assert!(detail.contains("test"));
+        // Null description and dates show as "-"
+        assert!(detail.contains("-"));
+    }
 }

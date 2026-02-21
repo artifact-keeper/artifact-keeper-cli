@@ -330,6 +330,66 @@ async fn delete_rule(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
     Ok(())
 }
 
+fn format_rule_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["ID", "NAME", "SOURCE", "TARGET", "AUTO", "ENABLED"]);
+
+    for r in items {
+        let id = r["id"].as_str().unwrap_or("-");
+        let id_short = if id.len() >= 8 { &id[..8] } else { id };
+        let src = r["source_repo_id"].as_str().unwrap_or("-");
+        let src_short = if src.len() >= 8 { &src[..8] } else { src };
+        let tgt = r["target_repo_id"].as_str().unwrap_or("-");
+        let tgt_short = if tgt.len() >= 8 { &tgt[..8] } else { tgt };
+        let auto = if r["auto_promote"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        };
+        let enabled = if r["is_enabled"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        };
+        table.add_row(vec![
+            id_short,
+            r["name"].as_str().unwrap_or("-"),
+            src_short,
+            tgt_short,
+            auto,
+            enabled,
+        ]);
+    }
+
+    table.to_string()
+}
+
+fn format_history_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["ID", "ARTIFACT", "SOURCE", "TARGET", "STATUS", "DATE"]);
+
+    for e in items {
+        let id = e["id"].as_str().unwrap_or("-");
+        let id_short = if id.len() >= 8 { &id[..8] } else { id };
+        table.add_row(vec![
+            id_short,
+            e["artifact_path"].as_str().unwrap_or("-"),
+            e["source_repo"].as_str().unwrap_or("-"),
+            e["target_repo"].as_str().unwrap_or("-"),
+            e["status"].as_str().unwrap_or("-"),
+            e["created_at"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
 async fn promotion_history(
     repo: &str,
     status: Option<&str>,
@@ -417,4 +477,417 @@ async fn promotion_history(
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use serde_json::json;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: PromotionCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- parsing: promote ----
+
+    #[test]
+    fn parse_promote_minimal() {
+        let cli = parse(&[
+            "test",
+            "promote",
+            "--from",
+            "maven-staging",
+            "00000000-0000-0000-0000-000000000001",
+            "--to",
+            "maven-releases",
+        ]);
+        match cli.command {
+            PromotionCommand::Promote {
+                from,
+                artifact,
+                to,
+                notes,
+                skip_checks,
+            } => {
+                assert_eq!(from, "maven-staging");
+                assert_eq!(artifact, "00000000-0000-0000-0000-000000000001");
+                assert_eq!(to, "maven-releases");
+                assert!(notes.is_none());
+                assert!(!skip_checks);
+            }
+            _ => panic!("expected Promote"),
+        }
+    }
+
+    #[test]
+    fn parse_promote_with_notes_and_skip() {
+        let cli = parse(&[
+            "test",
+            "promote",
+            "--from",
+            "staging",
+            "artifact-id",
+            "--to",
+            "prod",
+            "--notes",
+            "Approved by QA",
+            "--skip-checks",
+        ]);
+        match cli.command {
+            PromotionCommand::Promote {
+                notes, skip_checks, ..
+            } => {
+                assert_eq!(notes.as_deref(), Some("Approved by QA"));
+                assert!(skip_checks);
+            }
+            _ => panic!("expected Promote"),
+        }
+    }
+
+    #[test]
+    fn parse_promote_missing_from() {
+        let result = try_parse(&["test", "promote", "artifact-id", "--to", "prod"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_promote_missing_to() {
+        let result = try_parse(&["test", "promote", "--from", "staging", "artifact-id"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_promote_missing_artifact() {
+        let result = try_parse(&[
+            "test",
+            "promote",
+            "--from",
+            "staging",
+            "--to",
+            "prod",
+        ]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: rule list ----
+
+    #[test]
+    fn parse_rule_list_no_filter() {
+        let cli = parse(&["test", "rule", "list"]);
+        match cli.command {
+            PromotionCommand::Rule {
+                command: PromotionRuleCommand::List { from },
+            } => {
+                assert!(from.is_none());
+            }
+            _ => panic!("expected Rule List"),
+        }
+    }
+
+    #[test]
+    fn parse_rule_list_with_from() {
+        let cli = parse(&[
+            "test",
+            "rule",
+            "list",
+            "--from",
+            "00000000-0000-0000-0000-000000000001",
+        ]);
+        match cli.command {
+            PromotionCommand::Rule {
+                command: PromotionRuleCommand::List { from },
+            } => {
+                assert_eq!(from.as_deref(), Some("00000000-0000-0000-0000-000000000001"));
+            }
+            _ => panic!("expected Rule List"),
+        }
+    }
+
+    // ---- parsing: rule create ----
+
+    #[test]
+    fn parse_rule_create_minimal() {
+        let cli = parse(&[
+            "test",
+            "rule",
+            "create",
+            "staging-to-prod",
+            "--from",
+            "repo-a-id",
+            "--to",
+            "repo-b-id",
+        ]);
+        match cli.command {
+            PromotionCommand::Rule {
+                command:
+                    PromotionRuleCommand::Create {
+                        name,
+                        from,
+                        to,
+                        auto,
+                    },
+            } => {
+                assert_eq!(name, "staging-to-prod");
+                assert_eq!(from, "repo-a-id");
+                assert_eq!(to, "repo-b-id");
+                assert!(!auto);
+            }
+            _ => panic!("expected Rule Create"),
+        }
+    }
+
+    #[test]
+    fn parse_rule_create_with_auto() {
+        let cli = parse(&[
+            "test",
+            "rule",
+            "create",
+            "auto-rule",
+            "--from",
+            "id1",
+            "--to",
+            "id2",
+            "--auto",
+        ]);
+        match cli.command {
+            PromotionCommand::Rule {
+                command: PromotionRuleCommand::Create { auto, .. },
+            } => {
+                assert!(auto);
+            }
+            _ => panic!("expected Rule Create"),
+        }
+    }
+
+    #[test]
+    fn parse_rule_create_missing_name() {
+        let result = try_parse(&[
+            "test",
+            "rule",
+            "create",
+            "--from",
+            "id1",
+            "--to",
+            "id2",
+        ]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: rule delete ----
+
+    #[test]
+    fn parse_rule_delete() {
+        let cli = parse(&["test", "rule", "delete", "rule-id"]);
+        match cli.command {
+            PromotionCommand::Rule {
+                command: PromotionRuleCommand::Delete { id, yes },
+            } => {
+                assert_eq!(id, "rule-id");
+                assert!(!yes);
+            }
+            _ => panic!("expected Rule Delete"),
+        }
+    }
+
+    #[test]
+    fn parse_rule_delete_with_yes() {
+        let cli = parse(&["test", "rule", "delete", "rule-id", "--yes"]);
+        match cli.command {
+            PromotionCommand::Rule {
+                command: PromotionRuleCommand::Delete { yes, .. },
+            } => {
+                assert!(yes);
+            }
+            _ => panic!("expected Rule Delete"),
+        }
+    }
+
+    #[test]
+    fn parse_rule_delete_missing_id() {
+        let result = try_parse(&["test", "rule", "delete"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: history ----
+
+    #[test]
+    fn parse_history_minimal() {
+        let cli = parse(&["test", "history", "--repo", "maven-releases"]);
+        match cli.command {
+            PromotionCommand::History {
+                repo,
+                status,
+                page,
+                per_page,
+            } => {
+                assert_eq!(repo, "maven-releases");
+                assert!(status.is_none());
+                assert_eq!(page, 1);
+                assert_eq!(per_page, 20);
+            }
+            _ => panic!("expected History"),
+        }
+    }
+
+    #[test]
+    fn parse_history_with_all_options() {
+        let cli = parse(&[
+            "test",
+            "history",
+            "--repo",
+            "npm-local",
+            "--status",
+            "completed",
+            "--page",
+            "2",
+            "--per-page",
+            "50",
+        ]);
+        match cli.command {
+            PromotionCommand::History {
+                repo,
+                status,
+                page,
+                per_page,
+            } => {
+                assert_eq!(repo, "npm-local");
+                assert_eq!(status.as_deref(), Some("completed"));
+                assert_eq!(page, 2);
+                assert_eq!(per_page, 50);
+            }
+            _ => panic!("expected History"),
+        }
+    }
+
+    #[test]
+    fn parse_history_missing_repo() {
+        let result = try_parse(&["test", "history"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: missing subcommand ----
+
+    #[test]
+    fn parse_rule_missing_subcommand() {
+        let result = try_parse(&["test", "rule"]);
+        assert!(result.is_err());
+    }
+
+    // ---- format functions ----
+
+    #[test]
+    fn format_rule_table_renders() {
+        let items = vec![json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "staging-to-prod",
+            "source_repo_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "target_repo_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "auto_promote": true,
+            "is_enabled": true,
+        })];
+        let table = format_rule_table(&items);
+        assert!(table.contains("00000000"));
+        assert!(table.contains("staging-to-prod"));
+        assert!(table.contains("aaaaaaaa"));
+        assert!(table.contains("bbbbbbbb"));
+        assert!(table.contains("yes"));
+    }
+
+    #[test]
+    fn format_rule_table_disabled_no_auto() {
+        let items = vec![json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "manual-rule",
+            "source_repo_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "target_repo_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "auto_promote": false,
+            "is_enabled": false,
+        })];
+        let table = format_rule_table(&items);
+        assert!(table.contains("manual-rule"));
+        // Both auto and enabled should show "no"
+        let no_count = table.matches("no").count();
+        assert!(no_count >= 2);
+    }
+
+    #[test]
+    fn format_rule_table_multiple_rows() {
+        let items = vec![
+            json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "name": "rule-a",
+                "source_repo_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "target_repo_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                "auto_promote": true,
+                "is_enabled": true,
+            }),
+            json!({
+                "id": "11111111-1111-1111-1111-111111111111",
+                "name": "rule-b",
+                "source_repo_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                "target_repo_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+                "auto_promote": false,
+                "is_enabled": true,
+            }),
+        ];
+        let table = format_rule_table(&items);
+        assert!(table.contains("rule-a"));
+        assert!(table.contains("rule-b"));
+    }
+
+    #[test]
+    fn format_history_table_renders() {
+        let items = vec![json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "artifact_path": "com/example/app/1.0.0",
+            "source_repo": "maven-staging",
+            "target_repo": "maven-releases",
+            "status": "completed",
+            "created_at": "2026-01-15 12:00",
+        })];
+        let table = format_history_table(&items);
+        assert!(table.contains("00000000"));
+        assert!(table.contains("com/example/app/1.0.0"));
+        assert!(table.contains("maven-staging"));
+        assert!(table.contains("maven-releases"));
+        assert!(table.contains("completed"));
+    }
+
+    #[test]
+    fn format_history_table_multiple_rows() {
+        let items = vec![
+            json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "artifact_path": "pkg-a",
+                "source_repo": "staging",
+                "target_repo": "prod",
+                "status": "completed",
+                "created_at": "2026-01-15",
+            }),
+            json!({
+                "id": "11111111-1111-1111-1111-111111111111",
+                "artifact_path": "pkg-b",
+                "source_repo": "dev",
+                "target_repo": "staging",
+                "status": "pending",
+                "created_at": "2026-01-16",
+            }),
+        ];
+        let table = format_history_table(&items);
+        assert!(table.contains("pkg-a"));
+        assert!(table.contains("pkg-b"));
+        assert!(table.contains("completed"));
+        assert!(table.contains("pending"));
+    }
 }

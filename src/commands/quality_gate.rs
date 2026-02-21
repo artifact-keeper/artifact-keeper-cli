@@ -438,6 +438,111 @@ async fn delete_gate(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
     Ok(())
 }
 
+fn format_gate_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            "ID", "NAME", "ACTION", "ENABLED", "MAX CRIT", "MAX HIGH",
+        ]);
+
+    for g in items {
+        let id = g["id"].as_str().unwrap_or("-");
+        let id_short = if id.len() >= 8 { &id[..8] } else { id };
+        let enabled = if g["enabled"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        };
+        let max_crit = g["max_critical"]
+            .as_i64()
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string());
+        let max_high = g["max_high"]
+            .as_i64()
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string());
+        table.add_row(vec![
+            id_short,
+            g["name"].as_str().unwrap_or("-"),
+            g["action"].as_str().unwrap_or("-"),
+            enabled,
+            &max_crit,
+            &max_high,
+        ]);
+    }
+
+    table.to_string()
+}
+
+fn format_gate_detail(item: &serde_json::Value) -> String {
+    let required_checks = item["required_checks"]
+        .as_array()
+        .map(|a| {
+            if a.is_empty() {
+                "-".to_string()
+            } else {
+                a.iter()
+                    .filter_map(|v| v.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            }
+        })
+        .unwrap_or_else(|| "-".to_string());
+
+    format!(
+        "ID:                  {}\n\
+         Name:                {}\n\
+         Description:         {}\n\
+         Action:              {}\n\
+         Enabled:             {}\n\
+         Max Critical:        {}\n\
+         Max High:            {}\n\
+         Max Medium:          {}\n\
+         Min Health Score:    {}\n\
+         Required Checks:     {}\n\
+         Enforce on Download: {}\n\
+         Enforce on Promote:  {}",
+        item["id"].as_str().unwrap_or("-"),
+        item["name"].as_str().unwrap_or("-"),
+        item["description"].as_str().unwrap_or("-"),
+        item["action"].as_str().unwrap_or("-"),
+        if item["enabled"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        },
+        item["max_critical_issues"]
+            .as_i64()
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+        item["max_high_issues"]
+            .as_i64()
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+        item["max_medium_issues"]
+            .as_i64()
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+        item["min_health_score"]
+            .as_f64()
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+        required_checks,
+        if item["enforce_on_download"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        },
+        if item["enforce_on_promotion"].as_bool().unwrap_or(false) {
+            "yes"
+        } else {
+            "no"
+        },
+    )
+}
+
 async fn check_artifact(
     artifact_id: &str,
     repo_id: Option<&str>,
@@ -506,4 +611,429 @@ async fn check_artifact(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use serde_json::json;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: QualityGateCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- parsing: list ----
+
+    #[test]
+    fn parse_list() {
+        let cli = parse(&["test", "list"]);
+        assert!(matches!(cli.command, QualityGateCommand::List));
+    }
+
+    // ---- parsing: show ----
+
+    #[test]
+    fn parse_show() {
+        let cli = parse(&["test", "show", "gate-id"]);
+        match cli.command {
+            QualityGateCommand::Show { id } => {
+                assert_eq!(id, "gate-id");
+            }
+            _ => panic!("expected Show"),
+        }
+    }
+
+    #[test]
+    fn parse_show_missing_id() {
+        let result = try_parse(&["test", "show"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: create ----
+
+    #[test]
+    fn parse_create_minimal() {
+        let cli = parse(&["test", "create", "security-gate"]);
+        match cli.command {
+            QualityGateCommand::Create {
+                name,
+                max_critical,
+                max_high,
+                max_medium,
+                action,
+                description,
+                repo,
+                required_checks,
+            } => {
+                assert_eq!(name, "security-gate");
+                assert!(max_critical.is_none());
+                assert!(max_high.is_none());
+                assert!(max_medium.is_none());
+                assert!(action.is_none());
+                assert!(description.is_none());
+                assert!(repo.is_none());
+                assert!(required_checks.is_empty());
+            }
+            _ => panic!("expected Create"),
+        }
+    }
+
+    #[test]
+    fn parse_create_all_options() {
+        let cli = parse(&[
+            "test",
+            "create",
+            "strict-gate",
+            "--max-critical",
+            "0",
+            "--max-high",
+            "5",
+            "--max-medium",
+            "10",
+            "--action",
+            "block",
+            "--description",
+            "Strict security policy",
+            "--repo",
+            "some-repo-id",
+            "--required-checks",
+            "trivy,grype,snyk",
+        ]);
+        match cli.command {
+            QualityGateCommand::Create {
+                name,
+                max_critical,
+                max_high,
+                max_medium,
+                action,
+                description,
+                repo,
+                required_checks,
+            } => {
+                assert_eq!(name, "strict-gate");
+                assert_eq!(max_critical, Some(0));
+                assert_eq!(max_high, Some(5));
+                assert_eq!(max_medium, Some(10));
+                assert_eq!(action.as_deref(), Some("block"));
+                assert_eq!(description.as_deref(), Some("Strict security policy"));
+                assert_eq!(repo.as_deref(), Some("some-repo-id"));
+                assert_eq!(required_checks, vec!["trivy", "grype", "snyk"]);
+            }
+            _ => panic!("expected Create"),
+        }
+    }
+
+    #[test]
+    fn parse_create_single_required_check() {
+        let cli = parse(&[
+            "test",
+            "create",
+            "basic-gate",
+            "--required-checks",
+            "trivy",
+        ]);
+        match cli.command {
+            QualityGateCommand::Create {
+                required_checks, ..
+            } => {
+                assert_eq!(required_checks, vec!["trivy"]);
+            }
+            _ => panic!("expected Create"),
+        }
+    }
+
+    #[test]
+    fn parse_create_missing_name() {
+        let result = try_parse(&["test", "create"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: update ----
+
+    #[test]
+    fn parse_update_minimal() {
+        let cli = parse(&["test", "update", "gate-id"]);
+        match cli.command {
+            QualityGateCommand::Update {
+                id,
+                name,
+                max_critical,
+                max_high,
+                action,
+                enabled,
+            } => {
+                assert_eq!(id, "gate-id");
+                assert!(name.is_none());
+                assert!(max_critical.is_none());
+                assert!(max_high.is_none());
+                assert!(action.is_none());
+                assert!(enabled.is_none());
+            }
+            _ => panic!("expected Update"),
+        }
+    }
+
+    #[test]
+    fn parse_update_all_options() {
+        let cli = parse(&[
+            "test",
+            "update",
+            "gate-id",
+            "--name",
+            "new-name",
+            "--max-critical",
+            "1",
+            "--max-high",
+            "10",
+            "--action",
+            "warn",
+            "--enabled",
+            "true",
+        ]);
+        match cli.command {
+            QualityGateCommand::Update {
+                id,
+                name,
+                max_critical,
+                max_high,
+                action,
+                enabled,
+            } => {
+                assert_eq!(id, "gate-id");
+                assert_eq!(name.as_deref(), Some("new-name"));
+                assert_eq!(max_critical, Some(1));
+                assert_eq!(max_high, Some(10));
+                assert_eq!(action.as_deref(), Some("warn"));
+                assert_eq!(enabled, Some(true));
+            }
+            _ => panic!("expected Update"),
+        }
+    }
+
+    #[test]
+    fn parse_update_enabled_false() {
+        let cli = parse(&["test", "update", "gate-id", "--enabled", "false"]);
+        match cli.command {
+            QualityGateCommand::Update { enabled, .. } => {
+                assert_eq!(enabled, Some(false));
+            }
+            _ => panic!("expected Update"),
+        }
+    }
+
+    #[test]
+    fn parse_update_missing_id() {
+        let result = try_parse(&["test", "update"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: delete ----
+
+    #[test]
+    fn parse_delete_no_yes() {
+        let cli = parse(&["test", "delete", "gate-id"]);
+        match cli.command {
+            QualityGateCommand::Delete { id, yes } => {
+                assert_eq!(id, "gate-id");
+                assert!(!yes);
+            }
+            _ => panic!("expected Delete"),
+        }
+    }
+
+    #[test]
+    fn parse_delete_with_yes() {
+        let cli = parse(&["test", "delete", "gate-id", "--yes"]);
+        match cli.command {
+            QualityGateCommand::Delete { yes, .. } => {
+                assert!(yes);
+            }
+            _ => panic!("expected Delete"),
+        }
+    }
+
+    #[test]
+    fn parse_delete_missing_id() {
+        let result = try_parse(&["test", "delete"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: check ----
+
+    #[test]
+    fn parse_check_minimal() {
+        let cli = parse(&["test", "check", "artifact-id"]);
+        match cli.command {
+            QualityGateCommand::Check { artifact, repo } => {
+                assert_eq!(artifact, "artifact-id");
+                assert!(repo.is_none());
+            }
+            _ => panic!("expected Check"),
+        }
+    }
+
+    #[test]
+    fn parse_check_with_repo() {
+        let cli = parse(&["test", "check", "artifact-id", "--repo", "repo-id"]);
+        match cli.command {
+            QualityGateCommand::Check { artifact, repo } => {
+                assert_eq!(artifact, "artifact-id");
+                assert_eq!(repo.as_deref(), Some("repo-id"));
+            }
+            _ => panic!("expected Check"),
+        }
+    }
+
+    #[test]
+    fn parse_check_missing_artifact() {
+        let result = try_parse(&["test", "check"]);
+        assert!(result.is_err());
+    }
+
+    // ---- format functions ----
+
+    #[test]
+    fn format_gate_table_renders() {
+        let items = vec![json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "security-gate",
+            "action": "block",
+            "enabled": true,
+            "max_critical": 0,
+            "max_high": 5,
+        })];
+        let table = format_gate_table(&items);
+        assert!(table.contains("00000000"));
+        assert!(table.contains("security-gate"));
+        assert!(table.contains("block"));
+        assert!(table.contains("yes"));
+        assert!(table.contains("0"));
+        assert!(table.contains("5"));
+    }
+
+    #[test]
+    fn format_gate_table_disabled_null_limits() {
+        let items = vec![json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "basic-gate",
+            "action": "warn",
+            "enabled": false,
+            "max_critical": null,
+            "max_high": null,
+        })];
+        let table = format_gate_table(&items);
+        assert!(table.contains("basic-gate"));
+        assert!(table.contains("warn"));
+        assert!(table.contains("no"));
+    }
+
+    #[test]
+    fn format_gate_table_multiple_rows() {
+        let items = vec![
+            json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "name": "gate-a",
+                "action": "block",
+                "enabled": true,
+                "max_critical": 0,
+                "max_high": 3,
+            }),
+            json!({
+                "id": "11111111-1111-1111-1111-111111111111",
+                "name": "gate-b",
+                "action": "warn",
+                "enabled": false,
+                "max_critical": null,
+                "max_high": null,
+            }),
+        ];
+        let table = format_gate_table(&items);
+        assert!(table.contains("gate-a"));
+        assert!(table.contains("gate-b"));
+    }
+
+    #[test]
+    fn format_gate_detail_renders() {
+        let item = json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "security-gate",
+            "description": "Block critical vulns",
+            "action": "block",
+            "enabled": true,
+            "max_critical_issues": 0,
+            "max_high_issues": 5,
+            "max_medium_issues": 20,
+            "min_health_score": 80.0,
+            "required_checks": ["trivy", "grype"],
+            "enforce_on_download": true,
+            "enforce_on_promotion": false,
+        });
+        let detail = format_gate_detail(&item);
+        assert!(detail.contains("00000000-0000-0000-0000-000000000001"));
+        assert!(detail.contains("security-gate"));
+        assert!(detail.contains("Block critical vulns"));
+        assert!(detail.contains("block"));
+        assert!(detail.contains("yes")); // enabled
+        assert!(detail.contains("0"));   // max_critical
+        assert!(detail.contains("5"));   // max_high
+        assert!(detail.contains("20"));  // max_medium
+        assert!(detail.contains("80"));  // min_health_score
+        assert!(detail.contains("trivy, grype"));
+    }
+
+    #[test]
+    fn format_gate_detail_null_optionals() {
+        let item = json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "basic-gate",
+            "description": null,
+            "action": "allow",
+            "enabled": false,
+            "max_critical_issues": null,
+            "max_high_issues": null,
+            "max_medium_issues": null,
+            "min_health_score": null,
+            "required_checks": [],
+            "enforce_on_download": false,
+            "enforce_on_promotion": false,
+        });
+        let detail = format_gate_detail(&item);
+        assert!(detail.contains("basic-gate"));
+        assert!(detail.contains("allow"));
+        // Null fields should show "-"
+        assert!(detail.contains("Max Critical:        -"));
+        assert!(detail.contains("Required Checks:     -"));
+    }
+
+    #[test]
+    fn format_gate_detail_empty_checks() {
+        let item = json!({
+            "id": "id",
+            "name": "gate",
+            "description": null,
+            "action": "warn",
+            "enabled": true,
+            "max_critical_issues": null,
+            "max_high_issues": null,
+            "max_medium_issues": null,
+            "min_health_score": null,
+            "required_checks": [],
+            "enforce_on_download": false,
+            "enforce_on_promotion": true,
+        });
+        let detail = format_gate_detail(&item);
+        assert!(detail.contains("Required Checks:     -"));
+        assert!(detail.contains("Enforce on Promote:  yes"));
+    }
 }

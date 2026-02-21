@@ -234,6 +234,55 @@ async fn show_approval(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+fn format_approval_table(items: &[serde_json::Value]) -> String {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec!["ID", "SOURCE", "TARGET", "STATUS", "REQUESTED"]);
+
+    for a in items {
+        let id = a["id"].as_str().unwrap_or("-");
+        let id_short = if id.len() >= 8 { &id[..8] } else { id };
+        table.add_row(vec![
+            id_short,
+            a["source_repository"].as_str().unwrap_or("-"),
+            a["target_repository"].as_str().unwrap_or("-"),
+            a["status"].as_str().unwrap_or("-"),
+            a["requested_at"].as_str().unwrap_or("-"),
+        ]);
+    }
+
+    table.to_string()
+}
+
+fn format_approval_detail(item: &serde_json::Value) -> String {
+    format!(
+        "ID:               {}\n\
+         Artifact:         {}\n\
+         Source:           {}\n\
+         Target:           {}\n\
+         Status:           {}\n\
+         Requested By:     {}\n\
+         Requested At:     {}\n\
+         Reviewed By:      {}\n\
+         Reviewed At:      {}\n\
+         Notes:            {}\n\
+         Review Notes:     {}",
+        item["id"].as_str().unwrap_or("-"),
+        item["artifact_id"].as_str().unwrap_or("-"),
+        item["source_repository"].as_str().unwrap_or("-"),
+        item["target_repository"].as_str().unwrap_or("-"),
+        item["status"].as_str().unwrap_or("-"),
+        item["requested_by"].as_str().unwrap_or("-"),
+        item["requested_at"].as_str().unwrap_or("-"),
+        item["reviewed_by"].as_str().unwrap_or("-"),
+        item["reviewed_at"].as_str().unwrap_or("-"),
+        item["notes"].as_str().unwrap_or("-"),
+        item["review_notes"].as_str().unwrap_or("-"),
+    )
+}
+
 async fn review_promotion(
     id: &str,
     comment: Option<&str>,
@@ -276,4 +325,293 @@ async fn review_promotion(
     );
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+    use serde_json::json;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: ApprovalCommand,
+    }
+
+    fn parse(args: &[&str]) -> TestCli {
+        TestCli::try_parse_from(args).unwrap()
+    }
+
+    fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
+        TestCli::try_parse_from(args)
+    }
+
+    // ---- parsing: list ----
+
+    #[test]
+    fn parse_list_defaults() {
+        let cli = parse(&["test", "list"]);
+        match cli.command {
+            ApprovalCommand::List {
+                status,
+                repo,
+                page,
+                per_page,
+            } => {
+                assert!(status.is_none());
+                assert!(repo.is_none());
+                assert_eq!(page, 1);
+                assert_eq!(per_page, 20);
+            }
+            _ => panic!("expected List"),
+        }
+    }
+
+    #[test]
+    fn parse_list_with_status() {
+        let cli = parse(&["test", "list", "--status", "pending"]);
+        match cli.command {
+            ApprovalCommand::List { status, .. } => {
+                assert_eq!(status.as_deref(), Some("pending"));
+            }
+            _ => panic!("expected List"),
+        }
+    }
+
+    #[test]
+    fn parse_list_with_repo() {
+        let cli = parse(&["test", "list", "--repo", "maven-releases"]);
+        match cli.command {
+            ApprovalCommand::List { repo, .. } => {
+                assert_eq!(repo.as_deref(), Some("maven-releases"));
+            }
+            _ => panic!("expected List"),
+        }
+    }
+
+    #[test]
+    fn parse_list_with_all_options() {
+        let cli = parse(&[
+            "test",
+            "list",
+            "--status",
+            "approved",
+            "--repo",
+            "npm-local",
+            "--page",
+            "3",
+            "--per-page",
+            "10",
+        ]);
+        match cli.command {
+            ApprovalCommand::List {
+                status,
+                repo,
+                page,
+                per_page,
+            } => {
+                assert_eq!(status.as_deref(), Some("approved"));
+                assert_eq!(repo.as_deref(), Some("npm-local"));
+                assert_eq!(page, 3);
+                assert_eq!(per_page, 10);
+            }
+            _ => panic!("expected List"),
+        }
+    }
+
+    // ---- parsing: show ----
+
+    #[test]
+    fn parse_show() {
+        let cli = parse(&["test", "show", "00000000-0000-0000-0000-000000000001"]);
+        match cli.command {
+            ApprovalCommand::Show { id } => {
+                assert_eq!(id, "00000000-0000-0000-0000-000000000001");
+            }
+            _ => panic!("expected Show"),
+        }
+    }
+
+    #[test]
+    fn parse_show_missing_id() {
+        let result = try_parse(&["test", "show"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: approve ----
+
+    #[test]
+    fn parse_approve_no_comment() {
+        let cli = parse(&["test", "approve", "some-id"]);
+        match cli.command {
+            ApprovalCommand::Approve { id, comment } => {
+                assert_eq!(id, "some-id");
+                assert!(comment.is_none());
+            }
+            _ => panic!("expected Approve"),
+        }
+    }
+
+    #[test]
+    fn parse_approve_with_comment() {
+        let cli = parse(&["test", "approve", "some-id", "--comment", "Looks good"]);
+        match cli.command {
+            ApprovalCommand::Approve { id, comment } => {
+                assert_eq!(id, "some-id");
+                assert_eq!(comment.as_deref(), Some("Looks good"));
+            }
+            _ => panic!("expected Approve"),
+        }
+    }
+
+    #[test]
+    fn parse_approve_missing_id() {
+        let result = try_parse(&["test", "approve"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: reject ----
+
+    #[test]
+    fn parse_reject_no_comment() {
+        let cli = parse(&["test", "reject", "some-id"]);
+        match cli.command {
+            ApprovalCommand::Reject { id, comment } => {
+                assert_eq!(id, "some-id");
+                assert!(comment.is_none());
+            }
+            _ => panic!("expected Reject"),
+        }
+    }
+
+    #[test]
+    fn parse_reject_with_comment() {
+        let cli = parse(&[
+            "test",
+            "reject",
+            "some-id",
+            "--comment",
+            "Needs security review",
+        ]);
+        match cli.command {
+            ApprovalCommand::Reject { id, comment } => {
+                assert_eq!(id, "some-id");
+                assert_eq!(comment.as_deref(), Some("Needs security review"));
+            }
+            _ => panic!("expected Reject"),
+        }
+    }
+
+    // ---- format functions ----
+
+    #[test]
+    fn format_approval_table_renders() {
+        let items = vec![json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "artifact_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "source_repository": "maven-staging",
+            "target_repository": "maven-releases",
+            "status": "pending",
+            "requested_at": "2026-01-15 12:00",
+        })];
+        let table = format_approval_table(&items);
+        assert!(table.contains("00000000"));
+        assert!(table.contains("maven-staging"));
+        assert!(table.contains("maven-releases"));
+        assert!(table.contains("pending"));
+    }
+
+    #[test]
+    fn format_approval_table_multiple_rows() {
+        let items = vec![
+            json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "source_repository": "npm-staging",
+                "target_repository": "npm-releases",
+                "status": "pending",
+                "requested_at": "2026-01-15",
+            }),
+            json!({
+                "id": "11111111-1111-1111-1111-111111111111",
+                "source_repository": "pypi-staging",
+                "target_repository": "pypi-releases",
+                "status": "approved",
+                "requested_at": "2026-01-16",
+            }),
+        ];
+        let table = format_approval_table(&items);
+        assert!(table.contains("npm-staging"));
+        assert!(table.contains("pypi-staging"));
+        assert!(table.contains("pending"));
+        assert!(table.contains("approved"));
+    }
+
+    #[test]
+    fn format_approval_detail_renders() {
+        let item = json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "artifact_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "source_repository": "maven-staging",
+            "target_repository": "maven-releases",
+            "status": "pending",
+            "requested_by": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            "requested_at": "2026-01-15T12:00:00Z",
+            "reviewed_by": null,
+            "reviewed_at": null,
+            "notes": "Please promote to production",
+            "review_notes": null,
+        });
+        let detail = format_approval_detail(&item);
+        assert!(detail.contains("00000000-0000-0000-0000-000000000001"));
+        assert!(detail.contains("maven-staging"));
+        assert!(detail.contains("maven-releases"));
+        assert!(detail.contains("pending"));
+        assert!(detail.contains("Please promote to production"));
+    }
+
+    #[test]
+    fn format_approval_detail_all_null_optionals() {
+        let item = json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "artifact_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "source_repository": "src",
+            "target_repository": "tgt",
+            "status": "pending",
+            "requested_by": "user-1",
+            "requested_at": "2026-01-01",
+            "reviewed_by": null,
+            "reviewed_at": null,
+            "notes": null,
+            "review_notes": null,
+        });
+        let detail = format_approval_detail(&item);
+        assert!(detail.contains("Notes:"));
+        assert!(detail.contains("Review Notes:"));
+        // Null fields show as "-"
+        let lines: Vec<&str> = detail.lines().collect();
+        let notes_line = lines.iter().find(|l| l.contains("Notes:") && !l.contains("Review")).unwrap();
+        assert!(notes_line.contains("-"));
+    }
+
+    #[test]
+    fn format_approval_detail_with_review() {
+        let item = json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "artifact_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "source_repository": "staging",
+            "target_repository": "releases",
+            "status": "approved",
+            "requested_by": "user-1",
+            "requested_at": "2026-01-15T12:00:00Z",
+            "reviewed_by": "user-2",
+            "reviewed_at": "2026-01-16T09:00:00Z",
+            "notes": "Ready for prod",
+            "review_notes": "LGTM",
+        });
+        let detail = format_approval_detail(&item);
+        assert!(detail.contains("approved"));
+        assert!(detail.contains("user-2"));
+        assert!(detail.contains("LGTM"));
+    }
 }
