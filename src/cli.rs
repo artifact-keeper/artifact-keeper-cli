@@ -232,6 +232,16 @@ pub enum Command {
         command: commands::peer::PeerCommand,
     },
 
+    /// Manage sync policies for automated replication
+    #[command(
+        alias = "sp",
+        after_help = "Examples:\n  ak sync-policy list\n  ak sync-policy create my-policy --mode push\n  ak sync-policy toggle <id> --enable\n  ak sync-policy preview --repo-selector '{\"match_keys\":[\"npm-*\"]}'"
+    )]
+    SyncPolicy {
+        #[command(subcommand)]
+        command: commands::sync_policy::SyncPolicyCommand,
+    },
+
     /// Manage fine-grained permission rules
     #[command(
         after_help = "Examples:\n  ak permission list\n  ak permission create --principal <user-id> --principal-type user --target <repo-id> --target-type repository --actions read,write\n  ak permission delete <permission-id>"
@@ -355,6 +365,7 @@ impl Cli {
             Command::Sbom { command } => command.execute(&global).await,
             Command::License { command } => command.execute(&global).await,
             Command::Peer { command } => command.execute(&global).await,
+            Command::SyncPolicy { command } => command.execute(&global).await,
             Command::Permission { command } => command.execute(&global).await,
             Command::Dt { command } => command.execute(&global).await,
             Command::Admin { command } => command.execute(&global).await,
@@ -1593,5 +1604,61 @@ mod tests {
             "--scanning-enabled",
         ])
         .unwrap();
+    }
+
+    // ---- Sync policy command parsing ----
+
+    #[test]
+    fn parse_sync_policy_list() {
+        let cli = parse(&["ak", "sync-policy", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_show() {
+        let cli = parse(&["ak", "sync-policy", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_create() {
+        let cli = parse(&["ak", "sync-policy", "create", "my-policy", "--mode", "push"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_toggle() {
+        let cli = parse(&["ak", "sync-policy", "toggle", "some-id", "--enable"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_delete() {
+        let cli = parse(&["ak", "sync-policy", "delete", "some-id", "--yes"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_evaluate() {
+        let cli = parse(&["ak", "sync-policy", "evaluate"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_preview() {
+        let cli = parse(&["ak", "sync-policy", "preview"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_alias_sp() {
+        let cli = parse(&["ak", "sp", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
+    }
+
+    #[test]
+    fn parse_sync_policy_alias_sp_create() {
+        let cli = parse(&["ak", "sp", "create", "my-policy", "--mode", "push"]).unwrap();
+        assert!(matches!(cli.command, Command::SyncPolicy { .. }));
     }
 }
