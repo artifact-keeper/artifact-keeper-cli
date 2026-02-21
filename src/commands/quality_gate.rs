@@ -1,12 +1,12 @@
 use artifact_keeper_sdk::ClientQualityExt;
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
+use super::helpers::{
+    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -164,7 +164,7 @@ async fn list_gates(global: &GlobalArgs) -> Result<()> {
         .list_gates()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list quality gates: {e}")))?;
+        .map_err(|e| sdk_err("list quality gates", e))?;
 
     let gates = gates.into_inner();
     spinner.finish_and_clear();
@@ -197,16 +197,12 @@ async fn list_gates(global: &GlobalArgs) -> Result<()> {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID", "NAME", "ACTION", "ENABLED", "MAX CRIT", "MAX HIGH",
-            ]);
+        let mut table = new_table(vec![
+            "ID", "NAME", "ACTION", "ENABLED", "MAX CRIT", "MAX HIGH",
+        ]);
 
         for g in &gates {
-            let id_short = &g.id.to_string()[..8];
+            let id_short = short_id(&g.id);
             let enabled = if g.is_enabled { "yes" } else { "no" };
             let max_crit = g
                 .max_critical_issues
@@ -217,7 +213,7 @@ async fn list_gates(global: &GlobalArgs) -> Result<()> {
                 .map(|v| v.to_string())
                 .unwrap_or_else(|| "-".to_string());
             table.add_row(vec![
-                id_short, &g.name, &g.action, enabled, &max_crit, &max_high,
+                &id_short, &g.name, &g.action, enabled, &max_crit, &max_high,
             ]);
         }
 
@@ -243,7 +239,7 @@ async fn show_gate(id: &str, global: &GlobalArgs) -> Result<()> {
         .id(gate_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get quality gate: {e}")))?;
+        .map_err(|e| sdk_err("get quality gate", e))?;
 
     spinner.finish_and_clear();
 
@@ -356,7 +352,7 @@ async fn create_gate(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create quality gate: {e}")))?;
+        .map_err(|e| sdk_err("create quality gate", e))?;
 
     spinner.finish_and_clear();
 
@@ -407,7 +403,7 @@ async fn update_gate(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to update quality gate: {e}")))?;
+        .map_err(|e| sdk_err("update quality gate", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Quality gate '{}' updated.", gate.name);
@@ -434,7 +430,7 @@ async fn delete_gate(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
         .id(gate_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete quality gate: {e}")))?;
+        .map_err(|e| sdk_err("delete quality gate", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Quality gate {id} deleted.");
@@ -460,7 +456,7 @@ async fn check_artifact(
     let result = req
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to evaluate quality gates: {e}")))?;
+        .map_err(|e| sdk_err("evaluate quality gates", e))?;
 
     spinner.finish_and_clear();
 

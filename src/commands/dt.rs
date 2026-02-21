@@ -3,13 +3,12 @@ use artifact_keeper_sdk::types::{
     DtComponentFull, DtFinding, DtPolicyFull, DtPortfolioMetrics, DtProject, DtProjectMetrics,
 };
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
+use super::helpers::{new_table, sdk_err};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -171,7 +170,7 @@ async fn dt_status(global: &GlobalArgs) -> Result<()> {
         .dt_status()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get DT status: {e}")))?;
+        .map_err(|e| sdk_err("get DT status", e))?;
 
     spinner.finish_and_clear();
 
@@ -207,7 +206,7 @@ async fn project_list(global: &GlobalArgs) -> Result<()> {
         .list_projects()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list projects: {e}")))?;
+        .map_err(|e| sdk_err("list projects", e))?;
 
     spinner.finish_and_clear();
 
@@ -245,13 +244,13 @@ async fn project_show(uuid: &str, global: &GlobalArgs) -> Result<()> {
         .list_projects()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to fetch projects: {e}")))?;
+        .map_err(|e| sdk_err("fetch projects", e))?;
 
     let project = projects
         .into_inner()
         .into_iter()
         .find(|p| p.uuid == uuid)
-        .ok_or_else(|| AkError::ServerError(format!("Project not found: {uuid}")))?;
+        .ok_or_else(|| sdk_err("find project", format!("not found: {uuid}")))?;
 
     spinner.finish_and_clear();
 
@@ -296,7 +295,7 @@ async fn project_components(uuid: &str, global: &GlobalArgs) -> Result<()> {
         .project_uuid(uuid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get components: {e}")))?;
+        .map_err(|e| sdk_err("get components", e))?;
 
     spinner.finish_and_clear();
 
@@ -339,7 +338,7 @@ async fn project_findings(
         .project_uuid(uuid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get findings: {e}")))?;
+        .map_err(|e| sdk_err("get findings", e))?;
 
     spinner.finish_and_clear();
 
@@ -395,7 +394,7 @@ async fn project_violations(uuid: &str, global: &GlobalArgs) -> Result<()> {
         .project_uuid(uuid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get violations: {e}")))?;
+        .map_err(|e| sdk_err("get violations", e))?;
 
     spinner.finish_and_clear();
 
@@ -430,18 +429,14 @@ async fn project_violations(uuid: &str, global: &GlobalArgs) -> Result<()> {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "UUID",
-                "TYPE",
-                "COMPONENT",
-                "VERSION",
-                "POLICY",
-                "SUBJECT",
-            ]);
+        let mut table = new_table(vec![
+            "UUID",
+            "TYPE",
+            "COMPONENT",
+            "VERSION",
+            "POLICY",
+            "SUBJECT",
+        ]);
 
         for v in &violations {
             let version = v.component.version.as_deref().unwrap_or("-");
@@ -477,7 +472,7 @@ async fn project_metrics(uuid: &str, global: &GlobalArgs) -> Result<()> {
         .project_uuid(uuid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get project metrics: {e}")))?;
+        .map_err(|e| sdk_err("get project metrics", e))?;
 
     spinner.finish_and_clear();
 
@@ -504,7 +499,7 @@ async fn project_metrics_history(uuid: &str, days: i32, global: &GlobalArgs) -> 
         .days(days)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get metrics history: {e}")))?;
+        .map_err(|e| sdk_err("get metrics history", e))?;
 
     spinner.finish_and_clear();
 
@@ -538,20 +533,16 @@ async fn project_metrics_history(uuid: &str, days: i32, global: &GlobalArgs) -> 
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "DATE",
-                "CRITICAL",
-                "HIGH",
-                "MEDIUM",
-                "LOW",
-                "UNASSIGNED",
-                "TOTAL",
-                "AUDITED",
-            ]);
+        let mut table = new_table(vec![
+            "DATE",
+            "CRITICAL",
+            "HIGH",
+            "MEDIUM",
+            "LOW",
+            "UNASSIGNED",
+            "TOTAL",
+            "AUDITED",
+        ]);
 
         for m in &history {
             let date = m
@@ -591,7 +582,7 @@ async fn portfolio_metrics(global: &GlobalArgs) -> Result<()> {
         .get_portfolio_metrics()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get portfolio metrics: {e}")))?;
+        .map_err(|e| sdk_err("get portfolio metrics", e))?;
 
     spinner.finish_and_clear();
 
@@ -616,7 +607,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
         .list_dependency_track_policies()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list policies: {e}")))?;
+        .map_err(|e| sdk_err("list policies", e))?;
 
     spinner.finish_and_clear();
 
@@ -675,7 +666,7 @@ async fn update_analysis(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to update analysis: {e}")))?;
+        .map_err(|e| sdk_err("update analysis", e))?;
 
     spinner.finish_and_clear();
 
@@ -735,11 +726,7 @@ fn format_projects_table(projects: &[DtProject]) -> (Vec<Value>, String) {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["UUID", "NAME", "VERSION", "LAST BOM IMPORT"]);
+        let mut table = new_table(vec!["UUID", "NAME", "VERSION", "LAST BOM IMPORT"]);
 
         for p in projects {
             let version = p.version.as_deref().unwrap_or("-");
@@ -773,11 +760,7 @@ fn format_dt_components_table(components: &[DtComponentFull]) -> (Vec<Value>, St
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["UUID", "GROUP", "NAME", "VERSION", "PURL"]);
+        let mut table = new_table(vec!["UUID", "GROUP", "NAME", "VERSION", "PURL"]);
 
         for c in components {
             let group = c.group.as_deref().unwrap_or("-");
@@ -809,18 +792,14 @@ fn format_findings_table(findings: &[DtFinding]) -> (Vec<Value>, String) {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "VULN ID",
-                "SEVERITY",
-                "SOURCE",
-                "COMPONENT",
-                "VERSION",
-                "CVSS v3",
-            ]);
+        let mut table = new_table(vec![
+            "VULN ID",
+            "SEVERITY",
+            "SOURCE",
+            "COMPONENT",
+            "VERSION",
+            "CVSS v3",
+        ]);
 
         for f in findings {
             let version = f.component.version.as_deref().unwrap_or("-");
@@ -919,17 +898,13 @@ fn format_dt_policies_table(policies: &[DtPolicyFull]) -> (Vec<Value>, String) {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "UUID",
-                "NAME",
-                "VIOLATION STATE",
-                "CONDITIONS",
-                "PROJECTS",
-            ]);
+        let mut table = new_table(vec![
+            "UUID",
+            "NAME",
+            "VIOLATION STATE",
+            "CONDITIONS",
+            "PROJECTS",
+        ]);
 
         for p in policies {
             table.add_row(vec![

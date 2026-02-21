@@ -1,15 +1,15 @@
 use artifact_keeper_sdk::types::{DashboardResponse, PolicyResponse, ScoreResponse};
 use artifact_keeper_sdk::{ClientRepositoriesExt, ClientSecurityExt};
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use console::style;
 use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
+use super::helpers::{
+    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -327,10 +327,13 @@ async fn run_scan(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Resul
         .per_page(1)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to find artifact: {e}")))?;
+        .map_err(|e| sdk_err("find artifact", e))?;
 
     let artifact = artifacts.items.first().ok_or_else(|| {
-        AkError::ServerError(format!("Artifact '{artifact_path}' not found in '{repo}'"))
+        sdk_err(
+            "find artifact",
+            format!("'{artifact_path}' not found in '{repo}'"),
+        )
     })?;
 
     spinner.set_message("Triggering scan...");
@@ -345,7 +348,7 @@ async fn run_scan(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Resul
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to trigger scan: {e}")))?;
+        .map_err(|e| sdk_err("trigger scan", e))?;
 
     spinner.finish_and_clear();
 
@@ -381,7 +384,7 @@ async fn list_scans(
             .per_page(per_page)
             .send()
             .await
-            .map_err(|e| AkError::ServerError(format!("Failed to list scans: {e}")))?
+            .map_err(|e| sdk_err("list scans", e))?
     } else {
         client
             .list_scans()
@@ -389,7 +392,7 @@ async fn list_scans(
             .per_page(per_page)
             .send()
             .await
-            .map_err(|e| AkError::ServerError(format!("Failed to list scans: {e}")))?
+            .map_err(|e| sdk_err("list scans", e))?
     };
 
     spinner.finish_and_clear();
@@ -426,20 +429,16 @@ async fn list_scans(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID", "STATUS", "TYPE", "FINDINGS", "C", "H", "M", "L", "ARTIFACT", "CREATED",
-            ]);
+        let mut table = new_table(vec![
+            "ID", "STATUS", "TYPE", "FINDINGS", "C", "H", "M", "L", "ARTIFACT", "CREATED",
+        ]);
 
         for s in &resp.items {
-            let id_short = &s.id.to_string()[..8];
+            let id_short = short_id(&s.id);
             let artifact = s.artifact_name.as_deref().unwrap_or("-");
             let created = s.created_at.format("%Y-%m-%d %H:%M").to_string();
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &s.status,
                 &s.scan_type,
                 &s.findings_count.to_string(),
@@ -483,7 +482,7 @@ async fn show_findings(
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get scan: {e}")))?;
+        .map_err(|e| sdk_err("get scan", e))?;
 
     let findings = client
         .list_findings()
@@ -492,14 +491,14 @@ async fn show_findings(
         .per_page(per_page)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get findings: {e}")))?;
+        .map_err(|e| sdk_err("get findings", e))?;
 
     spinner.finish_and_clear();
 
     if !matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         eprintln!(
             "Scan {} — {} ({})",
-            &scan.id.to_string()[..8],
+            short_id(&scan.id),
             scan.status,
             scan.scan_type
         );
@@ -566,18 +565,14 @@ async fn show_findings(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "SEVERITY",
-                "CVE",
-                "TITLE",
-                "COMPONENT",
-                "VERSION",
-                "FIX",
-            ]);
+        let mut table = new_table(vec![
+            "SEVERITY",
+            "CVE",
+            "TITLE",
+            "COMPONENT",
+            "VERSION",
+            "FIX",
+        ]);
 
         for f in &filtered {
             let sev = format_severity(&f.severity);
@@ -627,7 +622,7 @@ async fn show_dashboard(global: &GlobalArgs) -> Result<()> {
         .get_dashboard()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to fetch dashboard: {e}")))?;
+        .map_err(|e| sdk_err("fetch dashboard", e))?;
 
     spinner.finish_and_clear();
 
@@ -657,7 +652,7 @@ async fn show_scores(global: &GlobalArgs) -> Result<()> {
         .get_all_scores()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to fetch scores: {e}")))?;
+        .map_err(|e| sdk_err("fetch scores", e))?;
 
     spinner.finish_and_clear();
 
@@ -698,7 +693,7 @@ async fn list_scan_configs(global: &GlobalArgs) -> Result<()> {
         .list_scan_configs()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list scan configs: {e}")))?;
+        .map_err(|e| sdk_err("list scan configs", e))?;
 
     spinner.finish_and_clear();
 
@@ -733,26 +728,22 @@ async fn list_scan_configs(global: &GlobalArgs) -> Result<()> {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "REPO",
-                "ENABLED",
-                "ON UPLOAD",
-                "ON PROXY",
-                "BLOCK",
-                "THRESHOLD",
-            ]);
+        let mut table = new_table(vec![
+            "ID",
+            "REPO",
+            "ENABLED",
+            "ON UPLOAD",
+            "ON PROXY",
+            "BLOCK",
+            "THRESHOLD",
+        ]);
 
         for c in &items {
-            let id_short = &c.id.to_string()[..8];
-            let repo_short = &c.repository_id.to_string()[..8];
+            let id_short = short_id(&c.id);
+            let repo_short = short_id(&c.repository_id);
             table.add_row(vec![
-                id_short,
-                repo_short,
+                id_short.as_str(),
+                repo_short.as_str(),
                 if c.scan_enabled { "yes" } else { "no" },
                 if c.scan_on_upload { "yes" } else { "no" },
                 if c.scan_on_proxy { "yes" } else { "no" },
@@ -796,7 +787,7 @@ async fn acknowledge_finding(finding_id: &str, reason: &str, global: &GlobalArgs
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to acknowledge finding: {e}")))?;
+        .map_err(|e| sdk_err("acknowledge finding", e))?;
 
     spinner.finish_and_clear();
 
@@ -816,11 +807,7 @@ async fn acknowledge_finding(finding_id: &str, reason: &str, global: &GlobalArgs
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         println!("{}", output::render(&[entry], &global.format, None));
     } else {
-        eprintln!(
-            "Finding {} acknowledged: {}",
-            &finding.id.to_string()[..8],
-            reason
-        );
+        eprintln!("Finding {} acknowledged: {}", short_id(&finding.id), reason);
     }
 
     Ok(())
@@ -837,7 +824,7 @@ async fn revoke_finding(finding_id: &str, global: &GlobalArgs) -> Result<()> {
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to revoke acknowledgment: {e}")))?;
+        .map_err(|e| sdk_err("revoke acknowledgment", e))?;
 
     spinner.finish_and_clear();
 
@@ -858,7 +845,7 @@ async fn revoke_finding(finding_id: &str, global: &GlobalArgs) -> Result<()> {
     } else {
         eprintln!(
             "Acknowledgment revoked for finding {}.",
-            &finding.id.to_string()[..8]
+            short_id(&finding.id)
         );
     }
 
@@ -878,7 +865,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
         .list_policies()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list policies: {e}")))?;
+        .map_err(|e| sdk_err("list policies", e))?;
 
     spinner.finish_and_clear();
 
@@ -917,7 +904,7 @@ async fn show_policy(policy_id: &str, global: &GlobalArgs) -> Result<()> {
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get policy: {e}")))?;
+        .map_err(|e| sdk_err("get policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -956,7 +943,7 @@ async fn show_policy(policy_id: &str, global: &GlobalArgs) -> Result<()> {
          \x20 Created:             {}\n\
          \x20 Updated:             {}",
         p.name,
-        &p.id.to_string()[..8],
+        short_id(&p.id),
         p.max_severity,
         p.block_on_fail,
         p.block_unscanned,
@@ -1012,7 +999,7 @@ async fn create_policy(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create policy: {e}")))?;
+        .map_err(|e| sdk_err("create policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -1035,11 +1022,7 @@ async fn create_policy(
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         println!("{}", output::render(&[entry], &global.format, None));
     } else {
-        eprintln!(
-            "Policy '{}' created (ID: {}).",
-            p.name,
-            &p.id.to_string()[..8]
-        );
+        eprintln!("Policy '{}' created (ID: {}).", p.name, short_id(&p.id));
     }
 
     Ok(())
@@ -1065,7 +1048,7 @@ async fn update_policy(
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get policy: {e}")))?;
+        .map_err(|e| sdk_err("get policy", e))?;
 
     let existing = existing.into_inner();
 
@@ -1088,7 +1071,7 @@ async fn update_policy(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to update policy: {e}")))?;
+        .map_err(|e| sdk_err("update policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -1111,11 +1094,7 @@ async fn update_policy(
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         println!("{}", output::render(&[entry], &global.format, None));
     } else {
-        eprintln!(
-            "Policy '{}' updated (ID: {}).",
-            p.name,
-            &p.id.to_string()[..8]
-        );
+        eprintln!("Policy '{}' updated (ID: {}).", p.name, short_id(&p.id));
     }
 
     Ok(())
@@ -1136,7 +1115,7 @@ async fn delete_policy(policy_id: &str, yes: bool, global: &GlobalArgs) -> Resul
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete policy: {e}")))?;
+        .map_err(|e| sdk_err("delete policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -1161,7 +1140,7 @@ async fn show_repo_security(repo_key: &str, global: &GlobalArgs) -> Result<()> {
         .key(repo_key)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get repo security: {e}")))?;
+        .map_err(|e| sdk_err("get repo security", e))?;
 
     spinner.finish_and_clear();
 
@@ -1256,7 +1235,7 @@ async fn update_repo_security(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to update repo security: {e}")))?;
+        .map_err(|e| sdk_err("update repo security", e))?;
 
     spinner.finish_and_clear();
 
@@ -1388,31 +1367,27 @@ fn format_scores_table(items: &[ScoreResponse]) -> (Vec<Value>, String) {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "REPO",
-                "GRADE",
-                "CRITICAL",
-                "HIGH",
-                "MEDIUM",
-                "LOW",
-                "SCANNED",
-                "UNSCANNED",
-                "UPDATED",
-            ]);
+        let mut table = new_table(vec![
+            "REPO",
+            "GRADE",
+            "CRITICAL",
+            "HIGH",
+            "MEDIUM",
+            "LOW",
+            "SCANNED",
+            "UNSCANNED",
+            "UPDATED",
+        ]);
 
         for s in items {
-            let repo_short = &s.repository_id.to_string()[..8];
+            let repo_short = short_id(&s.repository_id);
             let scanned = s
                 .last_scan_at
                 .map(|t| t.format("%Y-%m-%d").to_string())
                 .unwrap_or_else(|| "-".to_string());
             let unscanned = s.total_findings - s.acknowledged_count;
             table.add_row(vec![
-                repo_short,
+                &repo_short,
                 &s.grade,
                 &format_severity_count(s.critical_count, "CRITICAL"),
                 &format_severity_count(s.high_count, "HIGH"),
@@ -1449,34 +1424,30 @@ fn format_scan_policies_table(items: &[PolicyResponse]) -> (Vec<Value>, String) 
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "NAME",
-                "MAX SEV",
-                "BLOCK FAIL",
-                "BLOCK UNSCAN",
-                "ENABLED",
-                "REPO",
-            ]);
+        let mut table = new_table(vec![
+            "ID",
+            "NAME",
+            "MAX SEV",
+            "BLOCK FAIL",
+            "BLOCK UNSCAN",
+            "ENABLED",
+            "REPO",
+        ]);
 
         for p in items {
-            let id_short = &p.id.to_string()[..8];
+            let id_short = short_id(&p.id);
             let repo = p
                 .repository_id
-                .map(|id| id.to_string()[..8].to_string())
+                .map(|id| short_id(&id))
                 .unwrap_or_else(|| "global".to_string());
             table.add_row(vec![
-                id_short,
+                id_short.as_str(),
                 &p.name,
                 &p.max_severity,
                 if p.block_on_fail { "yes" } else { "no" },
                 if p.block_unscanned { "yes" } else { "no" },
                 if p.is_enabled { "yes" } else { "no" },
-                &repo,
+                repo.as_str(),
             ]);
         }
 

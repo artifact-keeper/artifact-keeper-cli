@@ -1,12 +1,10 @@
 use artifact_keeper_sdk::ClientPromotionExt;
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_uuid, print_page_info};
+use super::helpers::{confirm_action, new_table, parse_uuid, print_page_info, sdk_err, short_id};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -155,7 +153,7 @@ async fn promote_artifact(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to promote artifact: {e}")))?;
+        .map_err(|e| sdk_err("promote artifact", e))?;
 
     spinner.finish_and_clear();
 
@@ -201,7 +199,7 @@ async fn list_rules(source_repo_id: Option<&str>, global: &GlobalArgs) -> Result
     let resp = req
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list promotion rules: {e}")))?;
+        .map_err(|e| sdk_err("list promotion rules", e))?;
 
     spinner.finish_and_clear();
 
@@ -233,19 +231,17 @@ async fn list_rules(source_repo_id: Option<&str>, global: &GlobalArgs) -> Result
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["ID", "NAME", "SOURCE", "TARGET", "AUTO", "ENABLED"]);
+        let mut table = new_table(vec!["ID", "NAME", "SOURCE", "TARGET", "AUTO", "ENABLED"]);
 
         for r in &resp.items {
-            let id_short = &r.id.to_string()[..8];
-            let src_short = &r.source_repo_id.to_string()[..8];
-            let tgt_short = &r.target_repo_id.to_string()[..8];
+            let id_short = short_id(&r.id);
+            let src_short = short_id(&r.source_repo_id);
+            let tgt_short = short_id(&r.target_repo_id);
             let auto = if r.auto_promote { "yes" } else { "no" };
             let enabled = if r.is_enabled { "yes" } else { "no" };
-            table.add_row(vec![id_short, &r.name, src_short, tgt_short, auto, enabled]);
+            table.add_row(vec![
+                &id_short, &r.name, &src_short, &tgt_short, auto, enabled,
+            ]);
         }
 
         table.to_string()
@@ -293,7 +289,7 @@ async fn create_rule(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create promotion rule: {e}")))?;
+        .map_err(|e| sdk_err("create promotion rule", e))?;
 
     spinner.finish_and_clear();
 
@@ -326,7 +322,7 @@ async fn delete_rule(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
         .id(rule_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete promotion rule: {e}")))?;
+        .map_err(|e| sdk_err("delete promotion rule", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Promotion rule {id} deleted.");
@@ -357,7 +353,7 @@ async fn promotion_history(
     let resp = req
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to fetch promotion history: {e}")))?;
+        .map_err(|e| sdk_err("fetch promotion history", e))?;
 
     spinner.finish_and_clear();
 
@@ -390,17 +386,13 @@ async fn promotion_history(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["ID", "ARTIFACT", "SOURCE", "TARGET", "STATUS", "DATE"]);
+        let mut table = new_table(vec!["ID", "ARTIFACT", "SOURCE", "TARGET", "STATUS", "DATE"]);
 
         for e in &resp.items {
-            let id_short = &e.id.to_string()[..8];
+            let id_short = short_id(&e.id);
             let date = e.created_at.format("%Y-%m-%d %H:%M").to_string();
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &e.artifact_path,
                 &e.source_repo_key,
                 &e.target_repo_key,

@@ -1,6 +1,27 @@
+use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 
 use crate::error::AkError;
+
+/// Create a new table with the standard preset and headers.
+pub fn new_table(headers: Vec<&str>) -> Table {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(headers);
+    table
+}
+
+/// Format a UUID as an 8-character short ID.
+pub fn short_id(id: &uuid::Uuid) -> String {
+    id.to_string()[..8].to_string()
+}
+
+/// Map an SDK error to an AkError with a descriptive message.
+pub fn sdk_err(action: &str, e: impl std::fmt::Display) -> AkError {
+    AkError::ServerError(format!("Failed to {action}: {e}"))
+}
 
 /// Parse a string as a UUID, returning a friendly error with the given label.
 pub fn parse_uuid(id: &str, label: &str) -> Result<uuid::Uuid> {
@@ -157,5 +178,33 @@ mod tests {
     #[test]
     fn print_page_info_last_page() {
         print_page_info(10, 10, 200, "results");
+    }
+
+    // ---- short_id ----
+
+    #[test]
+    fn short_id_format() {
+        let id = uuid::Uuid::nil();
+        assert_eq!(short_id(&id), "00000000");
+    }
+
+    // ---- sdk_err ----
+
+    #[test]
+    fn sdk_err_message() {
+        let err = sdk_err("list keys", "connection refused");
+        assert!(err.to_string().contains("Failed to list keys"));
+        assert!(err.to_string().contains("connection refused"));
+    }
+
+    // ---- new_table ----
+
+    #[test]
+    fn new_table_has_headers() {
+        let table = new_table(vec!["A", "B", "C"]);
+        let s = table.to_string();
+        assert!(s.contains("A"));
+        assert!(s.contains("B"));
+        assert!(s.contains("C"));
     }
 }

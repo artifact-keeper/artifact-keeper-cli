@@ -1,12 +1,10 @@
 use artifact_keeper_sdk::ClientApprovalExt;
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::parse_uuid;
+use super::helpers::{new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -96,9 +94,7 @@ async fn list_approvals(
         if let Some(r) = repo {
             req = req.source_repository(r);
         }
-        req.send()
-            .await
-            .map_err(|e| AkError::ServerError(format!("Failed to list approvals: {e}")))?
+        req.send().await.map_err(|e| sdk_err("list approvals", e))?
     } else {
         let mut req = client
             .list_pending_approvals()
@@ -107,9 +103,7 @@ async fn list_approvals(
         if let Some(r) = repo {
             req = req.source_repository(r);
         }
-        req.send()
-            .await
-            .map_err(|e| AkError::ServerError(format!("Failed to list approvals: {e}")))?
+        req.send().await.map_err(|e| sdk_err("list approvals", e))?
     };
 
     spinner.finish_and_clear();
@@ -143,17 +137,13 @@ async fn list_approvals(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["ID", "SOURCE", "TARGET", "STATUS", "REQUESTED"]);
+        let mut table = new_table(vec!["ID", "SOURCE", "TARGET", "STATUS", "REQUESTED"]);
 
         for a in &resp.items {
-            let id_short = &a.id.to_string()[..8];
+            let id_short = short_id(&a.id);
             let date = a.requested_at.format("%Y-%m-%d %H:%M").to_string();
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &a.source_repository,
                 &a.target_repository,
                 &a.status,
@@ -190,7 +180,7 @@ async fn show_approval(id: &str, global: &GlobalArgs) -> Result<()> {
         .id(approval_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get approval: {e}")))?;
+        .map_err(|e| sdk_err("get approval", e))?;
 
     spinner.finish_and_clear();
 
@@ -267,7 +257,7 @@ async fn review_promotion(
             .body(body)
             .send()
             .await
-            .map_err(|e| AkError::ServerError(format!("Failed to approve promotion: {e}")))?
+            .map_err(|e| sdk_err("approve promotion", e))?
     } else {
         client
             .reject_promotion()
@@ -275,7 +265,7 @@ async fn review_promotion(
             .body(body)
             .send()
             .await
-            .map_err(|e| AkError::ServerError(format!("Failed to reject promotion: {e}")))?
+            .map_err(|e| sdk_err("reject promotion", e))?
     };
 
     spinner.finish_and_clear();

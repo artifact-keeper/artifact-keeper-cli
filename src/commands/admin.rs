@@ -1,12 +1,10 @@
 use artifact_keeper_sdk::{ClientAdminExt, ClientPluginsExt, ClientUsersExt};
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_uuid};
+use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
 
 #[derive(Subcommand)]
@@ -250,7 +248,7 @@ async fn list_backups(page: i32, per_page: i32, global: &GlobalArgs) -> Result<(
         .per_page(per_page)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list backups: {e}")))?;
+        .map_err(|e| sdk_err("list backups", e))?;
 
     spinner.finish_and_clear();
 
@@ -285,18 +283,14 @@ async fn list_backups(page: i32, per_page: i32, global: &GlobalArgs) -> Result<(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["ID", "STATUS", "TYPE", "ARTIFACTS", "SIZE", "CREATED"]);
+        let mut table = new_table(vec!["ID", "STATUS", "TYPE", "ARTIFACTS", "SIZE", "CREATED"]);
 
         for b in &resp.items {
-            let id_short = &b.id.to_string()[..8];
+            let id_short = short_id(&b.id);
             let size = format_bytes(b.size_bytes);
             let created = b.created_at.format("%Y-%m-%d %H:%M").to_string();
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &b.status,
                 &b.type_,
                 &b.artifact_count.to_string(),
@@ -332,7 +326,7 @@ async fn create_backup(backup_type: &str, global: &GlobalArgs) -> Result<()> {
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create backup: {e}")))?;
+        .map_err(|e| sdk_err("create backup", e))?;
 
     spinner.finish_and_clear();
 
@@ -389,7 +383,7 @@ async fn restore_backup(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to restore backup: {e}")))?;
+        .map_err(|e| sdk_err("restore backup", e))?;
 
     spinner.finish_and_clear();
 
@@ -429,7 +423,7 @@ async fn run_cleanup(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Cleanup failed: {e}")))?;
+        .map_err(|e| sdk_err("run cleanup", e))?;
 
     spinner.finish_and_clear();
 
@@ -458,7 +452,7 @@ async fn show_metrics(global: &GlobalArgs) -> Result<()> {
         .get_system_stats()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get metrics: {e}")))?;
+        .map_err(|e| sdk_err("get metrics", e))?;
 
     spinner.finish_and_clear();
 
@@ -509,10 +503,7 @@ async fn list_users(
         req = req.search(q);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list users: {e}")))?;
+    let resp = req.send().await.map_err(|e| sdk_err("list users", e))?;
 
     spinner.finish_and_clear();
 
@@ -545,27 +536,23 @@ async fn list_users(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "USERNAME",
-                "EMAIL",
-                "DISPLAY NAME",
-                "ADMIN",
-                "ACTIVE",
-                "AUTH",
-            ]);
+        let mut table = new_table(vec![
+            "ID",
+            "USERNAME",
+            "EMAIL",
+            "DISPLAY NAME",
+            "ADMIN",
+            "ACTIVE",
+            "AUTH",
+        ]);
 
         for u in &resp.items {
-            let id_short = &u.id.to_string()[..8];
+            let id_short = short_id(&u.id);
             let display = u.display_name.as_deref().unwrap_or("-");
             let admin = if u.is_admin { "yes" } else { "no" };
             let active = if u.is_active { "yes" } else { "no" };
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &u.username,
                 &u.email,
                 display,
@@ -616,7 +603,7 @@ async fn create_user(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create user: {e}")))?;
+        .map_err(|e| sdk_err("create user", e))?;
 
     spinner.finish_and_clear();
 
@@ -665,7 +652,7 @@ async fn update_user(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to update user: {e}")))?;
+        .map_err(|e| sdk_err("update user", e))?;
 
     spinner.finish_and_clear();
     eprintln!("User '{}' updated (ID: {}).", user.username, user.id);
@@ -693,7 +680,7 @@ async fn delete_user(user_id: &str, skip_confirm: bool, global: &GlobalArgs) -> 
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete user: {e}")))?;
+        .map_err(|e| sdk_err("delete user", e))?;
 
     spinner.finish_and_clear();
     eprintln!("User {user_id} deleted.");
@@ -709,7 +696,7 @@ async fn list_plugins(global: &GlobalArgs) -> Result<()> {
         .list_plugins()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list plugins: {e}")))?;
+        .map_err(|e| sdk_err("list plugins", e))?;
 
     spinner.finish_and_clear();
 
@@ -743,18 +730,14 @@ async fn list_plugins(global: &GlobalArgs) -> Result<()> {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "NAME",
-                "VERSION",
-                "TYPE",
-                "STATUS",
-                "AUTHOR",
-                "INSTALLED",
-            ]);
+        let mut table = new_table(vec![
+            "NAME",
+            "VERSION",
+            "TYPE",
+            "STATUS",
+            "AUTHOR",
+            "INSTALLED",
+        ]);
 
         for p in &resp.items {
             let author = p.author.as_deref().unwrap_or("-");
@@ -794,7 +777,7 @@ async fn install_plugin(url: &str, git_ref: Option<&str>, global: &GlobalArgs) -
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to install plugin: {e}")))?;
+        .map_err(|e| sdk_err("install plugin", e))?;
 
     spinner.finish_and_clear();
 
@@ -832,7 +815,7 @@ async fn remove_plugin(plugin_id: &str, skip_confirm: bool, global: &GlobalArgs)
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to remove plugin: {e}")))?;
+        .map_err(|e| sdk_err("remove plugin", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Plugin {plugin_id} removed.");
@@ -852,7 +835,7 @@ async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
         .id(id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to reset password: {e}")))?;
+        .map_err(|e| sdk_err("reset password", e))?;
 
     spinner.finish_and_clear();
 

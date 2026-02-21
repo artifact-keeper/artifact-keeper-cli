@@ -1,9 +1,9 @@
 use artifact_keeper_sdk::ClientRepositoryLabelsExt;
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
+use super::helpers::{new_table, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -67,7 +67,7 @@ async fn list_labels(repo_key: &str, global: &GlobalArgs) -> Result<()> {
         .key(repo_key)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list labels: {e}")))?;
+        .map_err(|e| sdk_err("list labels", e))?;
 
     spinner.finish_and_clear();
 
@@ -97,11 +97,7 @@ async fn list_labels(repo_key: &str, global: &GlobalArgs) -> Result<()> {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["KEY", "VALUE", "CREATED"]);
+        let mut table = new_table(vec!["KEY", "VALUE", "CREATED"]);
 
         for l in &resp.items {
             let created = l.created_at.format("%Y-%m-%d").to_string();
@@ -138,7 +134,7 @@ async fn add_label(repo_key: &str, label: &str, global: &GlobalArgs) -> Result<(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to add label: {e}")))?;
+        .map_err(|e| sdk_err("add label", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Label '{label_key}={label_value}' added to repository '{repo_key}'.");
@@ -156,7 +152,7 @@ async fn remove_label(repo_key: &str, label_key: &str, global: &GlobalArgs) -> R
         .label_key(label_key)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to remove label: {e}")))?;
+        .map_err(|e| sdk_err("remove label", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Label '{label_key}' removed from repository '{repo_key}'.");

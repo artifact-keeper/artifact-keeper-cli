@@ -1,15 +1,15 @@
 use artifact_keeper_sdk::ClientSigningExt;
 use artifact_keeper_sdk::types::{SigningConfigResponse, SigningKeyPublic};
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
+use super::helpers::{
+    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -215,7 +215,7 @@ async fn list_keys(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let resp = req
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list signing keys: {e}")))?;
+        .map_err(|e| sdk_err("list signing keys", e))?;
 
     let resp = resp.into_inner();
     spinner.finish_and_clear();
@@ -252,7 +252,7 @@ async fn show_key(id: &str, global: &GlobalArgs) -> Result<()> {
         .key_id(key_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get signing key: {e}")))?;
+        .map_err(|e| sdk_err("get signing key", e))?;
 
     let key = key.into_inner();
     spinner.finish_and_clear();
@@ -292,7 +292,7 @@ async fn create_key(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create signing key: {e}")))?;
+        .map_err(|e| sdk_err("create signing key", e))?;
 
     let key = key.into_inner();
     spinner.finish_and_clear();
@@ -326,7 +326,7 @@ async fn delete_key(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result
         .key_id(key_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete signing key: {e}")))?;
+        .map_err(|e| sdk_err("delete signing key", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Signing key {id} deleted.");
@@ -345,7 +345,7 @@ async fn revoke_key(id: &str, global: &GlobalArgs) -> Result<()> {
         .key_id(key_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to revoke signing key: {e}")))?;
+        .map_err(|e| sdk_err("revoke signing key", e))?;
 
     let result = resp.into_inner();
     spinner.finish_and_clear();
@@ -375,7 +375,7 @@ async fn rotate_key(id: &str, global: &GlobalArgs) -> Result<()> {
         .key_id(key_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to rotate signing key: {e}")))?;
+        .map_err(|e| sdk_err("rotate signing key", e))?;
 
     let key = key.into_inner();
     spinner.finish_and_clear();
@@ -401,7 +401,7 @@ async fn export_key(id: &str, global: &GlobalArgs) -> Result<()> {
         .key_id(key_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to export public key: {e}")))?;
+        .map_err(|e| sdk_err("export public key", e))?;
 
     spinner.finish_and_clear();
 
@@ -412,8 +412,8 @@ async fn export_key(id: &str, global: &GlobalArgs) -> Result<()> {
         bytes.extend_from_slice(&chunk);
     }
 
-    let pem = String::from_utf8(bytes)
-        .map_err(|e| AkError::ServerError(format!("Invalid UTF-8 in public key: {e}")))?;
+    let pem =
+        String::from_utf8(bytes).map_err(|e| sdk_err("decode public key (invalid UTF-8)", e))?;
     print!("{pem}");
 
     Ok(())
@@ -434,7 +434,7 @@ async fn show_config(repo_id: &str, global: &GlobalArgs) -> Result<()> {
         .repo_id(rid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get signing config: {e}")))?;
+        .map_err(|e| sdk_err("get signing config", e))?;
 
     let config = config.into_inner();
     spinner.finish_and_clear();
@@ -475,7 +475,7 @@ async fn update_config(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to update signing config: {e}")))?;
+        .map_err(|e| sdk_err("update signing config", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Signing configuration updated for repository {repo_id}.");
@@ -494,9 +494,7 @@ async fn export_repo_key(repo_id: &str, global: &GlobalArgs) -> Result<()> {
         .repo_id(rid)
         .send()
         .await
-        .map_err(|e| {
-            AkError::ServerError(format!("Failed to export repository public key: {e}"))
-        })?;
+        .map_err(|e| sdk_err("export repository public key", e))?;
 
     spinner.finish_and_clear();
 
@@ -507,8 +505,8 @@ async fn export_repo_key(repo_id: &str, global: &GlobalArgs) -> Result<()> {
         bytes.extend_from_slice(&chunk);
     }
 
-    let pem = String::from_utf8(bytes)
-        .map_err(|e| AkError::ServerError(format!("Invalid UTF-8 in public key: {e}")))?;
+    let pem =
+        String::from_utf8(bytes).map_err(|e| sdk_err("decode public key (invalid UTF-8)", e))?;
     print!("{pem}");
 
     Ok(())
@@ -535,31 +533,27 @@ fn format_keys_table(keys: &[SigningKeyPublic]) -> (Vec<Value>, String) {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "NAME",
-                "ALGORITHM",
-                "TYPE",
-                "ACTIVE",
-                "REPO",
-                "FINGERPRINT",
-            ]);
+        let mut table = new_table(vec![
+            "ID",
+            "NAME",
+            "ALGORITHM",
+            "TYPE",
+            "ACTIVE",
+            "REPO",
+            "FINGERPRINT",
+        ]);
 
         for key in keys {
-            let id_short = &key.id.to_string()[..8];
+            let id_short = short_id(&key.id);
             let active = if key.is_active { "yes" } else { "no" };
             let repo_short = key
                 .repository_id
-                .map(|r| r.to_string()[..8].to_string())
+                .map(|r| short_id(&r))
                 .unwrap_or_else(|| "-".to_string());
             let fp = key.fingerprint.as_deref().unwrap_or("-");
 
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &key.name,
                 &key.algorithm,
                 &key.key_type,

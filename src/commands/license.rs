@@ -1,14 +1,14 @@
 use artifact_keeper_sdk::ClientSbomExt;
 use artifact_keeper_sdk::types::LicensePolicyResponse;
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
+use super::helpers::{
+    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -137,7 +137,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
         .list_license_policies()
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list license policies: {e}")))?;
+        .map_err(|e| sdk_err("list license policies", e))?;
 
     let policies = policies.into_inner();
     spinner.finish_and_clear();
@@ -175,7 +175,7 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
         .id(policy_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get license policy: {e}")))?;
+        .map_err(|e| sdk_err("get license policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -219,7 +219,7 @@ async fn create_policy(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create license policy: {e}")))?;
+        .map_err(|e| sdk_err("create license policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -255,7 +255,7 @@ async fn delete_policy(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Res
         .id(policy_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete license policy: {e}")))?;
+        .map_err(|e| sdk_err("delete license policy", e))?;
 
     spinner.finish_and_clear();
     eprintln!("License policy {id} deleted.");
@@ -283,7 +283,7 @@ async fn check_compliance(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to check license compliance: {e}")))?;
+        .map_err(|e| sdk_err("check license compliance", e))?;
 
     let result = result.into_inner();
     spinner.finish_and_clear();
@@ -344,22 +344,18 @@ fn format_policies_table(policies: &[LicensePolicyResponse]) -> (Vec<Value>, Str
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "NAME",
-                "ACTION",
-                "ALLOW UNKNOWN",
-                "ENABLED",
-                "ALLOWED",
-                "DENIED",
-            ]);
+        let mut table = new_table(vec![
+            "ID",
+            "NAME",
+            "ACTION",
+            "ALLOW UNKNOWN",
+            "ENABLED",
+            "ALLOWED",
+            "DENIED",
+        ]);
 
         for p in policies {
-            let id_short = &p.id.to_string()[..8];
+            let id_short = short_id(&p.id);
             let enabled = if p.is_enabled { "yes" } else { "no" };
             let allow_unknown = if p.allow_unknown { "yes" } else { "no" };
             let allowed = if p.allowed_licenses.is_empty() {
@@ -373,7 +369,7 @@ fn format_policies_table(policies: &[LicensePolicyResponse]) -> (Vec<Value>, Str
                 p.denied_licenses.join(", ")
             };
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &p.name,
                 &p.action,
                 allow_unknown,

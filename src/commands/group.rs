@@ -1,12 +1,10 @@
 use artifact_keeper_sdk::ClientGroupsExt;
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_uuid, print_page_info};
+use super::helpers::{confirm_action, new_table, parse_uuid, print_page_info, sdk_err, short_id};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -104,10 +102,7 @@ async fn list_groups(
         req = req.search(s);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list groups: {e}")))?;
+    let resp = req.send().await.map_err(|e| sdk_err("list groups", e))?;
 
     spinner.finish_and_clear();
 
@@ -138,18 +133,14 @@ async fn list_groups(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["ID", "NAME", "DESCRIPTION", "MEMBERS", "CREATED"]);
+        let mut table = new_table(vec!["ID", "NAME", "DESCRIPTION", "MEMBERS", "CREATED"]);
 
         for g in &resp.items {
-            let id_short = &g.id.to_string()[..8];
+            let id_short = short_id(&g.id);
             let desc = g.description.as_deref().unwrap_or("-");
             let created = g.created_at.format("%Y-%m-%d").to_string();
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &g.name,
                 desc,
                 &g.member_count.to_string(),
@@ -185,7 +176,7 @@ async fn show_group(id: &str, global: &GlobalArgs) -> Result<()> {
         .id(group_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get group: {e}")))?;
+        .map_err(|e| sdk_err("get group", e))?;
     spinner.finish_and_clear();
 
     let info = serde_json::json!({
@@ -231,7 +222,7 @@ async fn create_group(name: &str, description: Option<&str>, global: &GlobalArgs
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create group: {e}")))?;
+        .map_err(|e| sdk_err("create group", e))?;
 
     spinner.finish_and_clear();
 
@@ -264,7 +255,7 @@ async fn delete_group(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resu
         .id(group_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete group: {e}")))?;
+        .map_err(|e| sdk_err("delete group", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Group {id} deleted.");
@@ -289,7 +280,7 @@ async fn add_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Resul
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to add member: {e}")))?;
+        .map_err(|e| sdk_err("add member", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Added user {user_id} to group {group_id}.");
@@ -314,7 +305,7 @@ async fn remove_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Re
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to remove member: {e}")))?;
+        .map_err(|e| sdk_err("remove member", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Removed user {user_id} from group {group_id}.");

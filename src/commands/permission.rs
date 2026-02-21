@@ -1,12 +1,10 @@
 use artifact_keeper_sdk::ClientPermissionsExt;
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_uuid, print_page_info};
+use super::helpers::{confirm_action, new_table, parse_uuid, print_page_info, sdk_err};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -125,7 +123,7 @@ async fn list_permissions(
     let resp = req
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list permissions: {e}")))?;
+        .map_err(|e| sdk_err("list permissions", e))?;
 
     spinner.finish_and_clear();
 
@@ -158,11 +156,7 @@ async fn list_permissions(
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["ID", "PRINCIPAL", "TYPE", "TARGET", "TYPE", "ACTIONS"]);
+        let mut table = new_table(vec!["ID", "PRINCIPAL", "TYPE", "TARGET", "TYPE", "ACTIONS"]);
 
         for p in &resp.items {
             let id_str = p.id.to_string();
@@ -227,7 +221,7 @@ async fn create_permission(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create permission: {e}")))?;
+        .map_err(|e| sdk_err("create permission", e))?;
 
     spinner.finish_and_clear();
 
@@ -267,7 +261,7 @@ async fn delete_permission(id: &str, skip_confirm: bool, global: &GlobalArgs) ->
         .id(perm_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete permission: {e}")))?;
+        .map_err(|e| sdk_err("delete permission", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Permission {id} deleted.");

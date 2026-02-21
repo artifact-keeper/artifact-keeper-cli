@@ -1,14 +1,14 @@
 use artifact_keeper_sdk::ClientSbomExt;
 use artifact_keeper_sdk::types::{ComponentResponse, CveHistoryEntry, SbomResponse};
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
+use super::helpers::{
+    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -198,7 +198,7 @@ async fn generate_sbom(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to generate SBOM: {e}")))?;
+        .map_err(|e| sdk_err("generate SBOM", e))?;
 
     let sbom = resp.into_inner();
     spinner.finish_and_clear();
@@ -251,7 +251,7 @@ async fn show_sbom(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
         .artifact_id(aid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get SBOM: {e}")))?;
+        .map_err(|e| sdk_err("get SBOM", e))?;
 
     let sbom = resp.into_inner();
     spinner.finish_and_clear();
@@ -324,10 +324,7 @@ async fn list_sboms(
         req = req.artifact_id(aid);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list SBOMs: {e}")))?;
+    let resp = req.send().await.map_err(|e| sdk_err("list SBOMs", e))?;
 
     let sboms = resp.into_inner();
     spinner.finish_and_clear();
@@ -365,7 +362,7 @@ async fn get_sbom(sbom_id: &str, global: &GlobalArgs) -> Result<()> {
         .id(sid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get SBOM: {e}")))?;
+        .map_err(|e| sdk_err("get SBOM", e))?;
 
     let sbom = resp.into_inner();
     spinner.finish_and_clear();
@@ -434,7 +431,7 @@ async fn delete_sbom(sbom_id: &str, skip_confirm: bool, global: &GlobalArgs) -> 
         .id(sid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete SBOM: {e}")))?;
+        .map_err(|e| sdk_err("delete SBOM", e))?;
 
     spinner.finish_and_clear();
     eprintln!("SBOM {sbom_id} deleted.");
@@ -453,7 +450,7 @@ async fn get_components(sbom_id: &str, global: &GlobalArgs) -> Result<()> {
         .id(sid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get SBOM components: {e}")))?;
+        .map_err(|e| sdk_err("get SBOM components", e))?;
 
     let components = resp.into_inner();
     spinner.finish_and_clear();
@@ -501,7 +498,7 @@ async fn export_sbom(
             .body(body)
             .send()
             .await
-            .map_err(|e| AkError::ServerError(format!("Failed to convert SBOM: {e}")))?
+            .map_err(|e| sdk_err("convert SBOM", e))?
     } else {
         // No conversion needed: fetch the SBOM content and write it directly
         let content_resp = client
@@ -509,14 +506,13 @@ async fn export_sbom(
             .id(sid)
             .send()
             .await
-            .map_err(|e| AkError::ServerError(format!("Failed to get SBOM: {e}")))?;
+            .map_err(|e| sdk_err("get SBOM", e))?;
 
         let content = content_resp.into_inner();
         let json = serde_json::to_string_pretty(&content.content)
-            .map_err(|e| AkError::ServerError(format!("Failed to serialize SBOM content: {e}")))?;
+            .map_err(|e| sdk_err("serialize SBOM content", e))?;
 
-        std::fs::write(output_path, json)
-            .map_err(|e| AkError::ServerError(format!("Failed to write file: {e}")))?;
+        std::fs::write(output_path, json).map_err(|e| sdk_err("write file", e))?;
 
         spinner.finish_and_clear();
         eprintln!("SBOM exported to {output_path}");
@@ -526,11 +522,9 @@ async fn export_sbom(
     let sbom = resp.into_inner();
 
     // Write the response as JSON to the output file
-    let json = serde_json::to_string_pretty(&sbom)
-        .map_err(|e| AkError::ServerError(format!("Failed to serialize SBOM: {e}")))?;
+    let json = serde_json::to_string_pretty(&sbom).map_err(|e| sdk_err("serialize SBOM", e))?;
 
-    std::fs::write(output_path, json)
-        .map_err(|e| AkError::ServerError(format!("Failed to write file: {e}")))?;
+    std::fs::write(output_path, json).map_err(|e| sdk_err("write file", e))?;
 
     spinner.finish_and_clear();
     eprintln!("SBOM exported to {output_path} (format: {})", sbom.format);
@@ -553,7 +547,7 @@ async fn cve_history(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
         .artifact_id(aid)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get CVE history: {e}")))?;
+        .map_err(|e| sdk_err("get CVE history", e))?;
 
     let entries = resp.into_inner();
     spinner.finish_and_clear();
@@ -591,10 +585,7 @@ async fn cve_trends(days: i32, repo: Option<&str>, global: &GlobalArgs) -> Resul
         req = req.repository_id(rid);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get CVE trends: {e}")))?;
+    let resp = req.send().await.map_err(|e| sdk_err("get CVE trends", e))?;
 
     let trends = resp.into_inner();
     spinner.finish_and_clear();
@@ -672,7 +663,7 @@ async fn cve_update_status(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to update CVE status: {e}")))?;
+        .map_err(|e| sdk_err("update CVE status", e))?;
 
     let entry = resp.into_inner();
     spinner.finish_and_clear();
@@ -732,26 +723,22 @@ fn format_sboms_table(sboms: &[SbomResponse]) -> (Vec<Value>, String) {
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID",
-                "ARTIFACT",
-                "FORMAT",
-                "COMPONENTS",
-                "LICENSES",
-                "GENERATED",
-            ]);
+        let mut table = new_table(vec![
+            "ID",
+            "ARTIFACT",
+            "FORMAT",
+            "COMPONENTS",
+            "LICENSES",
+            "GENERATED",
+        ]);
 
         for s in sboms {
-            let id_short = &s.id.to_string()[..8];
-            let artifact_short = &s.artifact_id.to_string()[..8];
+            let id_short = short_id(&s.id);
+            let artifact_short = short_id(&s.artifact_id);
 
             table.add_row(vec![
-                id_short.to_string(),
-                artifact_short.to_string(),
+                id_short.clone(),
+                artifact_short.clone(),
                 s.format.clone(),
                 s.component_count.to_string(),
                 s.license_count.to_string(),
@@ -781,14 +768,10 @@ fn format_components_table(components: &[ComponentResponse]) -> (Vec<Value>, Str
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec!["ID", "NAME", "VERSION", "TYPE", "PURL", "LICENSES"]);
+        let mut table = new_table(vec!["ID", "NAME", "VERSION", "TYPE", "PURL", "LICENSES"]);
 
         for c in components {
-            let id_short = &c.id.to_string()[..8];
+            let id_short = short_id(&c.id);
             let version = c.version.as_deref().unwrap_or("-");
             let ctype = c.component_type.as_deref().unwrap_or("-");
             let purl = c.purl.as_deref().unwrap_or("-");
@@ -799,7 +782,7 @@ fn format_components_table(components: &[ComponentResponse]) -> (Vec<Value>, Str
             };
 
             table.add_row(vec![
-                id_short.to_string(),
+                id_short.clone(),
                 c.name.clone(),
                 version.to_string(),
                 ctype.to_string(),
@@ -831,18 +814,14 @@ fn format_cve_history_table(entries: &[CveHistoryEntry]) -> (Vec<Value>, String)
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "CVE",
-                "SEVERITY",
-                "COMPONENT",
-                "STATUS",
-                "CVSS",
-                "DISCOVERED",
-            ]);
+        let mut table = new_table(vec![
+            "CVE",
+            "SEVERITY",
+            "COMPONENT",
+            "STATUS",
+            "CVSS",
+            "DISCOVERED",
+        ]);
 
         for e in entries {
             let severity = e.severity.as_deref().unwrap_or("-");

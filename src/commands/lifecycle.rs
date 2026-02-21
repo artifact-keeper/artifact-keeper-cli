@@ -1,12 +1,12 @@
 use artifact_keeper_sdk::ClientLifecycleExt;
 use clap::Subcommand;
-use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, parse_optional_uuid, parse_uuid};
+use super::helpers::{
+    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
 
 #[derive(Subcommand)]
@@ -129,7 +129,7 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
     let policies = req
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list lifecycle policies: {e}")))?;
+        .map_err(|e| sdk_err("list lifecycle policies", e))?;
 
     let policies = policies.into_inner();
     spinner.finish_and_clear();
@@ -163,23 +163,19 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
         .collect();
 
     let table_str = {
-        let mut table = Table::new();
-        table
-            .load_preset(UTF8_FULL_CONDENSED)
-            .set_content_arrangement(ContentArrangement::Dynamic)
-            .set_header(vec![
-                "ID", "NAME", "TYPE", "ENABLED", "PRIORITY", "LAST RUN",
-            ]);
+        let mut table = new_table(vec![
+            "ID", "NAME", "TYPE", "ENABLED", "PRIORITY", "LAST RUN",
+        ]);
 
         for p in &policies {
-            let id_short = &p.id.to_string()[..8];
+            let id_short = short_id(&p.id);
             let enabled = if p.enabled { "yes" } else { "no" };
             let last_run = p
                 .last_run_at
                 .map(|t| t.format("%Y-%m-%d %H:%M").to_string())
                 .unwrap_or_else(|| "-".to_string());
             table.add_row(vec![
-                id_short,
+                &id_short,
                 &p.name,
                 &p.policy_type,
                 enabled,
@@ -210,7 +206,7 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
         .id(policy_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get lifecycle policy: {e}")))?;
+        .map_err(|e| sdk_err("get lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -301,7 +297,7 @@ async fn create_policy(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create lifecycle policy: {e}")))?;
+        .map_err(|e| sdk_err("create lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -337,7 +333,7 @@ async fn delete_policy(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Res
         .id(policy_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete lifecycle policy: {e}")))?;
+        .map_err(|e| sdk_err("delete lifecycle policy", e))?;
 
     spinner.finish_and_clear();
     eprintln!("Lifecycle policy {id} deleted.");
@@ -356,7 +352,7 @@ async fn preview_policy(id: &str, global: &GlobalArgs) -> Result<()> {
         .id(policy_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to preview policy: {e}")))?;
+        .map_err(|e| sdk_err("preview policy", e))?;
 
     spinner.finish_and_clear();
     print_execution_result(&result, "Preview", global);
@@ -375,7 +371,7 @@ async fn execute_policy(id: &str, global: &GlobalArgs) -> Result<()> {
         .id(policy_id)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to execute policy: {e}")))?;
+        .map_err(|e| sdk_err("execute policy", e))?;
 
     spinner.finish_and_clear();
     print_execution_result(&result, "Execution", global);
