@@ -1,0 +1,10 @@
+---
+source: src/commands/permission.rs
+assertion_line: 756
+expression: table
+---
+┌──────────┬───────────┬──────┬────────────────┬────────────┬─────────────┐
+│ ID       ┆ PRINCIPAL ┆ TYPE ┆ TARGET         ┆ TYPE       ┆ ACTIONS     │
+╞══════════╪═══════════╪══════╪════════════════╪════════════╪═════════════╡
+│ 00000000 ┆ alice     ┆ user ┆ maven-releases ┆ repository ┆ read, write │
+└──────────┴───────────┴──────┴────────────────┴────────────┴─────────────┘

@@ -1,0 +1,17 @@
+---
+source: src/commands/lifecycle.rs
+assertion_line: 1024
+expression: parsed
+---
+- config: {}
+  created_at: "2026-01-15T12:00:00Z"
+  description: Remove old artifacts
+  enabled: true
+  id: 00000000-0000-0000-0000-000000000000
+  last_run_at: ~
+  last_run_items_removed: ~
+  name: cleanup-old
+  policy_type: retention
+  priority: 10
+  repository_id: ~
+  updated_at: "2026-01-15T12:00:00Z"

@@ -774,4 +774,21 @@ mod tests {
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_approval_list_json() {
+        let items = vec![approval_json()];
+        let output = crate::output::render(&items, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("approval_list_json", parsed);
+    }
+
+    #[test]
+    fn snapshot_approval_list_table() {
+        let items = vec![approval_json()];
+        let table = format_approval_table(&items);
+        insta::assert_snapshot!("approval_list_table", table);
+    }
 }
