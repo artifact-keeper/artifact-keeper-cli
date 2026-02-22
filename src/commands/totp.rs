@@ -288,12 +288,12 @@ mod tests {
             "test",
             "disable",
             "--password",
-            "mypass",
+            "placeholder",
             "--code",
             "654321",
         ]);
         if let TotpCommand::Disable { password, code } = cli.command {
-            assert_eq!(password.unwrap(), "mypass");
+            assert_eq!(password.unwrap(), "placeholder");
             assert_eq!(code.unwrap(), "654321");
         } else {
             panic!("Expected Disable");
