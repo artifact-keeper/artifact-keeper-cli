@@ -1,11 +1,12 @@
 use std::io;
 
 use artifact_keeper_sdk::types::{
-    DashboardResponse, FacetsResponse, FindingResponse, PaginationInfo, PeerInstanceResponse,
-    ScanResponse, SearchResultItem, SyncPolicyResponse,
+    DashboardResponse, FacetsResponse, FindingResponse, GrowthSummary, PaginationInfo,
+    PeerInstanceResponse, RepositoryStorageBreakdown, ScanResponse, SearchResultItem,
+    SyncPolicyResponse,
 };
 use artifact_keeper_sdk::{
-    ClientPeersExt, ClientRepositoriesExt, ClientSearchExt, ClientSecurityExt,
+    ClientAnalyticsExt, ClientPeersExt, ClientRepositoriesExt, ClientSearchExt, ClientSecurityExt,
 };
 use crossterm::event::{self, Event, KeyCode, KeyModifiers};
 use crossterm::execute;
@@ -92,6 +93,7 @@ enum Panel {
     Artifacts,
     Security,
     Replication,
+    Analytics,
 }
 
 struct InstanceEntry {
@@ -131,6 +133,14 @@ struct ReplicationState {
     loaded: bool,
 }
 
+#[derive(Default)]
+struct AnalyticsState {
+    storage: Vec<RepositoryStorageBreakdown>,
+    growth: Option<GrowthSummary>,
+    storage_list_state: ListState,
+    loaded: bool,
+}
+
 struct App {
     active_panel: Panel,
     instances: Vec<InstanceEntry>,
@@ -160,6 +170,8 @@ struct App {
     security: SecurityState,
     // Replication panel state
     replication: ReplicationState,
+    // Analytics panel state
+    analytics: AnalyticsState,
 }
 
 impl App {
@@ -203,6 +215,7 @@ impl App {
             global_search_submitted: false,
             security: SecurityState::default(),
             replication: ReplicationState::default(),
+            analytics: AnalyticsState::default(),
         }
     }
 
@@ -244,6 +257,10 @@ impl App {
                 &mut self.replication.peer_list_state,
                 self.replication.peers.len(),
             ),
+            Panel::Analytics => (
+                &mut self.analytics.storage_list_state,
+                self.analytics.storage.len(),
+            ),
         }
     }
 
@@ -264,6 +281,7 @@ impl App {
             Panel::Artifacts => self.active_panel = Panel::Repos,
             Panel::Security => self.active_panel = Panel::Artifacts,
             Panel::Replication => self.active_panel = Panel::Security,
+            Panel::Analytics => self.active_panel = Panel::Replication,
         }
     }
 
@@ -273,6 +291,7 @@ impl App {
             Panel::Repos if !self.artifacts.is_empty() => self.active_panel = Panel::Artifacts,
             Panel::Artifacts => self.active_panel = Panel::Security,
             Panel::Security => self.active_panel = Panel::Replication,
+            Panel::Replication => self.active_panel = Panel::Analytics,
             _ => {}
         }
     }
@@ -628,6 +647,48 @@ impl App {
         self.loading = false;
     }
 
+    async fn load_analytics_data(&mut self) {
+        let instance_name = match self.selected_instance() {
+            Some(i) => i.name.clone(),
+            None => return,
+        };
+
+        let client = match self.build_cached_client(&instance_name) {
+            Some(c) => c,
+            None => {
+                self.status_message = format!("Failed to connect to {instance_name}");
+                return;
+            }
+        };
+
+        self.loading = true;
+        self.status_message = "Loading analytics data...".to_string();
+
+        match client.get_storage_breakdown().send().await {
+            Ok(resp) => {
+                self.analytics.storage = resp.into_inner();
+                self.analytics.storage_list_state = ListState::default();
+                if !self.analytics.storage.is_empty() {
+                    self.analytics.storage_list_state.select(Some(0));
+                }
+            }
+            Err(e) => {
+                self.status_message = format!("Failed to load storage breakdown: {e}");
+                self.analytics.storage.clear();
+            }
+        }
+
+        if let Ok(resp) = client.get_growth_summary().send().await {
+            self.analytics.growth = Some(resp.into_inner());
+        }
+
+        self.analytics.loaded = true;
+        let repo_count = self.analytics.storage.len();
+        self.status_message =
+            format!("{repo_count} repositories in storage breakdown on {instance_name}");
+        self.loading = false;
+    }
+
     async fn load_findings(&mut self) {
         let scan_id = match self
             .security
@@ -834,7 +895,8 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                     Panel::Repos => Panel::Artifacts,
                     Panel::Artifacts => Panel::Security,
                     Panel::Security => Panel::Replication,
-                    Panel::Replication => Panel::Instances,
+                    Panel::Replication => Panel::Analytics,
+                    Panel::Analytics => Panel::Instances,
                 };
                 if next == Panel::Security && app.security.dashboard.is_none() {
                     app.active_panel = next;
@@ -842,6 +904,9 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                 } else if next == Panel::Replication && !app.replication.loaded {
                     app.active_panel = next;
                     app.load_replication_data().await;
+                } else if next == Panel::Analytics && !app.analytics.loaded {
+                    app.active_panel = next;
+                    app.load_analytics_data().await;
                 } else {
                     app.active_panel = next;
                 }
@@ -868,6 +933,7 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                     }
                 }
                 Panel::Replication => {}
+                Panel::Analytics => {}
             },
             KeyCode::Esc => {
                 if app.active_panel == Panel::Security && app.security.showing_findings {
@@ -893,6 +959,14 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                     app.active_panel = Panel::Replication;
                 }
             }
+            KeyCode::Char('6') => {
+                if !app.analytics.loaded {
+                    app.active_panel = Panel::Analytics;
+                    app.load_analytics_data().await;
+                } else {
+                    app.active_panel = Panel::Analytics;
+                }
+            }
             KeyCode::Char('s') | KeyCode::Char('S') => {
                 app.global_searching = true;
                 app.global_search_submitted = false;
@@ -910,6 +984,10 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                 if app.active_panel == Panel::Replication {
                     app.replication.loaded = false;
                     app.load_replication_data().await;
+                }
+                if app.active_panel == Panel::Analytics {
+                    app.analytics.loaded = false;
+                    app.load_analytics_data().await;
                 }
                 app.status_message = "Refreshed".to_string();
             }
@@ -938,6 +1016,8 @@ fn draw(f: &mut Frame, app: &mut App) {
         draw_security_panel(f, app, main_layout[0]);
     } else if app.active_panel == Panel::Replication {
         draw_replication_panel(f, app, main_layout[0]);
+    } else if app.active_panel == Panel::Analytics {
+        draw_analytics_panel(f, app, main_layout[0]);
     } else if app.detail_view {
         draw_detail(f, app, main_layout[0]);
     } else {
@@ -1143,7 +1223,7 @@ fn draw_status_bar(f: &mut Frame, app: &App, area: Rect) {
         spans.extend(hotkey_span("Tab", " next panel"));
         spans.extend(hotkey_span("r", "efresh"));
         spans.extend(hotkey_span("?", "help"));
-    } else if app.active_panel == Panel::Replication {
+    } else if app.active_panel == Panel::Replication || app.active_panel == Panel::Analytics {
         spans.extend(hotkey_span(" q", "uit"));
         spans.extend(hotkey_span("Tab", " next panel"));
         spans.extend(hotkey_span("r", "efresh"));
@@ -1176,9 +1256,10 @@ fn draw_help_overlay(f: &mut Frame, area: Rect) {
         Line::from("  k/Up        Move up in list"),
         Line::from("  Enter       Select / expand / drill into findings"),
         Line::from("  Esc         Back (findings to scans)"),
-        Line::from("  Tab         Cycle panels (1-5)"),
+        Line::from("  Tab         Cycle panels (1-6)"),
         Line::from("  4           Jump to Security panel"),
         Line::from("  5           Jump to Replication panel"),
+        Line::from("  6           Jump to Analytics panel"),
         Line::from(""),
         Line::from("  s           Global search (all repos)"),
         Line::from("  /           Filter artifacts in repo"),
@@ -1718,6 +1799,150 @@ fn draw_replication_panel(f: &mut Frame, app: &mut App, area: Rect) {
 
     let block = Block::default()
         .title(" Policies & Details ")
+        .borders(Borders::ALL)
+        .border_style(dim_style());
+
+    let paragraph = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
+
+    f.render_widget(paragraph, layout[1]);
+}
+
+// ---------------------------------------------------------------------------
+// Analytics panel drawing
+// ---------------------------------------------------------------------------
+
+fn draw_analytics_panel(f: &mut Frame, app: &mut App, area: Rect) {
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    // Left: storage breakdown list
+    if app.analytics.storage.is_empty() {
+        let block = Block::default()
+            .title(" Storage Breakdown ")
+            .borders(Borders::ALL)
+            .border_style(cyan_style());
+        let msg = Paragraph::new("No storage data available.")
+            .block(block)
+            .wrap(Wrap { trim: false });
+        f.render_widget(msg, layout[0]);
+    } else {
+        let title = format!(" Storage Breakdown ({}) ", app.analytics.storage.len());
+        let items: Vec<ListItem> = app
+            .analytics
+            .storage
+            .iter()
+            .map(|entry| {
+                ListItem::new(Line::from(vec![
+                    Span::raw(&entry.repository_name),
+                    Span::raw("  "),
+                    Span::styled(format_bytes(entry.storage_bytes), cyan_style()),
+                    Span::raw("  "),
+                    Span::styled(format!("{} artifacts", entry.artifact_count), dim_style()),
+                    Span::raw("  "),
+                    Span::styled(&entry.format, Style::default().fg(Color::Magenta)),
+                ]))
+            })
+            .collect();
+
+        render_panel(
+            f,
+            &title,
+            items,
+            cyan_style(),
+            &mut app.analytics.storage_list_state,
+            layout[0],
+        );
+    }
+
+    // Right: growth summary + selected repo detail
+    let mut lines: Vec<Line> = Vec::new();
+
+    lines.push(Line::from(Span::styled("Growth Summary", bold_style())));
+    lines.push(Line::from(""));
+
+    if let Some(ref growth) = app.analytics.growth {
+        lines.push(detail_line(
+            "  Period:         ",
+            &format!("{} to {}", growth.period_start, growth.period_end),
+        ));
+        lines.push(detail_line(
+            "  Storage Start:  ",
+            &format_bytes(growth.storage_bytes_start),
+        ));
+        lines.push(detail_line(
+            "  Storage End:    ",
+            &format_bytes(growth.storage_bytes_end),
+        ));
+        lines.push(detail_line(
+            "  Growth:         ",
+            &format!(
+                "{} ({:.1}%)",
+                format_bytes(growth.storage_growth_bytes),
+                growth.storage_growth_percent
+            ),
+        ));
+        lines.push(Line::from(""));
+        lines.push(detail_line(
+            "  Artifacts Start: ",
+            &growth.artifacts_start.to_string(),
+        ));
+        lines.push(detail_line(
+            "  Artifacts End:   ",
+            &growth.artifacts_end.to_string(),
+        ));
+        lines.push(detail_line(
+            "  Artifacts Added: ",
+            &growth.artifacts_added.to_string(),
+        ));
+        lines.push(detail_line(
+            "  Downloads:       ",
+            &growth.downloads_in_period.to_string(),
+        ));
+    } else {
+        lines.push(Line::from(Span::styled(
+            "  No growth data available.",
+            dim_style(),
+        )));
+    }
+
+    // Show selected storage entry detail
+    if let Some(idx) = app.analytics.storage_list_state.selected() {
+        if let Some(entry) = app.analytics.storage.get(idx) {
+            lines.push(Line::from(""));
+            lines.push(Line::from(Span::styled(
+                "Selected Repository",
+                bold_style(),
+            )));
+            lines.push(detail_line("  Name:       ", &entry.repository_name));
+            lines.push(detail_line("  Key:        ", &entry.repository_key));
+            lines.push(detail_line("  Format:     ", &entry.format));
+            lines.push(detail_line(
+                "  Storage:    ",
+                &format_bytes(entry.storage_bytes),
+            ));
+            lines.push(detail_line(
+                "  Artifacts:  ",
+                &entry.artifact_count.to_string(),
+            ));
+            lines.push(detail_line(
+                "  Downloads:  ",
+                &entry.download_count.to_string(),
+            ));
+            if let Some(ref ts) = entry.last_upload_at {
+                lines.push(detail_line(
+                    "  Last Upload: ",
+                    &ts.format("%Y-%m-%d %H:%M").to_string(),
+                ));
+            }
+        }
+    }
+
+    let block = Block::default()
+        .title(" Growth & Details ")
         .borders(Borders::ALL)
         .border_style(dim_style());
 
