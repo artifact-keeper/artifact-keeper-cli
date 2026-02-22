@@ -1,8 +1,11 @@
 use assert_cmd::Command;
-use std::sync::Once;
+use std::sync::{Once, OnceLock};
 use std::time::Duration;
 
 static INIT: Once = Once::new();
+
+/// Cached auth token, shared across all tests in a binary.
+static AUTH_TOKEN: OnceLock<String> = OnceLock::new();
 
 /// Backend URL for E2E tests. Set via E2E_BACKEND_URL env var,
 /// defaults to the Docker Compose stack port.
@@ -10,7 +13,7 @@ pub fn backend_url() -> String {
     std::env::var("E2E_BACKEND_URL").unwrap_or_else(|_| "http://localhost:8081".to_string())
 }
 
-/// Ensure backend is reachable. Called once per test run.
+/// Ensure backend is reachable. Called once per test binary.
 pub fn ensure_backend() {
     INIT.call_once(|| {
         let url = format!("{}/health", backend_url());
@@ -29,30 +32,10 @@ pub fn ensure_backend() {
     });
 }
 
-/// Test environment with temp config dir and pre-authenticated CLI.
-pub struct TestEnv {
-    pub url: String,
-    pub token: String,
-    pub config_dir: tempfile::TempDir,
-}
-
-impl TestEnv {
-    /// Create a test environment: write config pointing at the E2E backend,
-    /// login as admin, and return a ready-to-use env.
-    pub fn setup() -> Self {
-        ensure_backend();
-
+/// Login as admin and cache the token. Called once per test binary.
+fn get_auth_token() -> &'static str {
+    AUTH_TOKEN.get_or_init(|| {
         let url = backend_url();
-        let config_dir = tempfile::TempDir::new().expect("Failed to create temp config dir");
-
-        // Write config pointing at the test backend
-        let config = format!(
-            "default_instance = \"e2e\"\n\n[instances.e2e]\nurl = \"{url}\"\napi_version = \"v1\"\n"
-        );
-        std::fs::write(config_dir.path().join("config.toml"), config)
-            .expect("Failed to write test config");
-
-        // Login to get a token
         let client = reqwest::blocking::Client::new();
         let resp = client
             .post(format!("{url}/api/v1/auth/login"))
@@ -70,10 +53,36 @@ impl TestEnv {
         );
 
         let body: serde_json::Value = resp.json().expect("Failed to parse login response");
-        let token = body["token"]
+        body["access_token"]
             .as_str()
-            .expect("No token in login response")
-            .to_string();
+            .expect("No access_token in login response")
+            .to_string()
+    })
+}
+
+/// Test environment with temp config dir and pre-authenticated CLI.
+pub struct TestEnv {
+    pub url: String,
+    pub token: String,
+    pub config_dir: tempfile::TempDir,
+}
+
+impl TestEnv {
+    /// Create a test environment: write config pointing at the E2E backend,
+    /// reuse the cached admin token, and return a ready-to-use env.
+    pub fn setup() -> Self {
+        ensure_backend();
+
+        let url = backend_url();
+        let token = get_auth_token().to_string();
+        let config_dir = tempfile::TempDir::new().expect("Failed to create temp config dir");
+
+        // Write config pointing at the test backend
+        let config = format!(
+            "default_instance = \"e2e\"\n\n[instances.e2e]\nurl = \"{url}\"\napi_version = \"v1\"\n"
+        );
+        std::fs::write(config_dir.path().join("config.toml"), config)
+            .expect("Failed to write test config");
 
         TestEnv {
             url,

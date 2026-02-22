@@ -24,7 +24,7 @@ fn repo_create_show_delete_lifecycle() {
 
     // Create
     env.ak_cmd()
-        .args(["repo", "create", &repo_key, "--pkg-format", "generic", "--type", "local"])
+        .args(["repo", "create", &repo_key, "--pkg-format", "generic", "--repo-type", "local"])
         .assert()
         .success();
 
