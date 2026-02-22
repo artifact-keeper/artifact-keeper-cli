@@ -10,6 +10,7 @@ use serde_json::Value;
 use super::client::client_for;
 use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -102,8 +103,9 @@ pub enum SsoCreateCommand {
         #[arg(long)]
         client_id: String,
 
+        /// Client secret (omit to enter interactively)
         #[arg(long)]
-        client_secret: String,
+        client_secret: Option<String>,
 
         #[arg(long)]
         auto_create_users: bool,
@@ -164,7 +166,7 @@ impl SsoCommand {
                         &name,
                         &issuer_url,
                         &client_id,
-                        &client_secret,
+                        client_secret,
                         auto_create_users,
                         global,
                     )
@@ -300,6 +302,19 @@ async fn create_ldap(
     use_starttls: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
+    // If bind_dn is provided without bind_password, prompt interactively
+    let bind_password = match (bind_dn, bind_password) {
+        (Some(_), None) if !global.no_input => {
+            let pw = dialoguer::Password::new()
+                .with_prompt("LDAP bind password")
+                .interact()
+                .map_err(|e| AkError::ConfigError(format!("Failed to read password: {e}")))?;
+            Some(pw)
+        }
+        (_, Some(pw)) => Some(pw.to_string()),
+        _ => None,
+    };
+
     let client = client_for(global)?;
     let spinner = output::spinner("Creating LDAP provider...");
 
@@ -308,7 +323,7 @@ async fn create_ldap(
         server_url: server_url.to_string(),
         user_base_dn: user_base_dn.to_string(),
         bind_dn: bind_dn.map(|s| s.to_string()),
-        bind_password: bind_password.map(|s| s.to_string()),
+        bind_password,
         use_starttls: Some(use_starttls),
         user_filter: None,
         username_attribute: None,
@@ -345,10 +360,27 @@ async fn create_oidc(
     name: &str,
     issuer_url: &str,
     client_id: &str,
-    client_secret: &str,
+    client_secret: Option<String>,
     auto_create_users: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let client_secret = match client_secret {
+        Some(s) => s,
+        None => {
+            if global.no_input {
+                return Err(AkError::ConfigError(
+                    "OIDC client secret is required. Provide --client-secret or remove --no-input."
+                        .to_string(),
+                )
+                .into());
+            }
+            dialoguer::Password::new()
+                .with_prompt("OIDC client secret")
+                .interact()
+                .map_err(|e| AkError::ConfigError(format!("Failed to read secret: {e}")))?
+        }
+    };
+
     let client = client_for(global)?;
     let spinner = output::spinner("Creating OIDC provider...");
 
@@ -356,7 +388,7 @@ async fn create_oidc(
         name: name.to_string(),
         issuer_url: issuer_url.to_string(),
         client_id: client_id.to_string(),
-        client_secret: client_secret.to_string(),
+        client_secret,
         auto_create_users: Some(auto_create_users),
         scopes: None,
         attribute_mapping: None,
@@ -1019,7 +1051,7 @@ mod tests {
             assert_eq!(name, "okta-sso");
             assert_eq!(issuer_url, "https://company.okta.com");
             assert_eq!(client_id, "abc123");
-            assert_eq!(client_secret, "secret456");
+            assert_eq!(client_secret.unwrap(), "secret456");
             assert!(!auto_create_users);
         } else {
             panic!("Expected Create Oidc");
@@ -1559,7 +1591,7 @@ mod tests {
             "okta-sso",
             "https://company.okta.com",
             "abc123",
-            "secret456",
+            Some("secret456".into()),
             true,
             &global,
         )

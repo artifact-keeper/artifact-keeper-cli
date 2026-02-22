@@ -9,6 +9,7 @@ use serde_json::Value;
 use super::client::client_for;
 use super::helpers::sdk_err;
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -25,13 +26,13 @@ pub enum TotpCommand {
 
     /// Disable TOTP (requires password and current code)
     Disable {
-        /// Account password
+        /// Account password (omit to enter interactively)
         #[arg(long)]
-        password: String,
+        password: Option<String>,
 
-        /// Six-digit code from your authenticator app
+        /// Six-digit code from your authenticator app (omit to enter interactively)
         #[arg(long)]
-        code: String,
+        code: Option<String>,
     },
 
     /// Check whether TOTP is currently enabled
@@ -43,7 +44,7 @@ impl TotpCommand {
         match self {
             Self::Setup => setup(global).await,
             Self::Enable { code } => enable(&code, global).await,
-            Self::Disable { password, code } => disable(&password, &code, global).await,
+            Self::Disable { password, code } => disable(password, code, global).await,
             Self::Status => status(global).await,
         }
     }
@@ -106,14 +107,45 @@ async fn enable(code: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
-async fn disable(password: &str, code: &str, global: &GlobalArgs) -> Result<()> {
+async fn disable(
+    password: Option<String>,
+    code: Option<String>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let password = match password {
+        Some(p) => p,
+        None => {
+            if global.no_input {
+                return Err(AkError::ConfigError(
+                    "TOTP disable requires interactive input. Provide --password and --code, or remove --no-input.".to_string(),
+                ).into());
+            }
+            dialoguer::Password::new()
+                .with_prompt("Account password")
+                .interact()
+                .map_err(|e| AkError::ConfigError(format!("Failed to read password: {e}")))?
+        }
+    };
+
+    let code = match code {
+        Some(c) => c,
+        None => {
+            if global.no_input {
+                return Err(AkError::ConfigError(
+                    "TOTP disable requires interactive input. Provide --password and --code, or remove --no-input.".to_string(),
+                ).into());
+            }
+            dialoguer::Input::new()
+                .with_prompt("TOTP code")
+                .interact_text()
+                .map_err(|e| AkError::ConfigError(format!("Failed to read code: {e}")))?
+        }
+    };
+
     let client = client_for(global)?;
     let spinner = output::spinner("Disabling TOTP...");
 
-    let body = TotpDisableRequest {
-        password: password.to_string(),
-        code: code.to_string(),
-    };
+    let body = TotpDisableRequest { password, code };
 
     client
         .disable_totp()
@@ -261,8 +293,8 @@ mod tests {
             "654321",
         ]);
         if let TotpCommand::Disable { password, code } = cli.command {
-            assert_eq!(password, "mypass");
-            assert_eq!(code, "654321");
+            assert_eq!(password.unwrap(), "mypass");
+            assert_eq!(code.unwrap(), "654321");
         } else {
             panic!("Expected Disable");
         }
@@ -408,7 +440,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = disable("mypassword", "654321", &global).await;
+        let result = disable(Some("mypassword".into()), Some("654321".into()), &global).await;
         assert!(result.is_ok());
 
         crate::test_utils::teardown_env();
