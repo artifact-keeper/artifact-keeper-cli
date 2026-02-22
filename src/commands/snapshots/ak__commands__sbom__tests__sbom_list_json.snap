@@ -1,0 +1,13 @@
+---
+source: src/commands/sbom.rs
+assertion_line: 1817
+expression: parsed
+---
+- artifact_id: 00000000-0000-0000-0000-000000000010
+  component_count: 142
+  created_at: "2026-01-15T10:00:00Z"
+  format: cyclonedx
+  id: 00000000-0000-0000-0000-000000000001
+  license_count: 12
+  spec_version: "1.5"
+  vulnerability_count: 3

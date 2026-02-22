@@ -1,0 +1,11 @@
+---
+source: src/commands/profile.rs
+assertion_line: 891
+expression: parsed
+---
+display_name: Alice Smith
+email: alice@example.com
+id: 00000000-0000-0000-0000-000000000000
+is_admin: false
+totp_enabled: false
+username: alice

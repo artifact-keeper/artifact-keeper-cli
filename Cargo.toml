@@ -3,7 +3,7 @@ members = ["sdk", "xtask"]
 
 [package]
 name = "artifact-keeper-cli"
-version = "0.8.0"
+version = "0.9.0"
 edition = "2024"
 description = "CLI/TUI tool for Artifact Keeper — an enterprise artifact registry"
 license = "MIT"
@@ -69,7 +69,10 @@ futures = "0.3"
 
 [dev-dependencies]
 assert_cmd = "2"
+insta = { version = "1", features = ["yaml"] }
 predicates = "3"
+reqwest = { version = "0.13", features = ["blocking", "json"] }
+serde_json = "1"
 tempfile = "3"
 wiremock = "0.6"
 

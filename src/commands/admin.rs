@@ -3084,4 +3084,39 @@ mod tests {
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_admin_user_list_json() {
+        let data = json!([{
+            "id": "00000000-0000-0000-0000-000000000001",
+            "username": "alice",
+            "email": "alice@example.com",
+            "display_name": "Alice Smith",
+            "is_admin": true,
+            "is_active": true,
+            "created_at": "2026-01-01T00:00:00Z",
+            "last_login_at": "2026-01-20T10:30:00Z"
+        }]);
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("admin_user_list_json", parsed);
+    }
+
+    #[test]
+    fn snapshot_admin_user_list_table() {
+        let items = vec![json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "username": "alice",
+            "email": "alice@example.com",
+            "display_name": "Alice Smith",
+            "is_admin": true,
+            "is_active": true,
+            "created_at": "2026-01-01T00:00:00Z",
+            "last_login_at": "2026-01-20T10:30:00Z"
+        })];
+        let table = format_users_table(&items);
+        insta::assert_snapshot!("admin_user_list_table", table);
+    }
 }

@@ -1140,4 +1140,22 @@ mod tests {
 
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_analytics_summary_json() {
+        let data = json!({
+            "total_artifacts": 1250,
+            "total_downloads": 45000,
+            "total_storage_bytes": 10737418240_i64,
+            "total_repositories": 12,
+            "active_users_30d": 42,
+            "top_format": "npm",
+            "period": "30d"
+        });
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("analytics_summary_json", parsed);
+    }
 }

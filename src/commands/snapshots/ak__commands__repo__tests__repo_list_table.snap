@@ -1,0 +1,11 @@
+---
+source: src/commands/repo.rs
+assertion_line: 1017
+expression: table
+---
+┌───────────────┬───────────────┬────────┬────────┬────────┬──────────┐
+│ KEY           ┆ NAME          ┆ FORMAT ┆ TYPE   ┆ PUBLIC ┆ STORAGE  │
+╞═══════════════╪═══════════════╪════════╪════════╪════════╪══════════╡
+│ npm-local     ┆ NPM Local     ┆ npm    ┆ local  ┆ yes    ┆ 1.5 GB   │
+│ maven-central ┆ Maven Central ┆ maven  ┆ remote ┆ no     ┆ 500.0 MB │
+└───────────────┴───────────────┴────────┴────────┴────────┴──────────┘

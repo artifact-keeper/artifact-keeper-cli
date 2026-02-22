@@ -1,0 +1,7 @@
+---
+source: src/commands/totp.rs
+assertion_line: 484
+expression: parsed
+---
+qr_code_url: "otpauth://totp/AK:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=AK"
+secret: JBSWY3DPEHPK3PXP

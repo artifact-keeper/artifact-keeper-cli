@@ -1,0 +1,18 @@
+---
+source: src/commands/dt.rs
+assertion_line: 2225
+expression: parsed
+---
+- lastBomImport: 1708492800000
+  metrics:
+    components: 150
+    critical: 1
+    high: 3
+    low: 10
+    medium: 5
+    suppressed: 0
+    unassigned: 2
+    vulnerabilities: 21
+  name: my-app
+  uuid: proj-uuid-001
+  version: 1.0.0

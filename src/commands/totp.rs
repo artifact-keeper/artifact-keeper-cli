@@ -288,12 +288,12 @@ mod tests {
             "test",
             "disable",
             "--password",
-            "mypass",
+            "placeholder",
             "--code",
             "654321",
         ]);
         if let TotpCommand::Disable { password, code } = cli.command {
-            assert_eq!(password.unwrap(), "mypass");
+            assert_eq!(password.unwrap(), "placeholder");
             assert_eq!(code.unwrap(), "654321");
         } else {
             panic!("Expected Disable");
@@ -469,5 +469,18 @@ mod tests {
         assert!(result.is_ok());
 
         crate::test_utils::teardown_env();
+    }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_totp_setup_json() {
+        let data = json!({
+            "secret": "JBSWY3DPEHPK3PXP",
+            "qr_code_url": "otpauth://totp/AK:user@example.com?secret=JBSWY3DPEHPK3PXP&issuer=AK"
+        });
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("totp_setup_json", parsed);
     }
 }

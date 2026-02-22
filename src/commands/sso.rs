@@ -1675,4 +1675,22 @@ mod tests {
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_sso_ldap_json() {
+        let data = ldap_json();
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("sso_ldap_json", parsed);
+    }
+
+    #[test]
+    fn snapshot_sso_oidc_json() {
+        let data = oidc_json();
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("sso_oidc_json", parsed);
+    }
 }
