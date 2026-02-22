@@ -965,4 +965,63 @@ mod tests {
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_repo_list_json() {
+        let items = vec![
+            json!({
+                "key": "npm-local",
+                "name": "NPM Local",
+                "format": "npm",
+                "type": "local",
+                "public": true,
+                "storage_used": "1.5 GB",
+            }),
+            json!({
+                "key": "maven-central",
+                "name": "Maven Central",
+                "format": "maven",
+                "type": "remote",
+                "public": false,
+                "storage_used": "500.0 MB",
+            }),
+        ];
+        let output = crate::output::render(&items, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("repo_list_json", parsed);
+    }
+
+    #[test]
+    fn snapshot_repo_list_table() {
+        let items = vec![
+            json!({
+                "key": "npm-local",
+                "name": "NPM Local",
+                "format": "npm",
+                "type": "local",
+                "public": true,
+                "storage_used": "1.5 GB",
+            }),
+            json!({
+                "key": "maven-central",
+                "name": "Maven Central",
+                "format": "maven",
+                "type": "remote",
+                "public": false,
+                "storage_used": "500.0 MB",
+            }),
+        ];
+        let table = format_repos_table(&items);
+        insta::assert_snapshot!("repo_list_table", table);
+    }
+
+    #[test]
+    fn snapshot_repo_show_json() {
+        let repo = repo_json("npm-local");
+        let output = crate::output::render(&repo, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("repo_show_json", parsed);
+    }
 }
