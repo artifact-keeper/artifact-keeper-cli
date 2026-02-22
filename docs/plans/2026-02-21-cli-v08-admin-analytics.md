@@ -400,7 +400,7 @@ pub enum TotpCommand {
 ```rust
 /// Manage two-factor authentication (TOTP)
 #[command(
-    after_help = "Examples:\n  ak totp setup\n  ak totp enable --code 123456\n  ak totp disable --password mypass --code 123456\n  ak totp status"
+    after_help = "Examples:\n  ak totp setup\n  ak totp enable --code 123456\n  ak totp disable --code 123456\n  ak totp status"
 )]
 Totp {
     #[command(subcommand)]
