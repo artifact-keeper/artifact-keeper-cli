@@ -1,0 +1,48 @@
+# E2E test stack for artifact-keeper-cli.
+# Ports are offset from the local dev stack to avoid conflicts.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: artifact_registry_test
+      POSTGRES_USER: registry
+      POSTGRES_PASSWORD: registry
+    ports:
+      - "30433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U registry -d artifact_registry_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    environment:
+      MEILI_ENV: development
+    ports:
+      - "7701:7700"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  backend:
+    image: ghcr.io/artifact-keeper/artifact-keeper-backend:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgresql://registry:registry@postgres:5432/artifact_registry_test"
+      MEILI_URL: "http://meilisearch:7700"
+      ADMIN_PASSWORD: "admin123"
+      JWT_SECRET: "e2e-test-secret-key-not-for-production"
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
