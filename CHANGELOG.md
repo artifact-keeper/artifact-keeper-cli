@@ -5,6 +5,21 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-02-21
+
+### Added
+
+- Snapshot tests using `insta` for JSON and table output regression detection across all command modules (~40 snapshot tests)
+- E2E integration test suite running against a real backend via Docker Compose (20+ test files covering auth, repo, admin, governance, analytics, webhook, and more)
+- Docker Compose stack (`tests/docker-compose.yml`) with backend, PostgreSQL, and Meilisearch for local E2E development
+- Shared test helpers in `tests/common/` for E2E environment setup, auth, and API access
+- CI pipeline job for automated E2E testing on push to main and PRs
+- Start/stop scripts (`tests/start-backend.sh`, `tests/stop-backend.sh`) for local E2E test development
+
+### Fixed
+
+- Removed plain-text password from TOTP command examples in CLI help text
+
 ## [0.6.0] - 2026-02-21
 
 ### Added

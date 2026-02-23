@@ -1,0 +1,17 @@
+---
+source: src/commands/approval.rs
+assertion_line: 785
+expression: parsed
+---
+- artifact_id: 00000000-0000-0000-0000-000000000000
+  id: 00000000-0000-0000-0000-000000000000
+  notes: Please promote
+  policy_result: ~
+  requested_at: "2026-01-15T12:00:00Z"
+  requested_by: 00000000-0000-0000-0000-000000000000
+  review_notes: ~
+  reviewed_at: ~
+  reviewed_by: ~
+  source_repository: maven-staging
+  status: pending
+  target_repository: maven-releases

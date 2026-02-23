@@ -2199,4 +2199,29 @@ mod tests {
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_dt_project_list_json() {
+        let data = serde_json::json!([{
+            "uuid": "proj-uuid-001",
+            "name": "my-app",
+            "version": "1.0.0",
+            "lastBomImport": 1708492800000_i64,
+            "metrics": {
+                "critical": 1,
+                "high": 3,
+                "medium": 5,
+                "low": 10,
+                "unassigned": 2,
+                "vulnerabilities": 21,
+                "components": 150,
+                "suppressed": 0
+            }
+        }]);
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("dt_project_list_json", parsed);
+    }
 }

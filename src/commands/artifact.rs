@@ -1540,4 +1540,78 @@ mod tests {
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_artifact_list_json() {
+        let items = vec![json!({
+            "path": "org/example/lib/1.0.0/lib-1.0.0.jar",
+            "version": "1.0.0",
+            "size": "2.5 MB",
+            "downloads": 150,
+            "created_at": "2026-01-15",
+        })];
+        let output = crate::output::render(&items, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("artifact_list_json", parsed);
+    }
+
+    #[test]
+    fn snapshot_artifact_list_table() {
+        let items = vec![
+            json!({
+                "path": "org/example/lib/1.0.0/lib-1.0.0.jar",
+                "version": "1.0.0",
+                "size": "2.5 MB",
+                "downloads": 150,
+                "created_at": "2026-01-15",
+            }),
+            json!({
+                "path": "com/mycompany/app/2.0.0/app-2.0.0.war",
+                "version": "2.0.0",
+                "size": "45.3 MB",
+                "downloads": 25,
+                "created_at": "2026-02-01",
+            }),
+        ];
+        let table = format_artifacts_table(&items);
+        insta::assert_snapshot!("artifact_list_table", table);
+    }
+
+    #[test]
+    fn snapshot_search_results_json() {
+        let items = vec![json!({
+            "name": "log4j-core",
+            "repository": "maven-central",
+            "format": "maven",
+            "version": "2.17.1",
+            "size": "1.8 MB",
+        })];
+        let output = crate::output::render(&items, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("artifact_search_json", parsed);
+    }
+
+    #[test]
+    fn snapshot_search_results_table() {
+        let items = vec![
+            json!({
+                "name": "log4j-core",
+                "repository": "maven-central",
+                "format": "maven",
+                "version": "2.17.1",
+                "size": "1.8 MB",
+            }),
+            json!({
+                "name": "express",
+                "repository": "npm-local",
+                "format": "npm",
+                "version": "4.18.2",
+                "size": "200.0 KB",
+            }),
+        ];
+        let table = format_search_results_table(&items);
+        insta::assert_snapshot!("artifact_search_table", table);
+    }
 }

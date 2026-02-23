@@ -1797,4 +1797,23 @@ mod tests {
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_sbom_list_json() {
+        let data = serde_json::json!([{
+            "id": "00000000-0000-0000-0000-000000000001",
+            "artifact_id": "00000000-0000-0000-0000-000000000010",
+            "format": "cyclonedx",
+            "spec_version": "1.5",
+            "component_count": 142,
+            "vulnerability_count": 3,
+            "license_count": 12,
+            "created_at": "2026-01-15T10:00:00Z"
+        }]);
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("sbom_list_json", parsed);
+    }
 }

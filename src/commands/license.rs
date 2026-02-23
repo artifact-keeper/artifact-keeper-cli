@@ -936,4 +936,14 @@ mod tests {
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_license_policy_json() {
+        let data = policy_json();
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("license_policy_json", parsed);
+    }
 }

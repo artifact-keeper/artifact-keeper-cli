@@ -2868,4 +2868,41 @@ mod tests {
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_scan_dashboard_json() {
+        let data = serde_json::json!({
+            "total_scans": 142,
+            "passed": 120,
+            "failed": 22,
+            "critical": 3,
+            "high": 8,
+            "medium": 11,
+            "low": 0,
+            "unscanned_artifacts": 5,
+            "last_scan_at": "2026-01-20T14:30:00Z"
+        });
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("scan_dashboard_json", parsed);
+    }
+
+    #[test]
+    fn snapshot_scan_policy_list_json() {
+        let data = serde_json::json!([{
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "strict-policy",
+            "max_severity": "CRITICAL",
+            "block_on_fail": true,
+            "block_unscanned": true,
+            "repository_id": null,
+            "created_at": "2026-01-15T10:00:00Z",
+            "updated_at": "2026-01-15T12:00:00Z"
+        }]);
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("scan_policy_list_json", parsed);
+    }
 }

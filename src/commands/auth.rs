@@ -559,6 +559,32 @@ mod tests {
         assert!(result.is_err());
         crate::test_utils::teardown_env();
     }
+
+    // ---- insta snapshot tests ----
+
+    #[test]
+    fn snapshot_whoami_json() {
+        let data = user_json();
+        let output = crate::output::render(&data, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("auth_whoami_json", parsed);
+    }
+
+    #[test]
+    fn snapshot_token_list_json() {
+        let tokens = serde_json::json!([{
+            "id": NIL_UUID,
+            "name": "ci-deploy",
+            "prefix": "ak_xxxx_",
+            "scopes": "read, write",
+            "created_at": "2026-01-15T12:00:00+00:00",
+            "expires_at": "never",
+            "last_used": "never"
+        }]);
+        let output = crate::output::render(&tokens, &OutputFormat::Json, None);
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        insta::assert_yaml_snapshot!("auth_token_list_json", parsed);
+    }
 }
 
 async fn token_list(global: &GlobalArgs) -> Result<()> {

@@ -1,0 +1,17 @@
+---
+source: src/commands/repo.rs
+assertion_line: 993
+expression: parsed
+---
+- format: npm
+  key: npm-local
+  name: NPM Local
+  public: true
+  storage_used: 1.5 GB
+  type: local
+- format: maven
+  key: maven-central
+  name: Maven Central
+  public: false
+  storage_used: 500.0 MB
+  type: remote

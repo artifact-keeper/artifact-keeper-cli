@@ -84,3 +84,65 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: [check]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: artifact_registry_test
+          POSTGRES_USER: registry
+          POSTGRES_PASSWORD: registry
+        ports:
+          - 30433:5432
+        options: >-
+          --health-cmd "pg_isready -U registry -d artifact_registry_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+      meilisearch:
+        image: getmeili/meilisearch:v1.12
+        env:
+          MEILI_ENV: development
+        ports:
+          - 7701:7700
+        options: >-
+          --health-cmd "curl -f http://localhost:7700/health"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Start backend
+        run: |
+          docker run -d --name e2e-backend \
+            --network ${{ job.services.postgres.network }} \
+            -e DATABASE_URL="postgresql://registry:registry@postgres:5432/artifact_registry_test" \
+            -e MEILI_URL="http://meilisearch:7700" \
+            -e ADMIN_PASSWORD="admin123" \
+            -e JWT_SECRET="e2e-test-secret-key-not-for-production" \
+            -p 8081:8080 \
+            ghcr.io/artifact-keeper/artifact-keeper-backend:latest
+      - name: Wait for backend
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8081/health > /dev/null 2>&1; then
+              echo "Backend healthy after $i attempts"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs e2e-backend
+          exit 1
+      - name: Run E2E tests
+        env:
+          E2E_BACKEND_URL: http://localhost:8081
+        run: cargo test --test 'e2e_*' -- --include-ignored --test-threads=1
+      - name: Backend logs (on failure)
+        if: failure()
+        run: docker logs e2e-backend

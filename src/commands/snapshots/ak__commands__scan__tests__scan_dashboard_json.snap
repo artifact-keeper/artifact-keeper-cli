@@ -1,0 +1,14 @@
+---
+source: src/commands/scan.rs
+assertion_line: 2889
+expression: parsed
+---
+critical: 3
+failed: 22
+high: 8
+last_scan_at: "2026-01-20T14:30:00Z"
+low: 0
+medium: 11
+passed: 120
+total_scans: 142
+unscanned_artifacts: 5

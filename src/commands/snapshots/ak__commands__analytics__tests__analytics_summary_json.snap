@@ -1,0 +1,12 @@
+---
+source: src/commands/analytics.rs
+assertion_line: 1159
+expression: parsed
+---
+active_users_30d: 42
+period: 30d
+top_format: npm
+total_artifacts: 1250
+total_downloads: 45000
+total_repositories: 12
+total_storage_bytes: 10737418240

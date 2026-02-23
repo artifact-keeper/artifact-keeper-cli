@@ -1,0 +1,6 @@
+name: "Artifact Keeper CLI CodeQL Config"
+
+paths-ignore:
+  - "sdk/src/generated_sdk.rs"
+  - "target"
+  - "tests/docker-compose.yml"
