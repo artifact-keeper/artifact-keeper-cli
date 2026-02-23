@@ -14,7 +14,15 @@ fn label_repo_lifecycle() {
     // Create a repo first
     let repo_key = format!("e2e-label-repo-{}", std::process::id());
     env.ak_cmd()
-        .args(["repo", "create", &repo_key, "--pkg-format", "generic", "--repo-type", "local"])
+        .args([
+            "repo",
+            "create",
+            &repo_key,
+            "--pkg-format",
+            "generic",
+            "--repo-type",
+            "local",
+        ])
         .assert()
         .success();
 

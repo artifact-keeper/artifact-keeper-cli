@@ -10,10 +10,7 @@ use predicates::prelude::*;
 #[ignore = "requires E2E backend"]
 fn group_list() {
     let env = common::TestEnv::setup();
-    env.ak_cmd()
-        .args(["group", "list"])
-        .assert()
-        .success();
+    env.ak_cmd().args(["group", "list"]).assert().success();
 }
 
 #[test]

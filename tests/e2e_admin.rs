@@ -21,10 +21,7 @@ fn admin_users_list() {
 #[ignore = "requires E2E backend"]
 fn admin_stats() {
     let env = common::TestEnv::setup();
-    env.ak_cmd()
-        .args(["admin", "stats"])
-        .assert()
-        .success();
+    env.ak_cmd().args(["admin", "stats"]).assert().success();
 }
 
 #[test]

@@ -10,10 +10,7 @@ use predicates::prelude::*;
 #[ignore = "requires E2E backend"]
 fn webhook_list() {
     let env = common::TestEnv::setup();
-    env.ak_cmd()
-        .args(["webhook", "list"])
-        .assert()
-        .success();
+    env.ak_cmd().args(["webhook", "list"]).assert().success();
 }
 
 #[test]

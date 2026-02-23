@@ -8,8 +8,5 @@ mod common;
 #[ignore = "requires E2E backend"]
 fn scan_list() {
     let env = common::TestEnv::setup();
-    env.ak_cmd()
-        .args(["scan", "list"])
-        .assert()
-        .success();
+    env.ak_cmd().args(["scan", "list"]).assert().success();
 }

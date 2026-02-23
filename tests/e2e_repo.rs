@@ -10,10 +10,7 @@ use predicates::prelude::*;
 #[ignore = "requires E2E backend"]
 fn repo_list_succeeds() {
     let env = common::TestEnv::setup();
-    env.ak_cmd()
-        .args(["repo", "list"])
-        .assert()
-        .success();
+    env.ak_cmd().args(["repo", "list"]).assert().success();
 }
 
 #[test]
@@ -24,7 +21,15 @@ fn repo_create_show_delete_lifecycle() {
 
     // Create
     env.ak_cmd()
-        .args(["repo", "create", &repo_key, "--pkg-format", "generic", "--repo-type", "local"])
+        .args([
+            "repo",
+            "create",
+            &repo_key,
+            "--pkg-format",
+            "generic",
+            "--repo-type",
+            "local",
+        ])
         .assert()
         .success();
 
