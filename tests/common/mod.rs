@@ -119,20 +119,22 @@ impl TestEnv {
 
     /// POST to a backend API endpoint with JSON body.
     pub fn api_post(&self, path: &str, body: &serde_json::Value) -> reqwest::blocking::Response {
+        let url = format!("{}{}", self.url, path);
         self.api_client()
-            .post(format!("{}{}", self.url, path))
+            .post(&url)
             .bearer_auth(&self.token)
             .json(body)
             .send()
-            .unwrap_or_else(|e| panic!("API POST {path} failed: {e}"))
+            .unwrap_or_else(|e| panic!("API POST failed: {e}"))
     }
 
     /// DELETE a backend API resource.
     pub fn api_delete(&self, path: &str) -> reqwest::blocking::Response {
+        let url = format!("{}{}", self.url, path);
         self.api_client()
-            .delete(format!("{}{}", self.url, path))
+            .delete(&url)
             .bearer_auth(&self.token)
             .send()
-            .unwrap_or_else(|e| panic!("API DELETE {path} failed: {e}"))
+            .unwrap_or_else(|e| panic!("API DELETE failed: {e}"))
     }
 }
