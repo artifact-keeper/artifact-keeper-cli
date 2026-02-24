@@ -5,6 +5,25 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-02-23
+
+### Stable Release
+
+First stable release of the Artifact Keeper CLI. The CLI is feature-complete with 29 top-level commands, 100+ subcommands, interactive TUI, multi-instance management, and multi-platform distribution.
+
+### Security
+
+- Bumped `SonarSource/sonarqube-scan-action` from v5 to v6 to fix argument injection vulnerability
+- Updated `lru` transitive dependency to 0.16.3 to resolve `IterMut` unsoundness
+- Added explicit `permissions` blocks to all CI workflow jobs (least-privilege)
+- Added CodeQL workflow with exclusions for generated SDK code
+- Removed URL paths from test helper error messages
+
+### Changed
+
+- Bumped MSRV from 1.85.0 to 1.86.0
+- Bumped `ratatui` from 0.29 to 0.30, `crossterm` from 0.28 to 0.29
+
 ## [0.9.0] - 2026-02-21
 
 ### Added
@@ -110,6 +129,7 @@ Initial release of the Artifact Keeper CLI.
 - Covers 250+ API endpoints across all backend features
 - OpenAPI 3.1 → 3.0 conversion handled automatically by the xtask
 
+[1.0.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v1.0.0
 [0.5.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.5.0
 [0.4.2]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.4.2
 [0.4.1]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.4.1
