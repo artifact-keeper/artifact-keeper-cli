@@ -1,6 +1,6 @@
-# ak — Artifact Keeper CLI
+# ak: Artifact Keeper CLI
 
-The official CLI/TUI for [Artifact Keeper](https://artifactkeeper.com), an enterprise artifact registry supporting 45+ package formats. Browse repositories, upload and download artifacts, run security scans, configure package managers, and more — all from your terminal.
+The official CLI/TUI for [Artifact Keeper](https://artifactkeeper.com), an enterprise artifact registry supporting 45+ package formats. Browse repositories, upload and download artifacts, run security scans, configure package managers, and more, all from your terminal.
 
 ## Installation
 
@@ -20,7 +20,7 @@ brew install artifact-keeper/tap/ak
 
 ### Cargo (from source)
 
-Requires Rust 1.85+:
+Requires Rust 1.86+:
 
 ```bash
 cargo install artifact-keeper-cli
@@ -77,19 +77,48 @@ ak setup auto
 ## Commands
 
 ```
-ak instance   — Add, remove, and switch between registry instances
-ak auth       — Log in, manage tokens, check identity
-ak repo       — List, show, create, and delete repositories
-ak artifact   — Push, pull, list, search, copy, and delete artifacts
-ak setup      — Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more
-ak scan       — Trigger security scans and view findings
-ak admin      — Backups, cleanup, metrics, user management, plugins
-ak migrate    — Bulk-copy artifacts between instances
-ak doctor     — Diagnose configuration and connectivity issues
-ak config     — Get/set CLI configuration values
-ak tui        — Launch interactive TUI dashboard
-ak completion — Generate shell completions (bash/zsh/fish/powershell)
-ak man-pages  — Generate man pages for all commands
+Core
+  ak instance      Add, remove, and switch between registry instances
+  ak auth          Log in, manage tokens, check identity
+  ak repo          List, show, create, and delete repositories
+  ak artifact      Push, pull, list, search, copy, and delete artifacts
+  ak setup         Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more
+  ak doctor        Diagnose configuration and connectivity issues
+  ak config        Get/set CLI configuration values
+
+Security & Compliance
+  ak scan          Trigger security scans and view findings
+  ak sign          Signing and key management
+  ak sbom          Software Bill of Materials operations
+  ak license       License compliance management
+  ak quality-gate  Manage artifact quality gates
+  ak totp          Manage two-factor authentication (TOTP)
+
+Organization
+  ak group         Manage user groups
+  ak permission    Manage fine-grained permission rules
+  ak profile       Manage your user profile and API tokens
+  ak label         Tag repositories with key-value labels
+  ak sso           Manage SSO authentication providers (LDAP, OIDC, SAML)
+
+Workflow & Lifecycle
+  ak promotion     Promote artifacts between repositories
+  ak approval      Manage promotion approval workflows
+  ak lifecycle     Manage lifecycle and retention policies
+  ak migrate       Migrate artifacts between instances in bulk
+
+Federation & Integration
+  ak peer          Manage federation peer instances
+  ak sync-policy   Manage sync policies for automated replication
+  ak webhook       Manage webhooks for event-driven integrations
+  ak dt            Dependency-Track integration
+  ak analytics     Usage analytics and storage insights
+
+Administration
+  ak admin         Backup, cleanup, metrics, user management, plugins
+  ak tui           Launch interactive TUI dashboard
+  ak completion    Generate shell completions (bash/zsh/fish/powershell)
+  ak man-pages     Generate man pages for all commands
 ```
 
 Run `ak <command> --help` for detailed usage and examples.
@@ -102,7 +131,7 @@ Every command supports multiple output modes:
 ak repo list                    # Table (default in terminals)
 ak repo list --format json      # JSON (default when piped)
 ak repo list --format yaml      # YAML
-ak repo list -q                 # Quiet — IDs only, one per line
+ak repo list -q                 # Quiet: IDs only, one per line
 ```
 
 ## Multi-Instance Support
