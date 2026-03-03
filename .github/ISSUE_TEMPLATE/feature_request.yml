@@ -1,0 +1,80 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for the Artifact Keeper CLI
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature.
+
+        Before filing, please make sure you're in the right place:
+
+        - For backend or API feature requests, file in [artifact-keeper](https://github.com/artifact-keeper/artifact-keeper/issues/new).
+        - If you're unsure where the request belongs, file it here and we'll move it to the right repo.
+
+  - type: textarea
+    id: problem-statement
+    attributes:
+      label: Problem Statement
+      description: Describe the problem or limitation you're running into. What are you trying to accomplish?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: Describe how you'd like this to work. Include example commands, flags, or output if possible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives-considered
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative approaches or workarounds?
+    validations:
+      required: false
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Describe the real-world scenario where this feature would be useful.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of the CLI does this relate to?
+      options:
+        - CLI Commands
+        - TUI Interface
+        - Configuration
+        - Authentication
+        - Output / Formatting
+        - Shell Completions
+        - SDK
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Any other context, mockups, or references that might help.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched the [existing issues](https://github.com/artifact-keeper/artifact-keeper-cli/issues) and this has not been requested before.
+          required: true
+        - label: I have reviewed the [documentation](https://artifactkeeper.com/docs) to confirm this functionality does not already exist.
+          required: true
