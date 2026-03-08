@@ -519,6 +519,7 @@ async fn run_cleanup(
         cleanup_audit_logs: audit_logs.then_some(true),
         cleanup_old_backups: old_backups.then_some(true),
         cleanup_stale_peers: stale_peers.then_some(true),
+        cleanup_stale_uploads: None,
     };
 
     let resp = client
@@ -969,14 +970,12 @@ async fn trigger_reindex(global: &GlobalArgs) -> Result<()> {
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         let info = serde_json::json!({
             "message": resp.message,
-            "artifacts_indexed": resp.artifacts_indexed,
-            "repositories_indexed": resp.repositories_indexed,
+            "status": resp.status,
         });
         println!("{}", output::render(&info, &global.format, None));
     } else {
         eprintln!("{}", resp.message);
-        eprintln!("Artifacts indexed:     {}", resp.artifacts_indexed);
-        eprintln!("Repositories indexed:  {}", resp.repositories_indexed);
+        eprintln!("Status: {}", resp.status);
     }
 
     Ok(())

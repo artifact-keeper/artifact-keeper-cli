@@ -287,6 +287,8 @@ async fn create_repo(
         is_public: None,
         quota_bytes: None,
         upstream_url: None,
+        format_key: None,
+        index_upstream_url: None,
     };
 
     let resp = client
