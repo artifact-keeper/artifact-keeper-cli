@@ -1085,6 +1085,7 @@ mod tests {
             created: 3,
             updated: 1,
             removed: 0,
+            retroactive_tasks_queued: 0,
         }
     }
 
@@ -1240,6 +1241,7 @@ mod tests {
             created: 0,
             updated: 0,
             removed: 0,
+            retroactive_tasks_queued: 0,
         };
         let (info, table_str) = format_evaluation_result(&result);
 
@@ -1329,7 +1331,8 @@ mod tests {
             "policies_evaluated": 5,
             "created": 3,
             "updated": 1,
-            "removed": 0
+            "removed": 0,
+            "retroactive_tasks_queued": 0
         })
     }
 

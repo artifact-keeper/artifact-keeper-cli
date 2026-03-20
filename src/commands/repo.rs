@@ -789,6 +789,9 @@ mod tests {
             "description": "Test repo",
             "storage_used_bytes": 1024,
             "quota_bytes": null,
+            "upstream_url": null,
+            "upstream_auth_type": null,
+            "upstream_auth_configured": false,
             "created_at": "2026-01-15T12:00:00Z",
             "updated_at": "2026-01-15T12:00:00Z"
         })
