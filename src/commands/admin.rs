@@ -2485,7 +2485,8 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "audit_logs_deleted": 100,
                 "backups_deleted": 3,
-                "peers_marked_offline": 1
+                "peers_marked_offline": 1,
+                "stale_uploads_deleted": 0
             })))
             .mount(&server)
             .await;
@@ -2878,8 +2879,7 @@ mod tests {
             .and(path("/api/v1/admin/reindex"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "message": "Reindex completed",
-                "artifacts_indexed": 500,
-                "repositories_indexed": 10
+                "status": "completed"
             })))
             .mount(&server)
             .await;
@@ -2928,7 +2928,9 @@ mod tests {
                 "backup_retention_count": 5,
                 "edge_stale_threshold_minutes": 30,
                 "max_upload_size_bytes": 1073741824_i64,
-                "retention_days": 365
+                "retention_days": 365,
+                "storage_backend": "filesystem",
+                "storage_path": "/data/artifacts"
             })))
             .mount(&server)
             .await;
@@ -2952,13 +2954,15 @@ mod tests {
                 "backup_retention_count": 3,
                 "edge_stale_threshold_minutes": 15,
                 "max_upload_size_bytes": 536870912_i64,
-                "retention_days": 180
+                "retention_days": 180,
+                "storage_backend": "filesystem",
+                "storage_path": "/data/artifacts"
             })))
             .mount(&server)
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let json_str = r#"{"allow_anonymous_download":true,"audit_retention_days":60,"backup_retention_count":3,"edge_stale_threshold_minutes":15,"max_upload_size_bytes":536870912,"retention_days":180}"#;
+        let json_str = r#"{"allow_anonymous_download":true,"audit_retention_days":60,"backup_retention_count":3,"edge_stale_threshold_minutes":15,"max_upload_size_bytes":536870912,"retention_days":180,"storage_backend":"filesystem","storage_path":"/data/artifacts"}"#;
         let result = update_settings(json_str, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
