@@ -289,6 +289,11 @@ async fn create_repo(
         upstream_url: None,
         format_key: None,
         index_upstream_url: None,
+        member_repos: None,
+        storage_backend: None,
+        upstream_auth_type: None,
+        upstream_username: None,
+        upstream_password: None,
     };
 
     let resp = client

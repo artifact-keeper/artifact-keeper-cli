@@ -4806,6 +4806,16 @@ pub mod types {
     #[doc = "    \"key\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
+    #[doc = "    \"member_repos\": {"]
+    #[doc = "      \"description\": \"Member repositories to add when creating a virtual repository.\\nEach entry specifies a repository key and optional priority.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/CreateVirtualMemberInput\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
@@ -4819,7 +4829,35 @@ pub mod types {
     #[doc = "    \"repo_type\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
+    #[doc = "    \"storage_backend\": {"]
+    #[doc = "      \"description\": \"Override the default storage backend for this repository.\\nWhen omitted, the server's configured default is used.\\nNon-admin users may only use the default backend.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"upstream_auth_type\": {"]
+    #[doc = "      \"description\": \"Upstream auth type: \\\"basic\\\" or \\\"bearer\\\". Only valid for remote repos.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"upstream_password\": {"]
+    #[doc = "      \"description\": \"Password (basic) or token (bearer). Write-only, never returned in responses.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"upstream_url\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"upstream_username\": {"]
+    #[doc = "      \"description\": \"Username for basic auth.\","]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
@@ -4843,12 +4881,27 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub is_public: ::std::option::Option<bool>,
         pub key: ::std::string::String,
+        #[doc = "Member repositories to add when creating a virtual repository.\nEach entry specifies a repository key and optional priority."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub member_repos: ::std::option::Option<::std::vec::Vec<CreateVirtualMemberInput>>,
         pub name: ::std::string::String,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub quota_bytes: ::std::option::Option<i64>,
         pub repo_type: ::std::string::String,
+        #[doc = "Override the default storage backend for this repository.\nWhen omitted, the server's configured default is used.\nNon-admin users may only use the default backend."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub storage_backend: ::std::option::Option<::std::string::String>,
+        #[doc = "Upstream auth type: \"basic\" or \"bearer\". Only valid for remote repos."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub upstream_auth_type: ::std::option::Option<::std::string::String>,
+        #[doc = "Password (basic) or token (bearer). Write-only, never returned in responses."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub upstream_password: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub upstream_url: ::std::option::Option<::std::string::String>,
+        #[doc = "Username for basic auth."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub upstream_username: ::std::option::Option<::std::string::String>,
     }
     impl CreateRepositoryRequest {
         pub fn builder() -> builder::CreateRepositoryRequest {
@@ -5408,6 +5461,39 @@ pub mod types {
     }
     impl CreateUserResponse {
         pub fn builder() -> builder::CreateUserResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`CreateVirtualMemberInput`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"repo_key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"repo_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateVirtualMemberInput {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub priority: ::std::option::Option<i32>,
+        pub repo_key: ::std::string::String,
+    }
+    impl CreateVirtualMemberInput {
+        pub fn builder() -> builder::CreateVirtualMemberInput {
             Default::default()
         }
     }
@@ -8886,6 +8972,9 @@ pub mod types {
     #[doc = "    \"database\": {"]
     #[doc = "      \"$ref\": \"#/components/schemas/CheckStatus\""]
     #[doc = "    },"]
+    #[doc = "    \"ldap\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/CheckStatus\""]
+    #[doc = "    },"]
     #[doc = "    \"meilisearch\": {"]
     #[doc = "      \"$ref\": \"#/components/schemas/CheckStatus\""]
     #[doc = "    },"]
@@ -8902,6 +8991,8 @@ pub mod types {
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct HealthChecks {
         pub database: CheckStatus,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub ldap: ::std::option::Option<CheckStatus>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub meilisearch: ::std::option::Option<CheckStatus>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
@@ -14705,7 +14796,8 @@ pub mod types {
     #[doc = "    \"name\","]
     #[doc = "    \"repo_type\","]
     #[doc = "    \"storage_used_bytes\","]
-    #[doc = "    \"updated_at\""]
+    #[doc = "    \"updated_at\","]
+    #[doc = "    \"upstream_auth_configured\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"created_at\": {"]
@@ -14751,6 +14843,21 @@ pub mod types {
     #[doc = "    \"updated_at\": {"]
     #[doc = "      \"type\": \"string\","]
     #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"upstream_auth_configured\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"upstream_auth_type\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"upstream_url\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -14771,6 +14878,11 @@ pub mod types {
         pub repo_type: ::std::string::String,
         pub storage_used_bytes: i64,
         pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub upstream_auth_configured: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub upstream_auth_type: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub upstream_url: ::std::option::Option<::std::string::String>,
     }
     impl RepositoryResponse {
         pub fn builder() -> builder::RepositoryResponse {
@@ -17594,6 +17706,80 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Non-sensitive runtime configuration values."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Non-sensitive runtime configuration values.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"demo_mode\","]
+    #[doc = "    \"dependency_track_enabled\","]
+    #[doc = "    \"max_upload_size_bytes\","]
+    #[doc = "    \"meilisearch_enabled\","]
+    #[doc = "    \"openscap_enabled\","]
+    #[doc = "    \"storage_backend\","]
+    #[doc = "    \"trivy_enabled\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"demo_mode\": {"]
+    #[doc = "      \"description\": \"Whether demo mode is active.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"dependency_track_enabled\": {"]
+    #[doc = "      \"description\": \"Whether Dependency-Track is configured.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_upload_size_bytes\": {"]
+    #[doc = "      \"description\": \"Maximum upload size in bytes (0 = unlimited).\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"meilisearch_enabled\": {"]
+    #[doc = "      \"description\": \"Whether Meilisearch search is configured.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"openscap_enabled\": {"]
+    #[doc = "      \"description\": \"Whether OpenSCAP scanning is configured.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"storage_backend\": {"]
+    #[doc = "      \"description\": \"Default storage backend name (e.g. \\\"filesystem\\\", \\\"s3\\\", \\\"gcs\\\").\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"trivy_enabled\": {"]
+    #[doc = "      \"description\": \"Whether Trivy scanning is configured.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SystemConfigResponse {
+        #[doc = "Whether demo mode is active."]
+        pub demo_mode: bool,
+        #[doc = "Whether Dependency-Track is configured."]
+        pub dependency_track_enabled: bool,
+        #[doc = "Maximum upload size in bytes (0 = unlimited)."]
+        pub max_upload_size_bytes: i64,
+        #[doc = "Whether Meilisearch search is configured."]
+        pub meilisearch_enabled: bool,
+        #[doc = "Whether OpenSCAP scanning is configured."]
+        pub openscap_enabled: bool,
+        #[doc = "Default storage backend name (e.g. \"filesystem\", \"s3\", \"gcs\")."]
+        pub storage_backend: ::std::string::String,
+        #[doc = "Whether Trivy scanning is configured."]
+        pub trivy_enabled: bool,
+    }
+    impl SystemConfigResponse {
+        pub fn builder() -> builder::SystemConfigResponse {
+            Default::default()
+        }
+    }
     #[doc = "`SystemSettings`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -20180,6 +20366,55 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`UpstreamAuthRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"auth_type\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"auth_type\": {"]
+    #[doc = "      \"description\": \"Auth type: \\\"basic\\\", \\\"bearer\\\", or \\\"none\\\" to remove.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"password\": {"]
+    #[doc = "      \"description\": \"Password (basic) or token (bearer). Write-only, never returned.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"username\": {"]
+    #[doc = "      \"description\": \"Username for basic auth.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct UpstreamAuthRequest {
+        #[doc = "Auth type: \"basic\", \"bearer\", or \"none\" to remove."]
+        pub auth_type: ::std::string::String,
+        #[doc = "Password (basic) or token (bearer). Write-only, never returned."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub password: ::std::option::Option<::std::string::String>,
+        #[doc = "Username for basic auth."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub username: ::std::option::Option<::std::string::String>,
+    }
+    impl UpstreamAuthRequest {
+        pub fn builder() -> builder::UpstreamAuthRequest {
+            Default::default()
+        }
+    }
     #[doc = "`UserListResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -20373,10 +20608,10 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
-    #[doc = "    \"items\""]
+    #[doc = "    \"members\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
-    #[doc = "    \"items\": {"]
+    #[doc = "    \"members\": {"]
     #[doc = "      \"type\": \"array\","]
     #[doc = "      \"items\": {"]
     #[doc = "        \"$ref\": \"#/components/schemas/VirtualMemberResponse\""]
@@ -20388,7 +20623,7 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct VirtualMembersListResponse {
-        pub items: ::std::vec::Vec<VirtualMemberResponse>,
+        pub members: ::std::vec::Vec<VirtualMemberResponse>,
     }
     impl VirtualMembersListResponse {
         pub fn builder() -> builder::VirtualMembersListResponse {
@@ -29450,10 +29685,30 @@ pub mod types {
             >,
             is_public: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            member_repos: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<super::CreateVirtualMemberInput>>,
+                ::std::string::String,
+            >,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             repo_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+            storage_backend: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            upstream_auth_type: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            upstream_password: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             upstream_url: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            upstream_username: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
@@ -29467,10 +29722,15 @@ pub mod types {
                     index_upstream_url: Ok(Default::default()),
                     is_public: Ok(Default::default()),
                     key: Err("no value supplied for key".to_string()),
+                    member_repos: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
                     quota_bytes: Ok(Default::default()),
                     repo_type: Err("no value supplied for repo_type".to_string()),
+                    storage_backend: Ok(Default::default()),
+                    upstream_auth_type: Ok(Default::default()),
+                    upstream_password: Ok(Default::default()),
                     upstream_url: Ok(Default::default()),
+                    upstream_username: Ok(Default::default()),
                 }
             }
         }
@@ -29535,6 +29795,18 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for key: {e}"));
                 self
             }
+            pub fn member_repos<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<super::CreateVirtualMemberInput>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.member_repos = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for member_repos: {e}"));
+                self
+            }
             pub fn name<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -29565,6 +29837,36 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for repo_type: {e}"));
                 self
             }
+            pub fn storage_backend<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.storage_backend = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for storage_backend: {e}")
+                });
+                self
+            }
+            pub fn upstream_auth_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.upstream_auth_type = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for upstream_auth_type: {e}")
+                });
+                self
+            }
+            pub fn upstream_password<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.upstream_password = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for upstream_password: {e}")
+                });
+                self
+            }
             pub fn upstream_url<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
@@ -29573,6 +29875,16 @@ pub mod types {
                 self.upstream_url = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for upstream_url: {e}"));
+                self
+            }
+            pub fn upstream_username<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.upstream_username = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for upstream_username: {e}")
+                });
                 self
             }
         }
@@ -29588,10 +29900,15 @@ pub mod types {
                     index_upstream_url: value.index_upstream_url?,
                     is_public: value.is_public?,
                     key: value.key?,
+                    member_repos: value.member_repos?,
                     name: value.name?,
                     quota_bytes: value.quota_bytes?,
                     repo_type: value.repo_type?,
+                    storage_backend: value.storage_backend?,
+                    upstream_auth_type: value.upstream_auth_type?,
+                    upstream_password: value.upstream_password?,
                     upstream_url: value.upstream_url?,
+                    upstream_username: value.upstream_username?,
                 })
             }
         }
@@ -29604,10 +29921,15 @@ pub mod types {
                     index_upstream_url: Ok(value.index_upstream_url),
                     is_public: Ok(value.is_public),
                     key: Ok(value.key),
+                    member_repos: Ok(value.member_repos),
                     name: Ok(value.name),
                     quota_bytes: Ok(value.quota_bytes),
                     repo_type: Ok(value.repo_type),
+                    storage_backend: Ok(value.storage_backend),
+                    upstream_auth_type: Ok(value.upstream_auth_type),
+                    upstream_password: Ok(value.upstream_password),
                     upstream_url: Ok(value.upstream_url),
+                    upstream_username: Ok(value.upstream_username),
                 }
             }
         }
@@ -30660,6 +30982,60 @@ pub mod types {
                 Self {
                     generated_password: Ok(value.generated_password),
                     user: Ok(value.user),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CreateVirtualMemberInput {
+            priority: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            repo_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for CreateVirtualMemberInput {
+            fn default() -> Self {
+                Self {
+                    priority: Ok(Default::default()),
+                    repo_key: Err("no value supplied for repo_key".to_string()),
+                }
+            }
+        }
+        impl CreateVirtualMemberInput {
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+            pub fn repo_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repo_key = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repo_key: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateVirtualMemberInput> for super::CreateVirtualMemberInput {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateVirtualMemberInput,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    priority: value.priority?,
+                    repo_key: value.repo_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateVirtualMemberInput> for CreateVirtualMemberInput {
+            fn from(value: super::CreateVirtualMemberInput) -> Self {
+                Self {
+                    priority: Ok(value.priority),
+                    repo_key: Ok(value.repo_key),
                 }
             }
         }
@@ -36590,6 +36966,10 @@ pub mod types {
         #[derive(Clone, Debug)]
         pub struct HealthChecks {
             database: ::std::result::Result<super::CheckStatus, ::std::string::String>,
+            ldap: ::std::result::Result<
+                ::std::option::Option<super::CheckStatus>,
+                ::std::string::String,
+            >,
             meilisearch: ::std::result::Result<
                 ::std::option::Option<super::CheckStatus>,
                 ::std::string::String,
@@ -36604,6 +36984,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     database: Err("no value supplied for database".to_string()),
+                    ldap: Ok(Default::default()),
                     meilisearch: Ok(Default::default()),
                     security_scanner: Ok(Default::default()),
                     storage: Err("no value supplied for storage".to_string()),
@@ -36619,6 +37000,16 @@ pub mod types {
                 self.database = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for database: {e}"));
+                self
+            }
+            pub fn ldap<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::CheckStatus>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.ldap = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for ldap: {e}"));
                 self
             }
             pub fn meilisearch<T>(mut self, value: T) -> Self
@@ -36659,6 +37050,7 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     database: value.database?,
+                    ldap: value.ldap?,
                     meilisearch: value.meilisearch?,
                     security_scanner: value.security_scanner?,
                     storage: value.storage?,
@@ -36669,6 +37061,7 @@ pub mod types {
             fn from(value: super::HealthChecks) -> Self {
                 Self {
                     database: Ok(value.database),
+                    ldap: Ok(value.ldap),
                     meilisearch: Ok(value.meilisearch),
                     security_scanner: Ok(value.security_scanner),
                     storage: Ok(value.storage),
@@ -47057,6 +47450,15 @@ pub mod types {
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
             >,
+            upstream_auth_configured: ::std::result::Result<bool, ::std::string::String>,
+            upstream_auth_type: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            upstream_url: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
         }
         impl ::std::default::Default for RepositoryResponse {
             fn default() -> Self {
@@ -47072,6 +47474,11 @@ pub mod types {
                     repo_type: Err("no value supplied for repo_type".to_string()),
                     storage_used_bytes: Err("no value supplied for storage_used_bytes".to_string()),
                     updated_at: Err("no value supplied for updated_at".to_string()),
+                    upstream_auth_configured: Err(
+                        "no value supplied for upstream_auth_configured".to_string()
+                    ),
+                    upstream_auth_type: Ok(Default::default()),
+                    upstream_url: Ok(Default::default()),
                 }
             }
         }
@@ -47186,6 +47593,36 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
                 self
             }
+            pub fn upstream_auth_configured<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.upstream_auth_configured = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for upstream_auth_configured: {e}")
+                });
+                self
+            }
+            pub fn upstream_auth_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.upstream_auth_type = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for upstream_auth_type: {e}")
+                });
+                self
+            }
+            pub fn upstream_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.upstream_url = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for upstream_url: {e}"));
+                self
+            }
         }
         impl ::std::convert::TryFrom<RepositoryResponse> for super::RepositoryResponse {
             type Error = super::error::ConversionError;
@@ -47204,6 +47641,9 @@ pub mod types {
                     repo_type: value.repo_type?,
                     storage_used_bytes: value.storage_used_bytes?,
                     updated_at: value.updated_at?,
+                    upstream_auth_configured: value.upstream_auth_configured?,
+                    upstream_auth_type: value.upstream_auth_type?,
+                    upstream_url: value.upstream_url?,
                 })
             }
         }
@@ -47221,6 +47661,9 @@ pub mod types {
                     repo_type: Ok(value.repo_type),
                     storage_used_bytes: Ok(value.storage_used_bytes),
                     updated_at: Ok(value.updated_at),
+                    upstream_auth_configured: Ok(value.upstream_auth_configured),
+                    upstream_auth_type: Ok(value.upstream_auth_type),
+                    upstream_url: Ok(value.upstream_url),
                 }
             }
         }
@@ -52666,6 +53109,136 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct SystemConfigResponse {
+            demo_mode: ::std::result::Result<bool, ::std::string::String>,
+            dependency_track_enabled: ::std::result::Result<bool, ::std::string::String>,
+            max_upload_size_bytes: ::std::result::Result<i64, ::std::string::String>,
+            meilisearch_enabled: ::std::result::Result<bool, ::std::string::String>,
+            openscap_enabled: ::std::result::Result<bool, ::std::string::String>,
+            storage_backend: ::std::result::Result<::std::string::String, ::std::string::String>,
+            trivy_enabled: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for SystemConfigResponse {
+            fn default() -> Self {
+                Self {
+                    demo_mode: Err("no value supplied for demo_mode".to_string()),
+                    dependency_track_enabled: Err(
+                        "no value supplied for dependency_track_enabled".to_string()
+                    ),
+                    max_upload_size_bytes: Err(
+                        "no value supplied for max_upload_size_bytes".to_string()
+                    ),
+                    meilisearch_enabled: Err(
+                        "no value supplied for meilisearch_enabled".to_string()
+                    ),
+                    openscap_enabled: Err("no value supplied for openscap_enabled".to_string()),
+                    storage_backend: Err("no value supplied for storage_backend".to_string()),
+                    trivy_enabled: Err("no value supplied for trivy_enabled".to_string()),
+                }
+            }
+        }
+        impl SystemConfigResponse {
+            pub fn demo_mode<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.demo_mode = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for demo_mode: {e}"));
+                self
+            }
+            pub fn dependency_track_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.dependency_track_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for dependency_track_enabled: {e}")
+                });
+                self
+            }
+            pub fn max_upload_size_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_upload_size_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_upload_size_bytes: {e}")
+                });
+                self
+            }
+            pub fn meilisearch_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.meilisearch_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for meilisearch_enabled: {e}")
+                });
+                self
+            }
+            pub fn openscap_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.openscap_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for openscap_enabled: {e}")
+                });
+                self
+            }
+            pub fn storage_backend<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.storage_backend = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for storage_backend: {e}")
+                });
+                self
+            }
+            pub fn trivy_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.trivy_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for trivy_enabled: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SystemConfigResponse> for super::SystemConfigResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SystemConfigResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    demo_mode: value.demo_mode?,
+                    dependency_track_enabled: value.dependency_track_enabled?,
+                    max_upload_size_bytes: value.max_upload_size_bytes?,
+                    meilisearch_enabled: value.meilisearch_enabled?,
+                    openscap_enabled: value.openscap_enabled?,
+                    storage_backend: value.storage_backend?,
+                    trivy_enabled: value.trivy_enabled?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SystemConfigResponse> for SystemConfigResponse {
+            fn from(value: super::SystemConfigResponse) -> Self {
+                Self {
+                    demo_mode: Ok(value.demo_mode),
+                    dependency_track_enabled: Ok(value.dependency_track_enabled),
+                    max_upload_size_bytes: Ok(value.max_upload_size_bytes),
+                    meilisearch_enabled: Ok(value.meilisearch_enabled),
+                    openscap_enabled: Ok(value.openscap_enabled),
+                    storage_backend: Ok(value.storage_backend),
+                    trivy_enabled: Ok(value.trivy_enabled),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct SystemSettings {
             allow_anonymous_download: ::std::result::Result<bool, ::std::string::String>,
             audit_retention_days: ::std::result::Result<i32, ::std::string::String>,
@@ -56997,6 +57570,80 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct UpstreamAuthRequest {
+            auth_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+            password: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            username: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for UpstreamAuthRequest {
+            fn default() -> Self {
+                Self {
+                    auth_type: Err("no value supplied for auth_type".to_string()),
+                    password: Ok(Default::default()),
+                    username: Ok(Default::default()),
+                }
+            }
+        }
+        impl UpstreamAuthRequest {
+            pub fn auth_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.auth_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for auth_type: {e}"));
+                self
+            }
+            pub fn password<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.password = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for password: {e}"));
+                self
+            }
+            pub fn username<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.username = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for username: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<UpstreamAuthRequest> for super::UpstreamAuthRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: UpstreamAuthRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    auth_type: value.auth_type?,
+                    password: value.password?,
+                    username: value.username?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::UpstreamAuthRequest> for UpstreamAuthRequest {
+            fn from(value: super::UpstreamAuthRequest) -> Self {
+                Self {
+                    auth_type: Ok(value.auth_type),
+                    password: Ok(value.password),
+                    username: Ok(value.username),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct UserListResponse {
             items: ::std::result::Result<
                 ::std::vec::Vec<super::AdminUserResponse>,
@@ -57349,7 +57996,7 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct VirtualMembersListResponse {
-            items: ::std::result::Result<
+            members: ::std::result::Result<
                 ::std::vec::Vec<super::VirtualMemberResponse>,
                 ::std::string::String,
             >,
@@ -57357,19 +58004,19 @@ pub mod types {
         impl ::std::default::Default for VirtualMembersListResponse {
             fn default() -> Self {
                 Self {
-                    items: Err("no value supplied for items".to_string()),
+                    members: Err("no value supplied for members".to_string()),
                 }
             }
         }
         impl VirtualMembersListResponse {
-            pub fn items<T>(mut self, value: T) -> Self
+            pub fn members<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::vec::Vec<super::VirtualMemberResponse>>,
                 T::Error: ::std::fmt::Display,
             {
-                self.items = value
+                self.members = value
                     .try_into()
-                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                    .map_err(|e| format!("error converting supplied value for members: {e}"));
                 self
             }
         }
@@ -57379,14 +58026,14 @@ pub mod types {
                 value: VirtualMembersListResponse,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
-                    items: value.items?,
+                    members: value.members?,
                 })
             }
         }
         impl ::std::convert::From<super::VirtualMembersListResponse> for VirtualMembersListResponse {
             fn from(value: super::VirtualMembersListResponse) -> Self {
                 Self {
-                    items: Ok(value.items),
+                    members: Ok(value.members),
                 }
             }
         }
@@ -58083,6 +58730,8 @@ pub trait ClientAdminExt {
     fn update_settings(&self) -> builder::UpdateSettings<'_>;
     #[doc = "Get system statistics\n\nSends a `GET` request to `/api/v1/admin/stats`\n\n```ignore\nlet response = client.get_system_stats()\n    .send()\n    .await;\n```"]
     fn get_system_stats(&self) -> builder::GetSystemStats<'_>;
+    #[doc = "List available storage backends\n\nReturns the names of all configured and available storage backends.\nRequires admin privileges.\n\nSends a `GET` request to `/api/v1/admin/storage-backends`\n\n```ignore\nlet response = client.list_storage_backends()\n    .send()\n    .await;\n```"]
+    fn list_storage_backends(&self) -> builder::ListStorageBackends<'_>;
     #[doc = "POST /api/v1/admin/storage-gc\n\nSends a `POST` request to `/api/v1/admin/storage-gc`\n\n```ignore\nlet response = client.run_storage_gc()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn run_storage_gc(&self) -> builder::RunStorageGc<'_>;
     #[doc = "List all remote instances for the authenticated user\n\nSends a `GET` request to `/api/v1/instances`\n\n```ignore\nlet response = client.list_instances()\n    .send()\n    .await;\n```"]
@@ -58139,6 +58788,9 @@ impl ClientAdminExt for Client {
     }
     fn get_system_stats(&self) -> builder::GetSystemStats<'_> {
         builder::GetSystemStats::new(self)
+    }
+    fn list_storage_backends(&self) -> builder::ListStorageBackends<'_> {
+        builder::ListStorageBackends::new(self)
     }
     fn run_storage_gc(&self) -> builder::RunStorageGc<'_> {
         builder::RunStorageGc::new(self)
@@ -59139,6 +59791,10 @@ pub trait ClientRepositoriesExt {
     fn add_virtual_member(&self) -> builder::AddVirtualMember<'_>;
     #[doc = "Remove a member from a virtual repository\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/members/{member_key}`\n\nArguments:\n- `key`: Repository key\n- `member_key`: Member repository key\n```ignore\nlet response = client.remove_virtual_member()\n    .key(key)\n    .member_key(member_key)\n    .send()\n    .await;\n```"]
     fn remove_virtual_member(&self) -> builder::RemoveVirtualMember<'_>;
+    #[doc = "Test connectivity to the upstream URL of a remote repository\n\nSends a `POST` request to `/api/v1/repositories/{key}/test-upstream`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.test_upstream()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn test_upstream(&self) -> builder::TestUpstream<'_>;
+    #[doc = "Set or remove upstream auth for a remote repository\n\nSends a `PUT` request to `/api/v1/repositories/{key}/upstream-auth`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.set_upstream_auth()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn set_upstream_auth(&self) -> builder::SetUpstreamAuth<'_>;
     #[doc = "Sends a `GET` request to `/api/v1/tree`\n\nArguments:\n- `include_metadata`: Whether to include metadata in the response\n- `path`: Path prefix to browse within the repository\n- `repository_key`: Repository key to browse\n```ignore\nlet response = client.get_tree()\n    .include_metadata(include_metadata)\n    .path(path)\n    .repository_key(repository_key)\n    .send()\n    .await;\n```"]
     fn get_tree(&self) -> builder::GetTree<'_>;
     #[doc = "Sends a `GET` request to `/api/v1/tree/content`\n\nArguments:\n- `max_bytes`: Optional maximum number of bytes to return (truncates the response)\n- `path`: Full artifact path within the repository\n- `repository_key`: Repository key containing the artifact\n```ignore\nlet response = client.get_content()\n    .max_bytes(max_bytes)\n    .path(path)\n    .repository_key(repository_key)\n    .send()\n    .await;\n```"]
@@ -59192,6 +59848,12 @@ impl ClientRepositoriesExt for Client {
     }
     fn remove_virtual_member(&self) -> builder::RemoveVirtualMember<'_> {
         builder::RemoveVirtualMember::new(self)
+    }
+    fn test_upstream(&self) -> builder::TestUpstream<'_> {
+        builder::TestUpstream::new(self)
+    }
+    fn set_upstream_auth(&self) -> builder::SetUpstreamAuth<'_> {
+        builder::SetUpstreamAuth::new(self)
     }
     fn get_tree(&self) -> builder::GetTree<'_> {
         builder::GetTree::new(self)
@@ -59733,6 +60395,16 @@ impl ClientSsoExt for Client {
     }
     fn saml_login(&self) -> builder::SamlLogin<'_> {
         builder::SamlLogin::new(self)
+    }
+}
+#[doc = "System configuration and capabilities"]
+pub trait ClientSystemExt {
+    #[doc = "Returns non-sensitive runtime configuration\n\nThe response includes upload limits, active storage backend, demo mode\nflag, and which optional services (Trivy, OpenSCAP, Dependency-Track,\nMeilisearch) are configured. No secrets or credentials are exposed.\n\nSends a `GET` request to `/api/v1/system/config`\n\n```ignore\nlet response = client.get_system_config()\n    .send()\n    .await;\n```"]
+    fn get_system_config(&self) -> builder::GetSystemConfig<'_>;
+}
+impl ClientSystemExt for Client {
+    fn get_system_config(&self) -> builder::GetSystemConfig<'_> {
+        builder::GetSystemConfig::new(self)
     }
 }
 #[doc = "Crash reporting and telemetry"]
@@ -63225,6 +63897,50 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::list_storage_backends`]\n\n[`ClientAdminExt::list_storage_backends`]: super::ClientAdminExt::list_storage_backends"]
+    #[derive(Debug, Clone)]
+    pub struct ListStorageBackends<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> ListStorageBackends<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/storage-backends`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<::std::string::String>>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/admin/storage-backends", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_storage_backends",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -78133,6 +78849,145 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientRepositoriesExt::test_upstream`]\n\n[`ClientRepositoriesExt::test_upstream`]: super::ClientRepositoriesExt::test_upstream"]
+    #[derive(Debug, Clone)]
+    pub struct TestUpstream<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> TestUpstream<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/test-upstream`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/test-upstream",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.post(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "test_upstream",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                502u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoriesExt::set_upstream_auth`]\n\n[`ClientRepositoriesExt::set_upstream_auth`]: super::ClientRepositoriesExt::set_upstream_auth"]
+    #[derive(Debug, Clone)]
+    pub struct SetUpstreamAuth<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        body: Result<types::builder::UpstreamAuthRequest, String>,
+    }
+    impl<'a> SetUpstreamAuth<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::UpstreamAuthRequest>,
+            <V as std::convert::TryInto<types::UpstreamAuthRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `UpstreamAuthRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::UpstreamAuthRequest,
+                ) -> types::builder::UpstreamAuthRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/upstream-auth`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, key, body } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::UpstreamAuthRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/upstream-auth",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "set_upstream_auth",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientSbomExt::list_sboms`]\n\n[`ClientSbomExt::list_sboms`]: super::ClientSbomExt::list_sboms"]
     #[derive(Debug, Clone)]
     pub struct ListSboms<'a> {
@@ -82703,6 +83558,47 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientSystemExt::get_system_config`]\n\n[`ClientSystemExt::get_system_config`]: super::ClientSystemExt::get_system_config"]
+    #[derive(Debug, Clone)]
+    pub struct GetSystemConfig<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> GetSystemConfig<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/system/config`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SystemConfigResponse>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/system/config", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_system_config",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientRepositoriesExt::get_tree`]\n\n[`ClientRepositoriesExt::get_tree`]: super::ClientRepositoriesExt::get_tree"]
     #[derive(Debug, Clone)]
     pub struct GetTree<'a> {
@@ -84654,6 +85550,7 @@ pub mod prelude {
     pub use super::ClientServiceAccountsExt;
     pub use super::ClientSigningExt;
     pub use super::ClientSsoExt;
+    pub use super::ClientSystemExt;
     pub use super::ClientTelemetryExt;
     pub use super::ClientUsersExt;
     pub use super::ClientWebhooksExt;
