@@ -301,6 +301,11 @@ fn write_config_file(path: &Path, content: &str, description: &str) -> Result<()
     }
 
     std::fs::write(path, content).into_diagnostic()?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).into_diagnostic()?;
+    }
     eprintln!("Wrote {}: {}", description, path.display());
     Ok(())
 }
