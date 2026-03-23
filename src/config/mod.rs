@@ -63,9 +63,21 @@ impl AppConfig {
         let path = config_path()?;
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).into_diagnostic()?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700))
+                    .into_diagnostic()?;
+            }
         }
         let content = toml::to_string_pretty(self).into_diagnostic()?;
         std::fs::write(&path, content).into_diagnostic()?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+                .into_diagnostic()?;
+        }
         Ok(())
     }
 
