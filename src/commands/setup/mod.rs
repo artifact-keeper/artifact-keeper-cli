@@ -310,6 +310,17 @@ fn write_config_file(path: &Path, content: &str, description: &str) -> Result<()
     Ok(())
 }
 
+fn redact_token(content: &str, token: &str) -> String {
+    if token.len() > 8 {
+        content.replace(
+            token,
+            &format!("{}...{}", &token[..4], &token[token.len() - 4..]),
+        )
+    } else {
+        content.replace(token, "****")
+    }
+}
+
 fn confirm_write(path: &Path, content: &str, no_input: bool) -> Result<bool> {
     eprintln!("\nConfiguration to write to {}:\n", path.display());
     eprintln!("{content}");
@@ -821,9 +832,11 @@ async fn setup_apt(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     ));
     let auth_path = PathBuf::from("/etc/apt/auth.conf.d/artifact-keeper.conf");
 
+    let redacted_auth = redact_token(&auth_content, &ctx.token);
+
     eprintln!("This requires writing to /etc/apt/ (needs sudo).");
     eprintln!("\nSources list:\n{sources_content}");
-    eprintln!("Auth config:\n{auth_content}");
+    eprintln!("Auth config:\n{redacted_auth}");
 
     if global.no_input {
         eprintln!("Run the following commands manually:");
@@ -835,7 +848,7 @@ async fn setup_apt(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         eprintln!(
             "  sudo tee {} <<'EOF'\n{}EOF",
             auth_path.display(),
-            auth_content
+            redacted_auth
         );
         return Ok(());
     }
