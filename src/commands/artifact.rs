@@ -215,10 +215,16 @@ async fn push(
         );
         pb.set_message(format!("Uploading {file_name}"));
 
-        let file_bytes = tokio::fs::read(file_path).await.into_diagnostic()?;
-        pb.set_position(file_size); // Show as complete after read
-
-        let body = reqwest::Body::from(file_bytes);
+        let file = tokio::fs::File::open(file_path).await.into_diagnostic()?;
+        let stream = tokio_util::io::ReaderStream::new(file);
+        let pb_clone = pb.clone();
+        let stream = stream.map(move |chunk| {
+            if let Ok(ref bytes) = chunk {
+                pb_clone.inc(bytes.len() as u64);
+            }
+            chunk
+        });
+        let body = reqwest::Body::wrap_stream(stream);
 
         let resp = client
             .upload_artifact()
@@ -279,23 +285,23 @@ async fn pull(
 
     spinner.finish_and_clear();
 
-    let mut bytes = Vec::new();
+    let mut file = tokio::fs::File::create(&out_path).await.into_diagnostic()?;
     let mut stream = resp.into_inner();
+    let mut total_bytes: u64 = 0;
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.into_diagnostic()?;
-        bytes.extend_from_slice(&chunk);
+        let chunk = chunk.map_err(|e| AkError::ServerError(format!("Download error: {e}")))?;
+        tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
+            .await
+            .into_diagnostic()?;
+        total_bytes += chunk.len() as u64;
     }
-
-    tokio::fs::write(&out_path, &bytes)
-        .await
-        .into_diagnostic()?;
 
     eprintln!(
         "Downloaded {}:{} -> {} ({})",
         repo,
         artifact_path,
         out_path.display(),
-        format_bytes(bytes.len() as i64),
+        format_bytes(total_bytes as i64),
     );
 
     Ok(())
@@ -681,12 +687,19 @@ async fn cross_instance_copy(
         .await
         .map_err(|e| AkError::ServerError(format!("Download from source failed: {e}")))?;
 
-    let mut bytes = Vec::new();
+    let tmp_file = tempfile::NamedTempFile::new().into_diagnostic()?;
+    let tmp_path = tmp_file.path().to_path_buf();
+    let mut file = tokio::fs::File::create(&tmp_path).await.into_diagnostic()?;
     let mut stream = resp.into_inner();
+    let mut total_bytes: u64 = 0;
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.into_diagnostic()?;
-        bytes.extend_from_slice(&chunk);
+        let chunk = chunk.map_err(|e| AkError::ServerError(format!("Download error: {e}")))?;
+        tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
+            .await
+            .into_diagnostic()?;
+        total_bytes += chunk.len() as u64;
     }
+    drop(file);
 
     let (dst_repo, dst_path) = match destination.split_once('/') {
         Some((repo, path)) => (repo, path.to_string()),
@@ -695,8 +708,10 @@ async fn cross_instance_copy(
 
     spinner.set_message(format!("Uploading to {dst_name}:{dst_repo}/{dst_path}..."));
 
-    let size = bytes.len() as i64;
-    let body = reqwest::Body::from(bytes);
+    let size = total_bytes as i64;
+    let upload_file = tokio::fs::File::open(&tmp_path).await.into_diagnostic()?;
+    let upload_stream = tokio_util::io::ReaderStream::new(upload_file);
+    let body = reqwest::Body::wrap_stream(upload_stream);
 
     dst_client
         .upload_artifact()
