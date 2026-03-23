@@ -66,7 +66,8 @@ if command -v sha256sum > /dev/null 2>&1; then
 elif command -v shasum > /dev/null 2>&1; then
   shasum -a 256 -c "${ARTIFACT}.sha256"
 else
-  echo "Warning: No checksum tool found, skipping verification" >&2
+  echo "Error: No checksum tool found (sha256sum or shasum required)" >&2
+  exit 1
 fi
 cd - > /dev/null
 
