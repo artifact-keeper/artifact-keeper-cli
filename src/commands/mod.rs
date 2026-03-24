@@ -2,6 +2,7 @@ pub mod admin;
 pub mod analytics;
 pub mod approval;
 pub mod artifact;
+pub mod chunked_upload;
 pub mod auth;
 pub mod client;
 pub mod completion;

@@ -68,6 +68,17 @@ pub fn client_for(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
     build_client(name, instance, None)
 }
 
+/// Resolve instance and return the base URL and Bearer auth header value.
+///
+/// Used by chunked upload which makes raw HTTP calls outside the SDK.
+pub fn resolve_base_url_and_auth(global: &GlobalArgs) -> Result<(String, String)> {
+    let config = AppConfig::load()?;
+    let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    let cred = get_credential(name)?;
+    let auth_header = format!("Bearer {}", cred.access_token);
+    Ok((instance.url.clone(), auth_header))
+}
+
 /// Build an SDK client for the resolved instance.
 ///
 /// Tries authenticated first; falls back to unauthenticated if no credentials are available.
