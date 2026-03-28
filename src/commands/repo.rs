@@ -52,9 +52,17 @@ pub enum RepoCommand {
         #[arg(long, default_value = "local")]
         repo_type: String,
 
+        /// Upstream URL
+        #[arg(long, default_value = None, required_if_eq("repo_type", "remote"))]
+        upstream_url: Option<String>,
+
         /// Description
         #[arg(long)]
         description: Option<String>,
+
+        /// Make repository public
+        #[arg(long, default_value = None)]
+        public: bool,
     },
 
     /// Delete a repository
@@ -99,13 +107,17 @@ impl RepoCommand {
                 key,
                 pkg_format,
                 repo_type,
+                upstream_url,
                 description,
+                public,
             } => {
                 create_repo(
                     &key,
                     &pkg_format,
                     &repo_type,
+                    upstream_url.as_deref(),
                     description.as_deref(),
+                    public,
                     global,
                 )
                 .await
@@ -230,6 +242,7 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         "name": repo.name,
         "format": repo.format,
         "type": repo.repo_type,
+        "upstream_url": repo.upstream_url,
         "public": repo.is_public,
         "description": repo.description,
         "storage_used": format_bytes(repo.storage_used_bytes),
@@ -244,6 +257,7 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
          Name:         {}\n\
          Format:       {}\n\
          Type:         {}\n\
+         Upstream URL: {}\n\
          Public:       {}\n\
          Description:  {}\n\
          Storage Used: {}\n\
@@ -254,6 +268,7 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         repo.name,
         repo.format,
         repo.repo_type,
+        repo.upstream_url.as_deref().unwrap_or("-"),
         if repo.is_public { "yes" } else { "no" },
         repo.description.as_deref().unwrap_or("-"),
         format_bytes(repo.storage_used_bytes),
@@ -273,7 +288,9 @@ async fn create_repo(
     key: &str,
     format: &str,
     repo_type: &str,
+    upstream_url: Option<&str>,
     description: Option<&str>,
+    public: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -283,10 +300,10 @@ async fn create_repo(
         name: key.to_string(),
         format: format.to_string(),
         repo_type: repo_type.to_string(),
+        upstream_url: upstream_url.map(|d| d.to_string()),
         description: description.map(|d| d.to_string()),
-        is_public: None,
+        is_public: public.into(),
         quota_bytes: None,
-        upstream_url: None,
         format_key: None,
         index_upstream_url: None,
         member_repos: None,
@@ -571,13 +588,17 @@ mod tests {
             key,
             pkg_format,
             repo_type,
+            upstream_url,
             description,
+            public,
         } = cli.command
         {
             assert_eq!(key, "my-repo");
             assert_eq!(pkg_format, "npm");
             assert_eq!(repo_type, "local"); // default
+            assert!(upstream_url.is_none());
             assert!(description.is_none());
+            assert_eq!(public, false)
         } else {
             panic!("Expected RepoCommand::Create");
         }
@@ -593,20 +614,27 @@ mod tests {
             "pypi",
             "--repo-type",
             "remote",
+            "--upstream-url",
+            "https://pypi.org/simple",
             "--description",
             "Python packages mirror",
+            "--public",
         ]);
         if let RepoCommand::Create {
             key,
             pkg_format,
             repo_type,
+            upstream_url,
             description,
+            public,
         } = cli.command
         {
             assert_eq!(key, "my-pypi");
             assert_eq!(pkg_format, "pypi");
             assert_eq!(repo_type, "remote");
+            assert_eq!(upstream_url.as_deref(), Some("https://pypi.org/simple"));
             assert_eq!(description.as_deref(), Some("Python packages mirror"));
+            assert_eq!(public, true)
         } else {
             panic!("Expected RepoCommand::Create");
         }
@@ -886,7 +914,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = create_repo("new-repo", "npm", "local", None, &global).await;
+        let result = create_repo("new-repo", "npm", "local", None, None, false, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -903,7 +931,16 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = create_repo("new-repo", "npm", "local", Some("A test repo"), &global).await;
+        let result = create_repo(
+            "new-repo",
+            "npm",
+            "local",
+            None,
+            Some("A test repo"),
+            false,
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
