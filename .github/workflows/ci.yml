@@ -138,7 +138,7 @@ jobs:
             --network ${{ job.services.postgres.network }} \
             -e DATABASE_URL="postgresql://registry:registry@postgres:5432/artifact_registry_test" \
             -e MEILI_URL="http://meilisearch:7700" \
-            -e ADMIN_PASSWORD="admin123" \
+            -e ADMIN_PASSWORD="TestRunner!2026secure" \
             -e JWT_SECRET="e2e-test-secret-key-not-for-production" \
             -p 8081:8080 \
             ghcr.io/artifact-keeper/artifact-keeper-backend:latest

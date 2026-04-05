@@ -37,7 +37,7 @@ services:
     environment:
       DATABASE_URL: "postgresql://registry:registry@postgres:5432/artifact_registry_test"
       MEILI_URL: "http://meilisearch:7700"
-      ADMIN_PASSWORD: "admin123"
+      ADMIN_PASSWORD: "TestRunner!2026secure"
       JWT_SECRET: "e2e-test-secret-key-not-for-production"
     ports:
       - "8081:8080"
