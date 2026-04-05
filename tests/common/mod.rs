@@ -41,7 +41,7 @@ fn get_auth_token() -> &'static str {
             .post(format!("{url}/api/v1/auth/login"))
             .json(&serde_json::json!({
                 "username": "admin",
-                "password": "admin123"
+                "password": "TestRunner!2026secure"
             }))
             .send()
             .expect("Login request failed");
