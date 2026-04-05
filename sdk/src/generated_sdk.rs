@@ -3203,6 +3203,52 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`ChunkResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"bytes_received\","]
+    #[doc = "    \"chunk_index\","]
+    #[doc = "    \"chunks_completed\","]
+    #[doc = "    \"chunks_remaining\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"bytes_received\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"chunk_index\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"chunks_completed\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"chunks_remaining\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ChunkResponse {
+        pub bytes_received: i64,
+        pub chunk_index: i32,
+        pub chunks_completed: i32,
+        pub chunks_remaining: i32,
+    }
+    impl ChunkResponse {
+        pub fn builder() -> builder::ChunkResponse {
+            Default::default()
+        }
+    }
     #[doc = "`CleanupRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -3344,6 +3390,50 @@ pub mod types {
     }
     impl CompleteChunkBody {
         pub fn builder() -> builder::CompleteChunkBody {
+            Default::default()
+        }
+    }
+    #[doc = "`CompleteResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"checksum_sha256\","]
+    #[doc = "    \"path\","]
+    #[doc = "    \"size\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"checksum_sha256\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"path\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"size\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CompleteResponse {
+        pub artifact_id: ::uuid::Uuid,
+        pub checksum_sha256: ::std::string::String,
+        pub path: ::std::string::String,
+        pub size: i64,
+    }
+    impl CompleteResponse {
+        pub fn builder() -> builder::CompleteResponse {
             Default::default()
         }
     }
@@ -5151,6 +5241,123 @@ pub mod types {
     }
     impl CreateServiceAccountRequest {
         pub fn builder() -> builder::CreateServiceAccountRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`CreateSessionRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_path\","]
+    #[doc = "    \"checksum_sha256\","]
+    #[doc = "    \"repository_key\","]
+    #[doc = "    \"total_size\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_path\": {"]
+    #[doc = "      \"description\": \"Path within the repository (e.g. \\\"images/vm.ova\\\")\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"checksum_sha256\": {"]
+    #[doc = "      \"description\": \"Expected SHA256 checksum of the complete file\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"chunk_size\": {"]
+    #[doc = "      \"description\": \"Chunk size in bytes (default 8 MB, range 1 MB - 256 MB)\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"content_type\": {"]
+    #[doc = "      \"description\": \"MIME content type (default \\\"application/octet-stream\\\")\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"description\": \"Repository key (e.g. \\\"my-repo\\\")\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_size\": {"]
+    #[doc = "      \"description\": \"Total file size in bytes\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateSessionRequest {
+        #[doc = "Path within the repository (e.g. \"images/vm.ova\")"]
+        pub artifact_path: ::std::string::String,
+        #[doc = "Expected SHA256 checksum of the complete file"]
+        pub checksum_sha256: ::std::string::String,
+        #[doc = "Chunk size in bytes (default 8 MB, range 1 MB - 256 MB)"]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub chunk_size: ::std::option::Option<i32>,
+        #[doc = "MIME content type (default \"application/octet-stream\")"]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub content_type: ::std::option::Option<::std::string::String>,
+        #[doc = "Repository key (e.g. \"my-repo\")"]
+        pub repository_key: ::std::string::String,
+        #[doc = "Total file size in bytes"]
+        pub total_size: i64,
+    }
+    impl CreateSessionRequest {
+        pub fn builder() -> builder::CreateSessionRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`CreateSessionResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"chunk_count\","]
+    #[doc = "    \"chunk_size\","]
+    #[doc = "    \"expires_at\","]
+    #[doc = "    \"session_id\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"chunk_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"chunk_size\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"expires_at\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"session_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateSessionResponse {
+        pub chunk_count: i32,
+        pub chunk_size: i32,
+        pub expires_at: ::std::string::String,
+        pub session_id: ::uuid::Uuid,
+    }
+    impl CreateSessionResponse {
+        pub fn builder() -> builder::CreateSessionResponse {
             Default::default()
         }
     }
@@ -16514,6 +16721,83 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`SessionStatusResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_path\","]
+    #[doc = "    \"bytes_received\","]
+    #[doc = "    \"chunks_completed\","]
+    #[doc = "    \"chunks_total\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"expires_at\","]
+    #[doc = "    \"repository_key\","]
+    #[doc = "    \"session_id\","]
+    #[doc = "    \"status\","]
+    #[doc = "    \"total_size\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_path\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"bytes_received\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"chunks_completed\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"chunks_total\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"expires_at\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"session_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_size\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SessionStatusResponse {
+        pub artifact_path: ::std::string::String,
+        pub bytes_received: i64,
+        pub chunks_completed: i32,
+        pub chunks_total: i32,
+        pub created_at: ::std::string::String,
+        pub expires_at: ::std::string::String,
+        pub repository_key: ::std::string::String,
+        pub session_id: ::uuid::Uuid,
+        pub status: ::std::string::String,
+        pub total_size: i64,
+    }
+    impl SessionStatusResponse {
+        pub fn builder() -> builder::SessionStatusResponse {
+            Default::default()
+        }
+    }
     #[doc = "`SetArtifactLabelsRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -17703,80 +17987,6 @@ pub mod types {
     }
     impl SyncTaskResponse {
         pub fn builder() -> builder::SyncTaskResponse {
-            Default::default()
-        }
-    }
-    #[doc = "Non-sensitive runtime configuration values."]
-    #[doc = r""]
-    #[doc = r" <details><summary>JSON schema</summary>"]
-    #[doc = r""]
-    #[doc = r" ```json"]
-    #[doc = "{"]
-    #[doc = "  \"description\": \"Non-sensitive runtime configuration values.\","]
-    #[doc = "  \"type\": \"object\","]
-    #[doc = "  \"required\": ["]
-    #[doc = "    \"demo_mode\","]
-    #[doc = "    \"dependency_track_enabled\","]
-    #[doc = "    \"max_upload_size_bytes\","]
-    #[doc = "    \"meilisearch_enabled\","]
-    #[doc = "    \"openscap_enabled\","]
-    #[doc = "    \"storage_backend\","]
-    #[doc = "    \"trivy_enabled\""]
-    #[doc = "  ],"]
-    #[doc = "  \"properties\": {"]
-    #[doc = "    \"demo_mode\": {"]
-    #[doc = "      \"description\": \"Whether demo mode is active.\","]
-    #[doc = "      \"type\": \"boolean\""]
-    #[doc = "    },"]
-    #[doc = "    \"dependency_track_enabled\": {"]
-    #[doc = "      \"description\": \"Whether Dependency-Track is configured.\","]
-    #[doc = "      \"type\": \"boolean\""]
-    #[doc = "    },"]
-    #[doc = "    \"max_upload_size_bytes\": {"]
-    #[doc = "      \"description\": \"Maximum upload size in bytes (0 = unlimited).\","]
-    #[doc = "      \"type\": \"integer\","]
-    #[doc = "      \"format\": \"int64\","]
-    #[doc = "      \"minimum\": 0.0"]
-    #[doc = "    },"]
-    #[doc = "    \"meilisearch_enabled\": {"]
-    #[doc = "      \"description\": \"Whether Meilisearch search is configured.\","]
-    #[doc = "      \"type\": \"boolean\""]
-    #[doc = "    },"]
-    #[doc = "    \"openscap_enabled\": {"]
-    #[doc = "      \"description\": \"Whether OpenSCAP scanning is configured.\","]
-    #[doc = "      \"type\": \"boolean\""]
-    #[doc = "    },"]
-    #[doc = "    \"storage_backend\": {"]
-    #[doc = "      \"description\": \"Default storage backend name (e.g. \\\"filesystem\\\", \\\"s3\\\", \\\"gcs\\\").\","]
-    #[doc = "      \"type\": \"string\""]
-    #[doc = "    },"]
-    #[doc = "    \"trivy_enabled\": {"]
-    #[doc = "      \"description\": \"Whether Trivy scanning is configured.\","]
-    #[doc = "      \"type\": \"boolean\""]
-    #[doc = "    }"]
-    #[doc = "  }"]
-    #[doc = "}"]
-    #[doc = r" ```"]
-    #[doc = r" </details>"]
-    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
-    pub struct SystemConfigResponse {
-        #[doc = "Whether demo mode is active."]
-        pub demo_mode: bool,
-        #[doc = "Whether Dependency-Track is configured."]
-        pub dependency_track_enabled: bool,
-        #[doc = "Maximum upload size in bytes (0 = unlimited)."]
-        pub max_upload_size_bytes: i64,
-        #[doc = "Whether Meilisearch search is configured."]
-        pub meilisearch_enabled: bool,
-        #[doc = "Whether OpenSCAP scanning is configured."]
-        pub openscap_enabled: bool,
-        #[doc = "Default storage backend name (e.g. \"filesystem\", \"s3\", \"gcs\")."]
-        pub storage_backend: ::std::string::String,
-        #[doc = "Whether Trivy scanning is configured."]
-        pub trivy_enabled: bool,
-    }
-    impl SystemConfigResponse {
-        pub fn builder() -> builder::SystemConfigResponse {
             Default::default()
         }
     }
@@ -26788,6 +26998,88 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct ChunkResponse {
+            bytes_received: ::std::result::Result<i64, ::std::string::String>,
+            chunk_index: ::std::result::Result<i32, ::std::string::String>,
+            chunks_completed: ::std::result::Result<i32, ::std::string::String>,
+            chunks_remaining: ::std::result::Result<i32, ::std::string::String>,
+        }
+        impl ::std::default::Default for ChunkResponse {
+            fn default() -> Self {
+                Self {
+                    bytes_received: Err("no value supplied for bytes_received".to_string()),
+                    chunk_index: Err("no value supplied for chunk_index".to_string()),
+                    chunks_completed: Err("no value supplied for chunks_completed".to_string()),
+                    chunks_remaining: Err("no value supplied for chunks_remaining".to_string()),
+                }
+            }
+        }
+        impl ChunkResponse {
+            pub fn bytes_received<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.bytes_received = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for bytes_received: {e}")
+                });
+                self
+            }
+            pub fn chunk_index<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.chunk_index = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for chunk_index: {e}"));
+                self
+            }
+            pub fn chunks_completed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.chunks_completed = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for chunks_completed: {e}")
+                });
+                self
+            }
+            pub fn chunks_remaining<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.chunks_remaining = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for chunks_remaining: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ChunkResponse> for super::ChunkResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ChunkResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    bytes_received: value.bytes_received?,
+                    chunk_index: value.chunk_index?,
+                    chunks_completed: value.chunks_completed?,
+                    chunks_remaining: value.chunks_remaining?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ChunkResponse> for ChunkResponse {
+            fn from(value: super::ChunkResponse) -> Self {
+                Self {
+                    bytes_received: Ok(value.bytes_received),
+                    chunk_index: Ok(value.chunk_index),
+                    chunks_completed: Ok(value.chunks_completed),
+                    chunks_remaining: Ok(value.chunks_remaining),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct CleanupRequest {
             cleanup_audit_logs:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
@@ -27011,6 +27303,88 @@ pub mod types {
                 Self {
                     checksum: Ok(value.checksum),
                     source_peer_id: Ok(value.source_peer_id),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CompleteResponse {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            checksum_sha256: ::std::result::Result<::std::string::String, ::std::string::String>,
+            path: ::std::result::Result<::std::string::String, ::std::string::String>,
+            size: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for CompleteResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    checksum_sha256: Err("no value supplied for checksum_sha256".to_string()),
+                    path: Err("no value supplied for path".to_string()),
+                    size: Err("no value supplied for size".to_string()),
+                }
+            }
+        }
+        impl CompleteResponse {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn checksum_sha256<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.checksum_sha256 = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for checksum_sha256: {e}")
+                });
+                self
+            }
+            pub fn path<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.path = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for path: {e}"));
+                self
+            }
+            pub fn size<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.size = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for size: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CompleteResponse> for super::CompleteResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CompleteResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    checksum_sha256: value.checksum_sha256?,
+                    path: value.path?,
+                    size: value.size?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CompleteResponse> for CompleteResponse {
+            fn from(value: super::CompleteResponse) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    checksum_sha256: Ok(value.checksum_sha256),
+                    path: Ok(value.path),
+                    size: Ok(value.size),
                 }
             }
         }
@@ -30396,6 +30770,201 @@ pub mod types {
                 Self {
                     description: Ok(value.description),
                     name: Ok(value.name),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CreateSessionRequest {
+            artifact_path: ::std::result::Result<::std::string::String, ::std::string::String>,
+            checksum_sha256: ::std::result::Result<::std::string::String, ::std::string::String>,
+            chunk_size: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            content_type: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            total_size: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for CreateSessionRequest {
+            fn default() -> Self {
+                Self {
+                    artifact_path: Err("no value supplied for artifact_path".to_string()),
+                    checksum_sha256: Err("no value supplied for checksum_sha256".to_string()),
+                    chunk_size: Ok(Default::default()),
+                    content_type: Ok(Default::default()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                    total_size: Err("no value supplied for total_size".to_string()),
+                }
+            }
+        }
+        impl CreateSessionRequest {
+            pub fn artifact_path<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_path = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_path: {e}"));
+                self
+            }
+            pub fn checksum_sha256<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.checksum_sha256 = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for checksum_sha256: {e}")
+                });
+                self
+            }
+            pub fn chunk_size<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.chunk_size = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for chunk_size: {e}"));
+                self
+            }
+            pub fn content_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.content_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for content_type: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn total_size<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_size = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total_size: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateSessionRequest> for super::CreateSessionRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateSessionRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_path: value.artifact_path?,
+                    checksum_sha256: value.checksum_sha256?,
+                    chunk_size: value.chunk_size?,
+                    content_type: value.content_type?,
+                    repository_key: value.repository_key?,
+                    total_size: value.total_size?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateSessionRequest> for CreateSessionRequest {
+            fn from(value: super::CreateSessionRequest) -> Self {
+                Self {
+                    artifact_path: Ok(value.artifact_path),
+                    checksum_sha256: Ok(value.checksum_sha256),
+                    chunk_size: Ok(value.chunk_size),
+                    content_type: Ok(value.content_type),
+                    repository_key: Ok(value.repository_key),
+                    total_size: Ok(value.total_size),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CreateSessionResponse {
+            chunk_count: ::std::result::Result<i32, ::std::string::String>,
+            chunk_size: ::std::result::Result<i32, ::std::string::String>,
+            expires_at: ::std::result::Result<::std::string::String, ::std::string::String>,
+            session_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+        }
+        impl ::std::default::Default for CreateSessionResponse {
+            fn default() -> Self {
+                Self {
+                    chunk_count: Err("no value supplied for chunk_count".to_string()),
+                    chunk_size: Err("no value supplied for chunk_size".to_string()),
+                    expires_at: Err("no value supplied for expires_at".to_string()),
+                    session_id: Err("no value supplied for session_id".to_string()),
+                }
+            }
+        }
+        impl CreateSessionResponse {
+            pub fn chunk_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.chunk_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for chunk_count: {e}"));
+                self
+            }
+            pub fn chunk_size<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.chunk_size = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for chunk_size: {e}"));
+                self
+            }
+            pub fn expires_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.expires_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for expires_at: {e}"));
+                self
+            }
+            pub fn session_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.session_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for session_id: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateSessionResponse> for super::CreateSessionResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateSessionResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    chunk_count: value.chunk_count?,
+                    chunk_size: value.chunk_size?,
+                    expires_at: value.expires_at?,
+                    session_id: value.session_id?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateSessionResponse> for CreateSessionResponse {
+            fn from(value: super::CreateSessionResponse) -> Self {
+                Self {
+                    chunk_count: Ok(value.chunk_count),
+                    chunk_size: Ok(value.chunk_size),
+                    expires_at: Ok(value.expires_at),
+                    session_id: Ok(value.session_id),
                 }
             }
         }
@@ -50994,6 +51563,172 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct SessionStatusResponse {
+            artifact_path: ::std::result::Result<::std::string::String, ::std::string::String>,
+            bytes_received: ::std::result::Result<i64, ::std::string::String>,
+            chunks_completed: ::std::result::Result<i32, ::std::string::String>,
+            chunks_total: ::std::result::Result<i32, ::std::string::String>,
+            created_at: ::std::result::Result<::std::string::String, ::std::string::String>,
+            expires_at: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            session_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
+            total_size: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for SessionStatusResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_path: Err("no value supplied for artifact_path".to_string()),
+                    bytes_received: Err("no value supplied for bytes_received".to_string()),
+                    chunks_completed: Err("no value supplied for chunks_completed".to_string()),
+                    chunks_total: Err("no value supplied for chunks_total".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    expires_at: Err("no value supplied for expires_at".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                    session_id: Err("no value supplied for session_id".to_string()),
+                    status: Err("no value supplied for status".to_string()),
+                    total_size: Err("no value supplied for total_size".to_string()),
+                }
+            }
+        }
+        impl SessionStatusResponse {
+            pub fn artifact_path<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_path = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_path: {e}"));
+                self
+            }
+            pub fn bytes_received<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.bytes_received = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for bytes_received: {e}")
+                });
+                self
+            }
+            pub fn chunks_completed<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.chunks_completed = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for chunks_completed: {e}")
+                });
+                self
+            }
+            pub fn chunks_total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.chunks_total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for chunks_total: {e}"));
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn expires_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.expires_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for expires_at: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn session_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.session_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for session_id: {e}"));
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+            pub fn total_size<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_size = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total_size: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SessionStatusResponse> for super::SessionStatusResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SessionStatusResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_path: value.artifact_path?,
+                    bytes_received: value.bytes_received?,
+                    chunks_completed: value.chunks_completed?,
+                    chunks_total: value.chunks_total?,
+                    created_at: value.created_at?,
+                    expires_at: value.expires_at?,
+                    repository_key: value.repository_key?,
+                    session_id: value.session_id?,
+                    status: value.status?,
+                    total_size: value.total_size?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SessionStatusResponse> for SessionStatusResponse {
+            fn from(value: super::SessionStatusResponse) -> Self {
+                Self {
+                    artifact_path: Ok(value.artifact_path),
+                    bytes_received: Ok(value.bytes_received),
+                    chunks_completed: Ok(value.chunks_completed),
+                    chunks_total: Ok(value.chunks_total),
+                    created_at: Ok(value.created_at),
+                    expires_at: Ok(value.expires_at),
+                    repository_key: Ok(value.repository_key),
+                    session_id: Ok(value.session_id),
+                    status: Ok(value.status),
+                    total_size: Ok(value.total_size),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct SetArtifactLabelsRequest {
             labels: ::std::result::Result<
                 ::std::vec::Vec<super::ArtifactLabelEntrySchema>,
@@ -53105,136 +53840,6 @@ pub mod types {
                     id: Ok(value.id),
                     priority: Ok(value.priority),
                     storage_key: Ok(value.storage_key),
-                }
-            }
-        }
-        #[derive(Clone, Debug)]
-        pub struct SystemConfigResponse {
-            demo_mode: ::std::result::Result<bool, ::std::string::String>,
-            dependency_track_enabled: ::std::result::Result<bool, ::std::string::String>,
-            max_upload_size_bytes: ::std::result::Result<i64, ::std::string::String>,
-            meilisearch_enabled: ::std::result::Result<bool, ::std::string::String>,
-            openscap_enabled: ::std::result::Result<bool, ::std::string::String>,
-            storage_backend: ::std::result::Result<::std::string::String, ::std::string::String>,
-            trivy_enabled: ::std::result::Result<bool, ::std::string::String>,
-        }
-        impl ::std::default::Default for SystemConfigResponse {
-            fn default() -> Self {
-                Self {
-                    demo_mode: Err("no value supplied for demo_mode".to_string()),
-                    dependency_track_enabled: Err(
-                        "no value supplied for dependency_track_enabled".to_string()
-                    ),
-                    max_upload_size_bytes: Err(
-                        "no value supplied for max_upload_size_bytes".to_string()
-                    ),
-                    meilisearch_enabled: Err(
-                        "no value supplied for meilisearch_enabled".to_string()
-                    ),
-                    openscap_enabled: Err("no value supplied for openscap_enabled".to_string()),
-                    storage_backend: Err("no value supplied for storage_backend".to_string()),
-                    trivy_enabled: Err("no value supplied for trivy_enabled".to_string()),
-                }
-            }
-        }
-        impl SystemConfigResponse {
-            pub fn demo_mode<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<bool>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.demo_mode = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for demo_mode: {e}"));
-                self
-            }
-            pub fn dependency_track_enabled<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<bool>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.dependency_track_enabled = value.try_into().map_err(|e| {
-                    format!("error converting supplied value for dependency_track_enabled: {e}")
-                });
-                self
-            }
-            pub fn max_upload_size_bytes<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<i64>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.max_upload_size_bytes = value.try_into().map_err(|e| {
-                    format!("error converting supplied value for max_upload_size_bytes: {e}")
-                });
-                self
-            }
-            pub fn meilisearch_enabled<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<bool>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.meilisearch_enabled = value.try_into().map_err(|e| {
-                    format!("error converting supplied value for meilisearch_enabled: {e}")
-                });
-                self
-            }
-            pub fn openscap_enabled<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<bool>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.openscap_enabled = value.try_into().map_err(|e| {
-                    format!("error converting supplied value for openscap_enabled: {e}")
-                });
-                self
-            }
-            pub fn storage_backend<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<::std::string::String>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.storage_backend = value.try_into().map_err(|e| {
-                    format!("error converting supplied value for storage_backend: {e}")
-                });
-                self
-            }
-            pub fn trivy_enabled<T>(mut self, value: T) -> Self
-            where
-                T: ::std::convert::TryInto<bool>,
-                T::Error: ::std::fmt::Display,
-            {
-                self.trivy_enabled = value
-                    .try_into()
-                    .map_err(|e| format!("error converting supplied value for trivy_enabled: {e}"));
-                self
-            }
-        }
-        impl ::std::convert::TryFrom<SystemConfigResponse> for super::SystemConfigResponse {
-            type Error = super::error::ConversionError;
-            fn try_from(
-                value: SystemConfigResponse,
-            ) -> ::std::result::Result<Self, super::error::ConversionError> {
-                Ok(Self {
-                    demo_mode: value.demo_mode?,
-                    dependency_track_enabled: value.dependency_track_enabled?,
-                    max_upload_size_bytes: value.max_upload_size_bytes?,
-                    meilisearch_enabled: value.meilisearch_enabled?,
-                    openscap_enabled: value.openscap_enabled?,
-                    storage_backend: value.storage_backend?,
-                    trivy_enabled: value.trivy_enabled?,
-                })
-            }
-        }
-        impl ::std::convert::From<super::SystemConfigResponse> for SystemConfigResponse {
-            fn from(value: super::SystemConfigResponse) -> Self {
-                Self {
-                    demo_mode: Ok(value.demo_mode),
-                    dependency_track_enabled: Ok(value.dependency_track_enabled),
-                    max_upload_size_bytes: Ok(value.max_upload_size_bytes),
-                    meilisearch_enabled: Ok(value.meilisearch_enabled),
-                    openscap_enabled: Ok(value.openscap_enabled),
-                    storage_backend: Ok(value.storage_backend),
-                    trivy_enabled: Ok(value.trivy_enabled),
                 }
             }
         }
@@ -60397,16 +61002,6 @@ impl ClientSsoExt for Client {
         builder::SamlLogin::new(self)
     }
 }
-#[doc = "System configuration and capabilities"]
-pub trait ClientSystemExt {
-    #[doc = "Returns non-sensitive runtime configuration\n\nThe response includes upload limits, active storage backend, demo mode\nflag, and which optional services (Trivy, OpenSCAP, Dependency-Track,\nMeilisearch) are configured. No secrets or credentials are exposed.\n\nSends a `GET` request to `/api/v1/system/config`\n\n```ignore\nlet response = client.get_system_config()\n    .send()\n    .await;\n```"]
-    fn get_system_config(&self) -> builder::GetSystemConfig<'_>;
-}
-impl ClientSystemExt for Client {
-    fn get_system_config(&self) -> builder::GetSystemConfig<'_> {
-        builder::GetSystemConfig::new(self)
-    }
-}
 #[doc = "Crash reporting and telemetry"]
 pub trait ClientTelemetryExt {
     #[doc = "GET /api/v1/admin/telemetry/crashes\n\nSends a `GET` request to `/api/v1/admin/telemetry/crashes`\n\n```ignore\nlet response = client.list_crashes()\n    .page(page)\n    .per_page(per_page)\n    .send()\n    .await;\n```"]
@@ -60445,6 +61040,36 @@ impl ClientTelemetryExt for Client {
     }
     fn update_telemetry_settings(&self) -> builder::UpdateTelemetrySettings<'_> {
         builder::UpdateTelemetrySettings::new(self)
+    }
+}
+#[doc = "Chunked/resumable file uploads"]
+pub trait ClientUploadsExt {
+    #[doc = "Sends a `POST` request to `/api/v1/uploads`\n\n```ignore\nlet response = client.create_session()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn create_session(&self) -> builder::CreateSession<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/uploads/{session_id}`\n\nArguments:\n- `session_id`: Upload session ID\n```ignore\nlet response = client.get_session_status()\n    .session_id(session_id)\n    .send()\n    .await;\n```"]
+    fn get_session_status(&self) -> builder::GetSessionStatus<'_>;
+    #[doc = "Sends a `DELETE` request to `/api/v1/uploads/{session_id}`\n\nArguments:\n- `session_id`: Upload session ID\n```ignore\nlet response = client.cancel()\n    .session_id(session_id)\n    .send()\n    .await;\n```"]
+    fn cancel(&self) -> builder::Cancel<'_>;
+    #[doc = "Sends a `PATCH` request to `/api/v1/uploads/{session_id}`\n\nArguments:\n- `session_id`: Upload session ID\n```ignore\nlet response = client.upload_chunk()\n    .session_id(session_id)\n    .send()\n    .await;\n```"]
+    fn upload_chunk(&self) -> builder::UploadChunk<'_>;
+    #[doc = "Sends a `PUT` request to `/api/v1/uploads/{session_id}/complete`\n\nArguments:\n- `session_id`: Upload session ID\n```ignore\nlet response = client.complete()\n    .session_id(session_id)\n    .send()\n    .await;\n```"]
+    fn complete(&self) -> builder::Complete<'_>;
+}
+impl ClientUploadsExt for Client {
+    fn create_session(&self) -> builder::CreateSession<'_> {
+        builder::CreateSession::new(self)
+    }
+    fn get_session_status(&self) -> builder::GetSessionStatus<'_> {
+        builder::GetSessionStatus::new(self)
+    }
+    fn cancel(&self) -> builder::Cancel<'_> {
+        builder::Cancel::new(self)
+    }
+    fn upload_chunk(&self) -> builder::UploadChunk<'_> {
+        builder::UploadChunk::new(self)
+    }
+    fn complete(&self) -> builder::Complete<'_> {
+        builder::Complete::new(self)
     }
 }
 #[doc = "User management and API tokens"]
@@ -83558,47 +84183,6 @@ pub mod builder {
             }
         }
     }
-    #[doc = "Builder for [`ClientSystemExt::get_system_config`]\n\n[`ClientSystemExt::get_system_config`]: super::ClientSystemExt::get_system_config"]
-    #[derive(Debug, Clone)]
-    pub struct GetSystemConfig<'a> {
-        client: &'a super::Client,
-    }
-    impl<'a> GetSystemConfig<'a> {
-        pub fn new(client: &'a super::Client) -> Self {
-            Self { client: client }
-        }
-        #[doc = "Sends a `GET` request to `/api/v1/system/config`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SystemConfigResponse>, Error<()>> {
-            let Self { client } = self;
-            let url = format!("{}/api/v1/system/config", client.baseurl,);
-            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
-            header_map.append(
-                ::reqwest::header::HeaderName::from_static("api-version"),
-                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
-            );
-            #[allow(unused_mut)]
-            let mut request = client
-                .client
-                .get(url)
-                .header(
-                    ::reqwest::header::ACCEPT,
-                    ::reqwest::header::HeaderValue::from_static("application/json"),
-                )
-                .headers(header_map)
-                .build()?;
-            let info = OperationInfo {
-                operation_id: "get_system_config",
-            };
-            client.pre(&mut request, &info).await?;
-            let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
-            let response = result?;
-            match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
-            }
-        }
-    }
     #[doc = "Builder for [`ClientRepositoriesExt::get_tree`]\n\n[`ClientRepositoriesExt::get_tree`]: super::ClientRepositoriesExt::get_tree"]
     #[derive(Debug, Clone)]
     pub struct GetTree<'a> {
@@ -83780,6 +84364,319 @@ pub mod builder {
                 200u16 => Ok(ResponseValue::stream(response)),
                 400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUploadsExt::create_session`]\n\n[`ClientUploadsExt::create_session`]: super::ClientUploadsExt::create_session"]
+    #[derive(Debug, Clone)]
+    pub struct CreateSession<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::CreateSessionRequest, String>,
+    }
+    impl<'a> CreateSession<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateSessionRequest>,
+            <V as std::convert::TryInto<types::CreateSessionRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CreateSessionRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateSessionRequest,
+                ) -> types::builder::CreateSessionRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/uploads`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CreateSessionResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::CreateSessionRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/uploads", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_session",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                201u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUploadsExt::get_session_status`]\n\n[`ClientUploadsExt::get_session_status`]: super::ClientUploadsExt::get_session_status"]
+    #[derive(Debug, Clone)]
+    pub struct GetSessionStatus<'a> {
+        client: &'a super::Client,
+        session_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetSessionStatus<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                session_id: Err("session_id was not initialized".to_string()),
+            }
+        }
+        pub fn session_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.session_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for session_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/uploads/{session_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SessionStatusResponse>, Error<()>> {
+            let Self { client, session_id } = self;
+            let session_id = session_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/uploads/{}",
+                client.baseurl,
+                encode_path(&session_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_session_status",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                410u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUploadsExt::cancel`]\n\n[`ClientUploadsExt::cancel`]: super::ClientUploadsExt::cancel"]
+    #[derive(Debug, Clone)]
+    pub struct Cancel<'a> {
+        client: &'a super::Client,
+        session_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> Cancel<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                session_id: Err("session_id was not initialized".to_string()),
+            }
+        }
+        pub fn session_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.session_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for session_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/uploads/{session_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, session_id } = self;
+            let session_id = session_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/uploads/{}",
+                client.baseurl,
+                encode_path(&session_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "cancel",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUploadsExt::upload_chunk`]\n\n[`ClientUploadsExt::upload_chunk`]: super::ClientUploadsExt::upload_chunk"]
+    #[derive(Debug, Clone)]
+    pub struct UploadChunk<'a> {
+        client: &'a super::Client,
+        session_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> UploadChunk<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                session_id: Err("session_id was not initialized".to_string()),
+            }
+        }
+        pub fn session_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.session_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for session_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `PATCH` request to `/api/v1/uploads/{session_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ChunkResponse>, Error<()>> {
+            let Self { client, session_id } = self;
+            let session_id = session_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/uploads/{}",
+                client.baseurl,
+                encode_path(&session_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .patch(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "upload_chunk",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                410u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUploadsExt::complete`]\n\n[`ClientUploadsExt::complete`]: super::ClientUploadsExt::complete"]
+    #[derive(Debug, Clone)]
+    pub struct Complete<'a> {
+        client: &'a super::Client,
+        session_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> Complete<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                session_id: Err("session_id was not initialized".to_string()),
+            }
+        }
+        pub fn session_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.session_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for session_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/uploads/{session_id}/complete`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CompleteResponse>, Error<()>> {
+            let Self { client, session_id } = self;
+            let session_id = session_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/uploads/{}/complete",
+                client.baseurl,
+                encode_path(&session_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "complete",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                410u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -85550,8 +86447,8 @@ pub mod prelude {
     pub use super::ClientServiceAccountsExt;
     pub use super::ClientSigningExt;
     pub use super::ClientSsoExt;
-    pub use super::ClientSystemExt;
     pub use super::ClientTelemetryExt;
+    pub use super::ClientUploadsExt;
     pub use super::ClientUsersExt;
     pub use super::ClientWebhooksExt;
 }
