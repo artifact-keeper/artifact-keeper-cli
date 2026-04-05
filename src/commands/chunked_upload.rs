@@ -36,9 +36,7 @@ pub fn parse_size(s: &str) -> Result<u64> {
 }
 
 fn split_number_unit(s: &str) -> Result<(&str, &str)> {
-    let idx = s
-        .find(|c: char| c.is_ascii_alphabetic())
-        .unwrap_or(s.len());
+    let idx = s.find(|c: char| c.is_ascii_alphabetic()).unwrap_or(s.len());
     if idx == 0 {
         return Err(AkError::ConfigError(format!("Invalid size: {s}")).into());
     }
@@ -162,6 +160,7 @@ pub struct CreateSessionRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct CreateSessionResponse {
     pub session_id: String,
     pub chunk_count: u64,
@@ -170,6 +169,7 @@ pub struct CreateSessionResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct UploadChunkResponse {
     pub chunk_index: u64,
     pub bytes_received: u64,
@@ -178,6 +178,7 @@ pub struct UploadChunkResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct SessionStatusResponse {
     pub session_id: String,
     pub status: String,
@@ -192,6 +193,7 @@ pub struct SessionStatusResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct FinalizeResponse {
     pub artifact_id: String,
     pub path: String,
@@ -212,6 +214,7 @@ pub struct FinalizeResponse {
 /// 4. Uploads chunks sequentially with retry logic
 /// 5. Finalizes the upload
 /// 6. Cleans up the session cache
+#[allow(clippy::too_many_arguments)]
 pub async fn chunked_upload(
     base_url: &str,
     auth_header: &str,
@@ -236,7 +239,7 @@ pub async fn chunked_upload(
                     "Resuming upload session {}: {}/{} chunks completed",
                     &sid[..8],
                     cc,
-                    (file_size + cs - 1) / cs
+                    file_size.div_ceil(cs)
                 );
                 (sid, cs, cc)
             }
@@ -272,7 +275,7 @@ pub async fn chunked_upload(
             }
         };
 
-    let chunk_count = (file_size + server_chunk_size - 1) / server_chunk_size;
+    let chunk_count = file_size.div_ceil(server_chunk_size);
 
     // Step 4: Upload chunks with progress bar
     let pb = indicatif::ProgressBar::new(file_size);
@@ -339,7 +342,10 @@ pub async fn chunked_upload(
 
         if let Some(err) = last_err {
             // Save state so user can resume later
-            pb.abandon_with_message(format!("Upload paused at chunk {}/{chunk_count}", chunk_idx + 1));
+            pb.abandon_with_message(format!(
+                "Upload paused at chunk {}/{chunk_count}",
+                chunk_idx + 1
+            ));
             eprintln!(
                 "Upload failed after 3 retries. Resume with: ak artifact push {repo} {}",
                 file_path.display()
@@ -365,6 +371,7 @@ pub async fn chunked_upload(
 // HTTP helpers
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)]
 async fn create_session(
     http: &reqwest::Client,
     base_url: &str,
@@ -426,9 +433,7 @@ async fn upload_chunk(
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(
-            AkError::ServerError(format!("Chunk upload failed ({status}): {text}")).into(),
-        );
+        return Err(AkError::ServerError(format!("Chunk upload failed ({status}): {text}")).into());
     }
 
     resp.json::<UploadChunkResponse>()
@@ -486,9 +491,7 @@ async fn finalize_upload(
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(
-            AkError::ServerError(format!("Finalize failed ({status}): {text}")).into(),
-        );
+        return Err(AkError::ServerError(format!("Finalize failed ({status}): {text}")).into());
     }
 
     resp.json::<FinalizeResponse>()
@@ -519,13 +522,11 @@ async fn try_resume(
 
     // Check if the server session is still alive
     match get_session_status(http, base_url, auth_header, &cached.session_id).await? {
-        Some(status) if status.status != "completed" => {
-            Ok(Some((
-                cached.session_id,
-                cached.chunk_size,
-                status.chunks_completed,
-            )))
-        }
+        Some(status) if status.status != "completed" => Ok(Some((
+            cached.session_id,
+            cached.chunk_size,
+            status.chunks_completed,
+        ))),
         Some(_) => {
             // Session already completed somehow
             remove_session_cache(file_path)?;

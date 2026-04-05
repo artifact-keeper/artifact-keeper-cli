@@ -130,7 +130,17 @@ impl ArtifactCommand {
                 path,
                 chunk_size,
                 no_chunked,
-            } => push(&repo, &files, path.as_deref(), &chunk_size, no_chunked, global).await,
+            } => {
+                push(
+                    &repo,
+                    &files,
+                    path.as_deref(),
+                    &chunk_size,
+                    no_chunked,
+                    global,
+                )
+                .await
+            }
             Self::Pull { repo, path, output } => {
                 pull(&repo, &path, output.as_deref(), global).await
             }
@@ -227,8 +237,7 @@ async fn push(
 
         if use_chunked {
             // Chunked upload for large files
-            let (base_url, auth_header) =
-                super::client::resolve_base_url_and_auth(global)?;
+            let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
 
             let result = super::chunked_upload::chunked_upload(
                 &base_url,
@@ -855,7 +864,10 @@ mod tests {
     #[test]
     fn parse_push_single_file() {
         let cli = parse(&["test", "push", "my-repo", "package.tar.gz"]);
-        if let ArtifactCommand::Push { repo, files, path, .. } = cli.command {
+        if let ArtifactCommand::Push {
+            repo, files, path, ..
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(files, vec!["package.tar.gz"]);
             assert!(path.is_none());
@@ -874,7 +886,10 @@ mod tests {
             "file2.jar",
             "file3.jar",
         ]);
-        if let ArtifactCommand::Push { repo, files, path, .. } = cli.command {
+        if let ArtifactCommand::Push {
+            repo, files, path, ..
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(files, vec!["file1.jar", "file2.jar", "file3.jar"]);
             assert!(path.is_none());
@@ -893,7 +908,10 @@ mod tests {
             "--path",
             "org/pkg/1.0/",
         ]);
-        if let ArtifactCommand::Push { repo, files, path, .. } = cli.command {
+        if let ArtifactCommand::Push {
+            repo, files, path, ..
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(files, vec!["package.tar.gz"]);
             assert_eq!(path.as_deref(), Some("org/pkg/1.0/"));
