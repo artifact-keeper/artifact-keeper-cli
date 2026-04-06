@@ -323,7 +323,31 @@ fn redact_token(content: &str, token: &str) -> String {
 
 fn confirm_write(path: &Path, content: &str, no_input: bool) -> Result<bool> {
     eprintln!("\nConfiguration to write to {}:\n", path.display());
-    eprintln!("{content}");
+    // Redact anything that looks like a token or password before printing
+    let display = content
+        .lines()
+        .map(|line| {
+            if line.contains("_authToken")
+                || line.contains("_auth")
+                || line.contains("password")
+                || line.contains("ClearTextPassword")
+                || line.contains("token =")
+                || line.contains("Bearer ")
+            {
+                if let Some(eq) = line.find('=') {
+                    format!("{}= ****", &line[..eq])
+                } else if let Some(colon) = line.find(':') {
+                    format!("{}: ****", &line[..colon])
+                } else {
+                    "****".to_string()
+                }
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    eprintln!("{display}");
 
     if no_input {
         return Ok(true);

@@ -26,6 +26,14 @@ pub enum ArtifactCommand {
         /// Target path within the repository
         #[arg(long)]
         path: Option<String>,
+
+        /// Chunk size for large file uploads (e.g. "8MB", "16MB")
+        #[arg(long, default_value = "8MB")]
+        chunk_size: String,
+
+        /// Disable chunked upload (force single PUT even for large files)
+        #[arg(long)]
+        no_chunked: bool,
     },
 
     /// Download an artifact from a repository
@@ -116,7 +124,23 @@ pub enum ArtifactCommand {
 impl ArtifactCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
-            Self::Push { repo, files, path } => push(&repo, &files, path.as_deref(), global).await,
+            Self::Push {
+                repo,
+                files,
+                path,
+                chunk_size,
+                no_chunked,
+            } => {
+                push(
+                    &repo,
+                    &files,
+                    path.as_deref(),
+                    &chunk_size,
+                    no_chunked,
+                    global,
+                )
+                .await
+            }
             Self::Pull { repo, path, output } => {
                 pull(&repo, &path, output.as_deref(), global).await
             }
@@ -156,9 +180,13 @@ async fn push(
     repo: &str,
     file_patterns: &[String],
     target_path: Option<&str>,
+    chunk_size_str: &str,
+    no_chunked: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
+    let chunk_size = super::chunked_upload::parse_size(chunk_size_str)?;
+    let threshold = super::chunked_upload::chunked_threshold()?;
 
     let mut files_to_upload: Vec<PathBuf> = Vec::new();
     for pattern in file_patterns {
@@ -205,48 +233,80 @@ async fn push(
             .into_diagnostic()?
             .len();
 
-        let pb = indicatif::ProgressBar::new(file_size);
-        pb.set_style(
-            indicatif::ProgressStyle::with_template(
-                "{msg} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})",
-            )
-            .unwrap()
-            .progress_chars("█▉▊▋▌▍▎▏ "),
-        );
-        pb.set_message(format!("Uploading {file_name}"));
+        let use_chunked = !no_chunked && file_size >= threshold;
 
-        let file = tokio::fs::File::open(file_path).await.into_diagnostic()?;
-        let stream = tokio_util::io::ReaderStream::new(file);
-        let pb_clone = pb.clone();
-        let stream = stream.map(move |chunk| {
-            if let Ok(ref bytes) = chunk {
-                pb_clone.inc(bytes.len() as u64);
-            }
-            chunk
-        });
-        let body = reqwest::Body::wrap_stream(stream);
+        if use_chunked {
+            // Chunked upload for large files
+            let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
 
-        let resp = client
-            .upload_artifact()
-            .key(repo)
-            .path(&artifact_path)
-            .body(body)
-            .send()
-            .await
-            .map_err(|e| AkError::ServerError(format!("Upload failed: {e}")))?;
-
-        pb.finish_with_message(format!("Uploaded {file_name}"));
-
-        if matches!(global.format, OutputFormat::Quiet) {
-            println!("{}", resp.path);
-        } else {
-            eprintln!(
-                "  {} ({}) -> {}:{}",
-                file_name,
-                format_bytes(resp.size_bytes),
+            let result = super::chunked_upload::chunked_upload(
+                &base_url,
+                &auth_header,
+                file_path,
                 repo,
-                resp.path
+                &artifact_path,
+                chunk_size,
+                file_size,
+                file_name,
+            )
+            .await?;
+
+            if matches!(global.format, OutputFormat::Quiet) {
+                println!("{}", result.path);
+            } else {
+                eprintln!(
+                    "  {} ({}) -> {}:{} [chunked]",
+                    file_name,
+                    format_bytes(result.size as i64),
+                    repo,
+                    result.path
+                );
+            }
+        } else {
+            // Single PUT for small files (existing behavior)
+            let pb = indicatif::ProgressBar::new(file_size);
+            pb.set_style(
+                indicatif::ProgressStyle::with_template(
+                    "{msg} [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})",
+                )
+                .unwrap()
+                .progress_chars("##-"),
             );
+            pb.set_message(format!("Uploading {file_name}"));
+
+            let file = tokio::fs::File::open(file_path).await.into_diagnostic()?;
+            let stream = tokio_util::io::ReaderStream::new(file);
+            let pb_clone = pb.clone();
+            let stream = stream.map(move |chunk| {
+                if let Ok(ref bytes) = chunk {
+                    pb_clone.inc(bytes.len() as u64);
+                }
+                chunk
+            });
+            let body = reqwest::Body::wrap_stream(stream);
+
+            let resp = client
+                .upload_artifact()
+                .key(repo)
+                .path(&artifact_path)
+                .body(body)
+                .send()
+                .await
+                .map_err(|e| AkError::ServerError(format!("Upload failed: {e}")))?;
+
+            pb.finish_with_message(format!("Uploaded {file_name}"));
+
+            if matches!(global.format, OutputFormat::Quiet) {
+                println!("{}", resp.path);
+            } else {
+                eprintln!(
+                    "  {} ({}) -> {}:{}",
+                    file_name,
+                    format_bytes(resp.size_bytes),
+                    repo,
+                    resp.path
+                );
+            }
         }
     }
 
@@ -804,7 +864,10 @@ mod tests {
     #[test]
     fn parse_push_single_file() {
         let cli = parse(&["test", "push", "my-repo", "package.tar.gz"]);
-        if let ArtifactCommand::Push { repo, files, path } = cli.command {
+        if let ArtifactCommand::Push {
+            repo, files, path, ..
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(files, vec!["package.tar.gz"]);
             assert!(path.is_none());
@@ -823,7 +886,10 @@ mod tests {
             "file2.jar",
             "file3.jar",
         ]);
-        if let ArtifactCommand::Push { repo, files, path } = cli.command {
+        if let ArtifactCommand::Push {
+            repo, files, path, ..
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(files, vec!["file1.jar", "file2.jar", "file3.jar"]);
             assert!(path.is_none());
@@ -842,7 +908,10 @@ mod tests {
             "--path",
             "org/pkg/1.0/",
         ]);
-        if let ArtifactCommand::Push { repo, files, path } = cli.command {
+        if let ArtifactCommand::Push {
+            repo, files, path, ..
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(files, vec!["package.tar.gz"]);
             assert_eq!(path.as_deref(), Some("org/pkg/1.0/"));
@@ -870,6 +939,49 @@ mod tests {
     #[test]
     fn parse_push_missing_repo_fails() {
         assert!(try_parse(&["test", "push"]).is_err());
+    }
+
+    #[test]
+    fn parse_push_chunk_size_flag() {
+        let cli = parse(&[
+            "test",
+            "push",
+            "my-repo",
+            "file.bin",
+            "--chunk-size",
+            "16MB",
+        ]);
+        if let ArtifactCommand::Push {
+            chunk_size,
+            no_chunked,
+            ..
+        } = cli.command
+        {
+            assert_eq!(chunk_size, "16MB");
+            assert!(!no_chunked);
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+    }
+
+    #[test]
+    fn parse_push_no_chunked_flag() {
+        let cli = parse(&["test", "push", "my-repo", "file.bin", "--no-chunked"]);
+        if let ArtifactCommand::Push { no_chunked, .. } = cli.command {
+            assert!(no_chunked);
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+    }
+
+    #[test]
+    fn parse_push_default_chunk_size() {
+        let cli = parse(&["test", "push", "my-repo", "file.bin"]);
+        if let ArtifactCommand::Push { chunk_size, .. } = cli.command {
+            assert_eq!(chunk_size, "8MB");
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
     }
 
     // ---- Pull subcommand parsing ----

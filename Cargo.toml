@@ -59,6 +59,10 @@ base64 = "0.22"
 ratatui = "0.30"
 crossterm = { version = "0.29", features = ["event-stream"] }
 
+# Cryptography
+sha2 = "0.10"
+hex = "0.4"
+
 # Utilities
 dirs = "6"
 url = "2"
