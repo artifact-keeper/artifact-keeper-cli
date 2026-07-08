@@ -31,3 +31,4 @@ pub mod sync_policy;
 pub mod totp;
 pub mod tui;
 pub mod webhook;
+pub mod age_gate;
