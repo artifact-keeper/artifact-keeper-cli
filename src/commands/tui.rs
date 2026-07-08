@@ -809,10 +809,8 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
         // Global search: typing query
         if app.global_searching && !app.global_search_submitted {
             match key.code {
-                KeyCode::Enter => {
-                    if !app.global_search_query.is_empty() {
-                        app.global_search().await;
-                    }
+                KeyCode::Enter if !app.global_search_query.is_empty() => {
+                    app.global_search().await;
                 }
                 KeyCode::Esc => app.exit_global_search(),
                 KeyCode::Backspace => {
@@ -935,13 +933,13 @@ async fn run_app(mut terminal: DefaultTerminal, config: AppConfig) -> Result<()>
                 Panel::Replication => {}
                 Panel::Analytics => {}
             },
-            KeyCode::Esc => {
-                if app.active_panel == Panel::Security && app.security.showing_findings {
-                    app.security.showing_findings = false;
-                    app.security.selected_findings.clear();
-                    app.security.finding_list_state = ListState::default();
-                    app.status_message = format!("{} scans loaded", app.security.scans.len());
-                }
+            KeyCode::Esc
+                if app.active_panel == Panel::Security && app.security.showing_findings =>
+            {
+                app.security.showing_findings = false;
+                app.security.selected_findings.clear();
+                app.security.finding_list_state = ListState::default();
+                app.status_message = format!("{} scans loaded", app.security.scans.len());
             }
             KeyCode::Char('4') => {
                 if app.security.dashboard.is_none() {
