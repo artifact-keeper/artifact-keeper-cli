@@ -5,6 +5,18 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `ak import` command for importing artifacts from a legacy registry
+  (Artifactory / Nexus) via the migration/import subsystem: source-connection
+  management (`source add/list/show/test/repos/delete`), import jobs
+  (`job create/list/show/start/pause/resume/cancel/items/delete`), pre-migration
+  assessment (`assess`, `assessment`), reconciliation report (`reconcile`), and
+  live progress streaming (`progress`). Distinct from the existing `ak migrate`
+  command, which bulk-copies artifacts between Artifact Keeper instances.
+
 ## [1.0.0] - 2026-02-23
 
 ### Stable Release

@@ -348,6 +348,15 @@ pub enum Command {
         #[arg(default_value = ".")]
         dir: String,
     },
+
+    /// Import artifacts from a legacy registry (Artifactory / Nexus)
+    #[command(
+        after_help = "Examples:\n  ak import source add legacy https://artifactory.company.com --token $ART_TOKEN\n  ak import source list\n  ak import source test <connection-id>\n  ak import job create <connection-id> --job-type full\n  ak import assess <job-id>\n  ak import job start <job-id>\n  ak import reconcile <job-id>"
+    )]
+    Import {
+        #[command(subcommand)]
+        command: commands::import::ImportCommand,
+    },
 }
 
 impl Cli {
@@ -423,6 +432,7 @@ impl Cli {
             Command::Tui => commands::tui::execute(&global).await,
             Command::Completion { shell } => commands::completion::execute(shell),
             Command::ManPages { dir } => commands::completion::generate_man_pages(&dir),
+            Command::Import { command } => command.execute(&global).await,
         }
     }
 }
