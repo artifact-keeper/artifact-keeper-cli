@@ -293,6 +293,7 @@ async fn review_promotion(
 
     let body = artifact_keeper_sdk::types::ReviewRequest {
         notes: comment.map(|s| s.to_string()),
+        skip_policy_check: None,
     };
 
     let resp = if approve {

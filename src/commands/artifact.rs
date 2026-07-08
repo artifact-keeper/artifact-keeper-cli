@@ -694,7 +694,7 @@ async fn same_instance_copy(
     spinner.set_message("Copying...");
 
     let body = artifact_keeper_sdk::types::PromoteArtifactRequest {
-        target_repository: destination.to_string(),
+        target_repository: Some(destination.to_string()),
         notes: None,
         skip_policy_check: None,
     };
@@ -1485,6 +1485,7 @@ mod tests {
                     "size_bytes": 2621440_i64,
                     "content_type": "application/java-archive",
                     "checksum_sha256": "abc123def456",
+                    "analyzable": true,
                     "download_count": 150_i64,
                     "repository_key": "maven-central",
                     "created_at": "2026-01-15T10:00:00Z"
@@ -1516,6 +1517,7 @@ mod tests {
                     "size_bytes": 2621440_i64,
                     "content_type": "application/java-archive",
                     "checksum_sha256": "abc123def456",
+                    "analyzable": true,
                     "download_count": 150_i64,
                     "repository_key": "maven-central",
                     "created_at": "2026-01-15T10:00:00Z"
@@ -1638,6 +1640,7 @@ mod tests {
                     "size_bytes": 1024_i64,
                     "content_type": "application/java-archive",
                     "checksum_sha256": "abc123",
+                    "analyzable": true,
                     "download_count": 5_i64,
                     "repository_key": "src-repo",
                     "created_at": "2026-01-15T10:00:00Z"

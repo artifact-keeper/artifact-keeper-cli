@@ -341,6 +341,7 @@ async fn run_scan(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Resul
     let body = artifact_keeper_sdk::types::TriggerScanRequest {
         artifact_id: Some(artifact.id),
         repository_id: None,
+        bypass_dedup: None,
     };
 
     let scan = client
@@ -987,7 +988,7 @@ async fn create_policy(
         name: name.to_string(),
         max_severity: max_severity.to_string(),
         block_on_fail,
-        block_unscanned,
+        block_unscanned: Some(block_unscanned),
         repository_id: repo_id,
         max_artifact_age_days: None,
         min_staging_hours: None,
@@ -1055,11 +1056,11 @@ async fn update_policy(
     spinner.set_message("Updating policy...");
 
     let body = artifact_keeper_sdk::types::UpdatePolicyRequest {
-        name: name.unwrap_or(&existing.name).to_string(),
-        max_severity: max_severity.unwrap_or(&existing.max_severity).to_string(),
-        block_on_fail: block_on_fail.unwrap_or(existing.block_on_fail),
-        block_unscanned: block_unscanned.unwrap_or(existing.block_unscanned),
-        is_enabled: enabled.unwrap_or(existing.is_enabled),
+        name: Some(name.unwrap_or(&existing.name).to_string()),
+        max_severity: Some(max_severity.unwrap_or(&existing.max_severity).to_string()),
+        block_on_fail: Some(block_on_fail.unwrap_or(existing.block_on_fail)),
+        block_unscanned: Some(block_unscanned.unwrap_or(existing.block_unscanned)),
+        is_enabled: Some(enabled.unwrap_or(existing.is_enabled)),
         max_artifact_age_days: existing.max_artifact_age_days,
         min_staging_hours: existing.min_staging_hours,
         require_signature: Some(existing.require_signature),
@@ -1222,11 +1223,11 @@ async fn update_repo_security(
     let spinner = crate::output::spinner("Updating repository security config...");
 
     let body = artifact_keeper_sdk::types::UpsertScanConfigRequest {
-        scan_enabled: scanning_enabled,
-        scan_on_upload,
-        scan_on_proxy,
-        block_on_policy_violation: block_on_violation,
-        severity_threshold: severity_threshold.to_string(),
+        scan_enabled: Some(scanning_enabled),
+        scan_on_upload: Some(scan_on_upload),
+        scan_on_proxy: Some(scan_on_proxy),
+        block_on_policy_violation: Some(block_on_violation),
+        severity_threshold: Some(severity_threshold.to_string()),
     };
 
     let config = client
@@ -2045,6 +2046,7 @@ mod tests {
             low_count: 10,
             total_findings: critical + high + 5 + 10,
             acknowledged_count: 3,
+            has_failed_scan: false,
             last_scan_at: Some(Utc::now()),
             calculated_at: Utc::now(),
         }
@@ -2260,6 +2262,7 @@ mod tests {
                     "medium_count": 1,
                     "low_count": 0,
                     "info_count": 0,
+                    "is_reused": false,
                     "artifact_name": "pkg.jar",
                     "artifact_version": "1.0",
                     "created_at": "2026-01-15T10:00:00Z"
@@ -2383,6 +2386,7 @@ mod tests {
                     "low_count": 5,
                     "total_findings": 9,
                     "acknowledged_count": 2,
+                    "has_failed_scan": false,
                     "last_scan_at": "2026-01-15T10:00:00Z",
                     "calculated_at": "2026-01-15T10:00:00Z"
                 }])),
@@ -2666,6 +2670,7 @@ mod tests {
                     "low_count": 5,
                     "total_findings": 9,
                     "acknowledged_count": 2,
+                    "has_failed_scan": false,
                     "last_scan_at": "2026-01-15T10:00:00Z",
                     "calculated_at": "2026-01-15T10:00:00Z"
                 }
@@ -2729,6 +2734,7 @@ mod tests {
                 "medium_count": 1,
                 "low_count": 0,
                 "info_count": 0,
+                "is_reused": false,
                 "artifact_name": "pkg.jar",
                 "artifact_version": "1.0",
                 "created_at": "2026-01-15T10:00:00Z"
@@ -2782,6 +2788,7 @@ mod tests {
                     "size_bytes": 1024_i64,
                     "content_type": "application/gzip",
                     "checksum_sha256": "abc123",
+                    "analyzable": true,
                     "download_count": 5_i64,
                     "repository_key": "my-repo",
                     "created_at": "2026-01-15T10:00:00Z"

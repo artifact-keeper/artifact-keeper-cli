@@ -393,6 +393,9 @@ async fn create_oidc(
         scopes: None,
         attribute_mapping: None,
         is_enabled: None,
+        allow_legacy_rsa_keys: None,
+        map_groups_to_groups: None,
+        pkce_enabled: None,
     };
 
     let resp = client
@@ -438,6 +441,7 @@ async fn create_saml(
         require_signed_assertions: None,
         admin_group: None,
         is_enabled: None,
+        use_absolute_acs_url: None,
     };
 
     let resp = client
@@ -1196,6 +1200,9 @@ mod tests {
             scopes: vec!["openid".to_string(), "profile".to_string()],
             attribute_mapping: serde_json::Map::new(),
             auto_create_users: true,
+            allow_legacy_rsa_keys: false,
+            map_groups_to_groups: false,
+            pkce_enabled: true,
             is_enabled: enabled,
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -1216,6 +1223,7 @@ mod tests {
             sign_requests: true,
             require_signed_assertions: true,
             admin_group: Some("admins".to_string()),
+            use_absolute_acs_url: false,
             is_enabled: enabled,
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -1440,6 +1448,9 @@ mod tests {
             "scopes": ["openid", "profile"],
             "attribute_mapping": {},
             "auto_create_users": true,
+            "allow_legacy_rsa_keys": false,
+            "map_groups_to_groups": false,
+            "pkce_enabled": true,
             "is_enabled": true,
             "created_at": "2026-01-01T00:00:00Z",
             "updated_at": "2026-01-15T12:00:00Z"
@@ -1460,6 +1471,7 @@ mod tests {
             "sign_requests": true,
             "require_signed_assertions": true,
             "admin_group": "admins",
+            "use_absolute_acs_url": false,
             "is_enabled": true,
             "created_at": "2026-01-01T00:00:00Z",
             "updated_at": "2026-01-15T12:00:00Z"

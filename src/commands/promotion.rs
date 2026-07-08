@@ -141,7 +141,7 @@ async fn promote_artifact(
     let spinner = output::spinner("Promoting artifact...");
 
     let body = artifact_keeper_sdk::types::PromoteArtifactRequest {
-        target_repository: to.to_string(),
+        target_repository: Some(to.to_string()),
         notes: notes.map(|s| s.to_string()),
         skip_policy_check: skip_checks.then_some(true),
     };

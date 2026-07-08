@@ -303,6 +303,7 @@ async fn create_policy(
         repo_selector: repo_sel,
         peer_selector: peer_sel,
         artifact_filter: art_filter,
+        filter: None,
     };
 
     let policy = client
@@ -1074,6 +1075,7 @@ mod tests {
             repo_selector: serde_json::Map::new(),
             peer_selector: serde_json::Map::new(),
             artifact_filter: serde_json::Map::new(),
+            filter: String::new(),
             created_at: Utc::now(),
             updated_at: Utc::now(),
         }
@@ -1321,6 +1323,7 @@ mod tests {
             "repo_selector": {},
             "peer_selector": {},
             "artifact_filter": {},
+            "filter": "",
             "created_at": "2026-01-15T12:00:00Z",
             "updated_at": "2026-01-15T12:00:00Z"
         })

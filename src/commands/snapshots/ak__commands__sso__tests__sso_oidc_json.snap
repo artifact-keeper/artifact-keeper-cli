@@ -1,8 +1,9 @@
 ---
 source: src/commands/sso.rs
-assertion_line: 1694
+assertion_line: 1706
 expression: parsed
 ---
+allow_legacy_rsa_keys: false
 attribute_mapping: {}
 auto_create_users: true
 client_id: abc123
@@ -11,7 +12,9 @@ has_secret: true
 id: 00000000-0000-0000-0000-000000000000
 is_enabled: true
 issuer_url: "https://company.okta.com"
+map_groups_to_groups: false
 name: okta-sso
+pkce_enabled: true
 scopes:
   - openid
   - profile
