@@ -357,6 +357,14 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::age_gate::AgeGateCommand,
     },
+    /// Manage repository-scoped access tokens
+    #[command(
+        after_help = "Examples:\n  ak repo-token list my-repo\n  ak repo-token create my-repo ci-token --scopes read,write\n  ak repo-token show my-repo <token-id>\n  ak repo-token revoke my-repo <token-id>"
+    )]
+    RepoToken {
+        #[command(subcommand)]
+        command: commands::repo_token::RepoTokenCommand,
+    },
 }
 
 impl Cli {
@@ -433,6 +441,7 @@ impl Cli {
             Command::Completion { shell } => commands::completion::execute(shell),
             Command::ManPages { dir } => commands::completion::generate_man_pages(&dir),
             Command::AgeGate { command } => command.execute(&global).await,
+            Command::RepoToken { command } => command.execute(&global).await,
         }
     }
 }
