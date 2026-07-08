@@ -648,6 +648,8 @@ mod tests {
             "name": "developers",
             "description": "Core dev team",
             "member_count": 5,
+            "members": [],
+            "members_total": 0,
             "created_at": "2026-01-15T12:00:00Z",
             "updated_at": "2026-01-15T12:00:00Z"
         })

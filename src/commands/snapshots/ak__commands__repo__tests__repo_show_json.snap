@@ -1,8 +1,9 @@
 ---
 source: src/commands/repo.rs
-assertion_line: 1035
+assertion_line: 1078
 expression: parsed
 ---
+allow_anonymous_access: false
 created_at: "2026-01-15T12:00:00Z"
 description: Test repo
 format: npm
@@ -10,6 +11,7 @@ id: 00000000-0000-0000-0000-000000000001
 is_public: true
 key: npm-local
 name: npm-local
+promotion_only: false
 quota_bytes: ~
 repo_type: local
 storage_used_bytes: 1024

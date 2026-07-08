@@ -816,6 +816,9 @@ mod tests {
             artifact_size: 1024 * 1024,
             priority,
             storage_key: key.to_string(),
+            status: "pending".to_string(),
+            created_at: Utc::now(),
+            started_at: None,
         }
     }
 
@@ -1052,7 +1055,10 @@ mod tests {
             "artifact_id": NIL_UUID,
             "artifact_size": 1048576,
             "priority": 1,
-            "storage_key": "artifacts/pkg-1.0.tar.gz"
+            "storage_key": "artifacts/pkg-1.0.tar.gz",
+            "status": "pending",
+            "created_at": "2026-01-15T12:00:00Z",
+            "started_at": null
         })
     }
 

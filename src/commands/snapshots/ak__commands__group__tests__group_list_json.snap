@@ -1,11 +1,13 @@
 ---
 source: src/commands/group.rs
-assertion_line: 808
+assertion_line: 810
 expression: parsed
 ---
 - created_at: "2026-01-15T12:00:00Z"
   description: Core dev team
   id: 00000000-0000-0000-0000-000000000000
   member_count: 5
+  members: []
+  members_total: 0
   name: developers
   updated_at: "2026-01-15T12:00:00Z"

@@ -374,6 +374,180 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`AgeGateConfigResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"enabled\","]
+    #[doc = "    \"min_age_days\","]
+    #[doc = "    \"repository_key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_age_days\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AgeGateConfigResponse {
+        pub enabled: bool,
+        pub min_age_days: i32,
+        pub repository_key: ::std::string::String,
+    }
+    impl AgeGateConfigResponse {
+        pub fn builder() -> builder::AgeGateConfigResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`AgeGateReviewListResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\","]
+    #[doc = "    \"pagination\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/AgeGateReviewResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"pagination\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/Pagination\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AgeGateReviewListResponse {
+        pub items: ::std::vec::Vec<AgeGateReviewResponse>,
+        pub pagination: Pagination,
+    }
+    impl AgeGateReviewListResponse {
+        pub fn builder() -> builder::AgeGateReviewListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`AgeGateReviewResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"id\","]
+    #[doc = "    \"last_requested_at\","]
+    #[doc = "    \"package_name\","]
+    #[doc = "    \"package_version\","]
+    #[doc = "    \"repository_key\","]
+    #[doc = "    \"request_count\","]
+    #[doc = "    \"requested_at\","]
+    #[doc = "    \"status\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"last_requested_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"package_name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"package_version\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"request_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"requested_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"review_reason\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"reviewed_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"reviewed_by\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"upstream_published_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AgeGateReviewResponse {
+        pub id: ::uuid::Uuid,
+        pub last_requested_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub package_name: ::std::string::String,
+        pub package_version: ::std::string::String,
+        pub repository_key: ::std::string::String,
+        pub request_count: i32,
+        pub requested_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub review_reason: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub reviewed_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub reviewed_by: ::std::option::Option<::uuid::Uuid>,
+        pub status: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub upstream_published_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+    }
+    impl AgeGateReviewResponse {
+        pub fn builder() -> builder::AgeGateReviewResponse {
+            Default::default()
+        }
+    }
     #[doc = "Alert state for a service."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -1249,6 +1423,26 @@ pub mod types {
     #[doc = "    \"pagination\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"components\": {"]
+    #[doc = "      \"description\": \"Maven component grouping.  Only present when `group_by=maven_component`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/MavenComponentResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"docker_tags\": {"]
+    #[doc = "      \"description\": \"Docker tag grouping.  Only present when `group_by=docker_tag`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/DockerTagResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
     #[doc = "    \"items\": {"]
     #[doc = "      \"type\": \"array\","]
     #[doc = "      \"items\": {"]
@@ -1264,6 +1458,12 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct ArtifactListResponse {
+        #[doc = "Maven component grouping.  Only present when `group_by=maven_component`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub components: ::std::option::Option<::std::vec::Vec<MavenComponentResponse>>,
+        #[doc = "Docker tag grouping.  Only present when `group_by=docker_tag`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub docker_tags: ::std::option::Option<::std::vec::Vec<DockerTagResponse>>,
         pub items: ::std::vec::Vec<ArtifactResponse>,
         pub pagination: Pagination,
     }
@@ -1319,6 +1519,7 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
+    #[doc = "    \"analyzable\","]
     #[doc = "    \"checksum_sha256\","]
     #[doc = "    \"content_type\","]
     #[doc = "    \"created_at\","]
@@ -1330,6 +1531,26 @@ pub mod types {
     #[doc = "    \"size_bytes\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"analyzable\": {"]
+    #[doc = "      \"description\": \"Whether this artifact can have an SBOM generated or a security scan\\nrun against it. `false` for proxy-cached (Remote) objects: those are\\nlisted with a synthetic, SHA-256-derived id (see\\n[`cached_artifact_id`]) and have no row in the `artifacts` table\\n(#1280/#1278), so SBOM/scan lookups by `artifacts.id` cannot resolve\\nthem and `sbom_documents`/`scan_results` cannot reference them.\\n`true` for hosted artifacts, which carry a real DB id. The web UI\\nuses this to hide/disable the \\\"Generate SBOM\\\" / \\\"Scan\\\" actions where\\nthey cannot work; clients that predate the field should treat an\\nabsent value as `true` so hosted artifacts are never hidden. (#2227)\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"cache_cached_at\": {"]
+    #[doc = "      \"description\": \"When the proxy cache entry for this artifact was last written.\\nOnly populated for Remote (proxy) repositories whose proxy service is\\nconfigured AND that have a cache-metadata blob for this path. None\\nfor Local / Virtual / Staging repos and for Remote repos whose cache\\nhasn't been populated yet (e.g. an artifact that exists as a DB row\\nfrom a direct upload but has never been fetched through the proxy).\\n(#1541)\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"cache_expires_at\": {"]
+    #[doc = "      \"description\": \"When the proxy cache entry for this artifact will expire and be\\nre-validated against upstream. Same gating as `cache_cached_at`. (#1541)\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
     #[doc = "    \"checksum_sha256\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
@@ -1379,6 +1600,14 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct ArtifactResponse {
+        #[doc = "Whether this artifact can have an SBOM generated or a security scan\nrun against it. `false` for proxy-cached (Remote) objects: those are\nlisted with a synthetic, SHA-256-derived id (see\n[`cached_artifact_id`]) and have no row in the `artifacts` table\n(#1280/#1278), so SBOM/scan lookups by `artifacts.id` cannot resolve\nthem and `sbom_documents`/`scan_results` cannot reference them.\n`true` for hosted artifacts, which carry a real DB id. The web UI\nuses this to hide/disable the \"Generate SBOM\" / \"Scan\" actions where\nthey cannot work; clients that predate the field should treat an\nabsent value as `true` so hosted artifacts are never hidden. (#2227)"]
+        pub analyzable: bool,
+        #[doc = "When the proxy cache entry for this artifact was last written.\nOnly populated for Remote (proxy) repositories whose proxy service is\nconfigured AND that have a cache-metadata blob for this path. None\nfor Local / Virtual / Staging repos and for Remote repos whose cache\nhasn't been populated yet (e.g. an artifact that exists as a DB row\nfrom a direct upload but has never been fetched through the proxy).\n(#1541)"]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub cache_cached_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        #[doc = "When the proxy cache entry for this artifact will expire and be\nre-validated against upstream. Same gating as `cache_cached_at`. (#1541)"]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub cache_expires_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub checksum_sha256: ::std::string::String,
         pub content_type: ::std::string::String,
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
@@ -1552,9 +1781,14 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
+    #[doc = "    \"replication_filter\","]
     #[doc = "    \"repository_id\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"replication_filter\": {"]
+    #[doc = "      \"description\": \"Optional JSONB filter constraining which artifacts in the repository\\nget replicated. Shape: `{\\\"include_patterns\\\": [\\\"^v\\\\\\\\d+\\\\\\\\.\\\"], \\\"exclude_patterns\\\": [\\\".*-SNAPSHOT$\\\"]}`.\\nNull/absent means replicate everything.\","]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
     #[doc = "    \"replication_mode\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
@@ -1583,6 +1817,8 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct AssignRepoRequest {
+        #[doc = "Optional JSONB filter constraining which artifacts in the repository\nget replicated. Shape: `{\"include_patterns\": [\"^v\\\\d+\\\\.\"], \"exclude_patterns\": [\".*-SNAPSHOT$\"]}`.\nNull/absent means replicate everything."]
+        pub replication_filter: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub replication_mode: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
@@ -1621,6 +1857,50 @@ pub mod types {
     }
     impl AssignRoleRequest {
         pub fn builder() -> builder::AssignRoleRequest {
+            Default::default()
+        }
+    }
+    #[doc = "Authentication provider availability."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Authentication provider availability.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"ldap_enabled\","]
+    #[doc = "    \"oidc_enabled\","]
+    #[doc = "    \"sso_enabled\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"ldap_enabled\": {"]
+    #[doc = "      \"description\": \"Whether an LDAP directory is configured.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"oidc_enabled\": {"]
+    #[doc = "      \"description\": \"Whether an OIDC provider is configured.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"sso_enabled\": {"]
+    #[doc = "      \"description\": \"Whether SAML SSO is configured (derived from the SSO admin settings in the DB,\\nbut for this endpoint we report whether the OIDC issuer is set as a proxy).\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AuthConfig {
+        #[doc = "Whether an LDAP directory is configured."]
+        pub ldap_enabled: bool,
+        #[doc = "Whether an OIDC provider is configured."]
+        pub oidc_enabled: bool,
+        #[doc = "Whether SAML SSO is configured (derived from the SSO admin settings in the DB,\nbut for this endpoint we report whether the OIDC issuer is set as a proxy)."]
+        pub sso_enabled: bool,
+    }
+    impl AuthConfig {
+        pub fn builder() -> builder::AuthConfig {
             Default::default()
         }
     }
@@ -2460,8 +2740,7 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
-    #[doc = "    \"artifact_ids\","]
-    #[doc = "    \"target_repository\""]
+    #[doc = "    \"artifact_ids\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"artifact_ids\": {"]
@@ -2481,7 +2760,11 @@ pub mod types {
     #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
     #[doc = "    \"target_repository\": {"]
-    #[doc = "      \"type\": \"string\""]
+    #[doc = "      \"description\": \"Target release repository key. When omitted, the staging repository's\\nlinked release target (from `repository_config`) is used instead.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -2494,7 +2777,9 @@ pub mod types {
         pub notes: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub skip_policy_check: ::std::option::Option<bool>,
-        pub target_repository: ::std::string::String,
+        #[doc = "Target release repository key. When omitted, the staging repository's\nlinked release target (from `repository_config`) is used instead."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub target_repository: ::std::option::Option<::std::string::String>,
     }
     impl BulkPromoteRequest {
         pub fn builder() -> builder::BulkPromoteRequest {
@@ -3246,6 +3531,262 @@ pub mod types {
     }
     impl ChunkResponse {
         pub fn builder() -> builder::ChunkResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`CiOidcMappingResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"claim_filters\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"is_enabled\","]
+    #[doc = "    \"name\","]
+    #[doc = "    \"priority\","]
+    #[doc = "    \"provider_id\","]
+    #[doc = "    \"updated_at\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"allowed_repo_ids\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\","]
+    #[doc = "        \"format\": \"uuid\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"claim_filters\": {},"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"provider_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"updated_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CiOidcMappingResponse {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allowed_repo_ids: ::std::option::Option<::std::vec::Vec<::uuid::Uuid>>,
+        pub claim_filters: ::serde_json::Value,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub id: ::uuid::Uuid,
+        pub is_enabled: bool,
+        pub name: ::std::string::String,
+        pub priority: i32,
+        pub provider_id: ::uuid::Uuid,
+        pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+    impl CiOidcMappingResponse {
+        pub fn builder() -> builder::CiOidcMappingResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`CiOidcProviderResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"audience\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"is_enabled\","]
+    #[doc = "    \"issuer_url\","]
+    #[doc = "    \"mapping_count\","]
+    #[doc = "    \"name\","]
+    #[doc = "    \"provider_type\","]
+    #[doc = "    \"updated_at\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"audience\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"issuer_url\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"mapping_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"provider_type\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"updated_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CiOidcProviderResponse {
+        pub audience: ::std::string::String,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub id: ::uuid::Uuid,
+        pub is_enabled: bool,
+        pub issuer_url: ::std::string::String,
+        pub mapping_count: i64,
+        pub name: ::std::string::String,
+        pub provider_type: ::std::string::String,
+        pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+    impl CiOidcProviderResponse {
+        pub fn builder() -> builder::CiOidcProviderResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Body for toggle endpoint."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Body for toggle endpoint.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"enabled\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CiOidcToggleRequest {
+        pub enabled: bool,
+    }
+    impl CiOidcToggleRequest {
+        pub fn builder() -> builder::CiOidcToggleRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`CiTokenRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"provider_id\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"provider_id\": {"]
+    #[doc = "      \"description\": \"UUID of the `ci_oidc_providers` row to use for validation.\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CiTokenRequest {
+        #[doc = "UUID of the `ci_oidc_providers` row to use for validation."]
+        pub provider_id: ::uuid::Uuid,
+    }
+    impl CiTokenRequest {
+        pub fn builder() -> builder::CiTokenRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`CiTokenResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"access_token\","]
+    #[doc = "    \"expires_in\","]
+    #[doc = "    \"token_type\","]
+    #[doc = "    \"username\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"access_token\": {"]
+    #[doc = "      \"description\": \"Short-lived Artifact Keeper access token.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"expires_in\": {"]
+    #[doc = "      \"description\": \"Lifetime in seconds (default 900 = 15 min).\\n\\nDocker caches credentials and does not auto-refresh. Re-exchange the\\nCI JWT before each `docker push` step if the pipeline runs longer\\nthan this window.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"token_type\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"username\": {"]
+    #[doc = "      \"description\": \"The provisioned CI service-account username.\\n\\nUse this directly as `docker login --username` — no separate\\n`GET /api/v1/auth/me` call is needed.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CiTokenResponse {
+        #[doc = "Short-lived Artifact Keeper access token."]
+        pub access_token: ::std::string::String,
+        #[doc = "Lifetime in seconds (default 900 = 15 min).\n\nDocker caches credentials and does not auto-refresh. Re-exchange the\nCI JWT before each `docker push` step if the pipeline runs longer\nthan this window."]
+        pub expires_in: i64,
+        pub token_type: ::std::string::String,
+        #[doc = "The provisioned CI service-account username.\n\nUse this directly as `docker login --username` — no separate\n`GET /api/v1/auth/me` call is needed."]
+        pub username: ::std::string::String,
+    }
+    impl CiTokenResponse {
+        pub fn builder() -> builder::CiTokenResponse {
             Default::default()
         }
     }
@@ -4141,6 +4682,121 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`CreateCiOidcMappingRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"claim_filters\","]
+    #[doc = "    \"name\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"allowed_repo_ids\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\","]
+    #[doc = "        \"format\": \"uuid\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"claim_filters\": {},"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateCiOidcMappingRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allowed_repo_ids: ::std::option::Option<::std::vec::Vec<::uuid::Uuid>>,
+        pub claim_filters: ::serde_json::Value,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub is_enabled: ::std::option::Option<bool>,
+        pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub priority: ::std::option::Option<i32>,
+    }
+    impl CreateCiOidcMappingRequest {
+        pub fn builder() -> builder::CreateCiOidcMappingRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`CreateCiOidcProviderRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"issuer_url\","]
+    #[doc = "    \"name\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"audience\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"issuer_url\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"provider_type\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateCiOidcProviderRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub audience: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub is_enabled: ::std::option::Option<bool>,
+        pub issuer_url: ::std::string::String,
+        pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub provider_type: ::std::option::Option<::std::string::String>,
+    }
+    impl CreateCiOidcProviderRequest {
+        pub fn builder() -> builder::CreateCiOidcProviderRequest {
+            Default::default()
+        }
+    }
     #[doc = "`CreateConnectionRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -4190,6 +4846,53 @@ pub mod types {
     }
     impl CreateConnectionRequest {
         pub fn builder() -> builder::CreateConnectionRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`CreateEmailSubscriptionRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"event_types\","]
+    #[doc = "    \"recipients\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"event_types\": {"]
+    #[doc = "      \"description\": \"Event-type tokens to listen for. Must be drawn from `VALID_EVENT_TYPES`.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"recipients\": {"]
+    #[doc = "      \"description\": \"Email addresses to deliver matching events to. Bounded length;\\nsee `MAX_RECIPIENTS_PER_SUBSCRIPTION` for the operator-facing limit.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateEmailSubscriptionRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub enabled: ::std::option::Option<bool>,
+        #[doc = "Event-type tokens to listen for. Must be drawn from `VALID_EVENT_TYPES`."]
+        pub event_types: ::std::vec::Vec<::std::string::String>,
+        #[doc = "Email addresses to deliver matching events to. Bounded length;\nsee `MAX_RECIPIENTS_PER_SUBSCRIPTION` for the operator-facing limit."]
+        pub recipients: ::std::vec::Vec<::std::string::String>,
+    }
+    impl CreateEmailSubscriptionRequest {
+        pub fn builder() -> builder::CreateEmailSubscriptionRequest {
             Default::default()
         }
     }
@@ -4660,6 +5363,13 @@ pub mod types {
     #[doc = "    \"name\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"allow_legacy_rsa_keys\": {"]
+    #[doc = "      \"description\": \"Opt-in compatibility flag (migration 144): when `true` the provider\\naccepts ID tokens signed with RSA keys shorter than 2048 bits via a\\nrestricted RS256/384/512 PKCS#1 v1.5 fallback path. Defaults to\\n`false`. Below the OWASP ASVS 4.0 baseline; only enable for legacy\\nIdPs such as Lark AnyCross.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"attribute_mapping\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"object\","]
@@ -4687,8 +5397,22 @@ pub mod types {
     #[doc = "    \"issuer_url\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
+    #[doc = "    \"map_groups_to_groups\": {"]
+    #[doc = "      \"description\": \"When `true`, OIDC group claim values are reflected as Artifact Keeper\\ngroup memberships (auto-creating groups on first sight). Defaults to\\n`false` to preserve legacy role-mapping behavior.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"pkce_enabled\": {"]
+    #[doc = "      \"description\": \"Enable PKCE (S256) on the authorization request. Defaults to `true`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"scopes\": {"]
     #[doc = "      \"type\": ["]
@@ -4705,6 +5429,9 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct CreateOidcConfigRequest {
+        #[doc = "Opt-in compatibility flag (migration 144): when `true` the provider\naccepts ID tokens signed with RSA keys shorter than 2048 bits via a\nrestricted RS256/384/512 PKCS#1 v1.5 fallback path. Defaults to\n`false`. Below the OWASP ASVS 4.0 baseline; only enable for legacy\nIdPs such as Lark AnyCross."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allow_legacy_rsa_keys: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub attribute_mapping:
             ::std::option::Option<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
@@ -4715,7 +5442,13 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub is_enabled: ::std::option::Option<bool>,
         pub issuer_url: ::std::string::String,
+        #[doc = "When `true`, OIDC group claim values are reflected as Artifact Keeper\ngroup memberships (auto-creating groups on first sight). Defaults to\n`false` to preserve legacy role-mapping behavior."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub map_groups_to_groups: ::std::option::Option<bool>,
         pub name: ::std::string::String,
+        #[doc = "Enable PKCE (S256) on the authorization request. Defaults to `true`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub pkce_enabled: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub scopes: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
     }
@@ -4785,7 +5518,6 @@ pub mod types {
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
     #[doc = "    \"block_on_fail\","]
-    #[doc = "    \"block_unscanned\","]
     #[doc = "    \"max_severity\","]
     #[doc = "    \"name\""]
     #[doc = "  ],"]
@@ -4833,7 +5565,8 @@ pub mod types {
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct CreatePolicyRequest {
         pub block_on_fail: bool,
-        pub block_unscanned: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub block_unscanned: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub max_artifact_age_days: ::std::option::Option<i32>,
         pub max_severity: ::std::string::String,
@@ -4847,6 +5580,113 @@ pub mod types {
     }
     impl CreatePolicyRequest {
         pub fn builder() -> builder::CreatePolicyRequest {
+            Default::default()
+        }
+    }
+    #[doc = "Request to create an access token scoped to a repository."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Request to create an access token scoped to a repository.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"name\","]
+    #[doc = "    \"scopes\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"description\": \"Optional human-readable description.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"expires_in_days\": {"]
+    #[doc = "      \"description\": \"Number of days until the token expires (1-365). Omit for no expiration.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"description\": \"Display name for the token.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"scopes\": {"]
+    #[doc = "      \"description\": \"Permission scopes for the token.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateRepoTokenRequest {
+        #[doc = "Optional human-readable description."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        #[doc = "Number of days until the token expires (1-365). Omit for no expiration."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub expires_in_days: ::std::option::Option<i64>,
+        #[doc = "Display name for the token."]
+        pub name: ::std::string::String,
+        #[doc = "Permission scopes for the token."]
+        pub scopes: ::std::vec::Vec<::std::string::String>,
+    }
+    impl CreateRepoTokenRequest {
+        pub fn builder() -> builder::CreateRepoTokenRequest {
+            Default::default()
+        }
+    }
+    #[doc = "Response returned when a repository token is created. The `token` field\ncontains the plaintext value and is only shown once."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Response returned when a repository token is created. The `token` field\\ncontains the plaintext value and is only shown once.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"id\","]
+    #[doc = "    \"name\","]
+    #[doc = "    \"repository_key\","]
+    #[doc = "    \"token\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"token\": {"]
+    #[doc = "      \"description\": \"The full token value (only returned at creation time).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateRepoTokenResponse {
+        pub id: ::uuid::Uuid,
+        pub name: ::std::string::String,
+        pub repository_key: ::std::string::String,
+        #[doc = "The full token value (only returned at creation time)."]
+        pub token: ::std::string::String,
+    }
+    impl CreateRepoTokenResponse {
+        pub fn builder() -> builder::CreateRepoTokenResponse {
             Default::default()
         }
     }
@@ -4864,6 +5704,13 @@ pub mod types {
     #[doc = "    \"repo_type\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"allow_anonymous_access\": {"]
+    #[doc = "      \"description\": \"Alias for `is_public`. When set to true, anonymous users can download\\nartifacts from this repository without authentication. Useful for remote\\n(pull-through cache) repositories that proxy public upstream registries.\\nIf both `is_public` and `allow_anonymous_access` are provided,\\n`allow_anonymous_access` takes precedence.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"description\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
@@ -4908,6 +5755,20 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"promotion_only\": {"]
+    #[doc = "      \"description\": \"When true, direct user uploads to this repository are rejected:\\nartifacts must arrive via the promotion path. Admin-only to set.\\nDefaults to false (no behavior change for existing repositories).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"pypi_upstream_index_path\": {"]
+    #[doc = "      \"description\": \"Override the PyPI simple-index prefix for upstreams that do not follow\\nthe standard PEP 503 `/simple/` layout (issue #1546).\\n\\n- Omit or `\\\"simple\\\"` — standard PEP 503 (pypi.org, devpi, Nexus). Default.\\n- `\\\"\\\"` (empty) — flat CDN (e.g. `https://download.pytorch.org/whl/cpu`):\\n  package files are served directly under the upstream root with no prefix.\\n- Any other non-empty string — custom index prefix.\\n\\nStored in `repository_config` under `pypi_upstream_index_path`.\\nOnly meaningful for PyPI / Poetry / Conda Remote repositories.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"quota_bytes\": {"]
     #[doc = "      \"type\": ["]
@@ -4959,6 +5820,9 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct CreateRepositoryRequest {
+        #[doc = "Alias for `is_public`. When set to true, anonymous users can download\nartifacts from this repository without authentication. Useful for remote\n(pull-through cache) repositories that proxy public upstream registries.\nIf both `is_public` and `allow_anonymous_access` are provided,\n`allow_anonymous_access` takes precedence."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allow_anonymous_access: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
         pub format: ::std::string::String,
@@ -4975,6 +5839,12 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub member_repos: ::std::option::Option<::std::vec::Vec<CreateVirtualMemberInput>>,
         pub name: ::std::string::String,
+        #[doc = "When true, direct user uploads to this repository are rejected:\nartifacts must arrive via the promotion path. Admin-only to set.\nDefaults to false (no behavior change for existing repositories)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub promotion_only: ::std::option::Option<bool>,
+        #[doc = "Override the PyPI simple-index prefix for upstreams that do not follow\nthe standard PEP 503 `/simple/` layout (issue #1546).\n\n- Omit or `\"simple\"` — standard PEP 503 (pypi.org, devpi, Nexus). Default.\n- `\"\"` (empty) — flat CDN (e.g. `https://download.pytorch.org/whl/cpu`):\n  package files are served directly under the upstream root with no prefix.\n- Any other non-empty string — custom index prefix.\n\nStored in `repository_config` under `pypi_upstream_index_path`.\nOnly meaningful for PyPI / Poetry / Conda Remote repositories."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub pypi_upstream_index_path: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub quota_bytes: ::std::option::Option<i64>,
         pub repo_type: ::std::string::String,
@@ -5171,6 +6041,13 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"sso_url\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"use_absolute_acs_url\": {"]
+    #[doc = "      \"description\": \"Opt-in flag (see migration 139): when true, the SAML AuthnRequest\\nemits an absolute ACS URL for stricter IdPs that reject the\\nhistorical relative path. Defaults to false.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -5199,6 +6076,9 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub sp_entity_id: ::std::option::Option<::std::string::String>,
         pub sso_url: ::std::string::String,
+        #[doc = "Opt-in flag (see migration 139): when true, the SAML AuthnRequest\nemits an absolute ACS URL for stricter IdPs that reject the\nhistorical relative path. Defaults to false."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub use_absolute_acs_url: ::std::option::Option<bool>,
     }
     impl CreateSamlConfigRequest {
         pub fn builder() -> builder::CreateSamlConfigRequest {
@@ -5258,9 +6138,36 @@ pub mod types {
     #[doc = "    \"total_size\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_metadata\": {"]
+    #[doc = "      \"description\": \"Source artifact metadata for peer replication.\""]
+    #[doc = "    },"]
+    #[doc = "    \"artifact_metadata_format\": {"]
+    #[doc = "      \"description\": \"Source artifact metadata format for peer replication.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"artifact_metadata_properties\": {"]
+    #[doc = "      \"description\": \"Source artifact metadata properties for peer replication.\""]
+    #[doc = "    },"]
+    #[doc = "    \"artifact_name\": {"]
+    #[doc = "      \"description\": \"Artifact name to persist when the upload completes.\\n\\nOptional for regular client uploads. Peer replication sets this from\\nthe source artifact row so chunked replication preserves metadata.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"artifact_path\": {"]
     #[doc = "      \"description\": \"Path within the repository (e.g. \\\"images/vm.ova\\\")\","]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"artifact_version\": {"]
+    #[doc = "      \"description\": \"Artifact version to persist when the upload completes.\\n\\nOptional for regular client uploads. Peer replication sets this from\\nthe source artifact row so chunked replication preserves metadata.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"checksum_sha256\": {"]
     #[doc = "      \"description\": \"Expected SHA256 checksum of the complete file\","]
@@ -5281,6 +6188,16 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"package_description\": {"]
+    #[doc = "      \"description\": \"Source package description for peer replication.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"package_metadata\": {"]
+    #[doc = "      \"description\": \"Source package catalog metadata for peer replication.\""]
+    #[doc = "    },"]
     #[doc = "    \"repository_key\": {"]
     #[doc = "      \"description\": \"Repository key (e.g. \\\"my-repo\\\")\","]
     #[doc = "      \"type\": \"string\""]
@@ -5296,8 +6213,23 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct CreateSessionRequest {
+        #[doc = "Source artifact metadata for peer replication."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub artifact_metadata: ::std::option::Option<::serde_json::Value>,
+        #[doc = "Source artifact metadata format for peer replication."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub artifact_metadata_format: ::std::option::Option<::std::string::String>,
+        #[doc = "Source artifact metadata properties for peer replication."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub artifact_metadata_properties: ::std::option::Option<::serde_json::Value>,
+        #[doc = "Artifact name to persist when the upload completes.\n\nOptional for regular client uploads. Peer replication sets this from\nthe source artifact row so chunked replication preserves metadata."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub artifact_name: ::std::option::Option<::std::string::String>,
         #[doc = "Path within the repository (e.g. \"images/vm.ova\")"]
         pub artifact_path: ::std::string::String,
+        #[doc = "Artifact version to persist when the upload completes.\n\nOptional for regular client uploads. Peer replication sets this from\nthe source artifact row so chunked replication preserves metadata."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub artifact_version: ::std::option::Option<::std::string::String>,
         #[doc = "Expected SHA256 checksum of the complete file"]
         pub checksum_sha256: ::std::string::String,
         #[doc = "Chunk size in bytes (default 8 MB, range 1 MB - 256 MB)"]
@@ -5306,6 +6238,12 @@ pub mod types {
         #[doc = "MIME content type (default \"application/octet-stream\")"]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub content_type: ::std::option::Option<::std::string::String>,
+        #[doc = "Source package description for peer replication."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub package_description: ::std::option::Option<::std::string::String>,
+        #[doc = "Source package catalog metadata for peer replication."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub package_metadata: ::std::option::Option<::serde_json::Value>,
         #[doc = "Repository key (e.g. \"my-repo\")"]
         pub repository_key: ::std::string::String,
         #[doc = "Total file size in bytes"]
@@ -5381,6 +6319,13 @@ pub mod types {
     #[doc = "    \"enabled\": {"]
     #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
+    #[doc = "    \"filter\": {"]
+    #[doc = "      \"description\": \"Convenience glob filter (e.g. `\\\"*.tar.gz\\\"`). When set, it is folded\\ninto `artifact_filter.include_paths` so only matching artifact paths\\nare eligible for sync. Ignored if `artifact_filter.include_paths` is\\nalready provided.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
@@ -5413,6 +6358,9 @@ pub mod types {
         pub description: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub enabled: ::std::option::Option<bool>,
+        #[doc = "Convenience glob filter (e.g. `\"*.tar.gz\"`). When set, it is folded\ninto `artifact_filter.include_paths` so only matching artifact paths\nare eligible for sync. Ignored if `artifact_filter.include_paths` is\nalready provided."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub filter: ::std::option::Option<::std::string::String>,
         pub name: ::std::string::String,
         #[serde(default, skip_serializing_if = "::serde_json::Map::is_empty")]
         pub peer_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
@@ -5717,6 +6665,13 @@ pub mod types {
     #[doc = "    \"url\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"event_schema_version\": {"]
+    #[doc = "      \"description\": \"Pinned event payload version. Defaults to \\\"2026-04-01\\\" when omitted.\\nMust match a value in `SUPPORTED_EVENT_VERSIONS` or the request is\\nrejected with HTTP 422.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"events\": {"]
     #[doc = "      \"type\": \"array\","]
     #[doc = "      \"items\": {"]
@@ -5732,6 +6687,9 @@ pub mod types {
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
+    #[doc = "    \"payload_template\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/PayloadTemplate\""]
+    #[doc = "    },"]
     #[doc = "    \"repository_id\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
@@ -5740,6 +6698,7 @@ pub mod types {
     #[doc = "      \"format\": \"uuid\""]
     #[doc = "    },"]
     #[doc = "    \"secret\": {"]
+    #[doc = "      \"description\": \"Optional caller-supplied secret. When omitted the server generates a\\nfresh `whsec_*` secret. Either way the raw value is returned in the\\n201 response body exactly once and is unrecoverable thereafter.\","]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
@@ -5754,13 +6713,19 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct CreateWebhookRequest {
+        #[doc = "Pinned event payload version. Defaults to \"2026-04-01\" when omitted.\nMust match a value in `SUPPORTED_EVENT_VERSIONS` or the request is\nrejected with HTTP 422."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub event_schema_version: ::std::option::Option<::std::string::String>,
         pub events: ::std::vec::Vec<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub headers:
             ::std::option::Option<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
         pub name: ::std::string::String,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub payload_template: ::std::option::Option<PayloadTemplate>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub repository_id: ::std::option::Option<::uuid::Uuid>,
+        #[doc = "Optional caller-supplied secret. When omitted the server generates a\nfresh `whsec_*` secret. Either way the raw value is returned in the\n201 response body exactly once and is unrecoverable thereafter."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub secret: ::std::option::Option<::std::string::String>,
         pub url: ::std::string::String,
@@ -5890,6 +6855,126 @@ pub mod types {
     }
     impl CreatedPermissionRow {
         pub fn builder() -> builder::CreatedPermissionRow {
+            Default::default()
+        }
+    }
+    #[doc = "`CurationCreateRuleRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"action\","]
+    #[doc = "    \"package_pattern\","]
+    #[doc = "    \"reason\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"action\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"architecture\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"package_pattern\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"reason\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"staging_repo_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"version_constraint\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CurationCreateRuleRequest {
+        pub action: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub architecture: ::std::option::Option<::std::string::String>,
+        pub package_pattern: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub priority: ::std::option::Option<i32>,
+        pub reason: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub staging_repo_id: ::std::option::Option<::uuid::Uuid>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub version_constraint: ::std::option::Option<::std::string::String>,
+    }
+    impl CurationCreateRuleRequest {
+        pub fn builder() -> builder::CurationCreateRuleRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`CurationUpdateRuleRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"action\","]
+    #[doc = "    \"package_pattern\","]
+    #[doc = "    \"reason\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"action\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"architecture\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"package_pattern\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"reason\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"version_constraint\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CurationUpdateRuleRequest {
+        pub action: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub architecture: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub enabled: ::std::option::Option<bool>,
+        pub package_pattern: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub priority: ::std::option::Option<i32>,
+        pub reason: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub version_constraint: ::std::option::Option<::std::string::String>,
+    }
+    impl CurationUpdateRuleRequest {
+        pub fn builder() -> builder::CurationUpdateRuleRequest {
             Default::default()
         }
     }
@@ -6212,13 +7297,13 @@ pub mod types {
             Default::default()
         }
     }
-    #[doc = "CVE trends summary."]
+    #[doc = "CVE trends summary.\n\n#1446: the security-tests `cve-history` suite probes the trends body for\nany of `total`, `count`, `critical`, or `high` to confirm the response\ncarries aggregate counts (PR #1385 fixed `cve-history` but the trends\nshape was not aligned). The original field set (`total_cves`,\n`critical_count`, ...) is retained for openapi consumers; the bare\n`total`/`critical`/`high`/`medium`/`low` aliases are added alongside so\nboth shape contracts are satisfied without breaking existing clients.\n`#[serde(default)]` keeps deserialization working when the alias fields\nare absent (older payloads, tests that build the struct via field init)."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
     #[doc = r""]
     #[doc = r" ```json"]
     #[doc = "{"]
-    #[doc = "  \"description\": \"CVE trends summary.\","]
+    #[doc = "  \"description\": \"CVE trends summary.\\n\\n#1446: the security-tests `cve-history` suite probes the trends body for\\nany of `total`, `count`, `critical`, or `high` to confirm the response\\ncarries aggregate counts (PR #1385 fixed `cve-history` but the trends\\nshape was not aligned). The original field set (`total_cves`,\\n`critical_count`, ...) is retained for openapi consumers; the bare\\n`total`/`critical`/`high`/`medium`/`low` aliases are added alongside so\\nboth shape contracts are satisfied without breaking existing clients.\\n`#[serde(default)]` keeps deserialization working when the alias fields\\nare absent (older payloads, tests that build the struct via field init).\","]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
     #[doc = "    \"acknowledged_cves\","]
@@ -6243,6 +7328,11 @@ pub mod types {
     #[doc = "      ],"]
     #[doc = "      \"format\": \"double\""]
     #[doc = "    },"]
+    #[doc = "    \"critical\": {"]
+    #[doc = "      \"description\": \"Alias of `critical_count` (#1446).\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
     #[doc = "    \"critical_count\": {"]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
@@ -6251,11 +7341,26 @@ pub mod types {
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
+    #[doc = "    \"high\": {"]
+    #[doc = "      \"description\": \"Alias of `high_count` (#1446).\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
     #[doc = "    \"high_count\": {"]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
+    #[doc = "    \"low\": {"]
+    #[doc = "      \"description\": \"Alias of `low_count` (#1446).\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
     #[doc = "    \"low_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"medium\": {"]
+    #[doc = "      \"description\": \"Alias of `medium_count` (#1446).\","]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
@@ -6273,6 +7378,11 @@ pub mod types {
     #[doc = "        \"$ref\": \"#/components/schemas/CveTimelineEntry\""]
     #[doc = "      }"]
     #[doc = "    },"]
+    #[doc = "    \"total\": {"]
+    #[doc = "      \"description\": \"Alias of `total_cves` (#1446).\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
     #[doc = "    \"total_cves\": {"]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
@@ -6286,13 +7396,28 @@ pub mod types {
         pub acknowledged_cves: i64,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub avg_days_to_fix: ::std::option::Option<f64>,
+        #[doc = "Alias of `critical_count` (#1446)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub critical: ::std::option::Option<i64>,
         pub critical_count: i64,
         pub fixed_cves: i64,
+        #[doc = "Alias of `high_count` (#1446)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub high: ::std::option::Option<i64>,
         pub high_count: i64,
+        #[doc = "Alias of `low_count` (#1446)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub low: ::std::option::Option<i64>,
         pub low_count: i64,
+        #[doc = "Alias of `medium_count` (#1446)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub medium: ::std::option::Option<i64>,
         pub medium_count: i64,
         pub open_cves: i64,
         pub timeline: ::std::vec::Vec<CveTimelineEntry>,
+        #[doc = "Alias of `total_cves` (#1446)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub total: ::std::option::Option<i64>,
         pub total_cves: i64,
     }
     impl CveTrends {
@@ -6636,6 +7761,106 @@ pub mod types {
     }
     impl DiscoverablePeerResponse {
         pub fn builder() -> builder::DiscoverablePeerResponse {
+            Default::default()
+        }
+    }
+    #[doc = "A Docker/OCI tag grouped by (image, tag).\n\n`total_size_bytes` is the server-side aggregation of the manifest body\nplus every referenced layer blob.  This is what the UI should display\nas the on-disk image size; the previous client-side aggregation that\nonly summed the manifest body itself reported a few kilobytes for\nimages that are hundreds of megabytes on disk (artifact-keeper#1193).\n\nFor multi-arch image indexes the size is the sum across all per-arch\nchild manifests recorded in `oci_manifest_refs`, so an `amd64+arm64`\nindex reports the combined storage cost."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"A Docker/OCI tag grouped by (image, tag).\\n\\n`total_size_bytes` is the server-side aggregation of the manifest body\\nplus every referenced layer blob.  This is what the UI should display\\nas the on-disk image size; the previous client-side aggregation that\\nonly summed the manifest body itself reported a few kilobytes for\\nimages that are hundreds of megabytes on disk (artifact-keeper#1193).\\n\\nFor multi-arch image indexes the size is the sum across all per-arch\\nchild manifests recorded in `oci_manifest_refs`, so an `amd64+arm64`\\nindex reports the combined storage cost.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"id\","]
+    #[doc = "    \"image\","]
+    #[doc = "    \"is_index\","]
+    #[doc = "    \"last_pushed_at\","]
+    #[doc = "    \"layer_count\","]
+    #[doc = "    \"manifest_digest\","]
+    #[doc = "    \"repository_key\","]
+    #[doc = "    \"tag\","]
+    #[doc = "    \"total_size_bytes\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"description\": \"Representative manifest artifact ID.\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"image\": {"]
+    #[doc = "      \"description\": \"Image name (no registry host, no tag).  Maps to the OCI v2 `<name>`\\npath segment, which may include slashes (e.g. `library/postgres`).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_index\": {"]
+    #[doc = "      \"description\": \"Whether this manifest is a multi-arch image index.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"last_pushed_at\": {"]
+    #[doc = "      \"description\": \"Last push (or update) timestamp from the underlying `oci_tags` row.\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"layer_count\": {"]
+    #[doc = "      \"description\": \"Number of layer blobs referenced by the manifest.  For image indexes\\nthis is the sum of layer counts across child manifests.  `0` when\\nthe manifest could not be parsed.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"manifest_digest\": {"]
+    #[doc = "      \"description\": \"Manifest content digest (e.g. `sha256:abcdef...`).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"description\": \"Repository key this tag belongs to.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"scan_status\": {"]
+    #[doc = "      \"description\": \"Rolled-up scan status across all scanners configured for this\\nartifact. `None` when the artifact has never been scanned.\\n\\nValues surface the aggregate state, not a single scanner's row\\n(see #1497). One of:\\n\\n* `pending` / `running` -- at least one scanner is still in flight\\n* `completed` -- every per-scan-type latest row is `completed`\\n* `failed` -- every per-scan-type latest row is `failed`\\n* `partial` -- mixed: at least one `completed` AND at least one\\n  `failed`. A green generic scanner (e.g. grype) no longer hides\\n  a failed format-native scanner (e.g. incus) behind a\\n  `completed` label.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"tag\": {"]
+    #[doc = "      \"description\": \"Tag string (e.g. `16-alpine`).  Never a `sha256:...` digest;\\ndigest-only references are filtered out of the grouping.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_size_bytes\": {"]
+    #[doc = "      \"description\": \"Total size in bytes of the manifest plus all referenced layer blobs.\\nFor image indexes, this sums across child manifests.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct DockerTagResponse {
+        #[doc = "Representative manifest artifact ID."]
+        pub id: ::uuid::Uuid,
+        #[doc = "Image name (no registry host, no tag).  Maps to the OCI v2 `<name>`\npath segment, which may include slashes (e.g. `library/postgres`)."]
+        pub image: ::std::string::String,
+        #[doc = "Whether this manifest is a multi-arch image index."]
+        pub is_index: bool,
+        #[doc = "Last push (or update) timestamp from the underlying `oci_tags` row."]
+        pub last_pushed_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Number of layer blobs referenced by the manifest.  For image indexes\nthis is the sum of layer counts across child manifests.  `0` when\nthe manifest could not be parsed."]
+        pub layer_count: i32,
+        #[doc = "Manifest content digest (e.g. `sha256:abcdef...`)."]
+        pub manifest_digest: ::std::string::String,
+        #[doc = "Repository key this tag belongs to."]
+        pub repository_key: ::std::string::String,
+        #[doc = "Rolled-up scan status across all scanners configured for this\nartifact. `None` when the artifact has never been scanned.\n\nValues surface the aggregate state, not a single scanner's row\n(see #1497). One of:\n\n* `pending` / `running` -- at least one scanner is still in flight\n* `completed` -- every per-scan-type latest row is `completed`\n* `failed` -- every per-scan-type latest row is `failed`\n* `partial` -- mixed: at least one `completed` AND at least one\n  `failed`. A green generic scanner (e.g. grype) no longer hides\n  a failed format-native scanner (e.g. incus) behind a\n  `completed` label."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub scan_status: ::std::option::Option<::std::string::String>,
+        #[doc = "Tag string (e.g. `16-alpine`).  Never a `sha256:...` digest;\ndigest-only references are filtered out of the grouping."]
+        pub tag: ::std::string::String,
+        #[doc = "Total size in bytes of the manifest plus all referenced layer blobs.\nFor image indexes, this sums across child manifests."]
+        pub total_size_bytes: i64,
+    }
+    impl DockerTagResponse {
+        pub fn builder() -> builder::DockerTagResponse {
             Default::default()
         }
     }
@@ -7811,12 +9036,13 @@ pub mod types {
             Default::default()
         }
     }
-    #[doc = "`DtStatusResponse`"]
+    #[doc = "Dependency-Track integration status surfaced to the frontend.\n\n`healthy` is the boolean the existing UI already binds to. The new\n`error_status` and `error_message` fields let the UI distinguish a\ngenuine \"DT replied OK with no findings\" state from \"DT is down or\nmisconfigured\" (issue #963). When `healthy = true` both error fields\nare None; when `healthy = false`:\n  - `error_status = Some(401)`: auth failure (check API key)\n  - `error_status = Some(5xx)`: upstream is broken\n  - `error_status = None`:     transport failure (DT pod unreachable)\n  - `error_message`:           operator-facing failure description"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
     #[doc = r""]
     #[doc = r" ```json"]
     #[doc = "{"]
+    #[doc = "  \"description\": \"Dependency-Track integration status surfaced to the frontend.\\n\\n`healthy` is the boolean the existing UI already binds to. The new\\n`error_status` and `error_message` fields let the UI distinguish a\\ngenuine \\\"DT replied OK with no findings\\\" state from \\\"DT is down or\\nmisconfigured\\\" (issue #963). When `healthy = true` both error fields\\nare None; when `healthy = false`:\\n  - `error_status = Some(401)`: auth failure (check API key)\\n  - `error_status = Some(5xx)`: upstream is broken\\n  - `error_status = None`:     transport failure (DT pod unreachable)\\n  - `error_message`:           operator-facing failure description\","]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
     #[doc = "    \"enabled\","]
@@ -7825,6 +9051,22 @@ pub mod types {
     #[doc = "  \"properties\": {"]
     #[doc = "    \"enabled\": {"]
     #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"error_message\": {"]
+    #[doc = "      \"description\": \"Human-readable explanation when `healthy = false`. Safe to surface\\nin the UI; does not leak credentials.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"error_status\": {"]
+    #[doc = "      \"description\": \"Upstream HTTP status if the health probe got a response, else None.\\nOnly populated when `healthy = false`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
     #[doc = "    },"]
     #[doc = "    \"healthy\": {"]
     #[doc = "      \"type\": \"boolean\""]
@@ -7842,6 +9084,12 @@ pub mod types {
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct DtStatusResponse {
         pub enabled: bool,
+        #[doc = "Human-readable explanation when `healthy = false`. Safe to surface\nin the UI; does not leak credentials."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub error_message: ::std::option::Option<::std::string::String>,
+        #[doc = "Upstream HTTP status if the health probe got a response, else None.\nOnly populated when `healthy = false`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub error_status: ::std::option::Option<i32>,
         pub healthy: bool,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub url: ::std::option::Option<::std::string::String>,
@@ -7926,6 +9174,106 @@ pub mod types {
     }
     impl DtVulnerability {
         pub fn builder() -> builder::DtVulnerability {
+            Default::default()
+        }
+    }
+    #[doc = "`EmailSubscriptionListResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"subscriptions\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"subscriptions\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/EmailSubscriptionResponse\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct EmailSubscriptionListResponse {
+        pub subscriptions: ::std::vec::Vec<EmailSubscriptionResponse>,
+    }
+    impl EmailSubscriptionListResponse {
+        pub fn builder() -> builder::EmailSubscriptionListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`EmailSubscriptionResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"enabled\","]
+    #[doc = "    \"event_types\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"recipients\","]
+    #[doc = "    \"updated_at\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"event_types\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"recipients\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"updated_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct EmailSubscriptionResponse {
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub enabled: bool,
+        pub event_types: ::std::vec::Vec<::std::string::String>,
+        pub id: ::uuid::Uuid,
+        pub recipients: ::std::vec::Vec<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub repository_id: ::std::option::Option<::uuid::Uuid>,
+        pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+    impl EmailSubscriptionResponse {
+        pub fn builder() -> builder::EmailSubscriptionResponse {
             Default::default()
         }
     }
@@ -8400,6 +9748,34 @@ pub mod types {
     }
     impl FindingResponse {
         pub fn builder() -> builder::FindingResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Response for force password change"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Response for force password change\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"message\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"message\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ForcePasswordChangeResponse {
+        pub message: ::std::string::String,
+    }
+    impl ForcePasswordChangeResponse {
+        pub fn builder() -> builder::ForcePasswordChangeResponse {
             Default::default()
         }
     }
@@ -8928,6 +10304,60 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`GroupDetailResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"allOf\": ["]
+    #[doc = "    {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/GroupResponse\""]
+    #[doc = "    },"]
+    #[doc = "    {"]
+    #[doc = "      \"type\": \"object\","]
+    #[doc = "      \"required\": ["]
+    #[doc = "        \"members\","]
+    #[doc = "        \"members_total\""]
+    #[doc = "      ],"]
+    #[doc = "      \"properties\": {"]
+    #[doc = "        \"members\": {"]
+    #[doc = "          \"description\": \"Paginated list of group members.\","]
+    #[doc = "          \"type\": \"array\","]
+    #[doc = "          \"items\": {"]
+    #[doc = "            \"$ref\": \"#/components/schemas/GroupMemberResponse\""]
+    #[doc = "          }"]
+    #[doc = "        },"]
+    #[doc = "        \"members_total\": {"]
+    #[doc = "          \"description\": \"Total number of members in the group. Clients can compare this against\\nthe length of `members` to determine whether additional pages exist.\","]
+    #[doc = "          \"type\": \"integer\","]
+    #[doc = "          \"format\": \"int64\""]
+    #[doc = "        }"]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  ]"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct GroupDetailResponse {
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        pub id: ::uuid::Uuid,
+        pub member_count: i64,
+        #[doc = "Paginated list of group members."]
+        pub members: ::std::vec::Vec<GroupMemberResponse>,
+        #[doc = "Total number of members in the group. Clients can compare this against\nthe length of `members` to determine whether additional pages exist."]
+        pub members_total: i64,
+        pub name: ::std::string::String,
+        pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+    impl GroupDetailResponse {
+        pub fn builder() -> builder::GroupDetailResponse {
+            Default::default()
+        }
+    }
     #[doc = "`GroupListResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -8960,6 +10390,53 @@ pub mod types {
     }
     impl GroupListResponse {
         pub fn builder() -> builder::GroupListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`GroupMemberResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"joined_at\","]
+    #[doc = "    \"user_id\","]
+    #[doc = "    \"username\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"display_name\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"joined_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"user_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"username\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct GroupMemberResponse {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub display_name: ::std::option::Option<::std::string::String>,
+        pub joined_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub user_id: ::uuid::Uuid,
+        pub username: ::std::string::String,
+    }
+    impl GroupMemberResponse {
+        pub fn builder() -> builder::GroupMemberResponse {
             Default::default()
         }
     }
@@ -9182,7 +10659,7 @@ pub mod types {
     #[doc = "    \"ldap\": {"]
     #[doc = "      \"$ref\": \"#/components/schemas/CheckStatus\""]
     #[doc = "    },"]
-    #[doc = "    \"meilisearch\": {"]
+    #[doc = "    \"opensearch\": {"]
     #[doc = "      \"$ref\": \"#/components/schemas/CheckStatus\""]
     #[doc = "    },"]
     #[doc = "    \"security_scanner\": {"]
@@ -9201,7 +10678,7 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub ldap: ::std::option::Option<CheckStatus>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-        pub meilisearch: ::std::option::Option<CheckStatus>,
+        pub opensearch: ::std::option::Option<CheckStatus>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub security_scanner: ::std::option::Option<CheckStatus>,
         pub storage: CheckStatus,
@@ -9534,6 +11011,72 @@ pub mod types {
     }
     impl InstallFromLocalRequest {
         pub fn builder() -> builder::InstallFromLocalRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`InvalidateCacheQuery`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"path\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"path\": {"]
+    #[doc = "      \"description\": \"Artifact path to evict from the proxy cache. Same shape as the path\\nsegment of `GET /api/v1/repositories/{key}/artifacts/{path}`.\\nPath-traversal segments such as `..` are rejected by\\n`ProxyService::cache_storage_key` (covered by\\n`test_invalidate_cache_by_key_rejects_invalid_path`).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct InvalidateCacheQuery {
+        #[doc = "Artifact path to evict from the proxy cache. Same shape as the path\nsegment of `GET /api/v1/repositories/{key}/artifacts/{path}`.\nPath-traversal segments such as `..` are rejected by\n`ProxyService::cache_storage_key` (covered by\n`test_invalidate_cache_by_key_rejects_invalid_path`)."]
+        pub path: ::std::string::String,
+    }
+    impl InvalidateCacheQuery {
+        pub fn builder() -> builder::InvalidateCacheQuery {
+            Default::default()
+        }
+    }
+    #[doc = "`InvalidateCacheResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"invalidated\","]
+    #[doc = "    \"path\","]
+    #[doc = "    \"repository_key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"invalidated\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"path\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct InvalidateCacheResponse {
+        pub invalidated: bool,
+        pub path: ::std::string::String,
+        pub repository_key: ::std::string::String,
+    }
+    impl InvalidateCacheResponse {
+        pub fn builder() -> builder::InvalidateCacheResponse {
             Default::default()
         }
     }
@@ -10261,6 +11804,13 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"group_by\": {"]
+    #[doc = "      \"description\": \"Server-side artifact grouping.\\n\\nSupported values:\\n- `maven_component`: Maven/Gradle artifacts are grouped by\\n  groupId, artifactId, and version.  Individual files (jar, pom,\\n  checksums) appear in the `artifact_files` array of each component.\\n- `docker_tag`: Docker/OCI artifacts are grouped by (image, tag),\\n  with `total_size_bytes` summed across the manifest config and\\n  referenced layer blobs.  The grouped rows are returned in the\\n  `docker_tags` array.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"page\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"integer\","]
@@ -10295,6 +11845,9 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct ListArtifactsQuery {
+        #[doc = "Server-side artifact grouping.\n\nSupported values:\n- `maven_component`: Maven/Gradle artifacts are grouped by\n  groupId, artifactId, and version.  Individual files (jar, pom,\n  checksums) appear in the `artifact_files` array of each component.\n- `docker_tag`: Docker/OCI artifacts are grouped by (image, tag),\n  with `total_size_bytes` summed across the manifest config and\n  referenced layer blobs.  The grouped rows are returned in the\n  `docker_tags` array."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub group_by: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub page: ::std::option::Option<i32>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
@@ -10307,6 +11860,7 @@ pub mod types {
     impl ::std::default::Default for ListArtifactsQuery {
         fn default() -> Self {
             Self {
+                group_by: Default::default(),
                 page: Default::default(),
                 path_prefix: Default::default(),
                 per_page: Default::default(),
@@ -11057,6 +12611,106 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "A Maven component grouped by GAV (groupId, artifactId, version).\n\nEach component collects the individual files (jar, pom, checksums, etc.)\nthat share the same Maven coordinates."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"A Maven component grouped by GAV (groupId, artifactId, version).\\n\\nEach component collects the individual files (jar, pom, checksums, etc.)\\nthat share the same Maven coordinates.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_files\","]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"download_count\","]
+    #[doc = "    \"format\","]
+    #[doc = "    \"group_id\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"repository_key\","]
+    #[doc = "    \"size_bytes\","]
+    #[doc = "    \"version\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_files\": {"]
+    #[doc = "      \"description\": \"Individual filenames belonging to this component.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"description\": \"Maven artifactId (e.g. `junit-jupiter-api`).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"description\": \"Earliest creation timestamp among the component files.\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"download_count\": {"]
+    #[doc = "      \"description\": \"Total download count across all files in this component.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"format\": {"]
+    #[doc = "      \"description\": \"Repository format (always `maven` or `gradle`).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"group_id\": {"]
+    #[doc = "      \"description\": \"Maven groupId with dots (e.g. `org.junit.jupiter`).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"description\": \"Representative artifact ID (the first file in the group).\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"description\": \"Repository key this component belongs to.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"size_bytes\": {"]
+    #[doc = "      \"description\": \"Total size in bytes across all files in this component.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"version\": {"]
+    #[doc = "      \"description\": \"Maven version string (e.g. `5.11.0`).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct MavenComponentResponse {
+        #[doc = "Individual filenames belonging to this component."]
+        pub artifact_files: ::std::vec::Vec<::std::string::String>,
+        #[doc = "Maven artifactId (e.g. `junit-jupiter-api`)."]
+        pub artifact_id: ::std::string::String,
+        #[doc = "Earliest creation timestamp among the component files."]
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Total download count across all files in this component."]
+        pub download_count: i64,
+        #[doc = "Repository format (always `maven` or `gradle`)."]
+        pub format: ::std::string::String,
+        #[doc = "Maven groupId with dots (e.g. `org.junit.jupiter`)."]
+        pub group_id: ::std::string::String,
+        #[doc = "Representative artifact ID (the first file in the group)."]
+        pub id: ::uuid::Uuid,
+        #[doc = "Repository key this component belongs to."]
+        pub repository_key: ::std::string::String,
+        #[doc = "Total size in bytes across all files in this component."]
+        pub size_bytes: i64,
+        #[doc = "Maven version string (e.g. `5.11.0`)."]
+        pub version: ::std::string::String,
+    }
+    impl MavenComponentResponse {
+        pub fn builder() -> builder::MavenComponentResponse {
+            Default::default()
+        }
+    }
     #[doc = "`MembersRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -11766,6 +13420,142 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Read-only OCI blob storage footprint report (issue #1408).\n\nThis is a **reporting-only** view. It performs no deletion and takes no\nlocks. It surfaces how much storage the tracked `oci_blobs` rows\naccount for so operators can see the magnitude of un-reclaimed blob\nlayers before any garbage-collection mechanism is enabled.\n\nIt deliberately does NOT attempt to classify which blobs are\n\"reclaimable orphans\": that requires a manifest -> blob reference table\nthat does not yet exist in the schema, and any per-`(repository_id,\ndigest)` orphan heuristic would mis-handle the cross-repo dedup case\n(multiple `oci_blobs` rows, one physical object) and report in-use\nblobs as reclaimable. The numbers here are exact aggregates only."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Read-only OCI blob storage footprint report (issue #1408).\\n\\nThis is a **reporting-only** view. It performs no deletion and takes no\\nlocks. It surfaces how much storage the tracked `oci_blobs` rows\\naccount for so operators can see the magnitude of un-reclaimed blob\\nlayers before any garbage-collection mechanism is enabled.\\n\\nIt deliberately does NOT attempt to classify which blobs are\\n\\\"reclaimable orphans\\\": that requires a manifest -> blob reference table\\nthat does not yet exist in the schema, and any per-`(repository_id,\\ndigest)` orphan heuristic would mis-handle the cross-repo dedup case\\n(multiple `oci_blobs` rows, one physical object) and report in-use\\nblobs as reclaimable. The numbers here are exact aggregates only.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"aged_distinct_digests\","]
+    #[doc = "    \"aged_physical_bytes\","]
+    #[doc = "    \"distinct_digests\","]
+    #[doc = "    \"grace_hours\","]
+    #[doc = "    \"logical_bytes\","]
+    #[doc = "    \"per_repository\","]
+    #[doc = "    \"physical_bytes\","]
+    #[doc = "    \"total_blob_rows\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"aged_distinct_digests\": {"]
+    #[doc = "      \"description\": \"Distinct digests older than `grace_hours` (eligible to be *considered*\\nby a future GC sweep once a reference table exists). Reporting only.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"aged_physical_bytes\": {"]
+    #[doc = "      \"description\": \"Physical bytes (distinct-digest) older than `grace_hours`.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"distinct_digests\": {"]
+    #[doc = "      \"description\": \"Number of distinct blob digests (content-addressed identities). When\\nthis is smaller than `total_blob_rows`, the difference is cross-repo\\ndeduplication: rows that share one physical storage object.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"grace_hours\": {"]
+    #[doc = "      \"description\": \"Grace window (hours) applied to the `aged_*` figures below.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"logical_bytes\": {"]
+    #[doc = "      \"description\": \"Sum of `size_bytes` over every `oci_blobs` row. Double-counts\\ndeduplicated blobs once per referencing repository.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"per_repository\": {"]
+    #[doc = "      \"description\": \"Per-repository logical footprint, largest `logical_bytes` first.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/OciBlobRepoFootprint\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"physical_bytes\": {"]
+    #[doc = "      \"description\": \"Sum of `size_bytes` counting each distinct digest exactly once. This\\napproximates the physical bytes occupied in the storage backend.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_blob_rows\": {"]
+    #[doc = "      \"description\": \"Total number of `oci_blobs` rows across all repositories.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct OciBlobFootprintReport {
+        #[doc = "Distinct digests older than `grace_hours` (eligible to be *considered*\nby a future GC sweep once a reference table exists). Reporting only."]
+        pub aged_distinct_digests: i64,
+        #[doc = "Physical bytes (distinct-digest) older than `grace_hours`."]
+        pub aged_physical_bytes: i64,
+        #[doc = "Number of distinct blob digests (content-addressed identities). When\nthis is smaller than `total_blob_rows`, the difference is cross-repo\ndeduplication: rows that share one physical storage object."]
+        pub distinct_digests: i64,
+        #[doc = "Grace window (hours) applied to the `aged_*` figures below."]
+        pub grace_hours: i64,
+        #[doc = "Sum of `size_bytes` over every `oci_blobs` row. Double-counts\ndeduplicated blobs once per referencing repository."]
+        pub logical_bytes: i64,
+        #[doc = "Per-repository logical footprint, largest `logical_bytes` first."]
+        pub per_repository: ::std::vec::Vec<OciBlobRepoFootprint>,
+        #[doc = "Sum of `size_bytes` counting each distinct digest exactly once. This\napproximates the physical bytes occupied in the storage backend."]
+        pub physical_bytes: i64,
+        #[doc = "Total number of `oci_blobs` rows across all repositories."]
+        pub total_blob_rows: i64,
+    }
+    impl OciBlobFootprintReport {
+        pub fn builder() -> builder::OciBlobFootprintReport {
+            Default::default()
+        }
+    }
+    #[doc = "Per-repository row in the OCI blob footprint report."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Per-repository row in the OCI blob footprint report.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"blob_rows\","]
+    #[doc = "    \"logical_bytes\","]
+    #[doc = "    \"repository_id\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"blob_rows\": {"]
+    #[doc = "      \"description\": \"Number of `oci_blobs` rows attributed to this repository.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"logical_bytes\": {"]
+    #[doc = "      \"description\": \"Sum of `oci_blobs.size_bytes` for this repository's rows. Because OCI\\nblob storage is content-addressed and deduplicated across repos, the\\nsame physical bytes can be counted under more than one repository\\nhere; see [`OciBlobFootprintReport::physical_bytes`] for the\\ndedup-aware total.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"description\": \"Repository id owning these `oci_blobs` rows.\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct OciBlobRepoFootprint {
+        #[doc = "Number of `oci_blobs` rows attributed to this repository."]
+        pub blob_rows: i64,
+        #[doc = "Sum of `oci_blobs.size_bytes` for this repository's rows. Because OCI\nblob storage is content-addressed and deduplicated across repos, the\nsame physical bytes can be counted under more than one repository\nhere; see [`OciBlobFootprintReport::physical_bytes`] for the\ndedup-aware total."]
+        pub logical_bytes: i64,
+        #[doc = "Repository id owning these `oci_blobs` rows."]
+        pub repository_id: ::uuid::Uuid,
+    }
+    impl OciBlobRepoFootprint {
+        pub fn builder() -> builder::OciBlobRepoFootprint {
+            Default::default()
+        }
+    }
     #[doc = "`OidcConfigResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -11774,6 +13564,7 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
+    #[doc = "    \"allow_legacy_rsa_keys\","]
     #[doc = "    \"attribute_mapping\","]
     #[doc = "    \"auto_create_users\","]
     #[doc = "    \"client_id\","]
@@ -11782,11 +13573,17 @@ pub mod types {
     #[doc = "    \"id\","]
     #[doc = "    \"is_enabled\","]
     #[doc = "    \"issuer_url\","]
+    #[doc = "    \"map_groups_to_groups\","]
     #[doc = "    \"name\","]
+    #[doc = "    \"pkce_enabled\","]
     #[doc = "    \"scopes\","]
     #[doc = "    \"updated_at\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"allow_legacy_rsa_keys\": {"]
+    #[doc = "      \"description\": \"Opt-in compatibility flag (migration 144): when true the OIDC\\nprovider accepts ID tokens signed with RSA keys shorter than\\n2048 bits via a restricted RS256/384/512 PKCS#1 v1.5 path.\\nBelow the OWASP ASVS 4.0 baseline; only enable for legacy IdPs.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
     #[doc = "    \"attribute_mapping\": {"]
     #[doc = "      \"type\": \"object\""]
     #[doc = "    },"]
@@ -11813,8 +13610,14 @@ pub mod types {
     #[doc = "    \"issuer_url\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
+    #[doc = "    \"map_groups_to_groups\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"pkce_enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
     #[doc = "    \"scopes\": {"]
     #[doc = "      \"type\": \"array\","]
@@ -11832,6 +13635,8 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct OidcConfigResponse {
+        #[doc = "Opt-in compatibility flag (migration 144): when true the OIDC\nprovider accepts ID tokens signed with RSA keys shorter than\n2048 bits via a restricted RS256/384/512 PKCS#1 v1.5 path.\nBelow the OWASP ASVS 4.0 baseline; only enable for legacy IdPs."]
+        pub allow_legacy_rsa_keys: bool,
         pub attribute_mapping: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
         pub auto_create_users: bool,
         pub client_id: ::std::string::String,
@@ -11840,7 +13645,9 @@ pub mod types {
         pub id: ::uuid::Uuid,
         pub is_enabled: bool,
         pub issuer_url: ::std::string::String,
+        pub map_groups_to_groups: bool,
         pub name: ::std::string::String,
+        pub pkce_enabled: bool,
         pub scopes: ::std::vec::Vec<::std::string::String>,
         pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
     }
@@ -12337,6 +14144,94 @@ pub mod types {
     impl PaginationInfo {
         pub fn builder() -> builder::PaginationInfo {
             Default::default()
+        }
+    }
+    #[doc = "Supported webhook payload templates.\n\nControls how the outgoing JSON body is structured when delivering a\nwebhook. The `Generic` variant preserves backward compatibility with the\noriginal flat JSON format."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Supported webhook payload templates.\\n\\nControls how the outgoing JSON body is structured when delivering a\\nwebhook. The `Generic` variant preserves backward compatibility with the\\noriginal flat JSON format.\","]
+    #[doc = "  \"type\": \"string\","]
+    #[doc = "  \"enum\": ["]
+    #[doc = "    \"generic\","]
+    #[doc = "    \"slack\","]
+    #[doc = "    \"microsoft_teams\","]
+    #[doc = "    \"discord\","]
+    #[doc = "    \"mattermost\""]
+    #[doc = "  ]"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    )]
+    pub enum PayloadTemplate {
+        #[serde(rename = "generic")]
+        Generic,
+        #[serde(rename = "slack")]
+        Slack,
+        #[serde(rename = "microsoft_teams")]
+        MicrosoftTeams,
+        #[serde(rename = "discord")]
+        Discord,
+        #[serde(rename = "mattermost")]
+        Mattermost,
+    }
+    impl ::std::fmt::Display for PayloadTemplate {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            match *self {
+                Self::Generic => f.write_str("generic"),
+                Self::Slack => f.write_str("slack"),
+                Self::MicrosoftTeams => f.write_str("microsoft_teams"),
+                Self::Discord => f.write_str("discord"),
+                Self::Mattermost => f.write_str("mattermost"),
+            }
+        }
+    }
+    impl ::std::str::FromStr for PayloadTemplate {
+        type Err = self::error::ConversionError;
+        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            match value {
+                "generic" => Ok(Self::Generic),
+                "slack" => Ok(Self::Slack),
+                "microsoft_teams" => Ok(Self::MicrosoftTeams),
+                "discord" => Ok(Self::Discord),
+                "mattermost" => Ok(Self::Mattermost),
+                _ => Err("invalid value".into()),
+            }
+        }
+    }
+    impl ::std::convert::TryFrom<&str> for PayloadTemplate {
+        type Error = self::error::ConversionError;
+        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<&::std::string::String> for PayloadTemplate {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<::std::string::String> for PayloadTemplate {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
         }
     }
     #[doc = "`PeerInstanceListResponse`"]
@@ -13023,6 +14918,43 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Fine-grained permissions enforcement status."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Fine-grained permissions enforcement status.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"enforcement_enabled\","]
+    #[doc = "    \"rules_exist\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"enforcement_enabled\": {"]
+    #[doc = "      \"description\": \"Whether those rules are actively enforced on API requests.\\nThe permission-check middleware and handler guards are wired in,\\nso this is `true` when the server is running.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"rules_exist\": {"]
+    #[doc = "      \"description\": \"Whether the permissions table (from migration 018) has any rows.\\nWhen true, an administrator has configured permission rules.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PermissionsConfig {
+        #[doc = "Whether those rules are actively enforced on API requests.\nThe permission-check middleware and handler guards are wired in,\nso this is `true` when the server is running."]
+        pub enforcement_enabled: bool,
+        #[doc = "Whether the permissions table (from migration 018) has any rows.\nWhen true, an administrator has configured permission rules."]
+        pub rules_exist: bool,
+    }
+    impl PermissionsConfig {
+        pub fn builder() -> builder::PermissionsConfig {
+            Default::default()
+        }
+    }
     #[doc = "`PluginConfigResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -13234,6 +15166,43 @@ pub mod types {
     }
     impl PluginResponse {
         pub fn builder() -> builder::PluginResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Plugin signature-verification (supply-chain) policy status.\n\nExposes only booleans — never the trusted key material itself — so frontends\nand operators can see whether unsigned plugin installs are rejected and\nwhether a trusted publisher key has been provisioned."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Plugin signature-verification (supply-chain) policy status.\\n\\nExposes only booleans — never the trusted key material itself — so frontends\\nand operators can see whether unsigned plugin installs are rejected and\\nwhether a trusted publisher key has been provisioned.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"required\","]
+    #[doc = "    \"trusted_key_configured\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"required\": {"]
+    #[doc = "      \"description\": \"Whether a valid signature is required to install a WASM plugin.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"trusted_key_configured\": {"]
+    #[doc = "      \"description\": \"Whether an operator trusted public key has been configured. When\\n`required` is true but this is false, every install is rejected\\n(fail-closed).\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PluginSigningConfig {
+        #[doc = "Whether a valid signature is required to install a WASM plugin."]
+        pub required: bool,
+        #[doc = "Whether an operator trusted public key has been configured. When\n`required` is true but this is false, every install is rejected\n(fail-closed)."]
+        pub trusted_key_configured: bool,
+    }
+    impl PluginSigningConfig {
+        pub fn builder() -> builder::PluginSigningConfig {
             Default::default()
         }
     }
@@ -13837,9 +15806,6 @@ pub mod types {
     #[doc = r" ```json"]
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
-    #[doc = "  \"required\": ["]
-    #[doc = "    \"target_repository\""]
-    #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"notes\": {"]
     #[doc = "      \"type\": ["]
@@ -13851,7 +15817,11 @@ pub mod types {
     #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
     #[doc = "    \"target_repository\": {"]
-    #[doc = "      \"type\": \"string\""]
+    #[doc = "      \"description\": \"Target release repository key. When omitted, the staging repository's\\nlinked release target (from `repository_config`) is used instead.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -13863,7 +15833,18 @@ pub mod types {
         pub notes: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub skip_policy_check: ::std::option::Option<bool>,
-        pub target_repository: ::std::string::String,
+        #[doc = "Target release repository key. When omitted, the staging repository's\nlinked release target (from `repository_config`) is used instead."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub target_repository: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for PromoteArtifactRequest {
+        fn default() -> Self {
+            Self {
+                notes: Default::default(),
+                skip_policy_check: Default::default(),
+                target_repository: Default::default(),
+            }
+        }
     }
     impl PromoteArtifactRequest {
         pub fn builder() -> builder::PromoteArtifactRequest {
@@ -14290,6 +16271,195 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Body for declaring that a locally-owned PyPI project tracks an upstream one."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Body for declaring that a locally-owned PyPI project tracks an upstream one.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"tracks_url\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"tracks_url\": {"]
+    #[doc = "      \"description\": \"Upstream Simple index project URL this local project tracks, e.g.\\n`https://pypi.org/simple/acme-sdk/`. Recorded and emitted as the PEP 708\\n`tracks` value.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PypiTrackRequest {
+        #[doc = "Upstream Simple index project URL this local project tracks, e.g.\n`https://pypi.org/simple/acme-sdk/`. Recorded and emitted as the PEP 708\n`tracks` value."]
+        pub tracks_url: ::std::string::String,
+    }
+    impl PypiTrackRequest {
+        pub fn builder() -> builder::PypiTrackRequest {
+            Default::default()
+        }
+    }
+    #[doc = "A single PEP 708 `tracks` declaration."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"A single PEP 708 `tracks` declaration.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"normalized_name\","]
+    #[doc = "    \"repository_key\","]
+    #[doc = "    \"tracks_url\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"normalized_name\": {"]
+    #[doc = "      \"description\": \"PEP 503 normalized project name.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"tracks_url\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PypiTrackResponse {
+        #[doc = "PEP 503 normalized project name."]
+        pub normalized_name: ::std::string::String,
+        pub repository_key: ::std::string::String,
+        pub tracks_url: ::std::string::String,
+    }
+    impl PypiTrackResponse {
+        pub fn builder() -> builder::PypiTrackResponse {
+            Default::default()
+        }
+    }
+    #[doc = "All `tracks` declarations on a repository."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"All `tracks` declarations on a repository.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/PypiTrackResponse\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PypiTracksListResponse {
+        pub items: ::std::vec::Vec<PypiTrackResponse>,
+    }
+    impl PypiTracksListResponse {
+        pub fn builder() -> builder::PypiTracksListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`QuarantineActionResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"message\","]
+    #[doc = "    \"new_status\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"message\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"new_status\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct QuarantineActionResponse {
+        pub artifact_id: ::uuid::Uuid,
+        pub message: ::std::string::String,
+        pub new_status: ::std::string::String,
+    }
+    impl QuarantineActionResponse {
+        pub fn builder() -> builder::QuarantineActionResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`QuarantineStatusResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"is_blocked\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_blocked\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"quarantine_status\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"quarantine_until\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct QuarantineStatusResponse {
+        pub artifact_id: ::uuid::Uuid,
+        pub is_blocked: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_status: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_until: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+    }
+    impl QuarantineStatusResponse {
+        pub fn builder() -> builder::QuarantineStatusResponse {
+            Default::default()
+        }
+    }
     #[doc = "`QuickSearchResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -14585,6 +16755,43 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`RejectRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"reason\": {"]
+    #[doc = "      \"description\": \"Optional reason for rejection.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RejectRequest {
+        #[doc = "Optional reason for rejection."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub reason: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for RejectRequest {
+        fn default() -> Self {
+            Self {
+                reason: Default::default(),
+            }
+        }
+    }
+    impl RejectRequest {
+        pub fn builder() -> builder::RejectRequest {
+            Default::default()
+        }
+    }
     #[doc = "`RejectionResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -14631,6 +16838,56 @@ pub mod types {
     }
     impl RejectionResponse {
         pub fn builder() -> builder::RejectionResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`ReleaseTargetResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"linked\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"linked\": {"]
+    #[doc = "      \"description\": \"Whether this staging repository has a linked release target.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"release_repository_id\": {"]
+    #[doc = "      \"description\": \"The release repository ID, if linked.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"release_repository_key\": {"]
+    #[doc = "      \"description\": \"The release repository key, if linked.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ReleaseTargetResponse {
+        #[doc = "Whether this staging repository has a linked release target."]
+        pub linked: bool,
+        #[doc = "The release repository ID, if linked."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub release_repository_id: ::std::option::Option<::uuid::Uuid>,
+        #[doc = "The release repository key, if linked."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub release_repository_key: ::std::option::Option<::std::string::String>,
+    }
+    impl ReleaseTargetResponse {
+        pub fn builder() -> builder::ReleaseTargetResponse {
             Default::default()
         }
     }
@@ -14889,6 +17146,134 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "List of tokens configured on a repository."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"List of tokens configured on a repository.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/RepoTokenResponse\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RepoTokenListResponse {
+        pub items: ::std::vec::Vec<RepoTokenResponse>,
+    }
+    impl RepoTokenListResponse {
+        pub fn builder() -> builder::RepoTokenListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Summary of a repository-scoped token."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Summary of a repository-scoped token.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"is_expired\","]
+    #[doc = "    \"is_revoked\","]
+    #[doc = "    \"name\","]
+    #[doc = "    \"scopes\","]
+    #[doc = "    \"token_prefix\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_by\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"expires_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_expired\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_revoked\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"last_used_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"scopes\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"token_prefix\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RepoTokenResponse {
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub created_by: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub expires_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        pub id: ::uuid::Uuid,
+        pub is_expired: bool,
+        pub is_revoked: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub last_used_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        pub name: ::std::string::String,
+        pub scopes: ::std::vec::Vec<::std::string::String>,
+        pub token_prefix: ::std::string::String,
+    }
+    impl RepoTokenResponse {
+        pub fn builder() -> builder::RepoTokenResponse {
+            Default::default()
+        }
+    }
     #[doc = "`RepositoryAssessment`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -14995,18 +17380,24 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
+    #[doc = "    \"allow_anonymous_access\","]
     #[doc = "    \"created_at\","]
     #[doc = "    \"format\","]
     #[doc = "    \"id\","]
     #[doc = "    \"is_public\","]
     #[doc = "    \"key\","]
     #[doc = "    \"name\","]
+    #[doc = "    \"promotion_only\","]
     #[doc = "    \"repo_type\","]
     #[doc = "    \"storage_used_bytes\","]
     #[doc = "    \"updated_at\","]
     #[doc = "    \"upstream_auth_configured\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"allow_anonymous_access\": {"]
+    #[doc = "      \"description\": \"Whether anonymous (unauthenticated) downloads are allowed. This is\\nalways equal to `is_public` and provided as a convenience alias so\\nthe semantics are clear for remote (pull-through cache) repositories.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
     #[doc = "    \"created_at\": {"]
     #[doc = "      \"type\": \"string\","]
     #[doc = "      \"format\": \"date-time\""]
@@ -15032,6 +17423,25 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"promotion_only\": {"]
+    #[doc = "      \"description\": \"When true, direct user uploads are rejected; artifacts must be promoted.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"quarantine_duration_minutes\": {"]
+    #[doc = "      \"description\": \"Configured quarantine hold duration in minutes, read back from\\n`repository_config` (#1770 B). `None` when unset.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"quarantine_enabled\": {"]
+    #[doc = "      \"description\": \"Whether the Package Age / quarantine policy is enabled for this\\nrepository, read back from `repository_config` (#1770 B). `None` when\\nthe repository has no explicit setting (the global default applies).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"quota_bytes\": {"]
     #[doc = "      \"type\": ["]
@@ -15072,6 +17482,8 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct RepositoryResponse {
+        #[doc = "Whether anonymous (unauthenticated) downloads are allowed. This is\nalways equal to `is_public` and provided as a convenience alias so\nthe semantics are clear for remote (pull-through cache) repositories."]
+        pub allow_anonymous_access: bool,
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
@@ -15080,6 +17492,14 @@ pub mod types {
         pub is_public: bool,
         pub key: ::std::string::String,
         pub name: ::std::string::String,
+        #[doc = "When true, direct user uploads are rejected; artifacts must be promoted."]
+        pub promotion_only: bool,
+        #[doc = "Configured quarantine hold duration in minutes, read back from\n`repository_config` (#1770 B). `None` when unset."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_duration_minutes: ::std::option::Option<i64>,
+        #[doc = "Whether the Package Age / quarantine policy is enabled for this\nrepository, read back from `repository_config` (#1770 B). `None` when\nthe repository has no explicit setting (the global default applies)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_enabled: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub quota_bytes: ::std::option::Option<i64>,
         pub repo_type: ::std::string::String,
@@ -15307,6 +17727,82 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`RescanForInventoryRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"limit\": {"]
+    #[doc = "      \"description\": \"Maximum number of artifacts to enqueue in this call. Operators\\nrun the endpoint repeatedly to drain large backfills without\\nstalling a single HTTP worker; the handler returns the actual\\nnumber enqueued so the caller can detect when work is done.\\nDefaults to 100. Hard-capped at 1000 to avoid pathological inputs.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RescanForInventoryRequest {
+        #[doc = "Maximum number of artifacts to enqueue in this call. Operators\nrun the endpoint repeatedly to drain large backfills without\nstalling a single HTTP worker; the handler returns the actual\nnumber enqueued so the caller can detect when work is done.\nDefaults to 100. Hard-capped at 1000 to avoid pathological inputs."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub limit: ::std::option::Option<i64>,
+    }
+    impl ::std::default::Default for RescanForInventoryRequest {
+        fn default() -> Self {
+            Self {
+                limit: Default::default(),
+            }
+        }
+    }
+    impl RescanForInventoryRequest {
+        pub fn builder() -> builder::RescanForInventoryRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`RescanForInventoryResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifacts_enqueued\","]
+    #[doc = "    \"limit\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifacts_enqueued\": {"]
+    #[doc = "      \"description\": \"Number of artifacts whose latest scan had no inventory rows and\\nfor which a rescan was enqueued in this call.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"limit\": {"]
+    #[doc = "      \"description\": \"Echo of the requested (or defaulted) limit, useful for clients\\ndriving the loop programmatically.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RescanForInventoryResponse {
+        #[doc = "Number of artifacts whose latest scan had no inventory rows and\nfor which a rescan was enqueued in this call."]
+        pub artifacts_enqueued: i64,
+        #[doc = "Echo of the requested (or defaulted) limit, useful for clients\ndriving the loop programmatically."]
+        pub limit: i64,
+    }
+    impl RescanForInventoryResponse {
+        pub fn builder() -> builder::RescanForInventoryResponse {
+            Default::default()
+        }
+    }
     #[doc = "Response for password reset"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -15433,6 +17929,107 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`ReviewActionRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"reason\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ReviewActionRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub reason: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for ReviewActionRequest {
+        fn default() -> Self {
+            Self {
+                reason: Default::default(),
+            }
+        }
+    }
+    impl ReviewActionRequest {
+        pub fn builder() -> builder::ReviewActionRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`ReviewListQuery`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"page\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"per_page\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ReviewListQuery {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub page: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub per_page: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub repository_key: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub status: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for ReviewListQuery {
+        fn default() -> Self {
+            Self {
+                page: Default::default(),
+                per_page: Default::default(),
+                repository_key: Default::default(),
+                status: Default::default(),
+            }
+        }
+    }
+    impl ReviewListQuery {
+        pub fn builder() -> builder::ReviewListQuery {
+            Default::default()
+        }
+    }
     #[doc = "`ReviewRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -15447,6 +18044,10 @@ pub mod types {
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"skip_policy_check\": {"]
+    #[doc = "      \"description\": \"Admin break-glass override: skip promotion_rules enforcement at approve\\ntime. Mirrors `skip_policy_check` on the single/bulk promote endpoints so\\nthe approval-execute path has the same documented escape hatch.\","]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -15457,11 +18058,15 @@ pub mod types {
         #[doc = "Optional reviewer notes"]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub notes: ::std::option::Option<::std::string::String>,
+        #[doc = "Admin break-glass override: skip promotion_rules enforcement at approve\ntime. Mirrors `skip_policy_check` on the single/bulk promote endpoints so\nthe approval-execute path has the same documented escape hatch."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub skip_policy_check: ::std::option::Option<bool>,
     }
     impl ::std::default::Default for ReviewRequest {
         fn default() -> Self {
             Self {
                 notes: Default::default(),
+                skip_policy_check: Default::default(),
             }
         }
     }
@@ -15546,6 +18151,127 @@ pub mod types {
     }
     impl RoleResponse {
         pub fn builder() -> builder::RoleResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Response returned by the rotate-secret endpoint."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Response returned by the rotate-secret endpoint.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"id\","]
+    #[doc = "    \"previous_secret_expires_at\","]
+    #[doc = "    \"secret\","]
+    #[doc = "    \"secret_digest\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"previous_secret_expires_at\": {"]
+    #[doc = "      \"description\": \"When the previously active secret stops being accepted.\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"secret\": {"]
+    #[doc = "      \"description\": \"Raw signing secret produced by this rotation. Shown exactly once.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"secret_digest\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RotateWebhookSecretResponse {
+        pub id: ::uuid::Uuid,
+        #[doc = "When the previously active secret stops being accepted."]
+        pub previous_secret_expires_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Raw signing secret produced by this rotation. Shown exactly once."]
+        pub secret: ::std::string::String,
+        pub secret_digest: ::std::string::String,
+    }
+    impl RotateWebhookSecretResponse {
+        pub fn builder() -> builder::RotateWebhookSecretResponse {
+            Default::default()
+        }
+    }
+    #[doc = "A single routing rule that maps an incoming path to a rewritten path."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"A single routing rule that maps an incoming path to a rewritten path.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"path_pattern\","]
+    #[doc = "    \"rewrite_to\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"path_pattern\": {"]
+    #[doc = "      \"description\": \"Regex pattern matched against the full request path.\\nUse capture groups to extract portions for the rewrite template.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"rewrite_to\": {"]
+    #[doc = "      \"description\": \"Rewrite template. Use `$1`, `$2`, etc. to reference captured groups\\nfrom `path_pattern`.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RoutingRule {
+        #[doc = "Regex pattern matched against the full request path.\nUse capture groups to extract portions for the rewrite template."]
+        pub path_pattern: ::std::string::String,
+        #[doc = "Rewrite template. Use `$1`, `$2`, etc. to reference captured groups\nfrom `path_pattern`."]
+        pub rewrite_to: ::std::string::String,
+    }
+    impl RoutingRule {
+        pub fn builder() -> builder::RoutingRule {
+            Default::default()
+        }
+    }
+    #[doc = "`RoutingRulesResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"repository_key\","]
+    #[doc = "    \"rules\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"rules\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/RoutingRule\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RoutingRulesResponse {
+        pub repository_key: ::std::string::String,
+        pub rules: ::std::vec::Vec<RoutingRule>,
+    }
+    impl RoutingRulesResponse {
+        pub fn builder() -> builder::RoutingRulesResponse {
             Default::default()
         }
     }
@@ -15687,6 +18413,40 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Result of `POST /:id/repositories/:repo_id/sync` (run-now trigger)."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Result of `POST /:id/repositories/:repo_id/sync` (run-now trigger).\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"status\","]
+    #[doc = "    \"tasks_queued\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"tasks_queued\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RunNowResponse {
+        pub status: ::std::string::String,
+        pub tasks_queued: i64,
+    }
+    impl RunNowResponse {
+        pub fn builder() -> builder::RunNowResponse {
+            Default::default()
+        }
+    }
     #[doc = "`SamlAcsForm`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -15747,7 +18507,8 @@ pub mod types {
     #[doc = "    \"sign_requests\","]
     #[doc = "    \"sp_entity_id\","]
     #[doc = "    \"sso_url\","]
-    #[doc = "    \"updated_at\""]
+    #[doc = "    \"updated_at\","]
+    #[doc = "    \"use_absolute_acs_url\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"admin_group\": {"]
@@ -15803,6 +18564,10 @@ pub mod types {
     #[doc = "    \"updated_at\": {"]
     #[doc = "      \"type\": \"string\","]
     #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"use_absolute_acs_url\": {"]
+    #[doc = "      \"description\": \"Opt-in flag (see migration 139): when true, the SAML AuthnRequest\\nemits an absolute ACS URL. Defaults to false so existing providers\\nkeep their pre-138 wire format.\","]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -15827,6 +18592,8 @@ pub mod types {
         pub sp_entity_id: ::std::string::String,
         pub sso_url: ::std::string::String,
         pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Opt-in flag (see migration 139): when true, the SAML AuthnRequest\nemits an absolute ACS URL. Defaults to false so existing providers\nkeep their pre-138 wire format."]
+        pub use_absolute_acs_url: bool,
     }
     impl SamlConfigResponse {
         pub fn builder() -> builder::SamlConfigResponse {
@@ -16124,6 +18891,7 @@ pub mod types {
     #[doc = "    \"high_count\","]
     #[doc = "    \"id\","]
     #[doc = "    \"info_count\","]
+    #[doc = "    \"is_reused\","]
     #[doc = "    \"low_count\","]
     #[doc = "    \"medium_count\","]
     #[doc = "    \"repository_id\","]
@@ -16184,6 +18952,10 @@ pub mod types {
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int32\""]
     #[doc = "    },"]
+    #[doc = "    \"is_reused\": {"]
+    #[doc = "      \"description\": \"True when the row was synthesized by the dedup path (`copy_scan_results`)\\nbecause a prior scan with the same `(checksum_sha256, scan_type)` pair\\nalready existed within the dedup TTL. No scanner was actually invoked\\nfor this row; counts and findings were copied from `source_scan_id`.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
     #[doc = "    \"low_count\": {"]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int32\""]
@@ -16204,6 +18976,14 @@ pub mod types {
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"source_scan_id\": {"]
+    #[doc = "      \"description\": \"When `is_reused` is true, the `id` of the source scan whose results\\nwere copied. Useful for distinguishing \\\"fresh scan\\\" from \\\"deduped\\nsatisfaction\\\" in release-gate provenance checks. None for original\\n(non-reused) scans.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
     #[doc = "    },"]
     #[doc = "    \"started_at\": {"]
     #[doc = "      \"type\": ["]
@@ -16236,18 +19016,67 @@ pub mod types {
         pub high_count: i32,
         pub id: ::uuid::Uuid,
         pub info_count: i32,
+        #[doc = "True when the row was synthesized by the dedup path (`copy_scan_results`)\nbecause a prior scan with the same `(checksum_sha256, scan_type)` pair\nalready existed within the dedup TTL. No scanner was actually invoked\nfor this row; counts and findings were copied from `source_scan_id`."]
+        pub is_reused: bool,
         pub low_count: i32,
         pub medium_count: i32,
         pub repository_id: ::uuid::Uuid,
         pub scan_type: ::std::string::String,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub scanner_version: ::std::option::Option<::std::string::String>,
+        #[doc = "When `is_reused` is true, the `id` of the source scan whose results\nwere copied. Useful for distinguishing \"fresh scan\" from \"deduped\nsatisfaction\" in release-gate provenance checks. None for original\n(non-reused) scans."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub source_scan_id: ::std::option::Option<::uuid::Uuid>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub started_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub status: ::std::string::String,
     }
     impl ScanResponse {
         pub fn builder() -> builder::ScanResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Scanner availability flags."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Scanner availability flags.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"dependency_track_enabled\","]
+    #[doc = "    \"openscap_enabled\","]
+    #[doc = "    \"trivy_enabled\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"dependency_track_enabled\": {"]
+    #[doc = "      \"description\": \"Whether the Dependency-Track integration is configured.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"openscap_enabled\": {"]
+    #[doc = "      \"description\": \"Whether the OpenSCAP compliance scanner is configured.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"trivy_enabled\": {"]
+    #[doc = "      \"description\": \"Whether the Trivy vulnerability scanner is configured.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ScannersConfig {
+        #[doc = "Whether the Dependency-Track integration is configured."]
+        pub dependency_track_enabled: bool,
+        #[doc = "Whether the OpenSCAP compliance scanner is configured."]
+        pub openscap_enabled: bool,
+        #[doc = "Whether the Trivy vulnerability scanner is configured."]
+        pub trivy_enabled: bool,
+    }
+    impl ScannersConfig {
+        pub fn builder() -> builder::ScannersConfig {
             Default::default()
         }
     }
@@ -16263,6 +19092,7 @@ pub mod types {
     #[doc = "    \"calculated_at\","]
     #[doc = "    \"critical_count\","]
     #[doc = "    \"grade\","]
+    #[doc = "    \"has_failed_scan\","]
     #[doc = "    \"high_count\","]
     #[doc = "    \"id\","]
     #[doc = "    \"low_count\","]
@@ -16286,6 +19116,10 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"grade\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"has_failed_scan\": {"]
+    #[doc = "      \"description\": \"True when the latest applicable scan for this repo errored (#2167).\\nThe `grade` is floored to `F` while this holds, so clients and the\\nrelease-gate must treat the repo as NOT clean regardless of the numeric\\nfinding counts. Cleared automatically once a `completed` rescan\\nsupersedes the failed scan.\","]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
     #[doc = "    \"high_count\": {"]
     #[doc = "      \"type\": \"integer\","]
@@ -16332,6 +19166,8 @@ pub mod types {
         pub calculated_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub critical_count: i32,
         pub grade: ::std::string::String,
+        #[doc = "True when the latest applicable scan for this repo errored (#2167).\nThe `grade` is floored to `F` while this holds, so clients and the\nrelease-gate must treat the repo as NOT clean regardless of the numeric\nfinding counts. Cleared automatically once a `completed` rescan\nsupersedes the failed scan."]
+        pub has_failed_scan: bool,
         pub high_count: i32,
         pub id: ::uuid::Uuid,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
@@ -16916,6 +19752,75 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`SetReleaseTargetRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"release_repository_key\": {"]
+    #[doc = "      \"description\": \"Repository key of the release (local) repository to link.\\nPass `null` or omit to remove the link.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SetReleaseTargetRequest {
+        #[doc = "Repository key of the release (local) repository to link.\nPass `null` or omit to remove the link."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub release_repository_key: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for SetReleaseTargetRequest {
+        fn default() -> Self {
+            Self {
+                release_repository_key: Default::default(),
+            }
+        }
+    }
+    impl SetReleaseTargetRequest {
+        pub fn builder() -> builder::SetReleaseTargetRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`SetRoutingRulesRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"rules\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"rules\": {"]
+    #[doc = "      \"description\": \"Ordered list of routing rules. Each rule specifies a regex pattern and\\na rewrite template. Rules are evaluated in order during proxy requests.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/RoutingRule\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SetRoutingRulesRequest {
+        #[doc = "Ordered list of routing rules. Each rule specifies a regex pattern and\na rewrite template. Rules are evaluated in order during proxy requests."]
+        pub rules: ::std::vec::Vec<RoutingRule>,
+    }
+    impl SetRoutingRulesRequest {
+        pub fn builder() -> builder::SetRoutingRulesRequest {
+            Default::default()
+        }
+    }
     #[doc = "Response body for the setup status endpoint."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -17119,6 +20024,73 @@ pub mod types {
     }
     impl SigningKeyPublic {
         pub fn builder() -> builder::SigningKeyPublic {
+            Default::default()
+        }
+    }
+    #[doc = "Request body for the SMTP test endpoint."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Request body for the SMTP test endpoint.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"to\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"to\": {"]
+    #[doc = "      \"description\": \"Recipient email address for the test message.\\n\\nAccepts `recipient` as an alias for backward compatibility with Web UI\\nversions <= 1.1.3, which send `{\\\"recipient\\\": \\\"...\\\"}`.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SmtpTestRequest {
+        #[doc = "Recipient email address for the test message.\n\nAccepts `recipient` as an alias for backward compatibility with Web UI\nversions <= 1.1.3, which send `{\"recipient\": \"...\"}`."]
+        pub to: ::std::string::String,
+    }
+    impl SmtpTestRequest {
+        pub fn builder() -> builder::SmtpTestRequest {
+            Default::default()
+        }
+    }
+    #[doc = "Response from the SMTP test endpoint."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Response from the SMTP test endpoint.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"message\","]
+    #[doc = "    \"success\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"message\": {"]
+    #[doc = "      \"description\": \"Human-readable status message.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"success\": {"]
+    #[doc = "      \"description\": \"Whether the test email was sent successfully.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SmtpTestResponse {
+        #[doc = "Human-readable status message."]
+        pub message: ::std::string::String,
+        #[doc = "Whether the test email was sent successfully."]
+        pub success: bool,
+    }
+    impl SmtpTestResponse {
+        pub fn builder() -> builder::SmtpTestResponse {
             Default::default()
         }
     }
@@ -17726,6 +20698,88 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Detailed subscription view (mode, schedule, filter) for a single (peer, repo) pair."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Detailed subscription view (mode, schedule, filter) for a single (peer, repo) pair.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"peer_instance_id\","]
+    #[doc = "    \"replication_filter\","]
+    #[doc = "    \"repository_id\","]
+    #[doc = "    \"sync_enabled\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"last_replicated_at\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"peer_instance_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"replication_filter\": {"]
+    #[doc = "      \"type\": \"object\""]
+    #[doc = "    },"]
+    #[doc = "    \"replication_mode\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"replication_schedule\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"sync_enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SubscriptionResponse {
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        pub id: ::uuid::Uuid,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub last_replicated_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        pub peer_instance_id: ::uuid::Uuid,
+        pub replication_filter: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub replication_mode: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub replication_schedule: ::std::option::Option<::std::string::String>,
+        pub repository_id: ::uuid::Uuid,
+        pub sync_enabled: bool,
+    }
+    impl SubscriptionResponse {
+        pub fn builder() -> builder::SubscriptionResponse {
+            Default::default()
+        }
+    }
     #[doc = "`SuggestResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -17864,6 +20918,7 @@ pub mod types {
     #[doc = "    \"created_at\","]
     #[doc = "    \"description\","]
     #[doc = "    \"enabled\","]
+    #[doc = "    \"filter\","]
     #[doc = "    \"id\","]
     #[doc = "    \"name\","]
     #[doc = "    \"peer_selector\","]
@@ -17886,6 +20941,10 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"enabled\": {"]
     #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"filter\": {"]
+    #[doc = "      \"description\": \"Convenience glob filter, mirrored from `artifact_filter.include_paths`.\\nRound-trips the single-pattern shorthand accepted on create\\n(e.g. `\\\"*.tar.gz\\\"`). Empty when no include pattern is set.\","]
+    #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
     #[doc = "    \"id\": {"]
     #[doc = "      \"type\": \"string\","]
@@ -17925,6 +20984,8 @@ pub mod types {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub description: ::std::string::String,
         pub enabled: bool,
+        #[doc = "Convenience glob filter, mirrored from `artifact_filter.include_paths`.\nRound-trips the single-pattern shorthand accepted on create\n(e.g. `\"*.tar.gz\"`). Empty when no include pattern is set."]
+        pub filter: ::std::string::String,
         pub id: ::uuid::Uuid,
         pub name: ::std::string::String,
         pub peer_selector: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
@@ -17949,8 +21010,10 @@ pub mod types {
     #[doc = "  \"required\": ["]
     #[doc = "    \"artifact_id\","]
     #[doc = "    \"artifact_size\","]
+    #[doc = "    \"created_at\","]
     #[doc = "    \"id\","]
     #[doc = "    \"priority\","]
+    #[doc = "    \"status\","]
     #[doc = "    \"storage_key\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
@@ -17962,6 +21025,11 @@ pub mod types {
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"description\": \"When the task was enqueued. Lets clients tell a freshly-scheduled task\\napart from a stale queue entry (used by the replication-schedule check).\\nSerialized as whole-second RFC3339 with a `Z` suffix\\n(e.g. `2026-05-29T12:34:56Z`) so simple ISO8601 parsers can consume it.\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
     #[doc = "    \"id\": {"]
     #[doc = "      \"type\": \"string\","]
     #[doc = "      \"format\": \"uuid\""]
@@ -17969,6 +21037,18 @@ pub mod types {
     #[doc = "    \"priority\": {"]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"started_at\": {"]
+    #[doc = "      \"description\": \"When the worker began transferring, if it has started. Same format as\\n`created_at`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"description\": \"Task status (e.g. \\\"pending\\\"). Listing currently returns pending tasks.\","]
+    #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
     #[doc = "    \"storage_key\": {"]
     #[doc = "      \"type\": \"string\""]
@@ -17981,12 +21061,115 @@ pub mod types {
     pub struct SyncTaskResponse {
         pub artifact_id: ::uuid::Uuid,
         pub artifact_size: i64,
+        #[doc = "When the task was enqueued. Lets clients tell a freshly-scheduled task\napart from a stale queue entry (used by the replication-schedule check).\nSerialized as whole-second RFC3339 with a `Z` suffix\n(e.g. `2026-05-29T12:34:56Z`) so simple ISO8601 parsers can consume it."]
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
         pub id: ::uuid::Uuid,
         pub priority: i32,
+        #[doc = "When the worker began transferring, if it has started. Same format as\n`created_at`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub started_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        #[doc = "Task status (e.g. \"pending\"). Listing currently returns pending tasks."]
+        pub status: ::std::string::String,
         pub storage_key: ::std::string::String,
     }
     impl SyncTaskResponse {
         pub fn builder() -> builder::SyncTaskResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Runtime configuration values.\n\nThis response intentionally omits all secrets, credentials, and internal\nconnection strings.\n\nDisclosure is tiered (see `get_system_config`):\n\n* **Public-safe fields** are always present — they only describe UI/client\n  affordances a caller needs *before* authenticating (upload limit, demo\n  mode, whether guest access and which login providers are available).\n* **Security-posture fields** (`scanners`, `search_engine`,\n  `storage_backend`, `permissions`, `plugin_signing`) describe the\n  instance's defensive configuration. They are returned **only to\n  authenticated admins** and are omitted for anonymous / non-admin callers,\n  so the deployment's security posture cannot be fingerprinted by an\n  unauthenticated attacker."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Runtime configuration values.\\n\\nThis response intentionally omits all secrets, credentials, and internal\\nconnection strings.\\n\\nDisclosure is tiered (see `get_system_config`):\\n\\n* **Public-safe fields** are always present — they only describe UI/client\\n  affordances a caller needs *before* authenticating (upload limit, demo\\n  mode, whether guest access and which login providers are available).\\n* **Security-posture fields** (`scanners`, `search_engine`,\\n  `storage_backend`, `permissions`, `plugin_signing`) describe the\\n  instance's defensive configuration. They are returned **only to\\n  authenticated admins** and are omitted for anonymous / non-admin callers,\\n  so the deployment's security posture cannot be fingerprinted by an\\n  unauthenticated attacker.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"auth\","]
+    #[doc = "    \"demo_mode\","]
+    #[doc = "    \"guest_access_enabled\","]
+    #[doc = "    \"max_upload_size_bytes\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"auth\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/AuthConfig\""]
+    #[doc = "    },"]
+    #[doc = "    \"demo_mode\": {"]
+    #[doc = "      \"description\": \"Whether the instance is running in demo mode (writes blocked).\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"guest_access_enabled\": {"]
+    #[doc = "      \"description\": \"Whether anonymous (unauthenticated) access is permitted at all (issue #850).\\nWhen `false`, the server rejects all unauthenticated requests except for\\nthe login, setup, health, and OCI challenge endpoints. Frontends should\\nhide UI affordances that imply public access (e.g. the \\\"public repo\\\"\\ntoggle) and redirect unauthenticated users to the login page.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_upload_size_bytes\": {"]
+    #[doc = "      \"description\": \"Maximum upload size in bytes (0 means no limit).\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"oidc_issuer\": {"]
+    #[doc = "      \"description\": \"OIDC issuer URL, if configured. This is public information needed by\\nclients to initiate the OIDC flow.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"permissions\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/PermissionsConfig\""]
+    #[doc = "    },"]
+    #[doc = "    \"plugin_signing\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/PluginSigningConfig\""]
+    #[doc = "    },"]
+    #[doc = "    \"scanners\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/ScannersConfig\""]
+    #[doc = "    },"]
+    #[doc = "    \"search_engine\": {"]
+    #[doc = "      \"description\": \"Search engine type: \\\"opensearch\\\" when configured, \\\"database\\\" otherwise.\\nAdmin-only (security posture).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"storage_backend\": {"]
+    #[doc = "      \"description\": \"Storage backend type (e.g. \\\"filesystem\\\", \\\"s3\\\", \\\"gcs\\\", \\\"azure\\\").\\nAdmin-only (security posture).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SystemConfigResponse {
+        pub auth: AuthConfig,
+        #[doc = "Whether the instance is running in demo mode (writes blocked)."]
+        pub demo_mode: bool,
+        #[doc = "Whether anonymous (unauthenticated) access is permitted at all (issue #850).\nWhen `false`, the server rejects all unauthenticated requests except for\nthe login, setup, health, and OCI challenge endpoints. Frontends should\nhide UI affordances that imply public access (e.g. the \"public repo\"\ntoggle) and redirect unauthenticated users to the login page."]
+        pub guest_access_enabled: bool,
+        #[doc = "Maximum upload size in bytes (0 means no limit)."]
+        pub max_upload_size_bytes: i64,
+        #[doc = "OIDC issuer URL, if configured. This is public information needed by\nclients to initiate the OIDC flow."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub oidc_issuer: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub permissions: ::std::option::Option<PermissionsConfig>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub plugin_signing: ::std::option::Option<PluginSigningConfig>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub scanners: ::std::option::Option<ScannersConfig>,
+        #[doc = "Search engine type: \"opensearch\" when configured, \"database\" otherwise.\nAdmin-only (security posture)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub search_engine: ::std::option::Option<::std::string::String>,
+        #[doc = "Storage backend type (e.g. \"filesystem\", \"s3\", \"gcs\", \"azure\").\nAdmin-only (security posture)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub storage_backend: ::std::option::Option<::std::string::String>,
+    }
+    impl SystemConfigResponse {
+        pub fn builder() -> builder::SystemConfigResponse {
             Default::default()
         }
     }
@@ -19018,6 +22201,13 @@ pub mod types {
     #[doc = "      ],"]
     #[doc = "      \"format\": \"uuid\""]
     #[doc = "    },"]
+    #[doc = "    \"bypass_dedup\": {"]
+    #[doc = "      \"description\": \"Skip the hash-based scan dedup short-circuit when running this scan.\\n\\nDefaults to `false`. Normal trigger calls dedup against prior\\ncompleted scans for the same checksum + scan_type so a freshly\\nuploaded byte-identical artifact reuses the existing result instead\\nof re-running the scanner. When `true`, that dedup is skipped: the\\nscanner runs against the bytes again and writes a fresh\\n`scan_results` row. Use this to recover from a silently-broken\\nprior scan (e.g. an extraction bug producing a completed,\\nzero-finding row that masks the real findings until the dedup TTL\\nexpires; see #1469). Costs an extra scan run, so leave it unset\\nfor routine trigger calls.\\n\\n**Admin only.** Setting this to `true` bypasses the dedup short-\\ncircuit and fans out unbounded scanner work per artifact. The\\n`trigger_scan` handler rejects this field with 403 for non-admin\\ncallers, since a non-admin force-rescan path would be a DoS\\namplifier (the pre-existing `force=true` was naturally rate-limited\\nby dedup; `bypass_dedup` removes that safety).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"repository_id\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
@@ -19033,6 +22223,9 @@ pub mod types {
     pub struct TriggerScanRequest {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub artifact_id: ::std::option::Option<::uuid::Uuid>,
+        #[doc = "Skip the hash-based scan dedup short-circuit when running this scan.\n\nDefaults to `false`. Normal trigger calls dedup against prior\ncompleted scans for the same checksum + scan_type so a freshly\nuploaded byte-identical artifact reuses the existing result instead\nof re-running the scanner. When `true`, that dedup is skipped: the\nscanner runs against the bytes again and writes a fresh\n`scan_results` row. Use this to recover from a silently-broken\nprior scan (e.g. an extraction bug producing a completed,\nzero-finding row that masks the real findings until the dedup TTL\nexpires; see #1469). Costs an extra scan run, so leave it unset\nfor routine trigger calls.\n\n**Admin only.** Setting this to `true` bypasses the dedup short-\ncircuit and fans out unbounded scanner work per artifact. The\n`trigger_scan` handler rejects this field with 403 for non-admin\ncallers, since a non-admin force-rescan path would be a DoS\namplifier (the pre-existing `force=true` was naturally rate-limited\nby dedup; `bypass_dedup` removes that safety)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub bypass_dedup: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub repository_id: ::std::option::Option<::uuid::Uuid>,
     }
@@ -19040,6 +22233,7 @@ pub mod types {
         fn default() -> Self {
             Self {
                 artifact_id: Default::default(),
+                bypass_dedup: Default::default(),
                 repository_id: Default::default(),
             }
         }
@@ -19068,6 +22262,14 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"message\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"scan_result_ids\": {"]
+    #[doc = "      \"description\": \"Scan result IDs created (one per active scanner) when triggering an\\nartifact-level scan. Empty for repository-level scans (where the\\nper-artifact rows are created inside the spawned worker) and for\\nartifact-level triggers when no scanners are configured.\\n\\nClients (and the release-gate test in artifact-keeper-test#58) should\\npoll `GET /api/v1/security/scans/{id}` against these IDs rather than\\nguessing the most-recent scan from `GET /artifacts/{id}/scans`.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\","]
+    #[doc = "        \"format\": \"uuid\""]
+    #[doc = "      }"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -19077,6 +22279,9 @@ pub mod types {
     pub struct TriggerScanResponse {
         pub artifacts_queued: i32,
         pub message: ::std::string::String,
+        #[doc = "Scan result IDs created (one per active scanner) when triggering an\nartifact-level scan. Empty for repository-level scans (where the\nper-artifact rows are created inside the spawned worker) and for\nartifact-level triggers when no scanners are configured.\n\nClients (and the release-gate test in artifact-keeper-test#58) should\npoll `GET /api/v1/security/scans/{id}` against these IDs rather than\nguessing the most-recent scan from `GET /artifacts/{id}/scans`."]
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub scan_result_ids: ::std::vec::Vec<::uuid::Uuid>,
     }
     impl TriggerScanResponse {
         pub fn builder() -> builder::TriggerScanResponse {
@@ -19116,6 +22321,39 @@ pub mod types {
     }
     impl UninstallQuery {
         pub fn builder() -> builder::UninstallQuery {
+            Default::default()
+        }
+    }
+    #[doc = "`UpdateAgeGateConfigRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"enabled\","]
+    #[doc = "    \"min_age_days\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"min_age_days\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct UpdateAgeGateConfigRequest {
+        pub enabled: bool,
+        pub min_age_days: i32,
+    }
+    impl UpdateAgeGateConfigRequest {
+        pub fn builder() -> builder::UpdateAgeGateConfigRequest {
             Default::default()
         }
     }
@@ -19253,6 +22491,148 @@ pub mod types {
     }
     impl UpdateChunkAvailabilityBody {
         pub fn builder() -> builder::UpdateChunkAvailabilityBody {
+            Default::default()
+        }
+    }
+    #[doc = "`UpdateCiOidcMappingRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"allowed_repo_ids\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\","]
+    #[doc = "        \"format\": \"uuid\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"claim_filters\": {},"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"priority\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct UpdateCiOidcMappingRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allowed_repo_ids: ::std::option::Option<::std::vec::Vec<::uuid::Uuid>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub claim_filters: ::std::option::Option<::serde_json::Value>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub is_enabled: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub name: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub priority: ::std::option::Option<i32>,
+    }
+    impl ::std::default::Default for UpdateCiOidcMappingRequest {
+        fn default() -> Self {
+            Self {
+                allowed_repo_ids: Default::default(),
+                claim_filters: Default::default(),
+                is_enabled: Default::default(),
+                name: Default::default(),
+                priority: Default::default(),
+            }
+        }
+    }
+    impl UpdateCiOidcMappingRequest {
+        pub fn builder() -> builder::UpdateCiOidcMappingRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`UpdateCiOidcProviderRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"audience\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"issuer_url\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"provider_type\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct UpdateCiOidcProviderRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub audience: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub is_enabled: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub issuer_url: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub name: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub provider_type: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for UpdateCiOidcProviderRequest {
+        fn default() -> Self {
+            Self {
+                audience: Default::default(),
+                is_enabled: Default::default(),
+                issuer_url: Default::default(),
+                name: Default::default(),
+                provider_type: Default::default(),
+            }
+        }
+    }
+    impl UpdateCiOidcProviderRequest {
+        pub fn builder() -> builder::UpdateCiOidcProviderRequest {
             Default::default()
         }
     }
@@ -19632,9 +23012,23 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"allow_legacy_rsa_keys\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"attribute_mapping\": {"]
+    #[doc = "      \"description\": \"Partial update for `attribute_mapping`. Keys present in this object\\noverwrite the matching keys in the stored mapping. Keys not present\\nare preserved. To remove a key, set it to `null`. To replace the\\nwhole mapping atomically, set `attribute_mapping_replace = true`.\\n(See issue #1191.)\","]
     #[doc = "      \"type\": ["]
     #[doc = "        \"object\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"attribute_mapping_replace\": {"]
+    #[doc = "      \"description\": \"When `true`, treat `attribute_mapping` as a wholesale replacement\\n(legacy behavior). Defaults to `false` — partial merge.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
@@ -19668,9 +23062,21 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"map_groups_to_groups\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"pkce_enabled\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
@@ -19690,8 +23096,14 @@ pub mod types {
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct UpdateOidcConfigRequest {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allow_legacy_rsa_keys: ::std::option::Option<bool>,
+        #[doc = "Partial update for `attribute_mapping`. Keys present in this object\noverwrite the matching keys in the stored mapping. Keys not present\nare preserved. To remove a key, set it to `null`. To replace the\nwhole mapping atomically, set `attribute_mapping_replace = true`.\n(See issue #1191.)"]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub attribute_mapping:
             ::std::option::Option<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
+        #[doc = "When `true`, treat `attribute_mapping` as a wholesale replacement\n(legacy behavior). Defaults to `false` — partial merge."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub attribute_mapping_replace: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub auto_create_users: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
@@ -19703,20 +23115,28 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub issuer_url: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub map_groups_to_groups: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub pkce_enabled: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub scopes: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
     }
     impl ::std::default::Default for UpdateOidcConfigRequest {
         fn default() -> Self {
             Self {
+                allow_legacy_rsa_keys: Default::default(),
                 attribute_mapping: Default::default(),
+                attribute_mapping_replace: Default::default(),
                 auto_create_users: Default::default(),
                 client_id: Default::default(),
                 client_secret: Default::default(),
                 is_enabled: Default::default(),
                 issuer_url: Default::default(),
+                map_groups_to_groups: Default::default(),
                 name: Default::default(),
+                pkce_enabled: Default::default(),
                 scopes: Default::default(),
             }
         }
@@ -19753,29 +23173,32 @@ pub mod types {
             Default::default()
         }
     }
-    #[doc = "`UpdatePolicyRequest`"]
+    #[doc = "Partial-update payload for `PUT /security/policies/{id}`.\n\nEvery field is `Option<T>` so clients can send any subset of mutable\ncolumns; omitted fields leave the existing row value untouched. The\nprevious shape required all of `name`, `max_severity`, `block_unscanned`,\n`block_on_fail`, `is_enabled` on every call. That was incompatible with\nthe release-gate `scan-policy-crud` test (and external callers) which\nPATCH a subset like `{max_severity, is_enabled}`; under the strict shape\nthe request was rejected as a 422 and the boolean toggle silently never\ntook effect on a follow-up GET. See #1374.\n\nFor `min_staging_hours` / `max_artifact_age_days` the field is the inner\nnullable `i32`; \"not provided\" leaves the column untouched. Explicit\n`null` to clear those columns is not currently supported; the release\ngate only mutates the bool/enum fields, so the narrower semantics are\nsufficient and we avoid an ambiguous JSON contract."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
     #[doc = r""]
     #[doc = r" ```json"]
     #[doc = "{"]
+    #[doc = "  \"description\": \"Partial-update payload for `PUT /security/policies/{id}`.\\n\\nEvery field is `Option<T>` so clients can send any subset of mutable\\ncolumns; omitted fields leave the existing row value untouched. The\\nprevious shape required all of `name`, `max_severity`, `block_unscanned`,\\n`block_on_fail`, `is_enabled` on every call. That was incompatible with\\nthe release-gate `scan-policy-crud` test (and external callers) which\\nPATCH a subset like `{max_severity, is_enabled}`; under the strict shape\\nthe request was rejected as a 422 and the boolean toggle silently never\\ntook effect on a follow-up GET. See #1374.\\n\\nFor `min_staging_hours` / `max_artifact_age_days` the field is the inner\\nnullable `i32`; \\\"not provided\\\" leaves the column untouched. Explicit\\n`null` to clear those columns is not currently supported; the release\\ngate only mutates the bool/enum fields, so the narrower semantics are\\nsufficient and we avoid an ambiguous JSON contract.\","]
     #[doc = "  \"type\": \"object\","]
-    #[doc = "  \"required\": ["]
-    #[doc = "    \"block_on_fail\","]
-    #[doc = "    \"block_unscanned\","]
-    #[doc = "    \"is_enabled\","]
-    #[doc = "    \"max_severity\","]
-    #[doc = "    \"name\""]
-    #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"block_on_fail\": {"]
-    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"block_unscanned\": {"]
-    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"is_enabled\": {"]
-    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"max_artifact_age_days\": {"]
     #[doc = "      \"type\": ["]
@@ -19785,7 +23208,10 @@ pub mod types {
     #[doc = "      \"format\": \"int32\""]
     #[doc = "    },"]
     #[doc = "    \"max_severity\": {"]
-    #[doc = "      \"type\": \"string\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"min_staging_hours\": {"]
     #[doc = "      \"type\": ["]
@@ -19795,10 +23221,16 @@ pub mod types {
     #[doc = "      \"format\": \"int32\""]
     #[doc = "    },"]
     #[doc = "    \"name\": {"]
-    #[doc = "      \"type\": \"string\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"require_signature\": {"]
-    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -19806,17 +23238,36 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct UpdatePolicyRequest {
-        pub block_on_fail: bool,
-        pub block_unscanned: bool,
-        pub is_enabled: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub block_on_fail: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub block_unscanned: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub is_enabled: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub max_artifact_age_days: ::std::option::Option<i32>,
-        pub max_severity: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub max_severity: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub min_staging_hours: ::std::option::Option<i32>,
-        pub name: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub name: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub require_signature: ::std::option::Option<bool>,
+    }
+    impl ::std::default::Default for UpdatePolicyRequest {
+        fn default() -> Self {
+            Self {
+                block_on_fail: Default::default(),
+                block_unscanned: Default::default(),
+                is_enabled: Default::default(),
+                max_artifact_age_days: Default::default(),
+                max_severity: Default::default(),
+                min_staging_hours: Default::default(),
+                name: Default::default(),
+                require_signature: Default::default(),
+            }
+        }
     }
     impl UpdatePolicyRequest {
         pub fn builder() -> builder::UpdatePolicyRequest {
@@ -19831,6 +23282,13 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"properties\": {"]
+    #[doc = "    \"allow_anonymous_access\": {"]
+    #[doc = "      \"description\": \"Alias for `is_public`. When set to true, anonymous users can download\\nartifacts without authentication. Useful for remote (pull-through cache)\\nrepositories that proxy public upstream registries. Write operations\\n(upload, delete) still require authentication regardless of this setting.\\nIf both `is_public` and `allow_anonymous_access` are provided,\\n`allow_anonymous_access` takes precedence.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"description\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
@@ -19862,12 +23320,48 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"promotion_only\": {"]
+    #[doc = "      \"description\": \"When provided, enables/disables the `promotion_only` policy for this\\nrepository (admin-only). When omitted, the flag is left unchanged.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"pypi_upstream_index_path\": {"]
+    #[doc = "      \"description\": \"Update the PyPI simple-index prefix (stored in `repository_config` under\\n`pypi_upstream_index_path`). Pass `\\\"\\\"` for flat CDN layout, `\\\"simple\\\"` to\\nrestore the PEP 503 default, or any other non-empty string for a custom prefix.\\nOnly meaningful for PyPI / Poetry / Conda Remote repositories.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"quarantine_duration_minutes\": {"]
+    #[doc = "      \"description\": \"Quarantine hold duration in minutes for this repository.\\nStored in `repository_config` under `quarantine_duration_minutes`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"quarantine_enabled\": {"]
+    #[doc = "      \"description\": \"Enable or disable quarantine period for this repository.\\nWhen enabled, newly uploaded artifacts are held until scanned.\\nStored in `repository_config` under `quarantine_enabled`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"quota_bytes\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"integer\","]
     #[doc = "        \"null\""]
     #[doc = "      ],"]
     #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"release_repository_key\": {"]
+    #[doc = "      \"description\": \"Link this staging repository to a release (local) repository.\\nPromotions from this staging repo will default to the linked release repo,\\nand promotions to any other repo will be rejected.\\nPass an empty string to remove the link.\\nStored in `repository_config` under `release_repository_id`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -19875,6 +23369,9 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct UpdateRepositoryRequest {
+        #[doc = "Alias for `is_public`. When set to true, anonymous users can download\nartifacts without authentication. Useful for remote (pull-through cache)\nrepositories that proxy public upstream registries. Write operations\n(upload, delete) still require authentication regardless of this setting.\nIf both `is_public` and `allow_anonymous_access` are provided,\n`allow_anonymous_access` takes precedence."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allow_anonymous_access: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
         #[doc = "Update the Cargo index upstream URL (stored in `repository_config`).\nWhen provided, upserts the `index_upstream_url` key for this repository."]
@@ -19886,18 +23383,39 @@ pub mod types {
         pub key: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name: ::std::option::Option<::std::string::String>,
+        #[doc = "When provided, enables/disables the `promotion_only` policy for this\nrepository (admin-only). When omitted, the flag is left unchanged."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub promotion_only: ::std::option::Option<bool>,
+        #[doc = "Update the PyPI simple-index prefix (stored in `repository_config` under\n`pypi_upstream_index_path`). Pass `\"\"` for flat CDN layout, `\"simple\"` to\nrestore the PEP 503 default, or any other non-empty string for a custom prefix.\nOnly meaningful for PyPI / Poetry / Conda Remote repositories."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub pypi_upstream_index_path: ::std::option::Option<::std::string::String>,
+        #[doc = "Quarantine hold duration in minutes for this repository.\nStored in `repository_config` under `quarantine_duration_minutes`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_duration_minutes: ::std::option::Option<i64>,
+        #[doc = "Enable or disable quarantine period for this repository.\nWhen enabled, newly uploaded artifacts are held until scanned.\nStored in `repository_config` under `quarantine_enabled`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_enabled: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub quota_bytes: ::std::option::Option<i64>,
+        #[doc = "Link this staging repository to a release (local) repository.\nPromotions from this staging repo will default to the linked release repo,\nand promotions to any other repo will be rejected.\nPass an empty string to remove the link.\nStored in `repository_config` under `release_repository_id`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub release_repository_key: ::std::option::Option<::std::string::String>,
     }
     impl ::std::default::Default for UpdateRepositoryRequest {
         fn default() -> Self {
             Self {
+                allow_anonymous_access: Default::default(),
                 description: Default::default(),
                 index_upstream_url: Default::default(),
                 is_public: Default::default(),
                 key: Default::default(),
                 name: Default::default(),
+                promotion_only: Default::default(),
+                pypi_upstream_index_path: Default::default(),
+                quarantine_duration_minutes: Default::default(),
+                quarantine_enabled: Default::default(),
                 quota_bytes: Default::default(),
+                release_repository_key: Default::default(),
             }
         }
     }
@@ -20098,6 +23616,12 @@ pub mod types {
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"use_absolute_acs_url\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -20130,6 +23654,8 @@ pub mod types {
         pub sp_entity_id: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub sso_url: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub use_absolute_acs_url: ::std::option::Option<bool>,
     }
     impl ::std::default::Default for UpdateSamlConfigRequest {
         fn default() -> Self {
@@ -20146,6 +23672,7 @@ pub mod types {
                 slo_url: Default::default(),
                 sp_entity_id: Default::default(),
                 sso_url: Default::default(),
+                use_absolute_acs_url: Default::default(),
             }
         }
     }
@@ -20528,36 +24055,44 @@ pub mod types {
             Default::default()
         }
     }
-    #[doc = "Request to create or update a scan configuration."]
+    #[doc = "Request to create or update a scan configuration.\n\nEvery field is optional so a `PUT /repositories/{key}/security` can carry\nany subset of mutable columns; fields the client omits keep their existing\nvalue (or fall back to the documented default when the row does not exist\nyet). The previous shape required all of `scan_enabled`, `scan_on_upload`,\n`scan_on_proxy`, `block_on_policy_violation`, `severity_threshold` on every\ncall. That was the #1374 bug class on a second entity: a partial PUT (for\nexample just `{scan_enabled: true}`) either bounced as a 422 or, worse,\nsilently reset every other column to its default so a follow-up GET showed\nthe untouched fields stale. The upsert is now a read-modify-write that\nmerges the patch over the existing row, so multiple fields persist together\nand an omitted field is never clobbered. See #1374 / B11."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
     #[doc = r""]
     #[doc = r" ```json"]
     #[doc = "{"]
-    #[doc = "  \"description\": \"Request to create or update a scan configuration.\","]
+    #[doc = "  \"description\": \"Request to create or update a scan configuration.\\n\\nEvery field is optional so a `PUT /repositories/{key}/security` can carry\\nany subset of mutable columns; fields the client omits keep their existing\\nvalue (or fall back to the documented default when the row does not exist\\nyet). The previous shape required all of `scan_enabled`, `scan_on_upload`,\\n`scan_on_proxy`, `block_on_policy_violation`, `severity_threshold` on every\\ncall. That was the #1374 bug class on a second entity: a partial PUT (for\\nexample just `{scan_enabled: true}`) either bounced as a 422 or, worse,\\nsilently reset every other column to its default so a follow-up GET showed\\nthe untouched fields stale. The upsert is now a read-modify-write that\\nmerges the patch over the existing row, so multiple fields persist together\\nand an omitted field is never clobbered. See #1374 / B11.\","]
     #[doc = "  \"type\": \"object\","]
-    #[doc = "  \"required\": ["]
-    #[doc = "    \"block_on_policy_violation\","]
-    #[doc = "    \"scan_enabled\","]
-    #[doc = "    \"scan_on_proxy\","]
-    #[doc = "    \"scan_on_upload\","]
-    #[doc = "    \"severity_threshold\""]
-    #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"block_on_policy_violation\": {"]
-    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"scan_enabled\": {"]
-    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"scan_on_proxy\": {"]
-    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"scan_on_upload\": {"]
-    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"severity_threshold\": {"]
-    #[doc = "      \"type\": \"string\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -20565,11 +24100,27 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct UpsertScanConfigRequest {
-        pub block_on_policy_violation: bool,
-        pub scan_enabled: bool,
-        pub scan_on_proxy: bool,
-        pub scan_on_upload: bool,
-        pub severity_threshold: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub block_on_policy_violation: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub scan_enabled: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub scan_on_proxy: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub scan_on_upload: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub severity_threshold: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for UpsertScanConfigRequest {
+        fn default() -> Self {
+            Self {
+                block_on_policy_violation: Default::default(),
+                scan_enabled: Default::default(),
+                scan_on_proxy: Default::default(),
+                scan_on_upload: Default::default(),
+                severity_threshold: Default::default(),
+            }
+        }
     }
     impl UpsertScanConfigRequest {
         pub fn builder() -> builder::UpsertScanConfigRequest {
@@ -20995,7 +24546,10 @@ pub mod types {
     #[doc = "    \"user_deleted\","]
     #[doc = "    \"build_started\","]
     #[doc = "    \"build_completed\","]
-    #[doc = "    \"build_failed\""]
+    #[doc = "    \"build_failed\","]
+    #[doc = "    \"age_gate_queued\","]
+    #[doc = "    \"age_gate_approved\","]
+    #[doc = "    \"age_gate_rejected\""]
     #[doc = "  ]"]
     #[doc = "}"]
     #[doc = r" ```"]
@@ -21031,6 +24585,12 @@ pub mod types {
         BuildCompleted,
         #[serde(rename = "build_failed")]
         BuildFailed,
+        #[serde(rename = "age_gate_queued")]
+        AgeGateQueued,
+        #[serde(rename = "age_gate_approved")]
+        AgeGateApproved,
+        #[serde(rename = "age_gate_rejected")]
+        AgeGateRejected,
     }
     impl ::std::fmt::Display for WebhookEvent {
         fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
@@ -21044,6 +24604,9 @@ pub mod types {
                 Self::BuildStarted => f.write_str("build_started"),
                 Self::BuildCompleted => f.write_str("build_completed"),
                 Self::BuildFailed => f.write_str("build_failed"),
+                Self::AgeGateQueued => f.write_str("age_gate_queued"),
+                Self::AgeGateApproved => f.write_str("age_gate_approved"),
+                Self::AgeGateRejected => f.write_str("age_gate_rejected"),
             }
         }
     }
@@ -21060,6 +24623,9 @@ pub mod types {
                 "build_started" => Ok(Self::BuildStarted),
                 "build_completed" => Ok(Self::BuildCompleted),
                 "build_failed" => Ok(Self::BuildFailed),
+                "age_gate_queued" => Ok(Self::AgeGateQueued),
+                "age_gate_approved" => Ok(Self::AgeGateApproved),
+                "age_gate_rejected" => Ok(Self::AgeGateRejected),
                 _ => Err("invalid value".into()),
             }
         }
@@ -21131,16 +24697,22 @@ pub mod types {
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
     #[doc = "    \"created_at\","]
+    #[doc = "    \"event_schema_version\","]
     #[doc = "    \"events\","]
     #[doc = "    \"id\","]
     #[doc = "    \"is_enabled\","]
     #[doc = "    \"name\","]
+    #[doc = "    \"payload_template\","]
     #[doc = "    \"url\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"created_at\": {"]
     #[doc = "      \"type\": \"string\","]
     #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"event_schema_version\": {"]
+    #[doc = "      \"description\": \"Pinned event payload version (e.g. \\\"2026-04-01\\\"). Determines the\\nshape of the rendered payload and the value sent in the\\n`X-ArtifactKeeper-Event-Version` header.\","]
+    #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
     #[doc = "    \"events\": {"]
     #[doc = "      \"type\": \"array\","]
@@ -21171,12 +24743,26 @@ pub mod types {
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
+    #[doc = "    \"payload_template\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/PayloadTemplate\""]
+    #[doc = "    },"]
     #[doc = "    \"repository_id\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
     #[doc = "      ],"]
     #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"secret_digest\": {"]
+    #[doc = "      \"description\": \"Short non-reversible identifier for the current signing secret\\n(`whsec_...abcd`), suitable for display in operator UIs. The raw\\nsecret is never returned by GET or LIST.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"secret_rotation_active\": {"]
+    #[doc = "      \"description\": \"True while a previous secret is still accepted by the retry path\\nduring a rotation overlap window.\","]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
     #[doc = "    \"url\": {"]
     #[doc = "      \"type\": \"string\""]
@@ -21188,6 +24774,8 @@ pub mod types {
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct WebhookResponse {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Pinned event payload version (e.g. \"2026-04-01\"). Determines the\nshape of the rendered payload and the value sent in the\n`X-ArtifactKeeper-Event-Version` header."]
+        pub event_schema_version: ::std::string::String,
         pub events: ::std::vec::Vec<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub headers:
@@ -21197,12 +24785,79 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub last_triggered_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub name: ::std::string::String,
+        pub payload_template: PayloadTemplate,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub repository_id: ::std::option::Option<::uuid::Uuid>,
+        #[doc = "Short non-reversible identifier for the current signing secret\n(`whsec_...abcd`), suitable for display in operator UIs. The raw\nsecret is never returned by GET or LIST."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub secret_digest: ::std::option::Option<::std::string::String>,
+        #[doc = "True while a previous secret is still accepted by the retry path\nduring a rotation overlap window."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub secret_rotation_active: ::std::option::Option<bool>,
         pub url: ::std::string::String,
     }
     impl WebhookResponse {
         pub fn builder() -> builder::WebhookResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Response returned exactly once when a webhook is created or its secret\nis rotated. The raw `secret` value is not retrievable afterwards."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Response returned exactly once when a webhook is created or its secret\\nis rotated. The raw `secret` value is not retrievable afterwards.\","]
+    #[doc = "  \"allOf\": ["]
+    #[doc = "    {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/WebhookResponse\""]
+    #[doc = "    },"]
+    #[doc = "    {"]
+    #[doc = "      \"type\": \"object\","]
+    #[doc = "      \"properties\": {"]
+    #[doc = "        \"secret\": {"]
+    #[doc = "          \"description\": \"Raw signing secret. Display this to the operator immediately and\\ninstruct them to record it; the server retains only the encrypted\\nform and a short digest.\\n\\nAbsent when the webhook was created without a signing secret. This\\nhappens when no secret was supplied and the deployment has no\\n`AK_WEBHOOK_SECRET_KEY` configured: rather than fail the create with\\na 500, the webhook is stored unsigned and deliveries omit the\\nsignature header. Configure the key and rotate the secret later to\\nenable signing.\","]
+    #[doc = "          \"type\": ["]
+    #[doc = "            \"string\","]
+    #[doc = "            \"null\""]
+    #[doc = "          ]"]
+    #[doc = "        }"]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  ]"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct WebhookSecretCreatedResponse {
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Pinned event payload version (e.g. \"2026-04-01\"). Determines the\nshape of the rendered payload and the value sent in the\n`X-ArtifactKeeper-Event-Version` header."]
+        pub event_schema_version: ::std::string::String,
+        pub events: ::std::vec::Vec<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub headers:
+            ::std::option::Option<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
+        pub id: ::uuid::Uuid,
+        pub is_enabled: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub last_triggered_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        pub name: ::std::string::String,
+        pub payload_template: PayloadTemplate,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub repository_id: ::std::option::Option<::uuid::Uuid>,
+        #[doc = "Raw signing secret. Display this to the operator immediately and\ninstruct them to record it; the server retains only the encrypted\nform and a short digest.\n\nAbsent when the webhook was created without a signing secret. This\nhappens when no secret was supplied and the deployment has no\n`AK_WEBHOOK_SECRET_KEY` configured: rather than fail the create with\na 500, the webhook is stored unsigned and deliveries omit the\nsignature header. Configure the key and rotate the secret later to\nenable signing."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub secret: ::std::option::Option<::std::string::String>,
+        #[doc = "Short non-reversible identifier for the current signing secret\n(`whsec_...abcd`), suitable for display in operator UIs. The raw\nsecret is never returned by GET or LIST."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub secret_digest: ::std::option::Option<::std::string::String>,
+        #[doc = "True while a previous secret is still accepted by the retry path\nduring a rotation overlap window."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub secret_rotation_active: ::std::option::Option<bool>,
+        pub url: ::std::string::String,
+    }
+    impl WebhookSecretCreatedResponse {
+        pub fn builder() -> builder::WebhookSecretCreatedResponse {
             Default::default()
         }
     }
@@ -21764,6 +25419,345 @@ pub mod types {
                     facets: Ok(value.facets),
                     items: Ok(value.items),
                     pagination: Ok(value.pagination),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct AgeGateConfigResponse {
+            enabled: ::std::result::Result<bool, ::std::string::String>,
+            min_age_days: ::std::result::Result<i32, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for AgeGateConfigResponse {
+            fn default() -> Self {
+                Self {
+                    enabled: Err("no value supplied for enabled".to_string()),
+                    min_age_days: Err("no value supplied for min_age_days".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                }
+            }
+        }
+        impl AgeGateConfigResponse {
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn min_age_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_age_days = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for min_age_days: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AgeGateConfigResponse> for super::AgeGateConfigResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AgeGateConfigResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    enabled: value.enabled?,
+                    min_age_days: value.min_age_days?,
+                    repository_key: value.repository_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AgeGateConfigResponse> for AgeGateConfigResponse {
+            fn from(value: super::AgeGateConfigResponse) -> Self {
+                Self {
+                    enabled: Ok(value.enabled),
+                    min_age_days: Ok(value.min_age_days),
+                    repository_key: Ok(value.repository_key),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct AgeGateReviewListResponse {
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::AgeGateReviewResponse>,
+                ::std::string::String,
+            >,
+            pagination: ::std::result::Result<super::Pagination, ::std::string::String>,
+        }
+        impl ::std::default::Default for AgeGateReviewListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    pagination: Err("no value supplied for pagination".to_string()),
+                }
+            }
+        }
+        impl AgeGateReviewListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::AgeGateReviewResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn pagination<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::Pagination>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.pagination = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for pagination: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AgeGateReviewListResponse> for super::AgeGateReviewListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AgeGateReviewListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    pagination: value.pagination?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AgeGateReviewListResponse> for AgeGateReviewListResponse {
+            fn from(value: super::AgeGateReviewListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    pagination: Ok(value.pagination),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct AgeGateReviewResponse {
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            last_requested_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            package_name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            package_version: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            request_count: ::std::result::Result<i32, ::std::string::String>,
+            requested_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            review_reason: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            reviewed_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            reviewed_by:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
+            upstream_published_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for AgeGateReviewResponse {
+            fn default() -> Self {
+                Self {
+                    id: Err("no value supplied for id".to_string()),
+                    last_requested_at: Err("no value supplied for last_requested_at".to_string()),
+                    package_name: Err("no value supplied for package_name".to_string()),
+                    package_version: Err("no value supplied for package_version".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                    request_count: Err("no value supplied for request_count".to_string()),
+                    requested_at: Err("no value supplied for requested_at".to_string()),
+                    review_reason: Ok(Default::default()),
+                    reviewed_at: Ok(Default::default()),
+                    reviewed_by: Ok(Default::default()),
+                    status: Err("no value supplied for status".to_string()),
+                    upstream_published_at: Ok(Default::default()),
+                }
+            }
+        }
+        impl AgeGateReviewResponse {
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn last_requested_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.last_requested_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for last_requested_at: {e}")
+                });
+                self
+            }
+            pub fn package_name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for package_name: {e}"));
+                self
+            }
+            pub fn package_version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_version = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for package_version: {e}")
+                });
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn request_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.request_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for request_count: {e}"));
+                self
+            }
+            pub fn requested_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.requested_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for requested_at: {e}"));
+                self
+            }
+            pub fn review_reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.review_reason = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for review_reason: {e}"));
+                self
+            }
+            pub fn reviewed_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reviewed_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reviewed_at: {e}"));
+                self
+            }
+            pub fn reviewed_by<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reviewed_by = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reviewed_by: {e}"));
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+            pub fn upstream_published_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.upstream_published_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for upstream_published_at: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AgeGateReviewResponse> for super::AgeGateReviewResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AgeGateReviewResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    id: value.id?,
+                    last_requested_at: value.last_requested_at?,
+                    package_name: value.package_name?,
+                    package_version: value.package_version?,
+                    repository_key: value.repository_key?,
+                    request_count: value.request_count?,
+                    requested_at: value.requested_at?,
+                    review_reason: value.review_reason?,
+                    reviewed_at: value.reviewed_at?,
+                    reviewed_by: value.reviewed_by?,
+                    status: value.status?,
+                    upstream_published_at: value.upstream_published_at?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AgeGateReviewResponse> for AgeGateReviewResponse {
+            fn from(value: super::AgeGateReviewResponse) -> Self {
+                Self {
+                    id: Ok(value.id),
+                    last_requested_at: Ok(value.last_requested_at),
+                    package_name: Ok(value.package_name),
+                    package_version: Ok(value.package_version),
+                    repository_key: Ok(value.repository_key),
+                    request_count: Ok(value.request_count),
+                    requested_at: Ok(value.requested_at),
+                    review_reason: Ok(value.review_reason),
+                    reviewed_at: Ok(value.reviewed_at),
+                    reviewed_by: Ok(value.reviewed_by),
+                    status: Ok(value.status),
+                    upstream_published_at: Ok(value.upstream_published_at),
                 }
             }
         }
@@ -23298,6 +27292,14 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct ArtifactListResponse {
+            components: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<super::MavenComponentResponse>>,
+                ::std::string::String,
+            >,
+            docker_tags: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<super::DockerTagResponse>>,
+                ::std::string::String,
+            >,
             items: ::std::result::Result<
                 ::std::vec::Vec<super::ArtifactResponse>,
                 ::std::string::String,
@@ -23307,12 +27309,38 @@ pub mod types {
         impl ::std::default::Default for ArtifactListResponse {
             fn default() -> Self {
                 Self {
+                    components: Ok(Default::default()),
+                    docker_tags: Ok(Default::default()),
                     items: Err("no value supplied for items".to_string()),
                     pagination: Err("no value supplied for pagination".to_string()),
                 }
             }
         }
         impl ArtifactListResponse {
+            pub fn components<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<super::MavenComponentResponse>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.components = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for components: {e}"));
+                self
+            }
+            pub fn docker_tags<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<super::DockerTagResponse>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.docker_tags = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for docker_tags: {e}"));
+                self
+            }
             pub fn items<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::vec::Vec<super::ArtifactResponse>>,
@@ -23340,6 +27368,8 @@ pub mod types {
                 value: ArtifactListResponse,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    components: value.components?,
+                    docker_tags: value.docker_tags?,
                     items: value.items?,
                     pagination: value.pagination?,
                 })
@@ -23348,6 +27378,8 @@ pub mod types {
         impl ::std::convert::From<super::ArtifactListResponse> for ArtifactListResponse {
             fn from(value: super::ArtifactListResponse) -> Self {
                 Self {
+                    components: Ok(value.components),
+                    docker_tags: Ok(value.docker_tags),
                     items: Ok(value.items),
                     pagination: Ok(value.pagination),
                 }
@@ -23437,6 +27469,15 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct ArtifactResponse {
+            analyzable: ::std::result::Result<bool, ::std::string::String>,
+            cache_cached_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            cache_expires_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
             checksum_sha256: ::std::result::Result<::std::string::String, ::std::string::String>,
             content_type: ::std::result::Result<::std::string::String, ::std::string::String>,
             created_at: ::std::result::Result<
@@ -23463,6 +27504,9 @@ pub mod types {
         impl ::std::default::Default for ArtifactResponse {
             fn default() -> Self {
                 Self {
+                    analyzable: Err("no value supplied for analyzable".to_string()),
+                    cache_cached_at: Ok(Default::default()),
+                    cache_expires_at: Ok(Default::default()),
                     checksum_sha256: Err("no value supplied for checksum_sha256".to_string()),
                     content_type: Err("no value supplied for content_type".to_string()),
                     created_at: Err("no value supplied for created_at".to_string()),
@@ -23478,6 +27522,40 @@ pub mod types {
             }
         }
         impl ArtifactResponse {
+            pub fn analyzable<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.analyzable = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for analyzable: {e}"));
+                self
+            }
+            pub fn cache_cached_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.cache_cached_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for cache_cached_at: {e}")
+                });
+                self
+            }
+            pub fn cache_expires_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.cache_expires_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for cache_expires_at: {e}")
+                });
+                self
+            }
             pub fn checksum_sha256<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -23599,6 +27677,9 @@ pub mod types {
                 value: ArtifactResponse,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    analyzable: value.analyzable?,
+                    cache_cached_at: value.cache_cached_at?,
+                    cache_expires_at: value.cache_expires_at?,
                     checksum_sha256: value.checksum_sha256?,
                     content_type: value.content_type?,
                     created_at: value.created_at?,
@@ -23616,6 +27697,9 @@ pub mod types {
         impl ::std::convert::From<super::ArtifactResponse> for ArtifactResponse {
             fn from(value: super::ArtifactResponse) -> Self {
                 Self {
+                    analyzable: Ok(value.analyzable),
+                    cache_cached_at: Ok(value.cache_cached_at),
+                    cache_expires_at: Ok(value.cache_expires_at),
                     checksum_sha256: Ok(value.checksum_sha256),
                     content_type: Ok(value.content_type),
                     created_at: Ok(value.created_at),
@@ -23915,6 +27999,10 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct AssignRepoRequest {
+            replication_filter: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
             replication_mode: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -23929,6 +28017,7 @@ pub mod types {
         impl ::std::default::Default for AssignRepoRequest {
             fn default() -> Self {
                 Self {
+                    replication_filter: Err("no value supplied for replication_filter".to_string()),
                     replication_mode: Ok(Default::default()),
                     replication_schedule: Ok(Default::default()),
                     repository_id: Err("no value supplied for repository_id".to_string()),
@@ -23937,6 +28026,18 @@ pub mod types {
             }
         }
         impl AssignRepoRequest {
+            pub fn replication_filter<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.replication_filter = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for replication_filter: {e}")
+                });
+                self
+            }
             pub fn replication_mode<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
@@ -23984,6 +28085,7 @@ pub mod types {
                 value: AssignRepoRequest,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    replication_filter: value.replication_filter?,
                     replication_mode: value.replication_mode?,
                     replication_schedule: value.replication_schedule?,
                     repository_id: value.repository_id?,
@@ -23994,6 +28096,7 @@ pub mod types {
         impl ::std::convert::From<super::AssignRepoRequest> for AssignRepoRequest {
             fn from(value: super::AssignRepoRequest) -> Self {
                 Self {
+                    replication_filter: Ok(value.replication_filter),
                     replication_mode: Ok(value.replication_mode),
                     replication_schedule: Ok(value.replication_schedule),
                     repository_id: Ok(value.repository_id),
@@ -24038,6 +28141,74 @@ pub mod types {
             fn from(value: super::AssignRoleRequest) -> Self {
                 Self {
                     role_id: Ok(value.role_id),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct AuthConfig {
+            ldap_enabled: ::std::result::Result<bool, ::std::string::String>,
+            oidc_enabled: ::std::result::Result<bool, ::std::string::String>,
+            sso_enabled: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for AuthConfig {
+            fn default() -> Self {
+                Self {
+                    ldap_enabled: Err("no value supplied for ldap_enabled".to_string()),
+                    oidc_enabled: Err("no value supplied for oidc_enabled".to_string()),
+                    sso_enabled: Err("no value supplied for sso_enabled".to_string()),
+                }
+            }
+        }
+        impl AuthConfig {
+            pub fn ldap_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.ldap_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for ldap_enabled: {e}"));
+                self
+            }
+            pub fn oidc_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.oidc_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for oidc_enabled: {e}"));
+                self
+            }
+            pub fn sso_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.sso_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for sso_enabled: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AuthConfig> for super::AuthConfig {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AuthConfig,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    ldap_enabled: value.ldap_enabled?,
+                    oidc_enabled: value.oidc_enabled?,
+                    sso_enabled: value.sso_enabled?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AuthConfig> for AuthConfig {
+            fn from(value: super::AuthConfig) -> Self {
+                Self {
+                    ldap_enabled: Ok(value.ldap_enabled),
+                    oidc_enabled: Ok(value.oidc_enabled),
+                    sso_enabled: Ok(value.sso_enabled),
                 }
             }
         }
@@ -25641,7 +29812,10 @@ pub mod types {
             >,
             skip_policy_check:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
-            target_repository: ::std::result::Result<::std::string::String, ::std::string::String>,
+            target_repository: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
         }
         impl ::std::default::Default for BulkPromoteRequest {
             fn default() -> Self {
@@ -25649,7 +29823,7 @@ pub mod types {
                     artifact_ids: Err("no value supplied for artifact_ids".to_string()),
                     notes: Ok(Default::default()),
                     skip_policy_check: Ok(Default::default()),
-                    target_repository: Err("no value supplied for target_repository".to_string()),
+                    target_repository: Ok(Default::default()),
                 }
             }
         }
@@ -25686,7 +29860,7 @@ pub mod types {
             }
             pub fn target_repository<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::string::String>,
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.target_repository = value.try_into().map_err(|e| {
@@ -27076,6 +31250,487 @@ pub mod types {
                     chunk_index: Ok(value.chunk_index),
                     chunks_completed: Ok(value.chunks_completed),
                     chunks_remaining: Ok(value.chunks_remaining),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CiOidcMappingResponse {
+            allowed_repo_ids: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::uuid::Uuid>>,
+                ::std::string::String,
+            >,
+            claim_filters: ::std::result::Result<::serde_json::Value, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            is_enabled: ::std::result::Result<bool, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            priority: ::std::result::Result<i32, ::std::string::String>,
+            provider_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for CiOidcMappingResponse {
+            fn default() -> Self {
+                Self {
+                    allowed_repo_ids: Ok(Default::default()),
+                    claim_filters: Err("no value supplied for claim_filters".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    is_enabled: Err("no value supplied for is_enabled".to_string()),
+                    name: Err("no value supplied for name".to_string()),
+                    priority: Err("no value supplied for priority".to_string()),
+                    provider_id: Err("no value supplied for provider_id".to_string()),
+                    updated_at: Err("no value supplied for updated_at".to_string()),
+                }
+            }
+        }
+        impl CiOidcMappingResponse {
+            pub fn allowed_repo_ids<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::vec::Vec<::uuid::Uuid>>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allowed_repo_ids = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allowed_repo_ids: {e}")
+                });
+                self
+            }
+            pub fn claim_filters<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::serde_json::Value>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.claim_filters = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for claim_filters: {e}"));
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+            pub fn provider_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.provider_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for provider_id: {e}"));
+                self
+            }
+            pub fn updated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.updated_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CiOidcMappingResponse> for super::CiOidcMappingResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CiOidcMappingResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    allowed_repo_ids: value.allowed_repo_ids?,
+                    claim_filters: value.claim_filters?,
+                    created_at: value.created_at?,
+                    id: value.id?,
+                    is_enabled: value.is_enabled?,
+                    name: value.name?,
+                    priority: value.priority?,
+                    provider_id: value.provider_id?,
+                    updated_at: value.updated_at?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CiOidcMappingResponse> for CiOidcMappingResponse {
+            fn from(value: super::CiOidcMappingResponse) -> Self {
+                Self {
+                    allowed_repo_ids: Ok(value.allowed_repo_ids),
+                    claim_filters: Ok(value.claim_filters),
+                    created_at: Ok(value.created_at),
+                    id: Ok(value.id),
+                    is_enabled: Ok(value.is_enabled),
+                    name: Ok(value.name),
+                    priority: Ok(value.priority),
+                    provider_id: Ok(value.provider_id),
+                    updated_at: Ok(value.updated_at),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CiOidcProviderResponse {
+            audience: ::std::result::Result<::std::string::String, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            is_enabled: ::std::result::Result<bool, ::std::string::String>,
+            issuer_url: ::std::result::Result<::std::string::String, ::std::string::String>,
+            mapping_count: ::std::result::Result<i64, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            provider_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for CiOidcProviderResponse {
+            fn default() -> Self {
+                Self {
+                    audience: Err("no value supplied for audience".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    is_enabled: Err("no value supplied for is_enabled".to_string()),
+                    issuer_url: Err("no value supplied for issuer_url".to_string()),
+                    mapping_count: Err("no value supplied for mapping_count".to_string()),
+                    name: Err("no value supplied for name".to_string()),
+                    provider_type: Err("no value supplied for provider_type".to_string()),
+                    updated_at: Err("no value supplied for updated_at".to_string()),
+                }
+            }
+        }
+        impl CiOidcProviderResponse {
+            pub fn audience<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.audience = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for audience: {e}"));
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn issuer_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.issuer_url = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for issuer_url: {e}"));
+                self
+            }
+            pub fn mapping_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.mapping_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for mapping_count: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn provider_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.provider_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for provider_type: {e}"));
+                self
+            }
+            pub fn updated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.updated_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CiOidcProviderResponse> for super::CiOidcProviderResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CiOidcProviderResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    audience: value.audience?,
+                    created_at: value.created_at?,
+                    id: value.id?,
+                    is_enabled: value.is_enabled?,
+                    issuer_url: value.issuer_url?,
+                    mapping_count: value.mapping_count?,
+                    name: value.name?,
+                    provider_type: value.provider_type?,
+                    updated_at: value.updated_at?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CiOidcProviderResponse> for CiOidcProviderResponse {
+            fn from(value: super::CiOidcProviderResponse) -> Self {
+                Self {
+                    audience: Ok(value.audience),
+                    created_at: Ok(value.created_at),
+                    id: Ok(value.id),
+                    is_enabled: Ok(value.is_enabled),
+                    issuer_url: Ok(value.issuer_url),
+                    mapping_count: Ok(value.mapping_count),
+                    name: Ok(value.name),
+                    provider_type: Ok(value.provider_type),
+                    updated_at: Ok(value.updated_at),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CiOidcToggleRequest {
+            enabled: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for CiOidcToggleRequest {
+            fn default() -> Self {
+                Self {
+                    enabled: Err("no value supplied for enabled".to_string()),
+                }
+            }
+        }
+        impl CiOidcToggleRequest {
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CiOidcToggleRequest> for super::CiOidcToggleRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CiOidcToggleRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    enabled: value.enabled?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CiOidcToggleRequest> for CiOidcToggleRequest {
+            fn from(value: super::CiOidcToggleRequest) -> Self {
+                Self {
+                    enabled: Ok(value.enabled),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CiTokenRequest {
+            provider_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+        }
+        impl ::std::default::Default for CiTokenRequest {
+            fn default() -> Self {
+                Self {
+                    provider_id: Err("no value supplied for provider_id".to_string()),
+                }
+            }
+        }
+        impl CiTokenRequest {
+            pub fn provider_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.provider_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for provider_id: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CiTokenRequest> for super::CiTokenRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CiTokenRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    provider_id: value.provider_id?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CiTokenRequest> for CiTokenRequest {
+            fn from(value: super::CiTokenRequest) -> Self {
+                Self {
+                    provider_id: Ok(value.provider_id),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CiTokenResponse {
+            access_token: ::std::result::Result<::std::string::String, ::std::string::String>,
+            expires_in: ::std::result::Result<i64, ::std::string::String>,
+            token_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+            username: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for CiTokenResponse {
+            fn default() -> Self {
+                Self {
+                    access_token: Err("no value supplied for access_token".to_string()),
+                    expires_in: Err("no value supplied for expires_in".to_string()),
+                    token_type: Err("no value supplied for token_type".to_string()),
+                    username: Err("no value supplied for username".to_string()),
+                }
+            }
+        }
+        impl CiTokenResponse {
+            pub fn access_token<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.access_token = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for access_token: {e}"));
+                self
+            }
+            pub fn expires_in<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.expires_in = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for expires_in: {e}"));
+                self
+            }
+            pub fn token_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.token_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for token_type: {e}"));
+                self
+            }
+            pub fn username<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.username = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for username: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CiTokenResponse> for super::CiTokenResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CiTokenResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    access_token: value.access_token?,
+                    expires_in: value.expires_in?,
+                    token_type: value.token_type?,
+                    username: value.username?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CiTokenResponse> for CiTokenResponse {
+            fn from(value: super::CiTokenResponse) -> Self {
+                Self {
+                    access_token: Ok(value.access_token),
+                    expires_in: Ok(value.expires_in),
+                    token_type: Ok(value.token_type),
+                    username: Ok(value.username),
                 }
             }
         }
@@ -28703,6 +33358,207 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct CreateCiOidcMappingRequest {
+            allowed_repo_ids: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::uuid::Uuid>>,
+                ::std::string::String,
+            >,
+            claim_filters: ::std::result::Result<::serde_json::Value, ::std::string::String>,
+            is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            priority: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+        }
+        impl ::std::default::Default for CreateCiOidcMappingRequest {
+            fn default() -> Self {
+                Self {
+                    allowed_repo_ids: Ok(Default::default()),
+                    claim_filters: Err("no value supplied for claim_filters".to_string()),
+                    is_enabled: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    priority: Ok(Default::default()),
+                }
+            }
+        }
+        impl CreateCiOidcMappingRequest {
+            pub fn allowed_repo_ids<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::vec::Vec<::uuid::Uuid>>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allowed_repo_ids = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allowed_repo_ids: {e}")
+                });
+                self
+            }
+            pub fn claim_filters<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::serde_json::Value>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.claim_filters = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for claim_filters: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateCiOidcMappingRequest> for super::CreateCiOidcMappingRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateCiOidcMappingRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    allowed_repo_ids: value.allowed_repo_ids?,
+                    claim_filters: value.claim_filters?,
+                    is_enabled: value.is_enabled?,
+                    name: value.name?,
+                    priority: value.priority?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateCiOidcMappingRequest> for CreateCiOidcMappingRequest {
+            fn from(value: super::CreateCiOidcMappingRequest) -> Self {
+                Self {
+                    allowed_repo_ids: Ok(value.allowed_repo_ids),
+                    claim_filters: Ok(value.claim_filters),
+                    is_enabled: Ok(value.is_enabled),
+                    name: Ok(value.name),
+                    priority: Ok(value.priority),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CreateCiOidcProviderRequest {
+            audience: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            issuer_url: ::std::result::Result<::std::string::String, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            provider_type: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for CreateCiOidcProviderRequest {
+            fn default() -> Self {
+                Self {
+                    audience: Ok(Default::default()),
+                    is_enabled: Ok(Default::default()),
+                    issuer_url: Err("no value supplied for issuer_url".to_string()),
+                    name: Err("no value supplied for name".to_string()),
+                    provider_type: Ok(Default::default()),
+                }
+            }
+        }
+        impl CreateCiOidcProviderRequest {
+            pub fn audience<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.audience = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for audience: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn issuer_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.issuer_url = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for issuer_url: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn provider_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.provider_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for provider_type: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateCiOidcProviderRequest> for super::CreateCiOidcProviderRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateCiOidcProviderRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    audience: value.audience?,
+                    is_enabled: value.is_enabled?,
+                    issuer_url: value.issuer_url?,
+                    name: value.name?,
+                    provider_type: value.provider_type?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateCiOidcProviderRequest> for CreateCiOidcProviderRequest {
+            fn from(value: super::CreateCiOidcProviderRequest) -> Self {
+                Self {
+                    audience: Ok(value.audience),
+                    is_enabled: Ok(value.is_enabled),
+                    issuer_url: Ok(value.issuer_url),
+                    name: Ok(value.name),
+                    provider_type: Ok(value.provider_type),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct CreateConnectionRequest {
             auth_type: ::std::result::Result<::std::string::String, ::std::string::String>,
             credentials: ::std::result::Result<super::ConnectionCredentials, ::std::string::String>,
@@ -28798,6 +33654,84 @@ pub mod types {
                     name: Ok(value.name),
                     source_type: Ok(value.source_type),
                     url: Ok(value.url),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CreateEmailSubscriptionRequest {
+            enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            event_types: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            recipients: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for CreateEmailSubscriptionRequest {
+            fn default() -> Self {
+                Self {
+                    enabled: Ok(Default::default()),
+                    event_types: Err("no value supplied for event_types".to_string()),
+                    recipients: Err("no value supplied for recipients".to_string()),
+                }
+            }
+        }
+        impl CreateEmailSubscriptionRequest {
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn event_types<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.event_types = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for event_types: {e}"));
+                self
+            }
+            pub fn recipients<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.recipients = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for recipients: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateEmailSubscriptionRequest>
+            for super::CreateEmailSubscriptionRequest
+        {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateEmailSubscriptionRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    enabled: value.enabled?,
+                    event_types: value.event_types?,
+                    recipients: value.recipients?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateEmailSubscriptionRequest>
+            for CreateEmailSubscriptionRequest
+        {
+            fn from(value: super::CreateEmailSubscriptionRequest) -> Self {
+                Self {
+                    enabled: Ok(value.enabled),
+                    event_types: Ok(value.event_types),
+                    recipients: Ok(value.recipients),
                 }
             }
         }
@@ -29650,6 +34584,8 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct CreateOidcConfigRequest {
+            allow_legacy_rsa_keys:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             attribute_mapping: ::std::result::Result<
                 ::std::option::Option<
                     ::serde_json::Map<::std::string::String, ::serde_json::Value>,
@@ -29662,7 +34598,10 @@ pub mod types {
             client_secret: ::std::result::Result<::std::string::String, ::std::string::String>,
             is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             issuer_url: ::std::result::Result<::std::string::String, ::std::string::String>,
+            map_groups_to_groups:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            pkce_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             scopes: ::std::result::Result<
                 ::std::option::Option<::std::vec::Vec<::std::string::String>>,
                 ::std::string::String,
@@ -29671,18 +34610,31 @@ pub mod types {
         impl ::std::default::Default for CreateOidcConfigRequest {
             fn default() -> Self {
                 Self {
+                    allow_legacy_rsa_keys: Ok(Default::default()),
                     attribute_mapping: Ok(Default::default()),
                     auto_create_users: Ok(Default::default()),
                     client_id: Err("no value supplied for client_id".to_string()),
                     client_secret: Err("no value supplied for client_secret".to_string()),
                     is_enabled: Ok(Default::default()),
                     issuer_url: Err("no value supplied for issuer_url".to_string()),
+                    map_groups_to_groups: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
+                    pkce_enabled: Ok(Default::default()),
                     scopes: Ok(Default::default()),
                 }
             }
         }
         impl CreateOidcConfigRequest {
+            pub fn allow_legacy_rsa_keys<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allow_legacy_rsa_keys = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allow_legacy_rsa_keys: {e}")
+                });
+                self
+            }
             pub fn attribute_mapping<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
@@ -29747,6 +34699,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for issuer_url: {e}"));
                 self
             }
+            pub fn map_groups_to_groups<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.map_groups_to_groups = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for map_groups_to_groups: {e}")
+                });
+                self
+            }
             pub fn name<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -29755,6 +34717,16 @@ pub mod types {
                 self.name = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn pkce_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.pkce_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for pkce_enabled: {e}"));
                 self
             }
             pub fn scopes<T>(mut self, value: T) -> Self
@@ -29776,13 +34748,16 @@ pub mod types {
                 value: CreateOidcConfigRequest,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    allow_legacy_rsa_keys: value.allow_legacy_rsa_keys?,
                     attribute_mapping: value.attribute_mapping?,
                     auto_create_users: value.auto_create_users?,
                     client_id: value.client_id?,
                     client_secret: value.client_secret?,
                     is_enabled: value.is_enabled?,
                     issuer_url: value.issuer_url?,
+                    map_groups_to_groups: value.map_groups_to_groups?,
                     name: value.name?,
+                    pkce_enabled: value.pkce_enabled?,
                     scopes: value.scopes?,
                 })
             }
@@ -29790,13 +34765,16 @@ pub mod types {
         impl ::std::convert::From<super::CreateOidcConfigRequest> for CreateOidcConfigRequest {
             fn from(value: super::CreateOidcConfigRequest) -> Self {
                 Self {
+                    allow_legacy_rsa_keys: Ok(value.allow_legacy_rsa_keys),
                     attribute_mapping: Ok(value.attribute_mapping),
                     auto_create_users: Ok(value.auto_create_users),
                     client_id: Ok(value.client_id),
                     client_secret: Ok(value.client_secret),
                     is_enabled: Ok(value.is_enabled),
                     issuer_url: Ok(value.issuer_url),
+                    map_groups_to_groups: Ok(value.map_groups_to_groups),
                     name: Ok(value.name),
+                    pkce_enabled: Ok(value.pkce_enabled),
                     scopes: Ok(value.scopes),
                 }
             }
@@ -29903,7 +34881,8 @@ pub mod types {
         #[derive(Clone, Debug)]
         pub struct CreatePolicyRequest {
             block_on_fail: ::std::result::Result<bool, ::std::string::String>,
-            block_unscanned: ::std::result::Result<bool, ::std::string::String>,
+            block_unscanned:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             max_artifact_age_days:
                 ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             max_severity: ::std::result::Result<::std::string::String, ::std::string::String>,
@@ -29919,7 +34898,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     block_on_fail: Err("no value supplied for block_on_fail".to_string()),
-                    block_unscanned: Err("no value supplied for block_unscanned".to_string()),
+                    block_unscanned: Ok(Default::default()),
                     max_artifact_age_days: Ok(Default::default()),
                     max_severity: Err("no value supplied for max_severity".to_string()),
                     min_staging_hours: Ok(Default::default()),
@@ -29942,7 +34921,7 @@ pub mod types {
             }
             pub fn block_unscanned<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<bool>,
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.block_unscanned = value.try_into().map_err(|e| {
@@ -30043,7 +35022,180 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct CreateRepoTokenRequest {
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            expires_in_days:
+                ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            scopes: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for CreateRepoTokenRequest {
+            fn default() -> Self {
+                Self {
+                    description: Ok(Default::default()),
+                    expires_in_days: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    scopes: Err("no value supplied for scopes".to_string()),
+                }
+            }
+        }
+        impl CreateRepoTokenRequest {
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn expires_in_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.expires_in_days = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for expires_in_days: {e}")
+                });
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn scopes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.scopes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for scopes: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateRepoTokenRequest> for super::CreateRepoTokenRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateRepoTokenRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    description: value.description?,
+                    expires_in_days: value.expires_in_days?,
+                    name: value.name?,
+                    scopes: value.scopes?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateRepoTokenRequest> for CreateRepoTokenRequest {
+            fn from(value: super::CreateRepoTokenRequest) -> Self {
+                Self {
+                    description: Ok(value.description),
+                    expires_in_days: Ok(value.expires_in_days),
+                    name: Ok(value.name),
+                    scopes: Ok(value.scopes),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CreateRepoTokenResponse {
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            token: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for CreateRepoTokenResponse {
+            fn default() -> Self {
+                Self {
+                    id: Err("no value supplied for id".to_string()),
+                    name: Err("no value supplied for name".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                    token: Err("no value supplied for token".to_string()),
+                }
+            }
+        }
+        impl CreateRepoTokenResponse {
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn token<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.token = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for token: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateRepoTokenResponse> for super::CreateRepoTokenResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateRepoTokenResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    id: value.id?,
+                    name: value.name?,
+                    repository_key: value.repository_key?,
+                    token: value.token?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateRepoTokenResponse> for CreateRepoTokenResponse {
+            fn from(value: super::CreateRepoTokenResponse) -> Self {
+                Self {
+                    id: Ok(value.id),
+                    name: Ok(value.name),
+                    repository_key: Ok(value.repository_key),
+                    token: Ok(value.token),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct CreateRepositoryRequest {
+            allow_anonymous_access:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             description: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -30064,6 +35216,12 @@ pub mod types {
                 ::std::string::String,
             >,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            promotion_only:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            pypi_upstream_index_path: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             repo_type: ::std::result::Result<::std::string::String, ::std::string::String>,
             storage_backend: ::std::result::Result<
@@ -30090,6 +35248,7 @@ pub mod types {
         impl ::std::default::Default for CreateRepositoryRequest {
             fn default() -> Self {
                 Self {
+                    allow_anonymous_access: Ok(Default::default()),
                     description: Ok(Default::default()),
                     format: Err("no value supplied for format".to_string()),
                     format_key: Ok(Default::default()),
@@ -30098,6 +35257,8 @@ pub mod types {
                     key: Err("no value supplied for key".to_string()),
                     member_repos: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
+                    promotion_only: Ok(Default::default()),
+                    pypi_upstream_index_path: Ok(Default::default()),
                     quota_bytes: Ok(Default::default()),
                     repo_type: Err("no value supplied for repo_type".to_string()),
                     storage_backend: Ok(Default::default()),
@@ -30109,6 +35270,16 @@ pub mod types {
             }
         }
         impl CreateRepositoryRequest {
+            pub fn allow_anonymous_access<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allow_anonymous_access = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allow_anonymous_access: {e}")
+                });
+                self
+            }
             pub fn description<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
@@ -30191,6 +35362,26 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
                 self
             }
+            pub fn promotion_only<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.promotion_only = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for promotion_only: {e}")
+                });
+                self
+            }
+            pub fn pypi_upstream_index_path<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.pypi_upstream_index_path = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for pypi_upstream_index_path: {e}")
+                });
+                self
+            }
             pub fn quota_bytes<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<i64>>,
@@ -30268,6 +35459,7 @@ pub mod types {
                 value: CreateRepositoryRequest,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    allow_anonymous_access: value.allow_anonymous_access?,
                     description: value.description?,
                     format: value.format?,
                     format_key: value.format_key?,
@@ -30276,6 +35468,8 @@ pub mod types {
                     key: value.key?,
                     member_repos: value.member_repos?,
                     name: value.name?,
+                    promotion_only: value.promotion_only?,
+                    pypi_upstream_index_path: value.pypi_upstream_index_path?,
                     quota_bytes: value.quota_bytes?,
                     repo_type: value.repo_type?,
                     storage_backend: value.storage_backend?,
@@ -30289,6 +35483,7 @@ pub mod types {
         impl ::std::convert::From<super::CreateRepositoryRequest> for CreateRepositoryRequest {
             fn from(value: super::CreateRepositoryRequest) -> Self {
                 Self {
+                    allow_anonymous_access: Ok(value.allow_anonymous_access),
                     description: Ok(value.description),
                     format: Ok(value.format),
                     format_key: Ok(value.format_key),
@@ -30297,6 +35492,8 @@ pub mod types {
                     key: Ok(value.key),
                     member_repos: Ok(value.member_repos),
                     name: Ok(value.name),
+                    promotion_only: Ok(value.promotion_only),
+                    pypi_upstream_index_path: Ok(value.pypi_upstream_index_path),
                     quota_bytes: Ok(value.quota_bytes),
                     repo_type: Ok(value.repo_type),
                     storage_backend: Ok(value.storage_backend),
@@ -30532,6 +35729,8 @@ pub mod types {
                 ::std::string::String,
             >,
             sso_url: ::std::result::Result<::std::string::String, ::std::string::String>,
+            use_absolute_acs_url:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for CreateSamlConfigRequest {
             fn default() -> Self {
@@ -30548,6 +35747,7 @@ pub mod types {
                     slo_url: Ok(Default::default()),
                     sp_entity_id: Ok(Default::default()),
                     sso_url: Err("no value supplied for sso_url".to_string()),
+                    use_absolute_acs_url: Ok(Default::default()),
                 }
             }
         }
@@ -30676,6 +35876,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for sso_url: {e}"));
                 self
             }
+            pub fn use_absolute_acs_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.use_absolute_acs_url = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for use_absolute_acs_url: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<CreateSamlConfigRequest> for super::CreateSamlConfigRequest {
             type Error = super::error::ConversionError;
@@ -30695,6 +35905,7 @@ pub mod types {
                     slo_url: value.slo_url?,
                     sp_entity_id: value.sp_entity_id?,
                     sso_url: value.sso_url?,
+                    use_absolute_acs_url: value.use_absolute_acs_url?,
                 })
             }
         }
@@ -30713,6 +35924,7 @@ pub mod types {
                     slo_url: Ok(value.slo_url),
                     sp_entity_id: Ok(value.sp_entity_id),
                     sso_url: Ok(value.sso_url),
+                    use_absolute_acs_url: Ok(value.use_absolute_acs_url),
                 }
             }
         }
@@ -30775,11 +35987,39 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct CreateSessionRequest {
+            artifact_metadata: ::std::result::Result<
+                ::std::option::Option<::serde_json::Value>,
+                ::std::string::String,
+            >,
+            artifact_metadata_format: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            artifact_metadata_properties: ::std::result::Result<
+                ::std::option::Option<::serde_json::Value>,
+                ::std::string::String,
+            >,
+            artifact_name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             artifact_path: ::std::result::Result<::std::string::String, ::std::string::String>,
+            artifact_version: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             checksum_sha256: ::std::result::Result<::std::string::String, ::std::string::String>,
             chunk_size: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             content_type: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            package_description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            package_metadata: ::std::result::Result<
+                ::std::option::Option<::serde_json::Value>,
                 ::std::string::String,
             >,
             repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
@@ -30788,16 +36028,63 @@ pub mod types {
         impl ::std::default::Default for CreateSessionRequest {
             fn default() -> Self {
                 Self {
+                    artifact_metadata: Ok(Default::default()),
+                    artifact_metadata_format: Ok(Default::default()),
+                    artifact_metadata_properties: Ok(Default::default()),
+                    artifact_name: Ok(Default::default()),
                     artifact_path: Err("no value supplied for artifact_path".to_string()),
+                    artifact_version: Ok(Default::default()),
                     checksum_sha256: Err("no value supplied for checksum_sha256".to_string()),
                     chunk_size: Ok(Default::default()),
                     content_type: Ok(Default::default()),
+                    package_description: Ok(Default::default()),
+                    package_metadata: Ok(Default::default()),
                     repository_key: Err("no value supplied for repository_key".to_string()),
                     total_size: Err("no value supplied for total_size".to_string()),
                 }
             }
         }
         impl CreateSessionRequest {
+            pub fn artifact_metadata<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::serde_json::Value>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_metadata = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifact_metadata: {e}")
+                });
+                self
+            }
+            pub fn artifact_metadata_format<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_metadata_format = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifact_metadata_format: {e}")
+                });
+                self
+            }
+            pub fn artifact_metadata_properties<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::serde_json::Value>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_metadata_properties = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifact_metadata_properties: {e}")
+                });
+                self
+            }
+            pub fn artifact_name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_name: {e}"));
+                self
+            }
             pub fn artifact_path<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -30806,6 +36093,16 @@ pub mod types {
                 self.artifact_path = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for artifact_path: {e}"));
+                self
+            }
+            pub fn artifact_version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_version = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifact_version: {e}")
+                });
                 self
             }
             pub fn checksum_sha256<T>(mut self, value: T) -> Self
@@ -30838,6 +36135,26 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for content_type: {e}"));
                 self
             }
+            pub fn package_description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_description = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for package_description: {e}")
+                });
+                self
+            }
+            pub fn package_metadata<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::serde_json::Value>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_metadata = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for package_metadata: {e}")
+                });
+                self
+            }
             pub fn repository_key<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -30865,10 +36182,17 @@ pub mod types {
                 value: CreateSessionRequest,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    artifact_metadata: value.artifact_metadata?,
+                    artifact_metadata_format: value.artifact_metadata_format?,
+                    artifact_metadata_properties: value.artifact_metadata_properties?,
+                    artifact_name: value.artifact_name?,
                     artifact_path: value.artifact_path?,
+                    artifact_version: value.artifact_version?,
                     checksum_sha256: value.checksum_sha256?,
                     chunk_size: value.chunk_size?,
                     content_type: value.content_type?,
+                    package_description: value.package_description?,
+                    package_metadata: value.package_metadata?,
                     repository_key: value.repository_key?,
                     total_size: value.total_size?,
                 })
@@ -30877,10 +36201,17 @@ pub mod types {
         impl ::std::convert::From<super::CreateSessionRequest> for CreateSessionRequest {
             fn from(value: super::CreateSessionRequest) -> Self {
                 Self {
+                    artifact_metadata: Ok(value.artifact_metadata),
+                    artifact_metadata_format: Ok(value.artifact_metadata_format),
+                    artifact_metadata_properties: Ok(value.artifact_metadata_properties),
+                    artifact_name: Ok(value.artifact_name),
                     artifact_path: Ok(value.artifact_path),
+                    artifact_version: Ok(value.artifact_version),
                     checksum_sha256: Ok(value.checksum_sha256),
                     chunk_size: Ok(value.chunk_size),
                     content_type: Ok(value.content_type),
+                    package_description: Ok(value.package_description),
+                    package_metadata: Ok(value.package_metadata),
                     repository_key: Ok(value.repository_key),
                     total_size: Ok(value.total_size),
                 }
@@ -30979,6 +36310,10 @@ pub mod types {
                 ::std::string::String,
             >,
             enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            filter: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             peer_selector: ::std::result::Result<
                 ::serde_json::Map<::std::string::String, ::serde_json::Value>,
@@ -31001,6 +36336,7 @@ pub mod types {
                     artifact_filter: Ok(Default::default()),
                     description: Ok(Default::default()),
                     enabled: Ok(Default::default()),
+                    filter: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
                     peer_selector: Ok(Default::default()),
                     precedence: Ok(Default::default()),
@@ -31041,6 +36377,16 @@ pub mod types {
                 self.enabled = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn filter<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.filter = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for filter: {e}"));
                 self
             }
             pub fn name<T>(mut self, value: T) -> Self
@@ -31117,6 +36463,7 @@ pub mod types {
                     artifact_filter: value.artifact_filter?,
                     description: value.description?,
                     enabled: value.enabled?,
+                    filter: value.filter?,
                     name: value.name?,
                     peer_selector: value.peer_selector?,
                     precedence: value.precedence?,
@@ -31132,6 +36479,7 @@ pub mod types {
                     artifact_filter: Ok(value.artifact_filter),
                     description: Ok(value.description),
                     enabled: Ok(value.enabled),
+                    filter: Ok(value.filter),
                     name: Ok(value.name),
                     peer_selector: Ok(value.peer_selector),
                     precedence: Ok(value.precedence),
@@ -31610,6 +36958,10 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct CreateWebhookRequest {
+            event_schema_version: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             events: ::std::result::Result<
                 ::std::vec::Vec<::std::string::String>,
                 ::std::string::String,
@@ -31621,6 +36973,10 @@ pub mod types {
                 ::std::string::String,
             >,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            payload_template: ::std::result::Result<
+                ::std::option::Option<super::PayloadTemplate>,
+                ::std::string::String,
+            >,
             repository_id:
                 ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
             secret: ::std::result::Result<
@@ -31632,9 +36988,11 @@ pub mod types {
         impl ::std::default::Default for CreateWebhookRequest {
             fn default() -> Self {
                 Self {
+                    event_schema_version: Ok(Default::default()),
                     events: Err("no value supplied for events".to_string()),
                     headers: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
+                    payload_template: Ok(Default::default()),
                     repository_id: Ok(Default::default()),
                     secret: Ok(Default::default()),
                     url: Err("no value supplied for url".to_string()),
@@ -31642,6 +37000,16 @@ pub mod types {
             }
         }
         impl CreateWebhookRequest {
+            pub fn event_schema_version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.event_schema_version = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for event_schema_version: {e}")
+                });
+                self
+            }
             pub fn events<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
@@ -31674,6 +37042,16 @@ pub mod types {
                 self.name = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn payload_template<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::PayloadTemplate>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.payload_template = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for payload_template: {e}")
+                });
                 self
             }
             pub fn repository_id<T>(mut self, value: T) -> Self
@@ -31713,9 +37091,11 @@ pub mod types {
                 value: CreateWebhookRequest,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    event_schema_version: value.event_schema_version?,
                     events: value.events?,
                     headers: value.headers?,
                     name: value.name?,
+                    payload_template: value.payload_template?,
                     repository_id: value.repository_id?,
                     secret: value.secret?,
                     url: value.url?,
@@ -31725,9 +37105,11 @@ pub mod types {
         impl ::std::convert::From<super::CreateWebhookRequest> for CreateWebhookRequest {
             fn from(value: super::CreateWebhookRequest) -> Self {
                 Self {
+                    event_schema_version: Ok(value.event_schema_version),
                     events: Ok(value.events),
                     headers: Ok(value.headers),
                     name: Ok(value.name),
+                    payload_template: Ok(value.payload_template),
                     repository_id: Ok(value.repository_id),
                     secret: Ok(value.secret),
                     url: Ok(value.url),
@@ -31983,6 +37365,267 @@ pub mod types {
                     target_id: Ok(value.target_id),
                     target_type: Ok(value.target_type),
                     updated_at: Ok(value.updated_at),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CurationCreateRuleRequest {
+            action: ::std::result::Result<::std::string::String, ::std::string::String>,
+            architecture: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            package_pattern: ::std::result::Result<::std::string::String, ::std::string::String>,
+            priority: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            reason: ::std::result::Result<::std::string::String, ::std::string::String>,
+            staging_repo_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            version_constraint: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for CurationCreateRuleRequest {
+            fn default() -> Self {
+                Self {
+                    action: Err("no value supplied for action".to_string()),
+                    architecture: Ok(Default::default()),
+                    package_pattern: Err("no value supplied for package_pattern".to_string()),
+                    priority: Ok(Default::default()),
+                    reason: Err("no value supplied for reason".to_string()),
+                    staging_repo_id: Ok(Default::default()),
+                    version_constraint: Ok(Default::default()),
+                }
+            }
+        }
+        impl CurationCreateRuleRequest {
+            pub fn action<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.action = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for action: {e}"));
+                self
+            }
+            pub fn architecture<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.architecture = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for architecture: {e}"));
+                self
+            }
+            pub fn package_pattern<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_pattern = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for package_pattern: {e}")
+                });
+                self
+            }
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+            pub fn reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reason = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reason: {e}"));
+                self
+            }
+            pub fn staging_repo_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.staging_repo_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for staging_repo_id: {e}")
+                });
+                self
+            }
+            pub fn version_constraint<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.version_constraint = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for version_constraint: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CurationCreateRuleRequest> for super::CurationCreateRuleRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CurationCreateRuleRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    action: value.action?,
+                    architecture: value.architecture?,
+                    package_pattern: value.package_pattern?,
+                    priority: value.priority?,
+                    reason: value.reason?,
+                    staging_repo_id: value.staging_repo_id?,
+                    version_constraint: value.version_constraint?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CurationCreateRuleRequest> for CurationCreateRuleRequest {
+            fn from(value: super::CurationCreateRuleRequest) -> Self {
+                Self {
+                    action: Ok(value.action),
+                    architecture: Ok(value.architecture),
+                    package_pattern: Ok(value.package_pattern),
+                    priority: Ok(value.priority),
+                    reason: Ok(value.reason),
+                    staging_repo_id: Ok(value.staging_repo_id),
+                    version_constraint: Ok(value.version_constraint),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct CurationUpdateRuleRequest {
+            action: ::std::result::Result<::std::string::String, ::std::string::String>,
+            architecture: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            package_pattern: ::std::result::Result<::std::string::String, ::std::string::String>,
+            priority: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            reason: ::std::result::Result<::std::string::String, ::std::string::String>,
+            version_constraint: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for CurationUpdateRuleRequest {
+            fn default() -> Self {
+                Self {
+                    action: Err("no value supplied for action".to_string()),
+                    architecture: Ok(Default::default()),
+                    enabled: Ok(Default::default()),
+                    package_pattern: Err("no value supplied for package_pattern".to_string()),
+                    priority: Ok(Default::default()),
+                    reason: Err("no value supplied for reason".to_string()),
+                    version_constraint: Ok(Default::default()),
+                }
+            }
+        }
+        impl CurationUpdateRuleRequest {
+            pub fn action<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.action = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for action: {e}"));
+                self
+            }
+            pub fn architecture<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.architecture = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for architecture: {e}"));
+                self
+            }
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn package_pattern<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_pattern = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for package_pattern: {e}")
+                });
+                self
+            }
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+            pub fn reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reason = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reason: {e}"));
+                self
+            }
+            pub fn version_constraint<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.version_constraint = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for version_constraint: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CurationUpdateRuleRequest> for super::CurationUpdateRuleRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CurationUpdateRuleRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    action: value.action?,
+                    architecture: value.architecture?,
+                    enabled: value.enabled?,
+                    package_pattern: value.package_pattern?,
+                    priority: value.priority?,
+                    reason: value.reason?,
+                    version_constraint: value.version_constraint?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CurationUpdateRuleRequest> for CurationUpdateRuleRequest {
+            fn from(value: super::CurationUpdateRuleRequest) -> Self {
+                Self {
+                    action: Ok(value.action),
+                    architecture: Ok(value.architecture),
+                    enabled: Ok(value.enabled),
+                    package_pattern: Ok(value.package_pattern),
+                    priority: Ok(value.priority),
+                    reason: Ok(value.reason),
+                    version_constraint: Ok(value.version_constraint),
                 }
             }
         }
@@ -32470,16 +38113,21 @@ pub mod types {
             acknowledged_cves: ::std::result::Result<i64, ::std::string::String>,
             avg_days_to_fix:
                 ::std::result::Result<::std::option::Option<f64>, ::std::string::String>,
+            critical: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             critical_count: ::std::result::Result<i64, ::std::string::String>,
             fixed_cves: ::std::result::Result<i64, ::std::string::String>,
+            high: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             high_count: ::std::result::Result<i64, ::std::string::String>,
+            low: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             low_count: ::std::result::Result<i64, ::std::string::String>,
+            medium: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             medium_count: ::std::result::Result<i64, ::std::string::String>,
             open_cves: ::std::result::Result<i64, ::std::string::String>,
             timeline: ::std::result::Result<
                 ::std::vec::Vec<super::CveTimelineEntry>,
                 ::std::string::String,
             >,
+            total: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             total_cves: ::std::result::Result<i64, ::std::string::String>,
         }
         impl ::std::default::Default for CveTrends {
@@ -32487,13 +38135,18 @@ pub mod types {
                 Self {
                     acknowledged_cves: Err("no value supplied for acknowledged_cves".to_string()),
                     avg_days_to_fix: Ok(Default::default()),
+                    critical: Ok(Default::default()),
                     critical_count: Err("no value supplied for critical_count".to_string()),
                     fixed_cves: Err("no value supplied for fixed_cves".to_string()),
+                    high: Ok(Default::default()),
                     high_count: Err("no value supplied for high_count".to_string()),
+                    low: Ok(Default::default()),
                     low_count: Err("no value supplied for low_count".to_string()),
+                    medium: Ok(Default::default()),
                     medium_count: Err("no value supplied for medium_count".to_string()),
                     open_cves: Err("no value supplied for open_cves".to_string()),
                     timeline: Err("no value supplied for timeline".to_string()),
+                    total: Ok(Default::default()),
                     total_cves: Err("no value supplied for total_cves".to_string()),
                 }
             }
@@ -32519,6 +38172,16 @@ pub mod types {
                 });
                 self
             }
+            pub fn critical<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.critical = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for critical: {e}"));
+                self
+            }
             pub fn critical_count<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<i64>,
@@ -32539,6 +38202,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for fixed_cves: {e}"));
                 self
             }
+            pub fn high<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.high = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for high: {e}"));
+                self
+            }
             pub fn high_count<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<i64>,
@@ -32549,6 +38222,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for high_count: {e}"));
                 self
             }
+            pub fn low<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.low = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for low: {e}"));
+                self
+            }
             pub fn low_count<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<i64>,
@@ -32557,6 +38240,16 @@ pub mod types {
                 self.low_count = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for low_count: {e}"));
+                self
+            }
+            pub fn medium<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.medium = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for medium: {e}"));
                 self
             }
             pub fn medium_count<T>(mut self, value: T) -> Self
@@ -32589,6 +38282,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for timeline: {e}"));
                 self
             }
+            pub fn total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total: {e}"));
+                self
+            }
             pub fn total_cves<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<i64>,
@@ -32608,13 +38311,18 @@ pub mod types {
                 Ok(Self {
                     acknowledged_cves: value.acknowledged_cves?,
                     avg_days_to_fix: value.avg_days_to_fix?,
+                    critical: value.critical?,
                     critical_count: value.critical_count?,
                     fixed_cves: value.fixed_cves?,
+                    high: value.high?,
                     high_count: value.high_count?,
+                    low: value.low?,
                     low_count: value.low_count?,
+                    medium: value.medium?,
                     medium_count: value.medium_count?,
                     open_cves: value.open_cves?,
                     timeline: value.timeline?,
+                    total: value.total?,
                     total_cves: value.total_cves?,
                 })
             }
@@ -32624,13 +38332,18 @@ pub mod types {
                 Self {
                     acknowledged_cves: Ok(value.acknowledged_cves),
                     avg_days_to_fix: Ok(value.avg_days_to_fix),
+                    critical: Ok(value.critical),
                     critical_count: Ok(value.critical_count),
                     fixed_cves: Ok(value.fixed_cves),
+                    high: Ok(value.high),
                     high_count: Ok(value.high_count),
+                    low: Ok(value.low),
                     low_count: Ok(value.low_count),
+                    medium: Ok(value.medium),
                     medium_count: Ok(value.medium_count),
                     open_cves: Ok(value.open_cves),
                     timeline: Ok(value.timeline),
+                    total: Ok(value.total),
                     total_cves: Ok(value.total_cves),
                 }
             }
@@ -33255,6 +38968,178 @@ pub mod types {
                     peer_id: Ok(value.peer_id),
                     region: Ok(value.region),
                     status: Ok(value.status),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct DockerTagResponse {
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            image: ::std::result::Result<::std::string::String, ::std::string::String>,
+            is_index: ::std::result::Result<bool, ::std::string::String>,
+            last_pushed_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            layer_count: ::std::result::Result<i32, ::std::string::String>,
+            manifest_digest: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            scan_status: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            tag: ::std::result::Result<::std::string::String, ::std::string::String>,
+            total_size_bytes: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for DockerTagResponse {
+            fn default() -> Self {
+                Self {
+                    id: Err("no value supplied for id".to_string()),
+                    image: Err("no value supplied for image".to_string()),
+                    is_index: Err("no value supplied for is_index".to_string()),
+                    last_pushed_at: Err("no value supplied for last_pushed_at".to_string()),
+                    layer_count: Err("no value supplied for layer_count".to_string()),
+                    manifest_digest: Err("no value supplied for manifest_digest".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                    scan_status: Ok(Default::default()),
+                    tag: Err("no value supplied for tag".to_string()),
+                    total_size_bytes: Err("no value supplied for total_size_bytes".to_string()),
+                }
+            }
+        }
+        impl DockerTagResponse {
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn image<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.image = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for image: {e}"));
+                self
+            }
+            pub fn is_index<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_index = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_index: {e}"));
+                self
+            }
+            pub fn last_pushed_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.last_pushed_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for last_pushed_at: {e}")
+                });
+                self
+            }
+            pub fn layer_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.layer_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for layer_count: {e}"));
+                self
+            }
+            pub fn manifest_digest<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.manifest_digest = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for manifest_digest: {e}")
+                });
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn scan_status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.scan_status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for scan_status: {e}"));
+                self
+            }
+            pub fn tag<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.tag = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for tag: {e}"));
+                self
+            }
+            pub fn total_size_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_size_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for total_size_bytes: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<DockerTagResponse> for super::DockerTagResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: DockerTagResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    id: value.id?,
+                    image: value.image?,
+                    is_index: value.is_index?,
+                    last_pushed_at: value.last_pushed_at?,
+                    layer_count: value.layer_count?,
+                    manifest_digest: value.manifest_digest?,
+                    repository_key: value.repository_key?,
+                    scan_status: value.scan_status?,
+                    tag: value.tag?,
+                    total_size_bytes: value.total_size_bytes?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::DockerTagResponse> for DockerTagResponse {
+            fn from(value: super::DockerTagResponse) -> Self {
+                Self {
+                    id: Ok(value.id),
+                    image: Ok(value.image),
+                    is_index: Ok(value.is_index),
+                    last_pushed_at: Ok(value.last_pushed_at),
+                    layer_count: Ok(value.layer_count),
+                    manifest_digest: Ok(value.manifest_digest),
+                    repository_key: Ok(value.repository_key),
+                    scan_status: Ok(value.scan_status),
+                    tag: Ok(value.tag),
+                    total_size_bytes: Ok(value.total_size_bytes),
                 }
             }
         }
@@ -35161,6 +41046,11 @@ pub mod types {
         #[derive(Clone, Debug)]
         pub struct DtStatusResponse {
             enabled: ::std::result::Result<bool, ::std::string::String>,
+            error_message: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            error_status: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             healthy: ::std::result::Result<bool, ::std::string::String>,
             url: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
@@ -35171,6 +41061,8 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     enabled: Err("no value supplied for enabled".to_string()),
+                    error_message: Ok(Default::default()),
+                    error_status: Ok(Default::default()),
                     healthy: Err("no value supplied for healthy".to_string()),
                     url: Ok(Default::default()),
                 }
@@ -35185,6 +41077,26 @@ pub mod types {
                 self.enabled = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn error_message<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.error_message = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for error_message: {e}"));
+                self
+            }
+            pub fn error_status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.error_status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for error_status: {e}"));
                 self
             }
             pub fn healthy<T>(mut self, value: T) -> Self
@@ -35215,6 +41127,8 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     enabled: value.enabled?,
+                    error_message: value.error_message?,
+                    error_status: value.error_status?,
                     healthy: value.healthy?,
                     url: value.url?,
                 })
@@ -35224,6 +41138,8 @@ pub mod types {
             fn from(value: super::DtStatusResponse) -> Self {
                 Self {
                     enabled: Ok(value.enabled),
+                    error_message: Ok(value.error_message),
+                    error_status: Ok(value.error_status),
                     healthy: Ok(value.healthy),
                     url: Ok(value.url),
                 }
@@ -35371,6 +41287,188 @@ pub mod types {
                     title: Ok(value.title),
                     uuid: Ok(value.uuid),
                     vuln_id: Ok(value.vuln_id),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct EmailSubscriptionListResponse {
+            subscriptions: ::std::result::Result<
+                ::std::vec::Vec<super::EmailSubscriptionResponse>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for EmailSubscriptionListResponse {
+            fn default() -> Self {
+                Self {
+                    subscriptions: Err("no value supplied for subscriptions".to_string()),
+                }
+            }
+        }
+        impl EmailSubscriptionListResponse {
+            pub fn subscriptions<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::EmailSubscriptionResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.subscriptions = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for subscriptions: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<EmailSubscriptionListResponse>
+            for super::EmailSubscriptionListResponse
+        {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: EmailSubscriptionListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    subscriptions: value.subscriptions?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::EmailSubscriptionListResponse> for EmailSubscriptionListResponse {
+            fn from(value: super::EmailSubscriptionListResponse) -> Self {
+                Self {
+                    subscriptions: Ok(value.subscriptions),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct EmailSubscriptionResponse {
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            enabled: ::std::result::Result<bool, ::std::string::String>,
+            event_types: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            recipients: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            repository_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for EmailSubscriptionResponse {
+            fn default() -> Self {
+                Self {
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    enabled: Err("no value supplied for enabled".to_string()),
+                    event_types: Err("no value supplied for event_types".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    recipients: Err("no value supplied for recipients".to_string()),
+                    repository_id: Ok(Default::default()),
+                    updated_at: Err("no value supplied for updated_at".to_string()),
+                }
+            }
+        }
+        impl EmailSubscriptionResponse {
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn event_types<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.event_types = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for event_types: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn recipients<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.recipients = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for recipients: {e}"));
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn updated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.updated_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<EmailSubscriptionResponse> for super::EmailSubscriptionResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: EmailSubscriptionResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    created_at: value.created_at?,
+                    enabled: value.enabled?,
+                    event_types: value.event_types?,
+                    id: value.id?,
+                    recipients: value.recipients?,
+                    repository_id: value.repository_id?,
+                    updated_at: value.updated_at?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::EmailSubscriptionResponse> for EmailSubscriptionResponse {
+            fn from(value: super::EmailSubscriptionResponse) -> Self {
+                Self {
+                    created_at: Ok(value.created_at),
+                    enabled: Ok(value.enabled),
+                    event_types: Ok(value.event_types),
+                    id: Ok(value.id),
+                    recipients: Ok(value.recipients),
+                    repository_id: Ok(value.repository_id),
+                    updated_at: Ok(value.updated_at),
                 }
             }
         }
@@ -36188,6 +42286,46 @@ pub mod types {
                     source: Ok(value.source),
                     source_url: Ok(value.source_url),
                     title: Ok(value.title),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ForcePasswordChangeResponse {
+            message: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for ForcePasswordChangeResponse {
+            fn default() -> Self {
+                Self {
+                    message: Err("no value supplied for message".to_string()),
+                }
+            }
+        }
+        impl ForcePasswordChangeResponse {
+            pub fn message<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.message = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for message: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ForcePasswordChangeResponse> for super::ForcePasswordChangeResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ForcePasswordChangeResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    message: value.message?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ForcePasswordChangeResponse> for ForcePasswordChangeResponse {
+            fn from(value: super::ForcePasswordChangeResponse) -> Self {
+                Self {
+                    message: Ok(value.message),
                 }
             }
         }
@@ -37066,6 +43204,156 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct GroupDetailResponse {
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            member_count: ::std::result::Result<i64, ::std::string::String>,
+            members: ::std::result::Result<
+                ::std::vec::Vec<super::GroupMemberResponse>,
+                ::std::string::String,
+            >,
+            members_total: ::std::result::Result<i64, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for GroupDetailResponse {
+            fn default() -> Self {
+                Self {
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    description: Ok(Default::default()),
+                    id: Err("no value supplied for id".to_string()),
+                    member_count: Err("no value supplied for member_count".to_string()),
+                    members: Err("no value supplied for members".to_string()),
+                    members_total: Err("no value supplied for members_total".to_string()),
+                    name: Err("no value supplied for name".to_string()),
+                    updated_at: Err("no value supplied for updated_at".to_string()),
+                }
+            }
+        }
+        impl GroupDetailResponse {
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn member_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.member_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for member_count: {e}"));
+                self
+            }
+            pub fn members<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::GroupMemberResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.members = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for members: {e}"));
+                self
+            }
+            pub fn members_total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.members_total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for members_total: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn updated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.updated_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<GroupDetailResponse> for super::GroupDetailResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: GroupDetailResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    created_at: value.created_at?,
+                    description: value.description?,
+                    id: value.id?,
+                    member_count: value.member_count?,
+                    members: value.members?,
+                    members_total: value.members_total?,
+                    name: value.name?,
+                    updated_at: value.updated_at?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::GroupDetailResponse> for GroupDetailResponse {
+            fn from(value: super::GroupDetailResponse) -> Self {
+                Self {
+                    created_at: Ok(value.created_at),
+                    description: Ok(value.description),
+                    id: Ok(value.id),
+                    member_count: Ok(value.member_count),
+                    members: Ok(value.members),
+                    members_total: Ok(value.members_total),
+                    name: Ok(value.name),
+                    updated_at: Ok(value.updated_at),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct GroupListResponse {
             items:
                 ::std::result::Result<::std::vec::Vec<super::GroupResponse>, ::std::string::String>,
@@ -37117,6 +43405,94 @@ pub mod types {
                 Self {
                     items: Ok(value.items),
                     pagination: Ok(value.pagination),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct GroupMemberResponse {
+            display_name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            joined_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            user_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            username: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for GroupMemberResponse {
+            fn default() -> Self {
+                Self {
+                    display_name: Ok(Default::default()),
+                    joined_at: Err("no value supplied for joined_at".to_string()),
+                    user_id: Err("no value supplied for user_id".to_string()),
+                    username: Err("no value supplied for username".to_string()),
+                }
+            }
+        }
+        impl GroupMemberResponse {
+            pub fn display_name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.display_name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for display_name: {e}"));
+                self
+            }
+            pub fn joined_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.joined_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for joined_at: {e}"));
+                self
+            }
+            pub fn user_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.user_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for user_id: {e}"));
+                self
+            }
+            pub fn username<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.username = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for username: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<GroupMemberResponse> for super::GroupMemberResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: GroupMemberResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    display_name: value.display_name?,
+                    joined_at: value.joined_at?,
+                    user_id: value.user_id?,
+                    username: value.username?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::GroupMemberResponse> for GroupMemberResponse {
+            fn from(value: super::GroupMemberResponse) -> Self {
+                Self {
+                    display_name: Ok(value.display_name),
+                    joined_at: Ok(value.joined_at),
+                    user_id: Ok(value.user_id),
+                    username: Ok(value.username),
                 }
             }
         }
@@ -37539,7 +43915,7 @@ pub mod types {
                 ::std::option::Option<super::CheckStatus>,
                 ::std::string::String,
             >,
-            meilisearch: ::std::result::Result<
+            opensearch: ::std::result::Result<
                 ::std::option::Option<super::CheckStatus>,
                 ::std::string::String,
             >,
@@ -37554,7 +43930,7 @@ pub mod types {
                 Self {
                     database: Err("no value supplied for database".to_string()),
                     ldap: Ok(Default::default()),
-                    meilisearch: Ok(Default::default()),
+                    opensearch: Ok(Default::default()),
                     security_scanner: Ok(Default::default()),
                     storage: Err("no value supplied for storage".to_string()),
                 }
@@ -37581,14 +43957,14 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for ldap: {e}"));
                 self
             }
-            pub fn meilisearch<T>(mut self, value: T) -> Self
+            pub fn opensearch<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<super::CheckStatus>>,
                 T::Error: ::std::fmt::Display,
             {
-                self.meilisearch = value
+                self.opensearch = value
                     .try_into()
-                    .map_err(|e| format!("error converting supplied value for meilisearch: {e}"));
+                    .map_err(|e| format!("error converting supplied value for opensearch: {e}"));
                 self
             }
             pub fn security_scanner<T>(mut self, value: T) -> Self
@@ -37620,7 +43996,7 @@ pub mod types {
                 Ok(Self {
                     database: value.database?,
                     ldap: value.ldap?,
-                    meilisearch: value.meilisearch?,
+                    opensearch: value.opensearch?,
                     security_scanner: value.security_scanner?,
                     storage: value.storage?,
                 })
@@ -37631,7 +44007,7 @@ pub mod types {
                 Self {
                     database: Ok(value.database),
                     ldap: Ok(value.ldap),
-                    meilisearch: Ok(value.meilisearch),
+                    opensearch: Ok(value.opensearch),
                     security_scanner: Ok(value.security_scanner),
                     storage: Ok(value.storage),
                 }
@@ -38195,6 +44571,112 @@ pub mod types {
             fn from(value: super::InstallFromLocalRequest) -> Self {
                 Self {
                     path: Ok(value.path),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct InvalidateCacheQuery {
+            path: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for InvalidateCacheQuery {
+            fn default() -> Self {
+                Self {
+                    path: Err("no value supplied for path".to_string()),
+                }
+            }
+        }
+        impl InvalidateCacheQuery {
+            pub fn path<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.path = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for path: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<InvalidateCacheQuery> for super::InvalidateCacheQuery {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: InvalidateCacheQuery,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self { path: value.path? })
+            }
+        }
+        impl ::std::convert::From<super::InvalidateCacheQuery> for InvalidateCacheQuery {
+            fn from(value: super::InvalidateCacheQuery) -> Self {
+                Self {
+                    path: Ok(value.path),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct InvalidateCacheResponse {
+            invalidated: ::std::result::Result<bool, ::std::string::String>,
+            path: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for InvalidateCacheResponse {
+            fn default() -> Self {
+                Self {
+                    invalidated: Err("no value supplied for invalidated".to_string()),
+                    path: Err("no value supplied for path".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                }
+            }
+        }
+        impl InvalidateCacheResponse {
+            pub fn invalidated<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.invalidated = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for invalidated: {e}"));
+                self
+            }
+            pub fn path<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.path = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for path: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<InvalidateCacheResponse> for super::InvalidateCacheResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: InvalidateCacheResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    invalidated: value.invalidated?,
+                    path: value.path?,
+                    repository_key: value.repository_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::InvalidateCacheResponse> for InvalidateCacheResponse {
+            fn from(value: super::InvalidateCacheResponse) -> Self {
+                Self {
+                    invalidated: Ok(value.invalidated),
+                    path: Ok(value.path),
+                    repository_key: Ok(value.repository_key),
                 }
             }
         }
@@ -39633,6 +46115,10 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct ListArtifactsQuery {
+            group_by: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             path_prefix: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
@@ -39647,6 +46133,7 @@ pub mod types {
         impl ::std::default::Default for ListArtifactsQuery {
             fn default() -> Self {
                 Self {
+                    group_by: Ok(Default::default()),
                     page: Ok(Default::default()),
                     path_prefix: Ok(Default::default()),
                     per_page: Ok(Default::default()),
@@ -39655,6 +46142,16 @@ pub mod types {
             }
         }
         impl ListArtifactsQuery {
+            pub fn group_by<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.group_by = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for group_by: {e}"));
+                self
+            }
             pub fn page<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<i32>>,
@@ -39702,6 +46199,7 @@ pub mod types {
                 value: ListArtifactsQuery,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    group_by: value.group_by?,
                     page: value.page?,
                     path_prefix: value.path_prefix?,
                     per_page: value.per_page?,
@@ -39712,6 +46210,7 @@ pub mod types {
         impl ::std::convert::From<super::ListArtifactsQuery> for ListArtifactsQuery {
             fn from(value: super::ListArtifactsQuery) -> Self {
                 Self {
+                    group_by: Ok(value.group_by),
                     page: Ok(value.page),
                     path_prefix: Ok(value.path_prefix),
                     per_page: Ok(value.per_page),
@@ -40792,6 +47291,178 @@ pub mod types {
                     format: Ok(value.format),
                     id: Ok(value.id),
                     key: Ok(value.key),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct MavenComponentResponse {
+            artifact_files: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            artifact_id: ::std::result::Result<::std::string::String, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            download_count: ::std::result::Result<i64, ::std::string::String>,
+            format: ::std::result::Result<::std::string::String, ::std::string::String>,
+            group_id: ::std::result::Result<::std::string::String, ::std::string::String>,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            size_bytes: ::std::result::Result<i64, ::std::string::String>,
+            version: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for MavenComponentResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_files: Err("no value supplied for artifact_files".to_string()),
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    download_count: Err("no value supplied for download_count".to_string()),
+                    format: Err("no value supplied for format".to_string()),
+                    group_id: Err("no value supplied for group_id".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                    size_bytes: Err("no value supplied for size_bytes".to_string()),
+                    version: Err("no value supplied for version".to_string()),
+                }
+            }
+        }
+        impl MavenComponentResponse {
+            pub fn artifact_files<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_files = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifact_files: {e}")
+                });
+                self
+            }
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn download_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.download_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for download_count: {e}")
+                });
+                self
+            }
+            pub fn format<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.format = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for format: {e}"));
+                self
+            }
+            pub fn group_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.group_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for group_id: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn size_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.size_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for size_bytes: {e}"));
+                self
+            }
+            pub fn version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.version = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for version: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<MavenComponentResponse> for super::MavenComponentResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: MavenComponentResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_files: value.artifact_files?,
+                    artifact_id: value.artifact_id?,
+                    created_at: value.created_at?,
+                    download_count: value.download_count?,
+                    format: value.format?,
+                    group_id: value.group_id?,
+                    id: value.id?,
+                    repository_key: value.repository_key?,
+                    size_bytes: value.size_bytes?,
+                    version: value.version?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::MavenComponentResponse> for MavenComponentResponse {
+            fn from(value: super::MavenComponentResponse) -> Self {
+                Self {
+                    artifact_files: Ok(value.artifact_files),
+                    artifact_id: Ok(value.artifact_id),
+                    created_at: Ok(value.created_at),
+                    download_count: Ok(value.download_count),
+                    format: Ok(value.format),
+                    group_id: Ok(value.group_id),
+                    id: Ok(value.id),
+                    repository_key: Ok(value.repository_key),
+                    size_bytes: Ok(value.size_bytes),
+                    version: Ok(value.version),
                 }
             }
         }
@@ -42278,7 +48949,221 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct OciBlobFootprintReport {
+            aged_distinct_digests: ::std::result::Result<i64, ::std::string::String>,
+            aged_physical_bytes: ::std::result::Result<i64, ::std::string::String>,
+            distinct_digests: ::std::result::Result<i64, ::std::string::String>,
+            grace_hours: ::std::result::Result<i64, ::std::string::String>,
+            logical_bytes: ::std::result::Result<i64, ::std::string::String>,
+            per_repository: ::std::result::Result<
+                ::std::vec::Vec<super::OciBlobRepoFootprint>,
+                ::std::string::String,
+            >,
+            physical_bytes: ::std::result::Result<i64, ::std::string::String>,
+            total_blob_rows: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for OciBlobFootprintReport {
+            fn default() -> Self {
+                Self {
+                    aged_distinct_digests: Err(
+                        "no value supplied for aged_distinct_digests".to_string()
+                    ),
+                    aged_physical_bytes: Err(
+                        "no value supplied for aged_physical_bytes".to_string()
+                    ),
+                    distinct_digests: Err("no value supplied for distinct_digests".to_string()),
+                    grace_hours: Err("no value supplied for grace_hours".to_string()),
+                    logical_bytes: Err("no value supplied for logical_bytes".to_string()),
+                    per_repository: Err("no value supplied for per_repository".to_string()),
+                    physical_bytes: Err("no value supplied for physical_bytes".to_string()),
+                    total_blob_rows: Err("no value supplied for total_blob_rows".to_string()),
+                }
+            }
+        }
+        impl OciBlobFootprintReport {
+            pub fn aged_distinct_digests<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.aged_distinct_digests = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for aged_distinct_digests: {e}")
+                });
+                self
+            }
+            pub fn aged_physical_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.aged_physical_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for aged_physical_bytes: {e}")
+                });
+                self
+            }
+            pub fn distinct_digests<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.distinct_digests = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for distinct_digests: {e}")
+                });
+                self
+            }
+            pub fn grace_hours<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.grace_hours = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for grace_hours: {e}"));
+                self
+            }
+            pub fn logical_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.logical_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for logical_bytes: {e}"));
+                self
+            }
+            pub fn per_repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::OciBlobRepoFootprint>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_repository = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for per_repository: {e}")
+                });
+                self
+            }
+            pub fn physical_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.physical_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for physical_bytes: {e}")
+                });
+                self
+            }
+            pub fn total_blob_rows<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_blob_rows = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for total_blob_rows: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<OciBlobFootprintReport> for super::OciBlobFootprintReport {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: OciBlobFootprintReport,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    aged_distinct_digests: value.aged_distinct_digests?,
+                    aged_physical_bytes: value.aged_physical_bytes?,
+                    distinct_digests: value.distinct_digests?,
+                    grace_hours: value.grace_hours?,
+                    logical_bytes: value.logical_bytes?,
+                    per_repository: value.per_repository?,
+                    physical_bytes: value.physical_bytes?,
+                    total_blob_rows: value.total_blob_rows?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::OciBlobFootprintReport> for OciBlobFootprintReport {
+            fn from(value: super::OciBlobFootprintReport) -> Self {
+                Self {
+                    aged_distinct_digests: Ok(value.aged_distinct_digests),
+                    aged_physical_bytes: Ok(value.aged_physical_bytes),
+                    distinct_digests: Ok(value.distinct_digests),
+                    grace_hours: Ok(value.grace_hours),
+                    logical_bytes: Ok(value.logical_bytes),
+                    per_repository: Ok(value.per_repository),
+                    physical_bytes: Ok(value.physical_bytes),
+                    total_blob_rows: Ok(value.total_blob_rows),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct OciBlobRepoFootprint {
+            blob_rows: ::std::result::Result<i64, ::std::string::String>,
+            logical_bytes: ::std::result::Result<i64, ::std::string::String>,
+            repository_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+        }
+        impl ::std::default::Default for OciBlobRepoFootprint {
+            fn default() -> Self {
+                Self {
+                    blob_rows: Err("no value supplied for blob_rows".to_string()),
+                    logical_bytes: Err("no value supplied for logical_bytes".to_string()),
+                    repository_id: Err("no value supplied for repository_id".to_string()),
+                }
+            }
+        }
+        impl OciBlobRepoFootprint {
+            pub fn blob_rows<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.blob_rows = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for blob_rows: {e}"));
+                self
+            }
+            pub fn logical_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.logical_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for logical_bytes: {e}"));
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<OciBlobRepoFootprint> for super::OciBlobRepoFootprint {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: OciBlobRepoFootprint,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    blob_rows: value.blob_rows?,
+                    logical_bytes: value.logical_bytes?,
+                    repository_id: value.repository_id?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::OciBlobRepoFootprint> for OciBlobRepoFootprint {
+            fn from(value: super::OciBlobRepoFootprint) -> Self {
+                Self {
+                    blob_rows: Ok(value.blob_rows),
+                    logical_bytes: Ok(value.logical_bytes),
+                    repository_id: Ok(value.repository_id),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct OidcConfigResponse {
+            allow_legacy_rsa_keys: ::std::result::Result<bool, ::std::string::String>,
             attribute_mapping: ::std::result::Result<
                 ::serde_json::Map<::std::string::String, ::serde_json::Value>,
                 ::std::string::String,
@@ -42293,7 +49178,9 @@ pub mod types {
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             is_enabled: ::std::result::Result<bool, ::std::string::String>,
             issuer_url: ::std::result::Result<::std::string::String, ::std::string::String>,
+            map_groups_to_groups: ::std::result::Result<bool, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            pkce_enabled: ::std::result::Result<bool, ::std::string::String>,
             scopes: ::std::result::Result<
                 ::std::vec::Vec<::std::string::String>,
                 ::std::string::String,
@@ -42306,6 +49193,9 @@ pub mod types {
         impl ::std::default::Default for OidcConfigResponse {
             fn default() -> Self {
                 Self {
+                    allow_legacy_rsa_keys: Err(
+                        "no value supplied for allow_legacy_rsa_keys".to_string()
+                    ),
                     attribute_mapping: Err("no value supplied for attribute_mapping".to_string()),
                     auto_create_users: Err("no value supplied for auto_create_users".to_string()),
                     client_id: Err("no value supplied for client_id".to_string()),
@@ -42314,13 +49204,27 @@ pub mod types {
                     id: Err("no value supplied for id".to_string()),
                     is_enabled: Err("no value supplied for is_enabled".to_string()),
                     issuer_url: Err("no value supplied for issuer_url".to_string()),
+                    map_groups_to_groups: Err(
+                        "no value supplied for map_groups_to_groups".to_string()
+                    ),
                     name: Err("no value supplied for name".to_string()),
+                    pkce_enabled: Err("no value supplied for pkce_enabled".to_string()),
                     scopes: Err("no value supplied for scopes".to_string()),
                     updated_at: Err("no value supplied for updated_at".to_string()),
                 }
             }
         }
         impl OidcConfigResponse {
+            pub fn allow_legacy_rsa_keys<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allow_legacy_rsa_keys = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allow_legacy_rsa_keys: {e}")
+                });
+                self
+            }
             pub fn attribute_mapping<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
@@ -42403,6 +49307,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for issuer_url: {e}"));
                 self
             }
+            pub fn map_groups_to_groups<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.map_groups_to_groups = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for map_groups_to_groups: {e}")
+                });
+                self
+            }
             pub fn name<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::string::String>,
@@ -42411,6 +49325,16 @@ pub mod types {
                 self.name = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn pkce_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.pkce_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for pkce_enabled: {e}"));
                 self
             }
             pub fn scopes<T>(mut self, value: T) -> Self
@@ -42440,6 +49364,7 @@ pub mod types {
                 value: OidcConfigResponse,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    allow_legacy_rsa_keys: value.allow_legacy_rsa_keys?,
                     attribute_mapping: value.attribute_mapping?,
                     auto_create_users: value.auto_create_users?,
                     client_id: value.client_id?,
@@ -42448,7 +49373,9 @@ pub mod types {
                     id: value.id?,
                     is_enabled: value.is_enabled?,
                     issuer_url: value.issuer_url?,
+                    map_groups_to_groups: value.map_groups_to_groups?,
                     name: value.name?,
+                    pkce_enabled: value.pkce_enabled?,
                     scopes: value.scopes?,
                     updated_at: value.updated_at?,
                 })
@@ -42457,6 +49384,7 @@ pub mod types {
         impl ::std::convert::From<super::OidcConfigResponse> for OidcConfigResponse {
             fn from(value: super::OidcConfigResponse) -> Self {
                 Self {
+                    allow_legacy_rsa_keys: Ok(value.allow_legacy_rsa_keys),
                     attribute_mapping: Ok(value.attribute_mapping),
                     auto_create_users: Ok(value.auto_create_users),
                     client_id: Ok(value.client_id),
@@ -42465,7 +49393,9 @@ pub mod types {
                     id: Ok(value.id),
                     is_enabled: Ok(value.is_enabled),
                     issuer_url: Ok(value.issuer_url),
+                    map_groups_to_groups: Ok(value.map_groups_to_groups),
                     name: Ok(value.name),
+                    pkce_enabled: Ok(value.pkce_enabled),
                     scopes: Ok(value.scopes),
                     updated_at: Ok(value.updated_at),
                 }
@@ -44685,6 +51615,62 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct PermissionsConfig {
+            enforcement_enabled: ::std::result::Result<bool, ::std::string::String>,
+            rules_exist: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for PermissionsConfig {
+            fn default() -> Self {
+                Self {
+                    enforcement_enabled: Err(
+                        "no value supplied for enforcement_enabled".to_string()
+                    ),
+                    rules_exist: Err("no value supplied for rules_exist".to_string()),
+                }
+            }
+        }
+        impl PermissionsConfig {
+            pub fn enforcement_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enforcement_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for enforcement_enabled: {e}")
+                });
+                self
+            }
+            pub fn rules_exist<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rules_exist = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rules_exist: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PermissionsConfig> for super::PermissionsConfig {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PermissionsConfig,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    enforcement_enabled: value.enforcement_enabled?,
+                    rules_exist: value.rules_exist?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PermissionsConfig> for PermissionsConfig {
+            fn from(value: super::PermissionsConfig) -> Self {
+                Self {
+                    enforcement_enabled: Ok(value.enforcement_enabled),
+                    rules_exist: Ok(value.rules_exist),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct PluginConfigResponse {
             config: ::std::result::Result<
                 ::serde_json::Map<::std::string::String, ::serde_json::Value>,
@@ -45114,6 +52100,62 @@ pub mod types {
                     plugin_type: Ok(value.plugin_type),
                     status: Ok(value.status),
                     version: Ok(value.version),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PluginSigningConfig {
+            required: ::std::result::Result<bool, ::std::string::String>,
+            trusted_key_configured: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for PluginSigningConfig {
+            fn default() -> Self {
+                Self {
+                    required: Err("no value supplied for required".to_string()),
+                    trusted_key_configured: Err(
+                        "no value supplied for trusted_key_configured".to_string()
+                    ),
+                }
+            }
+        }
+        impl PluginSigningConfig {
+            pub fn required<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.required = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for required: {e}"));
+                self
+            }
+            pub fn trusted_key_configured<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.trusted_key_configured = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for trusted_key_configured: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PluginSigningConfig> for super::PluginSigningConfig {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PluginSigningConfig,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    required: value.required?,
+                    trusted_key_configured: value.trusted_key_configured?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PluginSigningConfig> for PluginSigningConfig {
+            fn from(value: super::PluginSigningConfig) -> Self {
+                Self {
+                    required: Ok(value.required),
+                    trusted_key_configured: Ok(value.trusted_key_configured),
                 }
             }
         }
@@ -45945,14 +52987,17 @@ pub mod types {
             >,
             skip_policy_check:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
-            target_repository: ::std::result::Result<::std::string::String, ::std::string::String>,
+            target_repository: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
         }
         impl ::std::default::Default for PromoteArtifactRequest {
             fn default() -> Self {
                 Self {
                     notes: Ok(Default::default()),
                     skip_policy_check: Ok(Default::default()),
-                    target_repository: Err("no value supplied for target_repository".to_string()),
+                    target_repository: Ok(Default::default()),
                 }
             }
         }
@@ -45979,7 +53024,7 @@ pub mod types {
             }
             pub fn target_repository<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::string::String>,
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.target_repository = value.try_into().map_err(|e| {
@@ -46782,6 +53827,315 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct PypiTrackRequest {
+            tracks_url: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for PypiTrackRequest {
+            fn default() -> Self {
+                Self {
+                    tracks_url: Err("no value supplied for tracks_url".to_string()),
+                }
+            }
+        }
+        impl PypiTrackRequest {
+            pub fn tracks_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.tracks_url = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for tracks_url: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PypiTrackRequest> for super::PypiTrackRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PypiTrackRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    tracks_url: value.tracks_url?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PypiTrackRequest> for PypiTrackRequest {
+            fn from(value: super::PypiTrackRequest) -> Self {
+                Self {
+                    tracks_url: Ok(value.tracks_url),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PypiTrackResponse {
+            normalized_name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            tracks_url: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for PypiTrackResponse {
+            fn default() -> Self {
+                Self {
+                    normalized_name: Err("no value supplied for normalized_name".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                    tracks_url: Err("no value supplied for tracks_url".to_string()),
+                }
+            }
+        }
+        impl PypiTrackResponse {
+            pub fn normalized_name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.normalized_name = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for normalized_name: {e}")
+                });
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn tracks_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.tracks_url = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for tracks_url: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PypiTrackResponse> for super::PypiTrackResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PypiTrackResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    normalized_name: value.normalized_name?,
+                    repository_key: value.repository_key?,
+                    tracks_url: value.tracks_url?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PypiTrackResponse> for PypiTrackResponse {
+            fn from(value: super::PypiTrackResponse) -> Self {
+                Self {
+                    normalized_name: Ok(value.normalized_name),
+                    repository_key: Ok(value.repository_key),
+                    tracks_url: Ok(value.tracks_url),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PypiTracksListResponse {
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::PypiTrackResponse>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for PypiTracksListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                }
+            }
+        }
+        impl PypiTracksListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::PypiTrackResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PypiTracksListResponse> for super::PypiTracksListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PypiTracksListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PypiTracksListResponse> for PypiTracksListResponse {
+            fn from(value: super::PypiTracksListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct QuarantineActionResponse {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            message: ::std::result::Result<::std::string::String, ::std::string::String>,
+            new_status: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for QuarantineActionResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    message: Err("no value supplied for message".to_string()),
+                    new_status: Err("no value supplied for new_status".to_string()),
+                }
+            }
+        }
+        impl QuarantineActionResponse {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn message<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.message = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for message: {e}"));
+                self
+            }
+            pub fn new_status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.new_status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for new_status: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<QuarantineActionResponse> for super::QuarantineActionResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: QuarantineActionResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    message: value.message?,
+                    new_status: value.new_status?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::QuarantineActionResponse> for QuarantineActionResponse {
+            fn from(value: super::QuarantineActionResponse) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    message: Ok(value.message),
+                    new_status: Ok(value.new_status),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct QuarantineStatusResponse {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            is_blocked: ::std::result::Result<bool, ::std::string::String>,
+            quarantine_status: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            quarantine_until: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for QuarantineStatusResponse {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    is_blocked: Err("no value supplied for is_blocked".to_string()),
+                    quarantine_status: Ok(Default::default()),
+                    quarantine_until: Ok(Default::default()),
+                }
+            }
+        }
+        impl QuarantineStatusResponse {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn is_blocked<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_blocked = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_blocked: {e}"));
+                self
+            }
+            pub fn quarantine_status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_status = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_status: {e}")
+                });
+                self
+            }
+            pub fn quarantine_until<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_until = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_until: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<QuarantineStatusResponse> for super::QuarantineStatusResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: QuarantineStatusResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    is_blocked: value.is_blocked?,
+                    quarantine_status: value.quarantine_status?,
+                    quarantine_until: value.quarantine_until?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::QuarantineStatusResponse> for QuarantineStatusResponse {
+            fn from(value: super::QuarantineStatusResponse) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    is_blocked: Ok(value.is_blocked),
+                    quarantine_status: Ok(value.quarantine_status),
+                    quarantine_until: Ok(value.quarantine_until),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct QuickSearchResponse {
             results: ::std::result::Result<
                 ::std::vec::Vec<super::SearchResultItem>,
@@ -47274,6 +54628,49 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct RejectRequest {
+            reason: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for RejectRequest {
+            fn default() -> Self {
+                Self {
+                    reason: Ok(Default::default()),
+                }
+            }
+        }
+        impl RejectRequest {
+            pub fn reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reason = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reason: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RejectRequest> for super::RejectRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RejectRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    reason: value.reason?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RejectRequest> for RejectRequest {
+            fn from(value: super::RejectRequest) -> Self {
+                Self {
+                    reason: Ok(value.reason),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct RejectionResponse {
             artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             reason: ::std::result::Result<::std::string::String, ::std::string::String>,
@@ -47366,6 +54763,78 @@ pub mod types {
                     rejected: Ok(value.rejected),
                     rejection_id: Ok(value.rejection_id),
                     source: Ok(value.source),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ReleaseTargetResponse {
+            linked: ::std::result::Result<bool, ::std::string::String>,
+            release_repository_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            release_repository_key: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ReleaseTargetResponse {
+            fn default() -> Self {
+                Self {
+                    linked: Err("no value supplied for linked".to_string()),
+                    release_repository_id: Ok(Default::default()),
+                    release_repository_key: Ok(Default::default()),
+                }
+            }
+        }
+        impl ReleaseTargetResponse {
+            pub fn linked<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.linked = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for linked: {e}"));
+                self
+            }
+            pub fn release_repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.release_repository_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for release_repository_id: {e}")
+                });
+                self
+            }
+            pub fn release_repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.release_repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for release_repository_key: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ReleaseTargetResponse> for super::ReleaseTargetResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ReleaseTargetResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    linked: value.linked?,
+                    release_repository_id: value.release_repository_id?,
+                    release_repository_key: value.release_repository_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ReleaseTargetResponse> for ReleaseTargetResponse {
+            fn from(value: super::ReleaseTargetResponse) -> Self {
+                Self {
+                    linked: Ok(value.linked),
+                    release_repository_id: Ok(value.release_repository_id),
+                    release_repository_key: Ok(value.release_repository_key),
                 }
             }
         }
@@ -47814,6 +55283,251 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct RepoTokenListResponse {
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::RepoTokenResponse>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for RepoTokenListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                }
+            }
+        }
+        impl RepoTokenListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::RepoTokenResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RepoTokenListResponse> for super::RepoTokenListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RepoTokenListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RepoTokenListResponse> for RepoTokenListResponse {
+            fn from(value: super::RepoTokenListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RepoTokenResponse {
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            created_by: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            expires_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            is_expired: ::std::result::Result<bool, ::std::string::String>,
+            is_revoked: ::std::result::Result<bool, ::std::string::String>,
+            last_used_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            scopes: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            token_prefix: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for RepoTokenResponse {
+            fn default() -> Self {
+                Self {
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    created_by: Ok(Default::default()),
+                    description: Ok(Default::default()),
+                    expires_at: Ok(Default::default()),
+                    id: Err("no value supplied for id".to_string()),
+                    is_expired: Err("no value supplied for is_expired".to_string()),
+                    is_revoked: Err("no value supplied for is_revoked".to_string()),
+                    last_used_at: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    scopes: Err("no value supplied for scopes".to_string()),
+                    token_prefix: Err("no value supplied for token_prefix".to_string()),
+                }
+            }
+        }
+        impl RepoTokenResponse {
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn created_by<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_by = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_by: {e}"));
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn expires_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.expires_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for expires_at: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn is_expired<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_expired = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_expired: {e}"));
+                self
+            }
+            pub fn is_revoked<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_revoked = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_revoked: {e}"));
+                self
+            }
+            pub fn last_used_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.last_used_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for last_used_at: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn scopes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.scopes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for scopes: {e}"));
+                self
+            }
+            pub fn token_prefix<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.token_prefix = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for token_prefix: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RepoTokenResponse> for super::RepoTokenResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RepoTokenResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    created_at: value.created_at?,
+                    created_by: value.created_by?,
+                    description: value.description?,
+                    expires_at: value.expires_at?,
+                    id: value.id?,
+                    is_expired: value.is_expired?,
+                    is_revoked: value.is_revoked?,
+                    last_used_at: value.last_used_at?,
+                    name: value.name?,
+                    scopes: value.scopes?,
+                    token_prefix: value.token_prefix?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RepoTokenResponse> for RepoTokenResponse {
+            fn from(value: super::RepoTokenResponse) -> Self {
+                Self {
+                    created_at: Ok(value.created_at),
+                    created_by: Ok(value.created_by),
+                    description: Ok(value.description),
+                    expires_at: Ok(value.expires_at),
+                    id: Ok(value.id),
+                    is_expired: Ok(value.is_expired),
+                    is_revoked: Ok(value.is_revoked),
+                    last_used_at: Ok(value.last_used_at),
+                    name: Ok(value.name),
+                    scopes: Ok(value.scopes),
+                    token_prefix: Ok(value.token_prefix),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct RepositoryAssessment {
             artifact_count: ::std::result::Result<i64, ::std::string::String>,
             compatibility: ::std::result::Result<::std::string::String, ::std::string::String>,
@@ -47999,6 +55713,7 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct RepositoryResponse {
+            allow_anonymous_access: ::std::result::Result<bool, ::std::string::String>,
             created_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
@@ -48012,6 +55727,11 @@ pub mod types {
             is_public: ::std::result::Result<bool, ::std::string::String>,
             key: ::std::result::Result<::std::string::String, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            promotion_only: ::std::result::Result<bool, ::std::string::String>,
+            quarantine_duration_minutes:
+                ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            quarantine_enabled:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             repo_type: ::std::result::Result<::std::string::String, ::std::string::String>,
             storage_used_bytes: ::std::result::Result<i64, ::std::string::String>,
@@ -48032,6 +55752,9 @@ pub mod types {
         impl ::std::default::Default for RepositoryResponse {
             fn default() -> Self {
                 Self {
+                    allow_anonymous_access: Err(
+                        "no value supplied for allow_anonymous_access".to_string()
+                    ),
                     created_at: Err("no value supplied for created_at".to_string()),
                     description: Ok(Default::default()),
                     format: Err("no value supplied for format".to_string()),
@@ -48039,6 +55762,9 @@ pub mod types {
                     is_public: Err("no value supplied for is_public".to_string()),
                     key: Err("no value supplied for key".to_string()),
                     name: Err("no value supplied for name".to_string()),
+                    promotion_only: Err("no value supplied for promotion_only".to_string()),
+                    quarantine_duration_minutes: Ok(Default::default()),
+                    quarantine_enabled: Ok(Default::default()),
                     quota_bytes: Ok(Default::default()),
                     repo_type: Err("no value supplied for repo_type".to_string()),
                     storage_used_bytes: Err("no value supplied for storage_used_bytes".to_string()),
@@ -48052,6 +55778,16 @@ pub mod types {
             }
         }
         impl RepositoryResponse {
+            pub fn allow_anonymous_access<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allow_anonymous_access = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allow_anonymous_access: {e}")
+                });
+                self
+            }
             pub fn created_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -48120,6 +55856,36 @@ pub mod types {
                 self.name = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn promotion_only<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.promotion_only = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for promotion_only: {e}")
+                });
+                self
+            }
+            pub fn quarantine_duration_minutes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_duration_minutes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_duration_minutes: {e}")
+                });
+                self
+            }
+            pub fn quarantine_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_enabled: {e}")
+                });
                 self
             }
             pub fn quota_bytes<T>(mut self, value: T) -> Self
@@ -48199,6 +55965,7 @@ pub mod types {
                 value: RepositoryResponse,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    allow_anonymous_access: value.allow_anonymous_access?,
                     created_at: value.created_at?,
                     description: value.description?,
                     format: value.format?,
@@ -48206,6 +55973,9 @@ pub mod types {
                     is_public: value.is_public?,
                     key: value.key?,
                     name: value.name?,
+                    promotion_only: value.promotion_only?,
+                    quarantine_duration_minutes: value.quarantine_duration_minutes?,
+                    quarantine_enabled: value.quarantine_enabled?,
                     quota_bytes: value.quota_bytes?,
                     repo_type: value.repo_type?,
                     storage_used_bytes: value.storage_used_bytes?,
@@ -48219,6 +55989,7 @@ pub mod types {
         impl ::std::convert::From<super::RepositoryResponse> for RepositoryResponse {
             fn from(value: super::RepositoryResponse) -> Self {
                 Self {
+                    allow_anonymous_access: Ok(value.allow_anonymous_access),
                     created_at: Ok(value.created_at),
                     description: Ok(value.description),
                     format: Ok(value.format),
@@ -48226,6 +55997,9 @@ pub mod types {
                     is_public: Ok(value.is_public),
                     key: Ok(value.key),
                     name: Ok(value.name),
+                    promotion_only: Ok(value.promotion_only),
+                    quarantine_duration_minutes: Ok(value.quarantine_duration_minutes),
+                    quarantine_enabled: Ok(value.quarantine_enabled),
                     quota_bytes: Ok(value.quota_bytes),
                     repo_type: Ok(value.repo_type),
                     storage_used_bytes: Ok(value.storage_used_bytes),
@@ -48655,6 +56429,100 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct RescanForInventoryRequest {
+            limit: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+        }
+        impl ::std::default::Default for RescanForInventoryRequest {
+            fn default() -> Self {
+                Self {
+                    limit: Ok(Default::default()),
+                }
+            }
+        }
+        impl RescanForInventoryRequest {
+            pub fn limit<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.limit = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for limit: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RescanForInventoryRequest> for super::RescanForInventoryRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RescanForInventoryRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    limit: value.limit?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RescanForInventoryRequest> for RescanForInventoryRequest {
+            fn from(value: super::RescanForInventoryRequest) -> Self {
+                Self {
+                    limit: Ok(value.limit),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RescanForInventoryResponse {
+            artifacts_enqueued: ::std::result::Result<i64, ::std::string::String>,
+            limit: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for RescanForInventoryResponse {
+            fn default() -> Self {
+                Self {
+                    artifacts_enqueued: Err("no value supplied for artifacts_enqueued".to_string()),
+                    limit: Err("no value supplied for limit".to_string()),
+                }
+            }
+        }
+        impl RescanForInventoryResponse {
+            pub fn artifacts_enqueued<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifacts_enqueued = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for artifacts_enqueued: {e}")
+                });
+                self
+            }
+            pub fn limit<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.limit = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for limit: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RescanForInventoryResponse> for super::RescanForInventoryResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RescanForInventoryResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifacts_enqueued: value.artifacts_enqueued?,
+                    limit: value.limit?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RescanForInventoryResponse> for RescanForInventoryResponse {
+            fn from(value: super::RescanForInventoryResponse) -> Self {
+                Self {
+                    artifacts_enqueued: Ok(value.artifacts_enqueued),
+                    limit: Ok(value.limit),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct ResetPasswordResponse {
             temporary_password: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
@@ -48840,16 +56708,150 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct ReviewActionRequest {
+            reason: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ReviewActionRequest {
+            fn default() -> Self {
+                Self {
+                    reason: Ok(Default::default()),
+                }
+            }
+        }
+        impl ReviewActionRequest {
+            pub fn reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reason = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reason: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ReviewActionRequest> for super::ReviewActionRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ReviewActionRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    reason: value.reason?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ReviewActionRequest> for ReviewActionRequest {
+            fn from(value: super::ReviewActionRequest) -> Self {
+                Self {
+                    reason: Ok(value.reason),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ReviewListQuery {
+            page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            per_page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            repository_key: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            status: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ReviewListQuery {
+            fn default() -> Self {
+                Self {
+                    page: Ok(Default::default()),
+                    per_page: Ok(Default::default()),
+                    repository_key: Ok(Default::default()),
+                    status: Ok(Default::default()),
+                }
+            }
+        }
+        impl ReviewListQuery {
+            pub fn page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for page: {e}"));
+                self
+            }
+            pub fn per_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for per_page: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ReviewListQuery> for super::ReviewListQuery {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ReviewListQuery,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    page: value.page?,
+                    per_page: value.per_page?,
+                    repository_key: value.repository_key?,
+                    status: value.status?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ReviewListQuery> for ReviewListQuery {
+            fn from(value: super::ReviewListQuery) -> Self {
+                Self {
+                    page: Ok(value.page),
+                    per_page: Ok(value.per_page),
+                    repository_key: Ok(value.repository_key),
+                    status: Ok(value.status),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct ReviewRequest {
             notes: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            skip_policy_check:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for ReviewRequest {
             fn default() -> Self {
                 Self {
                     notes: Ok(Default::default()),
+                    skip_policy_check: Ok(Default::default()),
                 }
             }
         }
@@ -48864,6 +56866,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for notes: {e}"));
                 self
             }
+            pub fn skip_policy_check<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.skip_policy_check = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for skip_policy_check: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<ReviewRequest> for super::ReviewRequest {
             type Error = super::error::ConversionError;
@@ -48872,6 +56884,7 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     notes: value.notes?,
+                    skip_policy_check: value.skip_policy_check?,
                 })
             }
         }
@@ -48879,6 +56892,7 @@ pub mod types {
             fn from(value: super::ReviewRequest) -> Self {
                 Self {
                     notes: Ok(value.notes),
+                    skip_policy_check: Ok(value.skip_policy_check),
                 }
             }
         }
@@ -49008,6 +57022,202 @@ pub mod types {
                     id: Ok(value.id),
                     name: Ok(value.name),
                     permissions: Ok(value.permissions),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RotateWebhookSecretResponse {
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            previous_secret_expires_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            secret: ::std::result::Result<::std::string::String, ::std::string::String>,
+            secret_digest: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for RotateWebhookSecretResponse {
+            fn default() -> Self {
+                Self {
+                    id: Err("no value supplied for id".to_string()),
+                    previous_secret_expires_at: Err(
+                        "no value supplied for previous_secret_expires_at".to_string(),
+                    ),
+                    secret: Err("no value supplied for secret".to_string()),
+                    secret_digest: Err("no value supplied for secret_digest".to_string()),
+                }
+            }
+        }
+        impl RotateWebhookSecretResponse {
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn previous_secret_expires_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.previous_secret_expires_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for previous_secret_expires_at: {e}")
+                });
+                self
+            }
+            pub fn secret<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.secret = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for secret: {e}"));
+                self
+            }
+            pub fn secret_digest<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.secret_digest = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for secret_digest: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RotateWebhookSecretResponse> for super::RotateWebhookSecretResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RotateWebhookSecretResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    id: value.id?,
+                    previous_secret_expires_at: value.previous_secret_expires_at?,
+                    secret: value.secret?,
+                    secret_digest: value.secret_digest?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RotateWebhookSecretResponse> for RotateWebhookSecretResponse {
+            fn from(value: super::RotateWebhookSecretResponse) -> Self {
+                Self {
+                    id: Ok(value.id),
+                    previous_secret_expires_at: Ok(value.previous_secret_expires_at),
+                    secret: Ok(value.secret),
+                    secret_digest: Ok(value.secret_digest),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RoutingRule {
+            path_pattern: ::std::result::Result<::std::string::String, ::std::string::String>,
+            rewrite_to: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for RoutingRule {
+            fn default() -> Self {
+                Self {
+                    path_pattern: Err("no value supplied for path_pattern".to_string()),
+                    rewrite_to: Err("no value supplied for rewrite_to".to_string()),
+                }
+            }
+        }
+        impl RoutingRule {
+            pub fn path_pattern<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.path_pattern = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for path_pattern: {e}"));
+                self
+            }
+            pub fn rewrite_to<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rewrite_to = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rewrite_to: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RoutingRule> for super::RoutingRule {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RoutingRule,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    path_pattern: value.path_pattern?,
+                    rewrite_to: value.rewrite_to?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RoutingRule> for RoutingRule {
+            fn from(value: super::RoutingRule) -> Self {
+                Self {
+                    path_pattern: Ok(value.path_pattern),
+                    rewrite_to: Ok(value.rewrite_to),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RoutingRulesResponse {
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            rules:
+                ::std::result::Result<::std::vec::Vec<super::RoutingRule>, ::std::string::String>,
+        }
+        impl ::std::default::Default for RoutingRulesResponse {
+            fn default() -> Self {
+                Self {
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                    rules: Err("no value supplied for rules".to_string()),
+                }
+            }
+        }
+        impl RoutingRulesResponse {
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn rules<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::RoutingRule>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rules = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rules: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RoutingRulesResponse> for super::RoutingRulesResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RoutingRulesResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    repository_key: value.repository_key?,
+                    rules: value.rules?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RoutingRulesResponse> for RoutingRulesResponse {
+            fn from(value: super::RoutingRulesResponse) -> Self {
+                Self {
+                    repository_key: Ok(value.repository_key),
+                    rules: Ok(value.rules),
                 }
             }
         }
@@ -49293,6 +57503,60 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct RunNowResponse {
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
+            tasks_queued: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for RunNowResponse {
+            fn default() -> Self {
+                Self {
+                    status: Err("no value supplied for status".to_string()),
+                    tasks_queued: Err("no value supplied for tasks_queued".to_string()),
+                }
+            }
+        }
+        impl RunNowResponse {
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+            pub fn tasks_queued<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.tasks_queued = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for tasks_queued: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RunNowResponse> for super::RunNowResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RunNowResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    status: value.status?,
+                    tasks_queued: value.tasks_queued?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RunNowResponse> for RunNowResponse {
+            fn from(value: super::RunNowResponse) -> Self {
+                Self {
+                    status: Ok(value.status),
+                    tasks_queued: Ok(value.tasks_queued),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct SamlAcsForm {
             relay_state: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
@@ -49381,6 +57645,7 @@ pub mod types {
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
             >,
+            use_absolute_acs_url: ::std::result::Result<bool, ::std::string::String>,
         }
         impl ::std::default::Default for SamlConfigResponse {
             fn default() -> Self {
@@ -49402,6 +57667,9 @@ pub mod types {
                     sp_entity_id: Err("no value supplied for sp_entity_id".to_string()),
                     sso_url: Err("no value supplied for sso_url".to_string()),
                     updated_at: Err("no value supplied for updated_at".to_string()),
+                    use_absolute_acs_url: Err(
+                        "no value supplied for use_absolute_acs_url".to_string()
+                    ),
                 }
             }
         }
@@ -49558,6 +57826,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
                 self
             }
+            pub fn use_absolute_acs_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.use_absolute_acs_url = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for use_absolute_acs_url: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<SamlConfigResponse> for super::SamlConfigResponse {
             type Error = super::error::ConversionError;
@@ -49580,6 +57858,7 @@ pub mod types {
                     sp_entity_id: value.sp_entity_id?,
                     sso_url: value.sso_url?,
                     updated_at: value.updated_at?,
+                    use_absolute_acs_url: value.use_absolute_acs_url?,
                 })
             }
         }
@@ -49601,6 +57880,7 @@ pub mod types {
                     sp_entity_id: Ok(value.sp_entity_id),
                     sso_url: Ok(value.sso_url),
                     updated_at: Ok(value.updated_at),
+                    use_absolute_acs_url: Ok(value.use_absolute_acs_url),
                 }
             }
         }
@@ -50374,6 +58654,7 @@ pub mod types {
             high_count: ::std::result::Result<i32, ::std::string::String>,
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             info_count: ::std::result::Result<i32, ::std::string::String>,
+            is_reused: ::std::result::Result<bool, ::std::string::String>,
             low_count: ::std::result::Result<i32, ::std::string::String>,
             medium_count: ::std::result::Result<i32, ::std::string::String>,
             repository_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
@@ -50382,6 +58663,8 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            source_scan_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
             started_at: ::std::result::Result<
                 ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
                 ::std::string::String,
@@ -50402,11 +58685,13 @@ pub mod types {
                     high_count: Err("no value supplied for high_count".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     info_count: Err("no value supplied for info_count".to_string()),
+                    is_reused: Err("no value supplied for is_reused".to_string()),
                     low_count: Err("no value supplied for low_count".to_string()),
                     medium_count: Err("no value supplied for medium_count".to_string()),
                     repository_id: Err("no value supplied for repository_id".to_string()),
                     scan_type: Err("no value supplied for scan_type".to_string()),
                     scanner_version: Ok(Default::default()),
+                    source_scan_id: Ok(Default::default()),
                     started_at: Ok(Default::default()),
                     status: Err("no value supplied for status".to_string()),
                 }
@@ -50525,6 +58810,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for info_count: {e}"));
                 self
             }
+            pub fn is_reused<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_reused = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_reused: {e}"));
+                self
+            }
             pub fn low_count<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<i32>,
@@ -50575,6 +58870,16 @@ pub mod types {
                 });
                 self
             }
+            pub fn source_scan_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.source_scan_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for source_scan_id: {e}")
+                });
+                self
+            }
             pub fn started_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
@@ -50615,11 +58920,13 @@ pub mod types {
                     high_count: value.high_count?,
                     id: value.id?,
                     info_count: value.info_count?,
+                    is_reused: value.is_reused?,
                     low_count: value.low_count?,
                     medium_count: value.medium_count?,
                     repository_id: value.repository_id?,
                     scan_type: value.scan_type?,
                     scanner_version: value.scanner_version?,
+                    source_scan_id: value.source_scan_id?,
                     started_at: value.started_at?,
                     status: value.status?,
                 })
@@ -50639,13 +58946,85 @@ pub mod types {
                     high_count: Ok(value.high_count),
                     id: Ok(value.id),
                     info_count: Ok(value.info_count),
+                    is_reused: Ok(value.is_reused),
                     low_count: Ok(value.low_count),
                     medium_count: Ok(value.medium_count),
                     repository_id: Ok(value.repository_id),
                     scan_type: Ok(value.scan_type),
                     scanner_version: Ok(value.scanner_version),
+                    source_scan_id: Ok(value.source_scan_id),
                     started_at: Ok(value.started_at),
                     status: Ok(value.status),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ScannersConfig {
+            dependency_track_enabled: ::std::result::Result<bool, ::std::string::String>,
+            openscap_enabled: ::std::result::Result<bool, ::std::string::String>,
+            trivy_enabled: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for ScannersConfig {
+            fn default() -> Self {
+                Self {
+                    dependency_track_enabled: Err(
+                        "no value supplied for dependency_track_enabled".to_string()
+                    ),
+                    openscap_enabled: Err("no value supplied for openscap_enabled".to_string()),
+                    trivy_enabled: Err("no value supplied for trivy_enabled".to_string()),
+                }
+            }
+        }
+        impl ScannersConfig {
+            pub fn dependency_track_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.dependency_track_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for dependency_track_enabled: {e}")
+                });
+                self
+            }
+            pub fn openscap_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.openscap_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for openscap_enabled: {e}")
+                });
+                self
+            }
+            pub fn trivy_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.trivy_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for trivy_enabled: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ScannersConfig> for super::ScannersConfig {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ScannersConfig,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    dependency_track_enabled: value.dependency_track_enabled?,
+                    openscap_enabled: value.openscap_enabled?,
+                    trivy_enabled: value.trivy_enabled?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ScannersConfig> for ScannersConfig {
+            fn from(value: super::ScannersConfig) -> Self {
+                Self {
+                    dependency_track_enabled: Ok(value.dependency_track_enabled),
+                    openscap_enabled: Ok(value.openscap_enabled),
+                    trivy_enabled: Ok(value.trivy_enabled),
                 }
             }
         }
@@ -50658,6 +59037,7 @@ pub mod types {
             >,
             critical_count: ::std::result::Result<i32, ::std::string::String>,
             grade: ::std::result::Result<::std::string::String, ::std::string::String>,
+            has_failed_scan: ::std::result::Result<bool, ::std::string::String>,
             high_count: ::std::result::Result<i32, ::std::string::String>,
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             last_scan_at: ::std::result::Result<
@@ -50677,6 +59057,7 @@ pub mod types {
                     calculated_at: Err("no value supplied for calculated_at".to_string()),
                     critical_count: Err("no value supplied for critical_count".to_string()),
                     grade: Err("no value supplied for grade".to_string()),
+                    has_failed_scan: Err("no value supplied for has_failed_scan".to_string()),
                     high_count: Err("no value supplied for high_count".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     last_scan_at: Ok(Default::default()),
@@ -50727,6 +59108,16 @@ pub mod types {
                 self.grade = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for grade: {e}"));
+                self
+            }
+            pub fn has_failed_scan<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.has_failed_scan = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for has_failed_scan: {e}")
+                });
                 self
             }
             pub fn high_count<T>(mut self, value: T) -> Self
@@ -50822,6 +59213,7 @@ pub mod types {
                     calculated_at: value.calculated_at?,
                     critical_count: value.critical_count?,
                     grade: value.grade?,
+                    has_failed_scan: value.has_failed_scan?,
                     high_count: value.high_count?,
                     id: value.id?,
                     last_scan_at: value.last_scan_at?,
@@ -50840,6 +59232,7 @@ pub mod types {
                     calculated_at: Ok(value.calculated_at),
                     critical_count: Ok(value.critical_count),
                     grade: Ok(value.grade),
+                    has_failed_scan: Ok(value.has_failed_scan),
                     high_count: Ok(value.high_count),
                     id: Ok(value.id),
                     last_scan_at: Ok(value.last_scan_at),
@@ -51898,6 +60291,90 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct SetReleaseTargetRequest {
+            release_repository_key: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for SetReleaseTargetRequest {
+            fn default() -> Self {
+                Self {
+                    release_repository_key: Ok(Default::default()),
+                }
+            }
+        }
+        impl SetReleaseTargetRequest {
+            pub fn release_repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.release_repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for release_repository_key: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SetReleaseTargetRequest> for super::SetReleaseTargetRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SetReleaseTargetRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    release_repository_key: value.release_repository_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SetReleaseTargetRequest> for SetReleaseTargetRequest {
+            fn from(value: super::SetReleaseTargetRequest) -> Self {
+                Self {
+                    release_repository_key: Ok(value.release_repository_key),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct SetRoutingRulesRequest {
+            rules:
+                ::std::result::Result<::std::vec::Vec<super::RoutingRule>, ::std::string::String>,
+        }
+        impl ::std::default::Default for SetRoutingRulesRequest {
+            fn default() -> Self {
+                Self {
+                    rules: Err("no value supplied for rules".to_string()),
+                }
+            }
+        }
+        impl SetRoutingRulesRequest {
+            pub fn rules<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::RoutingRule>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.rules = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for rules: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SetRoutingRulesRequest> for super::SetRoutingRulesRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SetRoutingRulesRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    rules: value.rules?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SetRoutingRulesRequest> for SetRoutingRulesRequest {
+            fn from(value: super::SetRoutingRulesRequest) -> Self {
+                Self {
+                    rules: Ok(value.rules),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct SetupStatusResponse {
             setup_required: ::std::result::Result<bool, ::std::string::String>,
         }
@@ -52296,6 +60773,96 @@ pub mod types {
                     repository_id: Ok(value.repository_id),
                     uid_email: Ok(value.uid_email),
                     uid_name: Ok(value.uid_name),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct SmtpTestRequest {
+            to: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for SmtpTestRequest {
+            fn default() -> Self {
+                Self {
+                    to: Err("no value supplied for to".to_string()),
+                }
+            }
+        }
+        impl SmtpTestRequest {
+            pub fn to<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.to = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for to: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SmtpTestRequest> for super::SmtpTestRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SmtpTestRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self { to: value.to? })
+            }
+        }
+        impl ::std::convert::From<super::SmtpTestRequest> for SmtpTestRequest {
+            fn from(value: super::SmtpTestRequest) -> Self {
+                Self { to: Ok(value.to) }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct SmtpTestResponse {
+            message: ::std::result::Result<::std::string::String, ::std::string::String>,
+            success: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for SmtpTestResponse {
+            fn default() -> Self {
+                Self {
+                    message: Err("no value supplied for message".to_string()),
+                    success: Err("no value supplied for success".to_string()),
+                }
+            }
+        }
+        impl SmtpTestResponse {
+            pub fn message<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.message = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for message: {e}"));
+                self
+            }
+            pub fn success<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.success = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for success: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SmtpTestResponse> for super::SmtpTestResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SmtpTestResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    message: value.message?,
+                    success: value.success?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SmtpTestResponse> for SmtpTestResponse {
+            fn from(value: super::SmtpTestResponse) -> Self {
+                Self {
+                    message: Ok(value.message),
+                    success: Ok(value.success),
                 }
             }
         }
@@ -53336,6 +61903,177 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct SubscriptionResponse {
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            last_replicated_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            peer_instance_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            replication_filter: ::std::result::Result<
+                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::string::String,
+            >,
+            replication_mode: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            replication_schedule: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            repository_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            sync_enabled: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for SubscriptionResponse {
+            fn default() -> Self {
+                Self {
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    id: Err("no value supplied for id".to_string()),
+                    last_replicated_at: Ok(Default::default()),
+                    peer_instance_id: Err("no value supplied for peer_instance_id".to_string()),
+                    replication_filter: Err("no value supplied for replication_filter".to_string()),
+                    replication_mode: Ok(Default::default()),
+                    replication_schedule: Ok(Default::default()),
+                    repository_id: Err("no value supplied for repository_id".to_string()),
+                    sync_enabled: Err("no value supplied for sync_enabled".to_string()),
+                }
+            }
+        }
+        impl SubscriptionResponse {
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn last_replicated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.last_replicated_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for last_replicated_at: {e}")
+                });
+                self
+            }
+            pub fn peer_instance_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.peer_instance_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for peer_instance_id: {e}")
+                });
+                self
+            }
+            pub fn replication_filter<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.replication_filter = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for replication_filter: {e}")
+                });
+                self
+            }
+            pub fn replication_mode<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.replication_mode = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for replication_mode: {e}")
+                });
+                self
+            }
+            pub fn replication_schedule<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.replication_schedule = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for replication_schedule: {e}")
+                });
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn sync_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.sync_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for sync_enabled: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SubscriptionResponse> for super::SubscriptionResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SubscriptionResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    created_at: value.created_at?,
+                    id: value.id?,
+                    last_replicated_at: value.last_replicated_at?,
+                    peer_instance_id: value.peer_instance_id?,
+                    replication_filter: value.replication_filter?,
+                    replication_mode: value.replication_mode?,
+                    replication_schedule: value.replication_schedule?,
+                    repository_id: value.repository_id?,
+                    sync_enabled: value.sync_enabled?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SubscriptionResponse> for SubscriptionResponse {
+            fn from(value: super::SubscriptionResponse) -> Self {
+                Self {
+                    created_at: Ok(value.created_at),
+                    id: Ok(value.id),
+                    last_replicated_at: Ok(value.last_replicated_at),
+                    peer_instance_id: Ok(value.peer_instance_id),
+                    replication_filter: Ok(value.replication_filter),
+                    replication_mode: Ok(value.replication_mode),
+                    replication_schedule: Ok(value.replication_schedule),
+                    repository_id: Ok(value.repository_id),
+                    sync_enabled: Ok(value.sync_enabled),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct SuggestResponse {
             suggestions: ::std::result::Result<
                 ::std::vec::Vec<::std::string::String>,
@@ -53544,6 +62282,7 @@ pub mod types {
             >,
             description: ::std::result::Result<::std::string::String, ::std::string::String>,
             enabled: ::std::result::Result<bool, ::std::string::String>,
+            filter: ::std::result::Result<::std::string::String, ::std::string::String>,
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             peer_selector: ::std::result::Result<
@@ -53569,6 +62308,7 @@ pub mod types {
                     created_at: Err("no value supplied for created_at".to_string()),
                     description: Err("no value supplied for description".to_string()),
                     enabled: Err("no value supplied for enabled".to_string()),
+                    filter: Err("no value supplied for filter".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     name: Err("no value supplied for name".to_string()),
                     peer_selector: Err("no value supplied for peer_selector".to_string()),
@@ -53621,6 +62361,16 @@ pub mod types {
                 self.enabled = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn filter<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.filter = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for filter: {e}"));
                 self
             }
             pub fn id<T>(mut self, value: T) -> Self
@@ -53718,6 +62468,7 @@ pub mod types {
                     created_at: value.created_at?,
                     description: value.description?,
                     enabled: value.enabled?,
+                    filter: value.filter?,
                     id: value.id?,
                     name: value.name?,
                     peer_selector: value.peer_selector?,
@@ -53736,6 +62487,7 @@ pub mod types {
                     created_at: Ok(value.created_at),
                     description: Ok(value.description),
                     enabled: Ok(value.enabled),
+                    filter: Ok(value.filter),
                     id: Ok(value.id),
                     name: Ok(value.name),
                     peer_selector: Ok(value.peer_selector),
@@ -53751,8 +62503,17 @@ pub mod types {
         pub struct SyncTaskResponse {
             artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             artifact_size: ::std::result::Result<i64, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             priority: ::std::result::Result<i32, ::std::string::String>,
+            started_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            status: ::std::result::Result<::std::string::String, ::std::string::String>,
             storage_key: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
         impl ::std::default::Default for SyncTaskResponse {
@@ -53760,8 +62521,11 @@ pub mod types {
                 Self {
                     artifact_id: Err("no value supplied for artifact_id".to_string()),
                     artifact_size: Err("no value supplied for artifact_size".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     priority: Err("no value supplied for priority".to_string()),
+                    started_at: Ok(Default::default()),
+                    status: Err("no value supplied for status".to_string()),
                     storage_key: Err("no value supplied for storage_key".to_string()),
                 }
             }
@@ -53787,6 +62551,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for artifact_size: {e}"));
                 self
             }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
             pub fn id<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::uuid::Uuid>,
@@ -53805,6 +62579,28 @@ pub mod types {
                 self.priority = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+            pub fn started_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.started_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for started_at: {e}"));
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
                 self
             }
             pub fn storage_key<T>(mut self, value: T) -> Self
@@ -53826,8 +62622,11 @@ pub mod types {
                 Ok(Self {
                     artifact_id: value.artifact_id?,
                     artifact_size: value.artifact_size?,
+                    created_at: value.created_at?,
                     id: value.id?,
                     priority: value.priority?,
+                    started_at: value.started_at?,
+                    status: value.status?,
                     storage_key: value.storage_key?,
                 })
             }
@@ -53837,9 +62636,200 @@ pub mod types {
                 Self {
                     artifact_id: Ok(value.artifact_id),
                     artifact_size: Ok(value.artifact_size),
+                    created_at: Ok(value.created_at),
                     id: Ok(value.id),
                     priority: Ok(value.priority),
+                    started_at: Ok(value.started_at),
+                    status: Ok(value.status),
                     storage_key: Ok(value.storage_key),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct SystemConfigResponse {
+            auth: ::std::result::Result<super::AuthConfig, ::std::string::String>,
+            demo_mode: ::std::result::Result<bool, ::std::string::String>,
+            guest_access_enabled: ::std::result::Result<bool, ::std::string::String>,
+            max_upload_size_bytes: ::std::result::Result<i64, ::std::string::String>,
+            oidc_issuer: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            permissions: ::std::result::Result<
+                ::std::option::Option<super::PermissionsConfig>,
+                ::std::string::String,
+            >,
+            plugin_signing: ::std::result::Result<
+                ::std::option::Option<super::PluginSigningConfig>,
+                ::std::string::String,
+            >,
+            scanners: ::std::result::Result<
+                ::std::option::Option<super::ScannersConfig>,
+                ::std::string::String,
+            >,
+            search_engine: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            storage_backend: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for SystemConfigResponse {
+            fn default() -> Self {
+                Self {
+                    auth: Err("no value supplied for auth".to_string()),
+                    demo_mode: Err("no value supplied for demo_mode".to_string()),
+                    guest_access_enabled: Err(
+                        "no value supplied for guest_access_enabled".to_string()
+                    ),
+                    max_upload_size_bytes: Err(
+                        "no value supplied for max_upload_size_bytes".to_string()
+                    ),
+                    oidc_issuer: Ok(Default::default()),
+                    permissions: Ok(Default::default()),
+                    plugin_signing: Ok(Default::default()),
+                    scanners: Ok(Default::default()),
+                    search_engine: Ok(Default::default()),
+                    storage_backend: Ok(Default::default()),
+                }
+            }
+        }
+        impl SystemConfigResponse {
+            pub fn auth<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::AuthConfig>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.auth = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for auth: {e}"));
+                self
+            }
+            pub fn demo_mode<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.demo_mode = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for demo_mode: {e}"));
+                self
+            }
+            pub fn guest_access_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.guest_access_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for guest_access_enabled: {e}")
+                });
+                self
+            }
+            pub fn max_upload_size_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_upload_size_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_upload_size_bytes: {e}")
+                });
+                self
+            }
+            pub fn oidc_issuer<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.oidc_issuer = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for oidc_issuer: {e}"));
+                self
+            }
+            pub fn permissions<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::PermissionsConfig>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.permissions = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for permissions: {e}"));
+                self
+            }
+            pub fn plugin_signing<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::PluginSigningConfig>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.plugin_signing = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for plugin_signing: {e}")
+                });
+                self
+            }
+            pub fn scanners<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::ScannersConfig>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.scanners = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for scanners: {e}"));
+                self
+            }
+            pub fn search_engine<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.search_engine = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for search_engine: {e}"));
+                self
+            }
+            pub fn storage_backend<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.storage_backend = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for storage_backend: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SystemConfigResponse> for super::SystemConfigResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SystemConfigResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    auth: value.auth?,
+                    demo_mode: value.demo_mode?,
+                    guest_access_enabled: value.guest_access_enabled?,
+                    max_upload_size_bytes: value.max_upload_size_bytes?,
+                    oidc_issuer: value.oidc_issuer?,
+                    permissions: value.permissions?,
+                    plugin_signing: value.plugin_signing?,
+                    scanners: value.scanners?,
+                    search_engine: value.search_engine?,
+                    storage_backend: value.storage_backend?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SystemConfigResponse> for SystemConfigResponse {
+            fn from(value: super::SystemConfigResponse) -> Self {
+                Self {
+                    auth: Ok(value.auth),
+                    demo_mode: Ok(value.demo_mode),
+                    guest_access_enabled: Ok(value.guest_access_enabled),
+                    max_upload_size_bytes: Ok(value.max_upload_size_bytes),
+                    oidc_issuer: Ok(value.oidc_issuer),
+                    permissions: Ok(value.permissions),
+                    plugin_signing: Ok(value.plugin_signing),
+                    scanners: Ok(value.scanners),
+                    search_engine: Ok(value.search_engine),
+                    storage_backend: Ok(value.storage_backend),
                 }
             }
         }
@@ -55625,6 +64615,7 @@ pub mod types {
         pub struct TriggerScanRequest {
             artifact_id:
                 ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            bypass_dedup: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             repository_id:
                 ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
         }
@@ -55632,6 +64623,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     artifact_id: Ok(Default::default()),
+                    bypass_dedup: Ok(Default::default()),
                     repository_id: Ok(Default::default()),
                 }
             }
@@ -55645,6 +64637,16 @@ pub mod types {
                 self.artifact_id = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn bypass_dedup<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.bypass_dedup = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for bypass_dedup: {e}"));
                 self
             }
             pub fn repository_id<T>(mut self, value: T) -> Self
@@ -55665,6 +64667,7 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     artifact_id: value.artifact_id?,
+                    bypass_dedup: value.bypass_dedup?,
                     repository_id: value.repository_id?,
                 })
             }
@@ -55673,6 +64676,7 @@ pub mod types {
             fn from(value: super::TriggerScanRequest) -> Self {
                 Self {
                     artifact_id: Ok(value.artifact_id),
+                    bypass_dedup: Ok(value.bypass_dedup),
                     repository_id: Ok(value.repository_id),
                 }
             }
@@ -55681,12 +64685,15 @@ pub mod types {
         pub struct TriggerScanResponse {
             artifacts_queued: ::std::result::Result<i32, ::std::string::String>,
             message: ::std::result::Result<::std::string::String, ::std::string::String>,
+            scan_result_ids:
+                ::std::result::Result<::std::vec::Vec<::uuid::Uuid>, ::std::string::String>,
         }
         impl ::std::default::Default for TriggerScanResponse {
             fn default() -> Self {
                 Self {
                     artifacts_queued: Err("no value supplied for artifacts_queued".to_string()),
                     message: Err("no value supplied for message".to_string()),
+                    scan_result_ids: Ok(Default::default()),
                 }
             }
         }
@@ -55711,6 +64718,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for message: {e}"));
                 self
             }
+            pub fn scan_result_ids<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.scan_result_ids = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for scan_result_ids: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<TriggerScanResponse> for super::TriggerScanResponse {
             type Error = super::error::ConversionError;
@@ -55720,6 +64737,7 @@ pub mod types {
                 Ok(Self {
                     artifacts_queued: value.artifacts_queued?,
                     message: value.message?,
+                    scan_result_ids: value.scan_result_ids?,
                 })
             }
         }
@@ -55728,6 +64746,7 @@ pub mod types {
                 Self {
                     artifacts_queued: Ok(value.artifacts_queued),
                     message: Ok(value.message),
+                    scan_result_ids: Ok(value.scan_result_ids),
                 }
             }
         }
@@ -55768,6 +64787,60 @@ pub mod types {
             fn from(value: super::UninstallQuery) -> Self {
                 Self {
                     force: Ok(value.force),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct UpdateAgeGateConfigRequest {
+            enabled: ::std::result::Result<bool, ::std::string::String>,
+            min_age_days: ::std::result::Result<i32, ::std::string::String>,
+        }
+        impl ::std::default::Default for UpdateAgeGateConfigRequest {
+            fn default() -> Self {
+                Self {
+                    enabled: Err("no value supplied for enabled".to_string()),
+                    min_age_days: Err("no value supplied for min_age_days".to_string()),
+                }
+            }
+        }
+        impl UpdateAgeGateConfigRequest {
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn min_age_days<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.min_age_days = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for min_age_days: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<UpdateAgeGateConfigRequest> for super::UpdateAgeGateConfigRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: UpdateAgeGateConfigRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    enabled: value.enabled?,
+                    min_age_days: value.min_age_days?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::UpdateAgeGateConfigRequest> for UpdateAgeGateConfigRequest {
+            fn from(value: super::UpdateAgeGateConfigRequest) -> Self {
+                Self {
+                    enabled: Ok(value.enabled),
+                    min_age_days: Ok(value.min_age_days),
                 }
             }
         }
@@ -56011,6 +65084,219 @@ pub mod types {
                 Self {
                     chunk_bitmap: Ok(value.chunk_bitmap),
                     total_chunks: Ok(value.total_chunks),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct UpdateCiOidcMappingRequest {
+            allowed_repo_ids: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::uuid::Uuid>>,
+                ::std::string::String,
+            >,
+            claim_filters: ::std::result::Result<
+                ::std::option::Option<::serde_json::Value>,
+                ::std::string::String,
+            >,
+            is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            priority: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+        }
+        impl ::std::default::Default for UpdateCiOidcMappingRequest {
+            fn default() -> Self {
+                Self {
+                    allowed_repo_ids: Ok(Default::default()),
+                    claim_filters: Ok(Default::default()),
+                    is_enabled: Ok(Default::default()),
+                    name: Ok(Default::default()),
+                    priority: Ok(Default::default()),
+                }
+            }
+        }
+        impl UpdateCiOidcMappingRequest {
+            pub fn allowed_repo_ids<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::vec::Vec<::uuid::Uuid>>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allowed_repo_ids = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allowed_repo_ids: {e}")
+                });
+                self
+            }
+            pub fn claim_filters<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::serde_json::Value>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.claim_filters = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for claim_filters: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn priority<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.priority = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for priority: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<UpdateCiOidcMappingRequest> for super::UpdateCiOidcMappingRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: UpdateCiOidcMappingRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    allowed_repo_ids: value.allowed_repo_ids?,
+                    claim_filters: value.claim_filters?,
+                    is_enabled: value.is_enabled?,
+                    name: value.name?,
+                    priority: value.priority?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::UpdateCiOidcMappingRequest> for UpdateCiOidcMappingRequest {
+            fn from(value: super::UpdateCiOidcMappingRequest) -> Self {
+                Self {
+                    allowed_repo_ids: Ok(value.allowed_repo_ids),
+                    claim_filters: Ok(value.claim_filters),
+                    is_enabled: Ok(value.is_enabled),
+                    name: Ok(value.name),
+                    priority: Ok(value.priority),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct UpdateCiOidcProviderRequest {
+            audience: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            issuer_url: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            provider_type: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for UpdateCiOidcProviderRequest {
+            fn default() -> Self {
+                Self {
+                    audience: Ok(Default::default()),
+                    is_enabled: Ok(Default::default()),
+                    issuer_url: Ok(Default::default()),
+                    name: Ok(Default::default()),
+                    provider_type: Ok(Default::default()),
+                }
+            }
+        }
+        impl UpdateCiOidcProviderRequest {
+            pub fn audience<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.audience = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for audience: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn issuer_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.issuer_url = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for issuer_url: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn provider_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.provider_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for provider_type: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<UpdateCiOidcProviderRequest> for super::UpdateCiOidcProviderRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: UpdateCiOidcProviderRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    audience: value.audience?,
+                    is_enabled: value.is_enabled?,
+                    issuer_url: value.issuer_url?,
+                    name: value.name?,
+                    provider_type: value.provider_type?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::UpdateCiOidcProviderRequest> for UpdateCiOidcProviderRequest {
+            fn from(value: super::UpdateCiOidcProviderRequest) -> Self {
+                Self {
+                    audience: Ok(value.audience),
+                    is_enabled: Ok(value.is_enabled),
+                    issuer_url: Ok(value.issuer_url),
+                    name: Ok(value.name),
+                    provider_type: Ok(value.provider_type),
                 }
             }
         }
@@ -56607,12 +65893,16 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct UpdateOidcConfigRequest {
+            allow_legacy_rsa_keys:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             attribute_mapping: ::std::result::Result<
                 ::std::option::Option<
                     ::serde_json::Map<::std::string::String, ::serde_json::Value>,
                 >,
                 ::std::string::String,
             >,
+            attribute_mapping_replace:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             auto_create_users:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             client_id: ::std::result::Result<
@@ -56628,10 +65918,13 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            map_groups_to_groups:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             name: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            pkce_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             scopes: ::std::result::Result<
                 ::std::option::Option<::std::vec::Vec<::std::string::String>>,
                 ::std::string::String,
@@ -56640,18 +65933,32 @@ pub mod types {
         impl ::std::default::Default for UpdateOidcConfigRequest {
             fn default() -> Self {
                 Self {
+                    allow_legacy_rsa_keys: Ok(Default::default()),
                     attribute_mapping: Ok(Default::default()),
+                    attribute_mapping_replace: Ok(Default::default()),
                     auto_create_users: Ok(Default::default()),
                     client_id: Ok(Default::default()),
                     client_secret: Ok(Default::default()),
                     is_enabled: Ok(Default::default()),
                     issuer_url: Ok(Default::default()),
+                    map_groups_to_groups: Ok(Default::default()),
                     name: Ok(Default::default()),
+                    pkce_enabled: Ok(Default::default()),
                     scopes: Ok(Default::default()),
                 }
             }
         }
         impl UpdateOidcConfigRequest {
+            pub fn allow_legacy_rsa_keys<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allow_legacy_rsa_keys = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allow_legacy_rsa_keys: {e}")
+                });
+                self
+            }
             pub fn attribute_mapping<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
@@ -56663,6 +65970,16 @@ pub mod types {
             {
                 self.attribute_mapping = value.try_into().map_err(|e| {
                     format!("error converting supplied value for attribute_mapping: {e}")
+                });
+                self
+            }
+            pub fn attribute_mapping_replace<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.attribute_mapping_replace = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for attribute_mapping_replace: {e}")
                 });
                 self
             }
@@ -56716,6 +66033,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for issuer_url: {e}"));
                 self
             }
+            pub fn map_groups_to_groups<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.map_groups_to_groups = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for map_groups_to_groups: {e}")
+                });
+                self
+            }
             pub fn name<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
@@ -56724,6 +66051,16 @@ pub mod types {
                 self.name = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn pkce_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.pkce_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for pkce_enabled: {e}"));
                 self
             }
             pub fn scopes<T>(mut self, value: T) -> Self
@@ -56745,13 +66082,17 @@ pub mod types {
                 value: UpdateOidcConfigRequest,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    allow_legacy_rsa_keys: value.allow_legacy_rsa_keys?,
                     attribute_mapping: value.attribute_mapping?,
+                    attribute_mapping_replace: value.attribute_mapping_replace?,
                     auto_create_users: value.auto_create_users?,
                     client_id: value.client_id?,
                     client_secret: value.client_secret?,
                     is_enabled: value.is_enabled?,
                     issuer_url: value.issuer_url?,
+                    map_groups_to_groups: value.map_groups_to_groups?,
                     name: value.name?,
+                    pkce_enabled: value.pkce_enabled?,
                     scopes: value.scopes?,
                 })
             }
@@ -56759,13 +66100,17 @@ pub mod types {
         impl ::std::convert::From<super::UpdateOidcConfigRequest> for UpdateOidcConfigRequest {
             fn from(value: super::UpdateOidcConfigRequest) -> Self {
                 Self {
+                    allow_legacy_rsa_keys: Ok(value.allow_legacy_rsa_keys),
                     attribute_mapping: Ok(value.attribute_mapping),
+                    attribute_mapping_replace: Ok(value.attribute_mapping_replace),
                     auto_create_users: Ok(value.auto_create_users),
                     client_id: Ok(value.client_id),
                     client_secret: Ok(value.client_secret),
                     is_enabled: Ok(value.is_enabled),
                     issuer_url: Ok(value.issuer_url),
+                    map_groups_to_groups: Ok(value.map_groups_to_groups),
                     name: Ok(value.name),
+                    pkce_enabled: Ok(value.pkce_enabled),
                     scopes: Ok(value.scopes),
                 }
             }
@@ -56817,28 +66162,36 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct UpdatePolicyRequest {
-            block_on_fail: ::std::result::Result<bool, ::std::string::String>,
-            block_unscanned: ::std::result::Result<bool, ::std::string::String>,
-            is_enabled: ::std::result::Result<bool, ::std::string::String>,
+            block_on_fail:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            block_unscanned:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             max_artifact_age_days:
                 ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
-            max_severity: ::std::result::Result<::std::string::String, ::std::string::String>,
+            max_severity: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             min_staging_hours:
                 ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
-            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             require_signature:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for UpdatePolicyRequest {
             fn default() -> Self {
                 Self {
-                    block_on_fail: Err("no value supplied for block_on_fail".to_string()),
-                    block_unscanned: Err("no value supplied for block_unscanned".to_string()),
-                    is_enabled: Err("no value supplied for is_enabled".to_string()),
+                    block_on_fail: Ok(Default::default()),
+                    block_unscanned: Ok(Default::default()),
+                    is_enabled: Ok(Default::default()),
                     max_artifact_age_days: Ok(Default::default()),
-                    max_severity: Err("no value supplied for max_severity".to_string()),
+                    max_severity: Ok(Default::default()),
                     min_staging_hours: Ok(Default::default()),
-                    name: Err("no value supplied for name".to_string()),
+                    name: Ok(Default::default()),
                     require_signature: Ok(Default::default()),
                 }
             }
@@ -56846,7 +66199,7 @@ pub mod types {
         impl UpdatePolicyRequest {
             pub fn block_on_fail<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<bool>,
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.block_on_fail = value
@@ -56856,7 +66209,7 @@ pub mod types {
             }
             pub fn block_unscanned<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<bool>,
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.block_unscanned = value.try_into().map_err(|e| {
@@ -56866,7 +66219,7 @@ pub mod types {
             }
             pub fn is_enabled<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<bool>,
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.is_enabled = value
@@ -56886,7 +66239,7 @@ pub mod types {
             }
             pub fn max_severity<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::string::String>,
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.max_severity = value
@@ -56906,7 +66259,7 @@ pub mod types {
             }
             pub fn name<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::string::String>,
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.name = value
@@ -56958,6 +66311,8 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct UpdateRepositoryRequest {
+            allow_anonymous_access:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             description: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -56975,21 +66330,51 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            promotion_only:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            pypi_upstream_index_path: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            quarantine_duration_minutes:
+                ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            quarantine_enabled:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            release_repository_key: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
         }
         impl ::std::default::Default for UpdateRepositoryRequest {
             fn default() -> Self {
                 Self {
+                    allow_anonymous_access: Ok(Default::default()),
                     description: Ok(Default::default()),
                     index_upstream_url: Ok(Default::default()),
                     is_public: Ok(Default::default()),
                     key: Ok(Default::default()),
                     name: Ok(Default::default()),
+                    promotion_only: Ok(Default::default()),
+                    pypi_upstream_index_path: Ok(Default::default()),
+                    quarantine_duration_minutes: Ok(Default::default()),
+                    quarantine_enabled: Ok(Default::default()),
                     quota_bytes: Ok(Default::default()),
+                    release_repository_key: Ok(Default::default()),
                 }
             }
         }
         impl UpdateRepositoryRequest {
+            pub fn allow_anonymous_access<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allow_anonymous_access = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allow_anonymous_access: {e}")
+                });
+                self
+            }
             pub fn description<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
@@ -57040,6 +66425,46 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
                 self
             }
+            pub fn promotion_only<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.promotion_only = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for promotion_only: {e}")
+                });
+                self
+            }
+            pub fn pypi_upstream_index_path<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.pypi_upstream_index_path = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for pypi_upstream_index_path: {e}")
+                });
+                self
+            }
+            pub fn quarantine_duration_minutes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_duration_minutes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_duration_minutes: {e}")
+                });
+                self
+            }
+            pub fn quarantine_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_enabled: {e}")
+                });
+                self
+            }
             pub fn quota_bytes<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<i64>>,
@@ -57050,6 +66475,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for quota_bytes: {e}"));
                 self
             }
+            pub fn release_repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.release_repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for release_repository_key: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<UpdateRepositoryRequest> for super::UpdateRepositoryRequest {
             type Error = super::error::ConversionError;
@@ -57057,24 +66492,36 @@ pub mod types {
                 value: UpdateRepositoryRequest,
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
+                    allow_anonymous_access: value.allow_anonymous_access?,
                     description: value.description?,
                     index_upstream_url: value.index_upstream_url?,
                     is_public: value.is_public?,
                     key: value.key?,
                     name: value.name?,
+                    promotion_only: value.promotion_only?,
+                    pypi_upstream_index_path: value.pypi_upstream_index_path?,
+                    quarantine_duration_minutes: value.quarantine_duration_minutes?,
+                    quarantine_enabled: value.quarantine_enabled?,
                     quota_bytes: value.quota_bytes?,
+                    release_repository_key: value.release_repository_key?,
                 })
             }
         }
         impl ::std::convert::From<super::UpdateRepositoryRequest> for UpdateRepositoryRequest {
             fn from(value: super::UpdateRepositoryRequest) -> Self {
                 Self {
+                    allow_anonymous_access: Ok(value.allow_anonymous_access),
                     description: Ok(value.description),
                     index_upstream_url: Ok(value.index_upstream_url),
                     is_public: Ok(value.is_public),
                     key: Ok(value.key),
                     name: Ok(value.name),
+                    promotion_only: Ok(value.promotion_only),
+                    pypi_upstream_index_path: Ok(value.pypi_upstream_index_path),
+                    quarantine_duration_minutes: Ok(value.quarantine_duration_minutes),
+                    quarantine_enabled: Ok(value.quarantine_enabled),
                     quota_bytes: Ok(value.quota_bytes),
+                    release_repository_key: Ok(value.release_repository_key),
                 }
             }
         }
@@ -57290,6 +66737,8 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            use_absolute_acs_url:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for UpdateSamlConfigRequest {
             fn default() -> Self {
@@ -57306,6 +66755,7 @@ pub mod types {
                     slo_url: Ok(Default::default()),
                     sp_entity_id: Ok(Default::default()),
                     sso_url: Ok(Default::default()),
+                    use_absolute_acs_url: Ok(Default::default()),
                 }
             }
         }
@@ -57434,6 +66884,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for sso_url: {e}"));
                 self
             }
+            pub fn use_absolute_acs_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.use_absolute_acs_url = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for use_absolute_acs_url: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<UpdateSamlConfigRequest> for super::UpdateSamlConfigRequest {
             type Error = super::error::ConversionError;
@@ -57453,6 +66913,7 @@ pub mod types {
                     slo_url: value.slo_url?,
                     sp_entity_id: value.sp_entity_id?,
                     sso_url: value.sso_url?,
+                    use_absolute_acs_url: value.use_absolute_acs_url?,
                 })
             }
         }
@@ -57471,6 +66932,7 @@ pub mod types {
                     slo_url: Ok(value.slo_url),
                     sp_entity_id: Ok(value.sp_entity_id),
                     sso_url: Ok(value.sso_url),
+                    use_absolute_acs_url: Ok(value.use_absolute_acs_url),
                 }
             }
         }
@@ -58078,29 +67540,33 @@ pub mod types {
         }
         #[derive(Clone, Debug)]
         pub struct UpsertScanConfigRequest {
-            block_on_policy_violation: ::std::result::Result<bool, ::std::string::String>,
-            scan_enabled: ::std::result::Result<bool, ::std::string::String>,
-            scan_on_proxy: ::std::result::Result<bool, ::std::string::String>,
-            scan_on_upload: ::std::result::Result<bool, ::std::string::String>,
-            severity_threshold: ::std::result::Result<::std::string::String, ::std::string::String>,
+            block_on_policy_violation:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            scan_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            scan_on_proxy:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            scan_on_upload:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            severity_threshold: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
         }
         impl ::std::default::Default for UpsertScanConfigRequest {
             fn default() -> Self {
                 Self {
-                    block_on_policy_violation: Err(
-                        "no value supplied for block_on_policy_violation".to_string(),
-                    ),
-                    scan_enabled: Err("no value supplied for scan_enabled".to_string()),
-                    scan_on_proxy: Err("no value supplied for scan_on_proxy".to_string()),
-                    scan_on_upload: Err("no value supplied for scan_on_upload".to_string()),
-                    severity_threshold: Err("no value supplied for severity_threshold".to_string()),
+                    block_on_policy_violation: Ok(Default::default()),
+                    scan_enabled: Ok(Default::default()),
+                    scan_on_proxy: Ok(Default::default()),
+                    scan_on_upload: Ok(Default::default()),
+                    severity_threshold: Ok(Default::default()),
                 }
             }
         }
         impl UpsertScanConfigRequest {
             pub fn block_on_policy_violation<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<bool>,
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.block_on_policy_violation = value.try_into().map_err(|e| {
@@ -58110,7 +67576,7 @@ pub mod types {
             }
             pub fn scan_enabled<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<bool>,
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.scan_enabled = value
@@ -58120,7 +67586,7 @@ pub mod types {
             }
             pub fn scan_on_proxy<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<bool>,
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.scan_on_proxy = value
@@ -58130,7 +67596,7 @@ pub mod types {
             }
             pub fn scan_on_upload<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<bool>,
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.scan_on_upload = value.try_into().map_err(|e| {
@@ -58140,7 +67606,7 @@ pub mod types {
             }
             pub fn severity_threshold<T>(mut self, value: T) -> Self
             where
-                T: ::std::convert::TryInto<::std::string::String>,
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
                 T::Error: ::std::fmt::Display,
             {
                 self.severity_threshold = value.try_into().map_err(|e| {
@@ -59022,6 +68488,8 @@ pub mod types {
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
             >,
+            event_schema_version:
+                ::std::result::Result<::std::string::String, ::std::string::String>,
             events: ::std::result::Result<
                 ::std::vec::Vec<::std::string::String>,
                 ::std::string::String,
@@ -59039,21 +68507,34 @@ pub mod types {
                 ::std::string::String,
             >,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            payload_template: ::std::result::Result<super::PayloadTemplate, ::std::string::String>,
             repository_id:
                 ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            secret_digest: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            secret_rotation_active:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             url: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
         impl ::std::default::Default for WebhookResponse {
             fn default() -> Self {
                 Self {
                     created_at: Err("no value supplied for created_at".to_string()),
+                    event_schema_version: Err(
+                        "no value supplied for event_schema_version".to_string()
+                    ),
                     events: Err("no value supplied for events".to_string()),
                     headers: Ok(Default::default()),
                     id: Err("no value supplied for id".to_string()),
                     is_enabled: Err("no value supplied for is_enabled".to_string()),
                     last_triggered_at: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
+                    payload_template: Err("no value supplied for payload_template".to_string()),
                     repository_id: Ok(Default::default()),
+                    secret_digest: Ok(Default::default()),
+                    secret_rotation_active: Ok(Default::default()),
                     url: Err("no value supplied for url".to_string()),
                 }
             }
@@ -59067,6 +68548,16 @@ pub mod types {
                 self.created_at = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn event_schema_version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.event_schema_version = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for event_schema_version: {e}")
+                });
                 self
             }
             pub fn events<T>(mut self, value: T) -> Self
@@ -59135,6 +68626,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
                 self
             }
+            pub fn payload_template<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::PayloadTemplate>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.payload_template = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for payload_template: {e}")
+                });
+                self
+            }
             pub fn repository_id<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
@@ -59143,6 +68644,26 @@ pub mod types {
                 self.repository_id = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn secret_digest<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.secret_digest = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for secret_digest: {e}"));
+                self
+            }
+            pub fn secret_rotation_active<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.secret_rotation_active = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for secret_rotation_active: {e}")
+                });
                 self
             }
             pub fn url<T>(mut self, value: T) -> Self
@@ -59163,13 +68684,17 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     created_at: value.created_at?,
+                    event_schema_version: value.event_schema_version?,
                     events: value.events?,
                     headers: value.headers?,
                     id: value.id?,
                     is_enabled: value.is_enabled?,
                     last_triggered_at: value.last_triggered_at?,
                     name: value.name?,
+                    payload_template: value.payload_template?,
                     repository_id: value.repository_id?,
+                    secret_digest: value.secret_digest?,
+                    secret_rotation_active: value.secret_rotation_active?,
                     url: value.url?,
                 })
             }
@@ -59178,13 +68703,270 @@ pub mod types {
             fn from(value: super::WebhookResponse) -> Self {
                 Self {
                     created_at: Ok(value.created_at),
+                    event_schema_version: Ok(value.event_schema_version),
                     events: Ok(value.events),
                     headers: Ok(value.headers),
                     id: Ok(value.id),
                     is_enabled: Ok(value.is_enabled),
                     last_triggered_at: Ok(value.last_triggered_at),
                     name: Ok(value.name),
+                    payload_template: Ok(value.payload_template),
                     repository_id: Ok(value.repository_id),
+                    secret_digest: Ok(value.secret_digest),
+                    secret_rotation_active: Ok(value.secret_rotation_active),
+                    url: Ok(value.url),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct WebhookSecretCreatedResponse {
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            event_schema_version:
+                ::std::result::Result<::std::string::String, ::std::string::String>,
+            events: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            headers: ::std::result::Result<
+                ::std::option::Option<
+                    ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                >,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            is_enabled: ::std::result::Result<bool, ::std::string::String>,
+            last_triggered_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            payload_template: ::std::result::Result<super::PayloadTemplate, ::std::string::String>,
+            repository_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            secret: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            secret_digest: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            secret_rotation_active:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            url: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for WebhookSecretCreatedResponse {
+            fn default() -> Self {
+                Self {
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    event_schema_version: Err(
+                        "no value supplied for event_schema_version".to_string()
+                    ),
+                    events: Err("no value supplied for events".to_string()),
+                    headers: Ok(Default::default()),
+                    id: Err("no value supplied for id".to_string()),
+                    is_enabled: Err("no value supplied for is_enabled".to_string()),
+                    last_triggered_at: Ok(Default::default()),
+                    name: Err("no value supplied for name".to_string()),
+                    payload_template: Err("no value supplied for payload_template".to_string()),
+                    repository_id: Ok(Default::default()),
+                    secret: Ok(Default::default()),
+                    secret_digest: Ok(Default::default()),
+                    secret_rotation_active: Ok(Default::default()),
+                    url: Err("no value supplied for url".to_string()),
+                }
+            }
+        }
+        impl WebhookSecretCreatedResponse {
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn event_schema_version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.event_schema_version = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for event_schema_version: {e}")
+                });
+                self
+            }
+            pub fn events<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.events = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for events: {e}"));
+                self
+            }
+            pub fn headers<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<
+                            ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                        >,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.headers = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for headers: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn is_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn last_triggered_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.last_triggered_at = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for last_triggered_at: {e}")
+                });
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn payload_template<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::PayloadTemplate>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.payload_template = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for payload_template: {e}")
+                });
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn secret<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.secret = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for secret: {e}"));
+                self
+            }
+            pub fn secret_digest<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.secret_digest = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for secret_digest: {e}"));
+                self
+            }
+            pub fn secret_rotation_active<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.secret_rotation_active = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for secret_rotation_active: {e}")
+                });
+                self
+            }
+            pub fn url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.url = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for url: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<WebhookSecretCreatedResponse> for super::WebhookSecretCreatedResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: WebhookSecretCreatedResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    created_at: value.created_at?,
+                    event_schema_version: value.event_schema_version?,
+                    events: value.events?,
+                    headers: value.headers?,
+                    id: value.id?,
+                    is_enabled: value.is_enabled?,
+                    last_triggered_at: value.last_triggered_at?,
+                    name: value.name?,
+                    payload_template: value.payload_template?,
+                    repository_id: value.repository_id?,
+                    secret: value.secret?,
+                    secret_digest: value.secret_digest?,
+                    secret_rotation_active: value.secret_rotation_active?,
+                    url: value.url?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::WebhookSecretCreatedResponse> for WebhookSecretCreatedResponse {
+            fn from(value: super::WebhookSecretCreatedResponse) -> Self {
+                Self {
+                    created_at: Ok(value.created_at),
+                    event_schema_version: Ok(value.event_schema_version),
+                    events: Ok(value.events),
+                    headers: Ok(value.headers),
+                    id: Ok(value.id),
+                    is_enabled: Ok(value.is_enabled),
+                    last_triggered_at: Ok(value.last_triggered_at),
+                    name: Ok(value.name),
+                    payload_template: Ok(value.payload_template),
+                    repository_id: Ok(value.repository_id),
+                    secret: Ok(value.secret),
+                    secret_digest: Ok(value.secret_digest),
+                    secret_rotation_active: Ok(value.secret_rotation_active),
                     url: Ok(value.url),
                 }
             }
@@ -59192,7 +68974,7 @@ pub mod types {
     }
 }
 #[derive(Clone, Debug)]
-#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\nVersion: 1.0.0-rc.3"]
+#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. This Basic-with-token fallback applies to format endpoints only, never to `/api/v1/*`.\n\nVersion: 1.4.0"]
 pub struct Client {
     pub(crate) baseurl: String,
     pub(crate) client: reqwest::Client,
@@ -59230,7 +69012,7 @@ impl Client {
 }
 impl ClientInfo<()> for Client {
     fn api_version() -> &'static str {
-        "1.0.0-rc.3"
+        "1.4.0"
     }
     fn baseurl(&self) -> &str {
         self.baseurl.as_str()
@@ -59262,6 +69044,8 @@ pub trait ClientCurationExt {
     fn list_curation_rules(&self) -> builder::ListCurationRules<'_>;
     #[doc = "Sends a `POST` request to `/api/v1/curation/rules`\n\n```ignore\nlet response = client.create_curation_rule()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn create_curation_rule(&self) -> builder::CreateCurationRule<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/curation/rules/{id}`\n\nArguments:\n- `id`: Rule ID\n```ignore\nlet response = client.get_curation_rule()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn get_curation_rule(&self) -> builder::GetCurationRule<'_>;
     #[doc = "Sends a `PUT` request to `/api/v1/curation/rules/{id}`\n\nArguments:\n- `id`: Rule ID\n- `body`\n```ignore\nlet response = client.update_curation_rule()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn update_curation_rule(&self) -> builder::UpdateCurationRule<'_>;
     #[doc = "Sends a `DELETE` request to `/api/v1/curation/rules/{id}`\n\nArguments:\n- `id`: Rule ID\n```ignore\nlet response = client.delete_curation_rule()\n    .id(id)\n    .send()\n    .await;\n```"]
@@ -59297,6 +69081,9 @@ impl ClientCurationExt for Client {
     fn create_curation_rule(&self) -> builder::CreateCurationRule<'_> {
         builder::CreateCurationRule::new(self)
     }
+    fn get_curation_rule(&self) -> builder::GetCurationRule<'_> {
+        builder::GetCurationRule::new(self)
+    }
     fn update_curation_rule(&self) -> builder::UpdateCurationRule<'_> {
         builder::UpdateCurationRule::new(self)
     }
@@ -59323,22 +69110,52 @@ pub trait ClientAdminExt {
     fn execute_backup(&self) -> builder::ExecuteBackup<'_>;
     #[doc = "Restore from backup\n\nSends a `POST` request to `/api/v1/admin/backups/{id}/restore`\n\nArguments:\n- `id`: Backup ID\n- `body`\n```ignore\nlet response = client.restore_backup()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn restore_backup(&self) -> builder::RestoreBackup<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/`\n\n```ignore\nlet response = client.ci_oidc_list_providers()\n    .send()\n    .await;\n```"]
+    fn ci_oidc_list_providers(&self) -> builder::CiOidcListProviders<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/admin/ci-oidc/`\n\n```ignore\nlet response = client.create_provider()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn create_provider(&self) -> builder::CreateProvider<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/{id}`\n\nArguments:\n- `id`: CI OIDC provider ID\n```ignore\nlet response = client.get_provider()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn get_provider(&self) -> builder::GetProvider<'_>;
+    #[doc = "Sends a `PUT` request to `/api/v1/admin/ci-oidc/{id}`\n\nArguments:\n- `id`: CI OIDC provider ID\n- `body`\n```ignore\nlet response = client.update_provider()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn update_provider(&self) -> builder::UpdateProvider<'_>;
+    #[doc = "Sends a `DELETE` request to `/api/v1/admin/ci-oidc/{id}`\n\nArguments:\n- `id`: CI OIDC provider ID\n```ignore\nlet response = client.delete_provider()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn delete_provider(&self) -> builder::DeleteProvider<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/{id}/mappings`\n\nArguments:\n- `id`: CI OIDC provider ID\n```ignore\nlet response = client.list_mappings()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn list_mappings(&self) -> builder::ListMappings<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/admin/ci-oidc/{id}/mappings`\n\nArguments:\n- `id`: CI OIDC provider ID\n- `body`\n```ignore\nlet response = client.create_mapping()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn create_mapping(&self) -> builder::CreateMapping<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}`\n\nArguments:\n- `id`: CI OIDC provider ID\n- `mid`: Identity mapping ID\n```ignore\nlet response = client.get_mapping()\n    .id(id)\n    .mid(mid)\n    .send()\n    .await;\n```"]
+    fn get_mapping(&self) -> builder::GetMapping<'_>;
+    #[doc = "Sends a `PUT` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}`\n\nArguments:\n- `id`: CI OIDC provider ID\n- `mid`: Identity mapping ID\n- `body`\n```ignore\nlet response = client.update_mapping()\n    .id(id)\n    .mid(mid)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn update_mapping(&self) -> builder::UpdateMapping<'_>;
+    #[doc = "Sends a `DELETE` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}`\n\nArguments:\n- `id`: CI OIDC provider ID\n- `mid`: Identity mapping ID\n```ignore\nlet response = client.delete_mapping()\n    .id(id)\n    .mid(mid)\n    .send()\n    .await;\n```"]
+    fn delete_mapping(&self) -> builder::DeleteMapping<'_>;
+    #[doc = "Sends a `PATCH` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}/toggle`\n\nArguments:\n- `id`: CI OIDC provider ID\n- `mid`: Identity mapping ID\n- `body`\n```ignore\nlet response = client.toggle_mapping()\n    .id(id)\n    .mid(mid)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn toggle_mapping(&self) -> builder::ToggleMapping<'_>;
+    #[doc = "Sends a `PATCH` request to `/api/v1/admin/ci-oidc/{id}/toggle`\n\nArguments:\n- `id`: CI OIDC provider ID\n- `body`\n```ignore\nlet response = client.toggle_provider()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn toggle_provider(&self) -> builder::ToggleProvider<'_>;
     #[doc = "Run cleanup tasks\n\nSends a `POST` request to `/api/v1/admin/cleanup`\n\n```ignore\nlet response = client.run_cleanup()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn run_cleanup(&self) -> builder::RunCleanup<'_>;
-    #[doc = "Trigger a full Meilisearch reindex of all artifacts and repositories\n\nRequires admin privileges and Meilisearch to be configured.\n\nSends a `POST` request to `/api/v1/admin/reindex`\n\n```ignore\nlet response = client.trigger_reindex()\n    .send()\n    .await;\n```"]
+    #[doc = "Trigger a full OpenSearch reindex of all artifacts and repositories\n\nRequires admin privileges and Meilisearch to be configured.\n\nSends a `POST` request to `/api/v1/admin/reindex`\n\n```ignore\nlet response = client.trigger_reindex()\n    .send()\n    .await;\n```"]
     fn trigger_reindex(&self) -> builder::TriggerReindex<'_>;
-    #[doc = "Trigger a full reindex of all artifacts and repositories in Meilisearch\n\nThe reindex runs asynchronously in the background. The endpoint returns\nimmediately with a confirmation that the task was started.\n\nSends a `POST` request to `/api/v1/admin/search/reindex`\n\n```ignore\nlet response = client.trigger_search_reindex()\n    .send()\n    .await;\n```"]
+    #[doc = "Sends a `POST` request to `/api/v1/admin/rescan-for-inventory`\n\nArguments:\n- `body`: Optional; empty body uses defaults\n```ignore\nlet response = client.rescan_for_inventory()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn rescan_for_inventory(&self) -> builder::RescanForInventory<'_>;
+    #[doc = "Trigger a full reindex of all artifacts and repositories in OpenSearch\n\nThe reindex runs asynchronously in the background. The endpoint returns\nimmediately with a confirmation that the task was started.\n\nSends a `POST` request to `/api/v1/admin/search/reindex`\n\n```ignore\nlet response = client.trigger_search_reindex()\n    .send()\n    .await;\n```"]
     fn trigger_search_reindex(&self) -> builder::TriggerSearchReindex<'_>;
     #[doc = "Get system settings\n\nSends a `GET` request to `/api/v1/admin/settings`\n\n```ignore\nlet response = client.get_settings()\n    .send()\n    .await;\n```"]
     fn get_settings(&self) -> builder::GetSettings<'_>;
     #[doc = "Update system settings\n\nSends a `POST` request to `/api/v1/admin/settings`\n\n```ignore\nlet response = client.update_settings()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn update_settings(&self) -> builder::UpdateSettings<'_>;
+    #[doc = "Send a test email to verify SMTP configuration\n\nRequires admin privileges. Sends a short test message to the provided\nrecipient address and reports whether delivery succeeded.\n\nSends a `POST` request to `/api/v1/admin/smtp/test`\n\n```ignore\nlet response = client.send_test_email()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn send_test_email(&self) -> builder::SendTestEmail<'_>;
     #[doc = "Get system statistics\n\nSends a `GET` request to `/api/v1/admin/stats`\n\n```ignore\nlet response = client.get_system_stats()\n    .send()\n    .await;\n```"]
     fn get_system_stats(&self) -> builder::GetSystemStats<'_>;
     #[doc = "List available storage backends\n\nReturns the names of all configured and available storage backends.\nRequires admin privileges.\n\nSends a `GET` request to `/api/v1/admin/storage-backends`\n\n```ignore\nlet response = client.list_storage_backends()\n    .send()\n    .await;\n```"]
     fn list_storage_backends(&self) -> builder::ListStorageBackends<'_>;
     #[doc = "POST /api/v1/admin/storage-gc\n\nSends a `POST` request to `/api/v1/admin/storage-gc`\n\n```ignore\nlet response = client.run_storage_gc()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn run_storage_gc(&self) -> builder::RunStorageGc<'_>;
+    #[doc = "GET /api/v1/admin/storage-gc/oci-blob-report\n\nRead-only report of the OCI blob (`oci_blobs`) storage footprint\n(issue #1408). Performs no deletion and takes no locks — it only runs\naggregate `SELECT`s. Surfaces logical vs dedup-aware physical bytes so\noperators can see how much un-reclaimed blob storage exists before any\ngarbage-collection sweep is enabled.\n\nSends a `GET` request to `/api/v1/admin/storage-gc/oci-blob-report`\n\nArguments:\n- `grace_hours`: Grace window in hours used to compute the `aged_*` figures. Defaults\nto 24h; non-positive or out-of-range values are clamped server-side.\n```ignore\nlet response = client.oci_blob_report()\n    .grace_hours(grace_hours)\n    .send()\n    .await;\n```"]
+    fn oci_blob_report(&self) -> builder::OciBlobReport<'_>;
     #[doc = "List all remote instances for the authenticated user\n\nSends a `GET` request to `/api/v1/instances`\n\n```ignore\nlet response = client.list_instances()\n    .send()\n    .await;\n```"]
     fn list_instances(&self) -> builder::ListInstances<'_>;
     #[doc = "Create a new remote instance\n\nSends a `POST` request to `/api/v1/instances`\n\n```ignore\nlet response = client.create_instance()\n    .body(body)\n    .send()\n    .await;\n```"]
@@ -59376,11 +69193,50 @@ impl ClientAdminExt for Client {
     fn restore_backup(&self) -> builder::RestoreBackup<'_> {
         builder::RestoreBackup::new(self)
     }
+    fn ci_oidc_list_providers(&self) -> builder::CiOidcListProviders<'_> {
+        builder::CiOidcListProviders::new(self)
+    }
+    fn create_provider(&self) -> builder::CreateProvider<'_> {
+        builder::CreateProvider::new(self)
+    }
+    fn get_provider(&self) -> builder::GetProvider<'_> {
+        builder::GetProvider::new(self)
+    }
+    fn update_provider(&self) -> builder::UpdateProvider<'_> {
+        builder::UpdateProvider::new(self)
+    }
+    fn delete_provider(&self) -> builder::DeleteProvider<'_> {
+        builder::DeleteProvider::new(self)
+    }
+    fn list_mappings(&self) -> builder::ListMappings<'_> {
+        builder::ListMappings::new(self)
+    }
+    fn create_mapping(&self) -> builder::CreateMapping<'_> {
+        builder::CreateMapping::new(self)
+    }
+    fn get_mapping(&self) -> builder::GetMapping<'_> {
+        builder::GetMapping::new(self)
+    }
+    fn update_mapping(&self) -> builder::UpdateMapping<'_> {
+        builder::UpdateMapping::new(self)
+    }
+    fn delete_mapping(&self) -> builder::DeleteMapping<'_> {
+        builder::DeleteMapping::new(self)
+    }
+    fn toggle_mapping(&self) -> builder::ToggleMapping<'_> {
+        builder::ToggleMapping::new(self)
+    }
+    fn toggle_provider(&self) -> builder::ToggleProvider<'_> {
+        builder::ToggleProvider::new(self)
+    }
     fn run_cleanup(&self) -> builder::RunCleanup<'_> {
         builder::RunCleanup::new(self)
     }
     fn trigger_reindex(&self) -> builder::TriggerReindex<'_> {
         builder::TriggerReindex::new(self)
+    }
+    fn rescan_for_inventory(&self) -> builder::RescanForInventory<'_> {
+        builder::RescanForInventory::new(self)
     }
     fn trigger_search_reindex(&self) -> builder::TriggerSearchReindex<'_> {
         builder::TriggerSearchReindex::new(self)
@@ -59391,6 +69247,9 @@ impl ClientAdminExt for Client {
     fn update_settings(&self) -> builder::UpdateSettings<'_> {
         builder::UpdateSettings::new(self)
     }
+    fn send_test_email(&self) -> builder::SendTestEmail<'_> {
+        builder::SendTestEmail::new(self)
+    }
     fn get_system_stats(&self) -> builder::GetSystemStats<'_> {
         builder::GetSystemStats::new(self)
     }
@@ -59399,6 +69258,9 @@ impl ClientAdminExt for Client {
     }
     fn run_storage_gc(&self) -> builder::RunStorageGc<'_> {
         builder::RunStorageGc::new(self)
+    }
+    fn oci_blob_report(&self) -> builder::OciBlobReport<'_> {
+        builder::OciBlobReport::new(self)
     }
     fn list_instances(&self) -> builder::ListInstances<'_> {
         builder::ListInstances::new(self)
@@ -59420,6 +69282,41 @@ impl ClientAdminExt for Client {
     }
     fn proxy_delete(&self) -> builder::ProxyDelete<'_> {
         builder::ProxyDelete::new(self)
+    }
+}
+#[doc = "Age-based proxy quality gate"]
+pub trait ClientAgeGateExt {
+    #[doc = "Sends a `GET` request to `/api/v1/admin/age-gate/reviews`\n\n```ignore\nlet response = client.list_reviews()\n    .page(page)\n    .per_page(per_page)\n    .repository_key(repository_key)\n    .status(status)\n    .send()\n    .await;\n```"]
+    fn list_reviews(&self) -> builder::ListReviews<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/admin/age-gate/reviews/{id}`\n\n```ignore\nlet response = client.get_review()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn get_review(&self) -> builder::GetReview<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/admin/age-gate/reviews/{id}/approve`\n\n```ignore\nlet response = client.approve_review()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn approve_review(&self) -> builder::ApproveReview<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/admin/age-gate/reviews/{id}/reject`\n\n```ignore\nlet response = client.reject_review()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn reject_review(&self) -> builder::RejectReview<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/age-gate`\n\n```ignore\nlet response = client.get_repo_age_gate()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn get_repo_age_gate(&self) -> builder::GetRepoAgeGate<'_>;
+    #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/age-gate`\n\n```ignore\nlet response = client.update_repo_age_gate()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn update_repo_age_gate(&self) -> builder::UpdateRepoAgeGate<'_>;
+}
+impl ClientAgeGateExt for Client {
+    fn list_reviews(&self) -> builder::ListReviews<'_> {
+        builder::ListReviews::new(self)
+    }
+    fn get_review(&self) -> builder::GetReview<'_> {
+        builder::GetReview::new(self)
+    }
+    fn approve_review(&self) -> builder::ApproveReview<'_> {
+        builder::ApproveReview::new(self)
+    }
+    fn reject_review(&self) -> builder::RejectReview<'_> {
+        builder::RejectReview::new(self)
+    }
+    fn get_repo_age_gate(&self) -> builder::GetRepoAgeGate<'_> {
+        builder::GetRepoAgeGate::new(self)
+    }
+    fn update_repo_age_gate(&self) -> builder::UpdateRepoAgeGate<'_> {
+        builder::UpdateRepoAgeGate::new(self)
     }
 }
 #[doc = "Storage and download analytics"]
@@ -59544,15 +69441,17 @@ impl ClientArtifactsExt for Client {
 }
 #[doc = "Authentication and token management"]
 pub trait ClientAuthExt {
+    #[doc = "Exchange a CI-issued OIDC JWT for an Artifact Keeper access token\n\nThe JWT must be supplied in the `Authorization: Bearer <jwt>` header.\nThe CI platform (GitLab / GitHub Actions / generic OIDC) must be\npre-configured by an administrator via `POST /api/v1/admin/ci-oidc`.\n\nSends a `POST` request to `/api/v1/auth/ci/token`\n\n```ignore\nlet response = client.exchange_ci_token()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn exchange_ci_token(&self) -> builder::ExchangeCiToken<'_>;
     #[doc = "Login with credentials\n\nSends a `POST` request to `/api/v1/auth/login`\n\n```ignore\nlet response = client.login()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn login(&self) -> builder::Login<'_>;
-    #[doc = "Logout current session\n\nSends a `POST` request to `/api/v1/auth/logout`\n\n```ignore\nlet response = client.logout()\n    .send()\n    .await;\n```"]
+    #[doc = "Logout current session\n\nSends a `POST` request to `/api/v1/auth/logout`\n\n```ignore\nlet response = client.logout()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn logout(&self) -> builder::Logout<'_>;
     #[doc = "Get current user info\n\nSends a `GET` request to `/api/v1/auth/me`\n\n```ignore\nlet response = client.get_current_user()\n    .send()\n    .await;\n```"]
     fn get_current_user(&self) -> builder::GetCurrentUser<'_>;
     #[doc = "Refresh access token\n\nSends a `POST` request to `/api/v1/auth/refresh`\n\n```ignore\nlet response = client.refresh_token()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn refresh_token(&self) -> builder::RefreshToken<'_>;
-    #[doc = "Create a short-lived, single-use download/stream ticket for the current user.\nThe ticket can be passed as a `?ticket=` query parameter on endpoints that\ncannot use `Authorization` headers (e.g. `<a>` downloads, `EventSource` SSE)\n\nSends a `POST` request to `/api/v1/auth/ticket`\n\n```ignore\nlet response = client.create_download_ticket()\n    .body(body)\n    .send()\n    .await;\n```"]
+    #[doc = "Create a short-lived, single-use download/stream ticket for the current user.\nThe ticket can be passed as a `?ticket=` query parameter on endpoints that\ncannot use `Authorization` headers (e.g. `<a>` downloads, `EventSource` SSE)\n\nSecurity note: the resulting ticket value will appear in webserver access\nlogs, browser history, and `Referer` headers if it is embedded in a URL.\nThe mitigation is single-use consumption plus a 30-second TTL plus 256-bit\nentropy. Clients should consume the ticket immediately and never share or\nlog the URL that contains it.\n\nSends a `POST` request to `/api/v1/auth/ticket`\n\n```ignore\nlet response = client.create_download_ticket()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn create_download_ticket(&self) -> builder::CreateDownloadTicket<'_>;
     #[doc = "Create a new API token for the current user\n\nSends a `POST` request to `/api/v1/auth/tokens`\n\n```ignore\nlet response = client.create_api_token()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn create_api_token(&self) -> builder::CreateApiToken<'_>;
@@ -59570,6 +69469,9 @@ pub trait ClientAuthExt {
     fn setup_status(&self) -> builder::SetupStatus<'_>;
 }
 impl ClientAuthExt for Client {
+    fn exchange_ci_token(&self) -> builder::ExchangeCiToken<'_> {
+        builder::ExchangeCiToken::new(self)
+    }
     fn login(&self) -> builder::Login<'_> {
         builder::Login::new(self)
     }
@@ -59642,13 +69544,33 @@ impl ClientBuildsExt for Client {
         builder::AddBuildArtifacts::new(self)
     }
 }
+#[doc = "Per-repository email subscription management"]
+pub trait ClientEmailSubscriptionsExt {
+    #[doc = "List the email subscriptions configured on a repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/email-subscriptions`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.list_subscriptions()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn list_subscriptions(&self) -> builder::ListSubscriptions<'_>;
+    #[doc = "Create an email subscription scoped to a repository\n\nSends a `POST` request to `/api/v1/repositories/{key}/email-subscriptions`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.create_subscription()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn create_subscription(&self) -> builder::CreateSubscription<'_>;
+    #[doc = "Delete an email subscription by id\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/email-subscriptions/{subscription_id}`\n\nArguments:\n- `key`: Repository key\n- `subscription_id`: Subscription ID\n```ignore\nlet response = client.delete_subscription()\n    .key(key)\n    .subscription_id(subscription_id)\n    .send()\n    .await;\n```"]
+    fn delete_subscription(&self) -> builder::DeleteSubscription<'_>;
+}
+impl ClientEmailSubscriptionsExt for Client {
+    fn list_subscriptions(&self) -> builder::ListSubscriptions<'_> {
+        builder::ListSubscriptions::new(self)
+    }
+    fn create_subscription(&self) -> builder::CreateSubscription<'_> {
+        builder::CreateSubscription::new(self)
+    }
+    fn delete_subscription(&self) -> builder::DeleteSubscription<'_> {
+        builder::DeleteSubscription::new(self)
+    }
+}
 #[doc = "User group management"]
 pub trait ClientGroupsExt {
     #[doc = "List groups\n\nSends a `GET` request to `/api/v1/groups`\n\n```ignore\nlet response = client.list_groups()\n    .page(page)\n    .per_page(per_page)\n    .search(search)\n    .send()\n    .await;\n```"]
     fn list_groups(&self) -> builder::ListGroups<'_>;
     #[doc = "Create a group\n\nSends a `POST` request to `/api/v1/groups`\n\n```ignore\nlet response = client.create_group()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn create_group(&self) -> builder::CreateGroup<'_>;
-    #[doc = "Get a group by ID\n\nSends a `GET` request to `/api/v1/groups/{id}`\n\nArguments:\n- `id`: Group ID\n```ignore\nlet response = client.get_group()\n    .id(id)\n    .send()\n    .await;\n```"]
+    #[doc = "Get a group by ID\n\nSends a `GET` request to `/api/v1/groups/{id}`\n\nArguments:\n- `id`: Group ID\n- `member_limit`: Maximum number of members to return (default: 50, max: 200)\n- `member_offset`: Number of members to skip for pagination (default: 0)\n```ignore\nlet response = client.get_group()\n    .id(id)\n    .member_limit(member_limit)\n    .member_offset(member_offset)\n    .send()\n    .await;\n```"]
     fn get_group(&self) -> builder::GetGroup<'_>;
     #[doc = "Update a group\n\nSends a `PUT` request to `/api/v1/groups/{id}`\n\nArguments:\n- `id`: Group ID\n- `body`\n```ignore\nlet response = client.update_group()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn update_group(&self) -> builder::UpdateGroup<'_>;
@@ -59686,11 +69608,11 @@ impl ClientGroupsExt for Client {
 pub trait ClientHealthExt {
     #[doc = "Prometheus metrics endpoint.\nRenders all registered metrics from the metrics-exporter-prometheus recorder\n\nSends a `GET` request to `/api/v1/admin/metrics`\n\n```ignore\nlet response = client.metrics()\n    .send()\n    .await;\n```"]
     fn metrics(&self) -> builder::Metrics<'_>;
-    #[doc = "Health check endpoint — rich status page for dashboards\n\nChecks database, storage (real write/read probe), optional services (Trivy,\nMeilisearch), and exposes DB connection pool statistics.\n\nSends a `GET` request to `/health`\n\n```ignore\nlet response = client.health_check()\n    .send()\n    .await;\n```"]
+    #[doc = "Health check endpoint -- rich status page for dashboards\n\nChecks database, storage (real write/read probe), optional services (Trivy,\nOpenSearch), and exposes DB connection pool statistics.\n\nSends a `GET` request to `/health`\n\n```ignore\nlet response = client.health_check()\n    .send()\n    .await;\n```"]
     fn health_check(&self) -> builder::HealthCheck<'_>;
-    #[doc = "Liveness probe — confirms the process is alive and can serve HTTP\n\nTakes no State parameter. If Axum can route the request and execute this\nfunction, the process is alive. External service failures cannot trigger\npod restarts.\n\nSends a `GET` request to `/livez`\n\n```ignore\nlet response = client.liveness_check()\n    .send()\n    .await;\n```"]
+    #[doc = "Liveness probe - confirms the process is alive and can serve HTTP\n\nTakes no State parameter. If Axum can route the request and execute this\nfunction, the process is alive. External service failures cannot trigger\npod restarts.\n\nSends a `GET` request to `/livez`\n\n```ignore\nlet response = client.liveness_check()\n    .send()\n    .await;\n```"]
     fn liveness_check(&self) -> builder::LivenessCheck<'_>;
-    #[doc = "Readiness probe — is the service ready to accept traffic?\n\nChecks database connectivity, that migrations have run successfully,\nand that initial setup (admin password) is complete.\n\nSends a `GET` request to `/readyz`\n\n```ignore\nlet response = client.readiness_check()\n    .send()\n    .await;\n```"]
+    #[doc = "Readiness probe - is the service ready to accept traffic?\n\nReturns 200 once the database is reachable and migrations have applied\nsuccessfully. Initial-setup state (whether the default admin password has\nbeen changed) is reported as an informational field on the response but\ndoes NOT influence the status code: a 503 here would make Kubernetes\nrestart the pod, terminating any `kubectl exec` session an operator is\nusing to complete setup. See issue #889.\n\nAPI mutations are separately gated by the setup middleware\n(`api::middleware::setup`) until setup is complete, so a 200 from this\nendpoint does not imply that write traffic will be accepted.\n\nSends a `GET` request to `/readyz`\n\n```ignore\nlet response = client.readiness_check()\n    .send()\n    .await;\n```"]
     fn readiness_check(&self) -> builder::ReadinessCheck<'_>;
 }
 impl ClientHealthExt for Client {
@@ -59960,8 +69882,12 @@ pub trait ClientPeersExt {
     fn get_assigned_repos(&self) -> builder::GetAssignedRepos<'_>;
     #[doc = "Assign repository to peer instance\n\nSends a `POST` request to `/api/v1/peers/{id}/repositories`\n\nArguments:\n- `id`: Peer instance ID\n- `body`\n```ignore\nlet response = client.assign_repo()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn assign_repo(&self) -> builder::AssignRepo<'_>;
+    #[doc = "Get full subscription details for a (peer, repo) pair\n\nReturns the per-subscription `replication_mode`, `replication_schedule`,\nand `replication_filter` exactly as persisted by `POST /:id/repositories`.\nRound-trips the filter so callers can verify that a scheduled-sync\nfilter (e.g. `{\"include_patterns\": [\"\\\\.tar\\\\.gz$\"]}`) was persisted.\n\nSends a `GET` request to `/api/v1/peers/{id}/repositories/{repo_id}`\n\nArguments:\n- `id`: Peer instance ID\n- `repo_id`: Repository ID\n```ignore\nlet response = client.get_subscription()\n    .id(id)\n    .repo_id(repo_id)\n    .send()\n    .await;\n```"]
+    fn get_subscription(&self) -> builder::GetSubscription<'_>;
     #[doc = "Unassign repository from peer instance\n\nSends a `DELETE` request to `/api/v1/peers/{id}/repositories/{repo_id}`\n\nArguments:\n- `id`: Peer instance ID\n- `repo_id`: Repository ID\n```ignore\nlet response = client.unassign_repo()\n    .id(id)\n    .repo_id(repo_id)\n    .send()\n    .await;\n```"]
     fn unassign_repo(&self) -> builder::UnassignRepo<'_>;
+    #[doc = "Trigger an immediate sync for a single (peer, repo) subscription\n\nQueues one `sync_task` per artifact in the repository at priority 100\nwithout waiting for the next cron tick. Idempotent: if tasks are already\npending for the same artifacts, the unique constraint\n`(peer_instance_id, artifact_id, task_type)` skips duplicates.\n\nSends a `POST` request to `/api/v1/peers/{id}/repositories/{repo_id}/sync`\n\nArguments:\n- `id`: Peer instance ID\n- `repo_id`: Repository ID\n```ignore\nlet response = client.run_subscription_now()\n    .id(id)\n    .repo_id(repo_id)\n    .send()\n    .await;\n```"]
+    fn run_subscription_now(&self) -> builder::RunSubscriptionNow<'_>;
     #[doc = "Trigger sync for peer instance\n\nSends a `POST` request to `/api/v1/peers/{id}/sync`\n\nArguments:\n- `id`: Peer instance ID\n```ignore\nlet response = client.trigger_sync()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn trigger_sync(&self) -> builder::TriggerSync<'_>;
     #[doc = "Get pending sync tasks for peer instance\n\nSends a `GET` request to `/api/v1/peers/{id}/sync/tasks`\n\nArguments:\n- `id`: Peer instance ID\n- `page`\n- `per_page`\n- `region`\n- `status`\n```ignore\nlet response = client.get_sync_tasks()\n    .id(id)\n    .page(page)\n    .per_page(per_page)\n    .region(region)\n    .status(status)\n    .send()\n    .await;\n```"]
@@ -60054,8 +69980,14 @@ impl ClientPeersExt for Client {
     fn assign_repo(&self) -> builder::AssignRepo<'_> {
         builder::AssignRepo::new(self)
     }
+    fn get_subscription(&self) -> builder::GetSubscription<'_> {
+        builder::GetSubscription::new(self)
+    }
     fn unassign_repo(&self) -> builder::UnassignRepo<'_> {
         builder::UnassignRepo::new(self)
+    }
+    fn run_subscription_now(&self) -> builder::RunSubscriptionNow<'_> {
+        builder::RunSubscriptionNow::new(self)
     }
     fn trigger_sync(&self) -> builder::TriggerSync<'_> {
         builder::TriggerSync::new(self)
@@ -60249,6 +70181,10 @@ pub trait ClientPromotionExt {
     fn promote_artifacts_bulk(&self) -> builder::PromoteArtifactsBulk<'_>;
     #[doc = "Sends a `GET` request to `/api/v1/promotion/repositories/{key}/promotion-history`\n\nArguments:\n- `key`: Repository key\n- `artifact_id`: Filter by artifact ID\n- `page`: Page number (1-indexed)\n- `per_page`: Items per page (max 100)\n- `status`: Filter by status (promoted, rejected, pending_approval)\n```ignore\nlet response = client.promotion_history()\n    .key(key)\n    .artifact_id(artifact_id)\n    .page(page)\n    .per_page(per_page)\n    .status(status)\n    .send()\n    .await;\n```"]
     fn promotion_history(&self) -> builder::PromotionHistory<'_>;
+    #[doc = "Get the linked release target for a staging repository\n\nSends a `GET` request to `/api/v1/promotion/repositories/{key}/release-target`\n\nArguments:\n- `key`: Staging repository key\n```ignore\nlet response = client.get_release_target()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn get_release_target(&self) -> builder::GetReleaseTarget<'_>;
+    #[doc = "Set or remove the linked release target for a staging repository\n\nThe release repository must exist, be type Local, and share the same package\nformat as the staging repository. Pass `null` for `release_repository_key` to\nremove the link.\n\nSends a `PUT` request to `/api/v1/promotion/repositories/{key}/release-target`\n\nArguments:\n- `key`: Staging repository key\n- `body`\n```ignore\nlet response = client.set_release_target()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn set_release_target(&self) -> builder::SetReleaseTarget<'_>;
 }
 impl ClientPromotionExt for Client {
     fn list_rules(&self) -> builder::ListRules<'_> {
@@ -60280,6 +70216,12 @@ impl ClientPromotionExt for Client {
     }
     fn promotion_history(&self) -> builder::PromotionHistory<'_> {
         builder::PromotionHistory::new(self)
+    }
+    fn get_release_target(&self) -> builder::GetReleaseTarget<'_> {
+        builder::GetReleaseTarget::new(self)
+    }
+    fn set_release_target(&self) -> builder::SetReleaseTarget<'_> {
+        builder::SetReleaseTarget::new(self)
     }
 }
 #[doc = "Artifact health scoring and quality gates"]
@@ -60362,6 +70304,26 @@ impl ClientQualityExt for Client {
         builder::UnsuppressIssue::new(self)
     }
 }
+#[doc = "Artifact quarantine period management"]
+pub trait ClientQuarantineExt {
+    #[doc = "Get quarantine status for an artifact\n\nSends a `GET` request to `/api/v1/quarantine/{artifact_id}`\n\nArguments:\n- `artifact_id`: Artifact ID\n```ignore\nlet response = client.get_quarantine_status()\n    .artifact_id(artifact_id)\n    .send()\n    .await;\n```"]
+    fn get_quarantine_status(&self) -> builder::GetQuarantineStatus<'_>;
+    #[doc = "Reject a quarantined artifact (admin only)\n\nSends a `POST` request to `/api/v1/quarantine/{artifact_id}/reject`\n\nArguments:\n- `artifact_id`: Artifact ID\n- `body`\n```ignore\nlet response = client.reject_quarantined_artifact()\n    .artifact_id(artifact_id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn reject_quarantined_artifact(&self) -> builder::RejectQuarantinedArtifact<'_>;
+    #[doc = "Release an artifact from quarantine (admin only)\n\nSends a `POST` request to `/api/v1/quarantine/{artifact_id}/release`\n\nArguments:\n- `artifact_id`: Artifact ID\n```ignore\nlet response = client.release_artifact()\n    .artifact_id(artifact_id)\n    .send()\n    .await;\n```"]
+    fn release_artifact(&self) -> builder::ReleaseArtifact<'_>;
+}
+impl ClientQuarantineExt for Client {
+    fn get_quarantine_status(&self) -> builder::GetQuarantineStatus<'_> {
+        builder::GetQuarantineStatus::new(self)
+    }
+    fn reject_quarantined_artifact(&self) -> builder::RejectQuarantinedArtifact<'_> {
+        builder::RejectQuarantinedArtifact::new(self)
+    }
+    fn release_artifact(&self) -> builder::ReleaseArtifact<'_> {
+        builder::ReleaseArtifact::new(self)
+    }
+}
 #[doc = "Repository CRUD and artifact operations"]
 pub trait ClientRepositoriesExt {
     #[doc = "List repositories\n\nSends a `GET` request to `/api/v1/repositories`\n\n```ignore\nlet response = client.list_repositories()\n    .format(format)\n    .page(page)\n    .per_page(per_page)\n    .q(q)\n    .type_(type_)\n    .send()\n    .await;\n```"]
@@ -60374,7 +70336,7 @@ pub trait ClientRepositoriesExt {
     fn delete_repository(&self) -> builder::DeleteRepository<'_>;
     #[doc = "Update repository\n\nSends a `PATCH` request to `/api/v1/repositories/{key}`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.update_repository()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn update_repository(&self) -> builder::UpdateRepository<'_>;
-    #[doc = "List artifacts in repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts`\n\nArguments:\n- `key`: Repository key\n- `page`\n- `path_prefix`\n- `per_page`\n- `q`\n```ignore\nlet response = client.list_artifacts()\n    .key(key)\n    .page(page)\n    .path_prefix(path_prefix)\n    .per_page(per_page)\n    .q(q)\n    .send()\n    .await;\n```"]
+    #[doc = "List artifacts in repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts`\n\nArguments:\n- `key`: Repository key\n- `group_by`: Server-side artifact grouping.\n\nSupported values:\n- `maven_component`: Maven/Gradle artifacts are grouped by\n  groupId, artifactId, and version.  Individual files (jar, pom,\n  checksums) appear in the `artifact_files` array of each component.\n- `docker_tag`: Docker/OCI artifacts are grouped by (image, tag),\n  with `total_size_bytes` summed across the manifest config and\n  referenced layer blobs.  The grouped rows are returned in the\n  `docker_tags` array.\n- `page`\n- `path_prefix`\n- `per_page`\n- `q`\n```ignore\nlet response = client.list_artifacts()\n    .key(key)\n    .group_by(group_by)\n    .page(page)\n    .path_prefix(path_prefix)\n    .per_page(per_page)\n    .q(q)\n    .send()\n    .await;\n```"]
     fn list_artifacts(&self) -> builder::ListArtifacts<'_>;
     #[doc = "Get artifact metadata\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts/{path}`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path\n```ignore\nlet response = client.get_repository_artifact_metadata()\n    .key(key)\n    .path(path)\n    .send()\n    .await;\n```"]
     fn get_repository_artifact_metadata(&self) -> builder::GetRepositoryArtifactMetadata<'_>;
@@ -60386,6 +70348,8 @@ pub trait ClientRepositoriesExt {
     fn get_cache_ttl(&self) -> builder::GetCacheTtl<'_>;
     #[doc = "Set the proxy cache TTL for a repository\n\nSends a `PUT` request to `/api/v1/repositories/{key}/cache-ttl`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.set_cache_ttl()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn set_cache_ttl(&self) -> builder::SetCacheTtl<'_>;
+    #[doc = "Invalidate a single cached artifact entry on a Remote (proxy) repository\n(#1539)\n\nMirrors the auth + repo-access pattern of `set_cache_ttl`. Idempotent:\ninvalidating a path that was never cached (or was already evicted) still\nreturns 200, matching the underlying `ProxyService::invalidate_cache`\ncontract (which ignores delete-of-missing on the storage backend).\n\nSends a `POST` request to `/api/v1/repositories/{key}/cache/invalidate`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path to evict from the proxy cache. Same shape as the path\nsegment of `GET /api/v1/repositories/{key}/artifacts/{path}`.\nPath-traversal segments such as `..` are rejected by\n`ProxyService::cache_storage_key` (covered by\n`test_invalidate_cache_by_key_rejects_invalid_path`).\n```ignore\nlet response = client.invalidate_cache()\n    .key(key)\n    .path(path)\n    .send()\n    .await;\n```"]
+    fn invalidate_cache(&self) -> builder::InvalidateCache<'_>;
     #[doc = "Download artifact\n\nSends a `GET` request to `/api/v1/repositories/{key}/download/{path}`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path\n```ignore\nlet response = client.download_artifact()\n    .key(key)\n    .path(path)\n    .send()\n    .await;\n```"]
     fn download_artifact(&self) -> builder::DownloadArtifact<'_>;
     #[doc = "List virtual repository members\n\nSends a `GET` request to `/api/v1/repositories/{key}/members`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.list_virtual_members()\n    .key(key)\n    .send()\n    .await;\n```"]
@@ -60396,6 +70360,18 @@ pub trait ClientRepositoriesExt {
     fn add_virtual_member(&self) -> builder::AddVirtualMember<'_>;
     #[doc = "Remove a member from a virtual repository\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/members/{member_key}`\n\nArguments:\n- `key`: Repository key\n- `member_key`: Member repository key\n```ignore\nlet response = client.remove_virtual_member()\n    .key(key)\n    .member_key(member_key)\n    .send()\n    .await;\n```"]
     fn remove_virtual_member(&self) -> builder::RemoveVirtualMember<'_>;
+    #[doc = "List the PEP 708 `tracks` declarations on a repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/pypi-tracks`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.list_pypi_tracks()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn list_pypi_tracks(&self) -> builder::ListPypiTracks<'_>;
+    #[doc = "Declare (upsert) that a locally-owned PyPI project tracks an upstream one,\nallowing a virtual repository to merge versions across members for that name\ninstead of isolating it (PEP 708, #1600)\n\nSends a `PUT` request to `/api/v1/repositories/{key}/pypi-tracks/{project}`\n\nArguments:\n- `key`: Repository key\n- `project`: Project name (PEP 503 normalized server-side)\n- `body`\n```ignore\nlet response = client.put_pypi_track()\n    .key(key)\n    .project(project)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn put_pypi_track(&self) -> builder::PutPypiTrack<'_>;
+    #[doc = "Remove a PEP 708 `tracks` declaration, restoring local-precedence isolation\nfor that project name (#1600)\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/pypi-tracks/{project}`\n\nArguments:\n- `key`: Repository key\n- `project`: Project name (PEP 503 normalized server-side)\n```ignore\nlet response = client.delete_pypi_track()\n    .key(key)\n    .project(project)\n    .send()\n    .await;\n```"]
+    fn delete_pypi_track(&self) -> builder::DeletePypiTrack<'_>;
+    #[doc = "Get routing rules for a repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/routing-rules`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.get_routing_rules()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn get_routing_rules(&self) -> builder::GetRoutingRules<'_>;
+    #[doc = "Set routing rules for a repository\n\nRouting rules rewrite the request path before it is forwarded to the\nupstream server. This is useful for proxying resources like GitHub Releases\nwhere the client-facing path structure differs from the upstream URL\nlayout. Rules are evaluated in order and the first match wins.\n\nSends a `POST` request to `/api/v1/repositories/{key}/routing-rules`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.set_routing_rules()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn set_routing_rules(&self) -> builder::SetRoutingRules<'_>;
+    #[doc = "Delete all routing rules for a repository\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/routing-rules`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.delete_routing_rules()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn delete_routing_rules(&self) -> builder::DeleteRoutingRules<'_>;
     #[doc = "Test connectivity to the upstream URL of a remote repository\n\nSends a `POST` request to `/api/v1/repositories/{key}/test-upstream`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.test_upstream()\n    .key(key)\n    .send()\n    .await;\n```"]
     fn test_upstream(&self) -> builder::TestUpstream<'_>;
     #[doc = "Set or remove upstream auth for a remote repository\n\nSends a `PUT` request to `/api/v1/repositories/{key}/upstream-auth`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.set_upstream_auth()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
@@ -60439,6 +70415,9 @@ impl ClientRepositoriesExt for Client {
     fn set_cache_ttl(&self) -> builder::SetCacheTtl<'_> {
         builder::SetCacheTtl::new(self)
     }
+    fn invalidate_cache(&self) -> builder::InvalidateCache<'_> {
+        builder::InvalidateCache::new(self)
+    }
     fn download_artifact(&self) -> builder::DownloadArtifact<'_> {
         builder::DownloadArtifact::new(self)
     }
@@ -60453,6 +70432,24 @@ impl ClientRepositoriesExt for Client {
     }
     fn remove_virtual_member(&self) -> builder::RemoveVirtualMember<'_> {
         builder::RemoveVirtualMember::new(self)
+    }
+    fn list_pypi_tracks(&self) -> builder::ListPypiTracks<'_> {
+        builder::ListPypiTracks::new(self)
+    }
+    fn put_pypi_track(&self) -> builder::PutPypiTrack<'_> {
+        builder::PutPypiTrack::new(self)
+    }
+    fn delete_pypi_track(&self) -> builder::DeletePypiTrack<'_> {
+        builder::DeletePypiTrack::new(self)
+    }
+    fn get_routing_rules(&self) -> builder::GetRoutingRules<'_> {
+        builder::GetRoutingRules::new(self)
+    }
+    fn set_routing_rules(&self) -> builder::SetRoutingRules<'_> {
+        builder::SetRoutingRules::new(self)
+    }
+    fn delete_routing_rules(&self) -> builder::DeleteRoutingRules<'_> {
+        builder::DeleteRoutingRules::new(self)
     }
     fn test_upstream(&self) -> builder::TestUpstream<'_> {
         builder::TestUpstream::new(self)
@@ -60492,6 +70489,31 @@ impl ClientRepositoryLabelsExt for Client {
         builder::DeleteRepoLabel::new(self)
     }
 }
+#[doc = "Repository-scoped access token management"]
+pub trait ClientRepositoryTokensExt {
+    #[doc = "List all access tokens configured on a repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/tokens`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.list_repo_tokens()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn list_repo_tokens(&self) -> builder::ListRepoTokens<'_>;
+    #[doc = "Create a new access token scoped to a repository\n\nThe token is automatically restricted to this repository. The plaintext\ntoken value is returned only in this response and cannot be retrieved later.\n\nSends a `POST` request to `/api/v1/repositories/{key}/tokens`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.create_repo_token()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn create_repo_token(&self) -> builder::CreateRepoToken<'_>;
+    #[doc = "Get details of a specific token on a repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/tokens/{token_id}`\n\nArguments:\n- `key`: Repository key\n- `token_id`: Token ID\n```ignore\nlet response = client.get_repo_token()\n    .key(key)\n    .token_id(token_id)\n    .send()\n    .await;\n```"]
+    fn get_repo_token(&self) -> builder::GetRepoToken<'_>;
+    #[doc = "Revoke an access token from a repository\n\nThis soft-revokes the token by setting `revoked_at`. The token will\nimmediately stop working for authentication.\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/tokens/{token_id}`\n\nArguments:\n- `key`: Repository key\n- `token_id`: Token ID\n```ignore\nlet response = client.revoke_repo_token()\n    .key(key)\n    .token_id(token_id)\n    .send()\n    .await;\n```"]
+    fn revoke_repo_token(&self) -> builder::RevokeRepoToken<'_>;
+}
+impl ClientRepositoryTokensExt for Client {
+    fn list_repo_tokens(&self) -> builder::ListRepoTokens<'_> {
+        builder::ListRepoTokens::new(self)
+    }
+    fn create_repo_token(&self) -> builder::CreateRepoToken<'_> {
+        builder::CreateRepoToken::new(self)
+    }
+    fn get_repo_token(&self) -> builder::GetRepoToken<'_> {
+        builder::GetRepoToken::new(self)
+    }
+    fn revoke_repo_token(&self) -> builder::RevokeRepoToken<'_> {
+        builder::RevokeRepoToken::new(self)
+    }
+}
 #[doc = "Software Bill of Materials"]
 pub trait ClientSbomExt {
     #[doc = "List SBOMs with optional filters\n\nSends a `GET` request to `/api/v1/sbom`\n\n```ignore\nlet response = client.list_sboms()\n    .artifact_id(artifact_id)\n    .format(format)\n    .repository_id(repository_id)\n    .send()\n    .await;\n```"]
@@ -60502,8 +70524,14 @@ pub trait ClientSbomExt {
     fn get_sbom_by_artifact(&self) -> builder::GetSbomByArtifact<'_>;
     #[doc = "Check license compliance against policies\n\nSends a `POST` request to `/api/v1/sbom/check-compliance`\n\n```ignore\nlet response = client.check_license_compliance()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn check_license_compliance(&self) -> builder::CheckLicenseCompliance<'_>;
-    #[doc = "Get CVE history for an artifact\n\nSends a `GET` request to `/api/v1/sbom/cve/history/{artifact_id}`\n\nArguments:\n- `artifact_id`: Artifact ID\n```ignore\nlet response = client.get_cve_history()\n    .artifact_id(artifact_id)\n    .send()\n    .await;\n```"]
+    #[doc = "Get CVE history for one artifact (typed UUID variant)\n\nCanonical replacement for the UUID branch of the overloaded\n`/cve/history/{id}` route. Returns every CVE ever detected against the\ngiven artifact, deduped across curated `cve_history` rows and live\n`scan_findings` projections.\n\nSends a `GET` request to `/api/v1/sbom/cve/history/by-artifact/{artifact_id}`\n\nArguments:\n- `artifact_id`: Artifact UUID\n```ignore\nlet response = client.get_cve_history_by_artifact()\n    .artifact_id(artifact_id)\n    .send()\n    .await;\n```"]
+    fn get_cve_history_by_artifact(&self) -> builder::GetCveHistoryByArtifact<'_>;
+    #[doc = "Get CVE history for one CVE identifier across artifacts (typed CVE-id\nvariant)\n\nCanonical replacement for the CVE-id branch of the overloaded\n`/cve/history/{id}` route. Returns every artifact the caller can access\nwhere the given CVE has been detected.\n\nSends a `GET` request to `/api/v1/sbom/cve/history/by-cve/{cve_id}`\n\nArguments:\n- `cve_id`: CVE identifier (e.g. CVE-2019-10744)\n```ignore\nlet response = client.get_cve_history_by_cve()\n    .cve_id(cve_id)\n    .send()\n    .await;\n```"]
+    fn get_cve_history_by_cve(&self) -> builder::GetCveHistoryByCve<'_>;
+    #[doc = "Get CVE history by artifact UUID or CVE identifier (legacy overload)\n\nThe path param accepts either:\n  - A UUID `artifact_id` (legacy shape, returns all CVEs for one artifact)\n  - A CVE id like `CVE-2019-10744` (returns this CVE across every artifact\n    the caller can access)\n\n# URL design decision (#1385 round-2)\n\nOverloading a single `{id}` path parameter to mean two different lookups\nis a REST anti-pattern: the route's behavior changes based on a runtime\ncontent sniff. We considered splitting into two routes vs documenting the\noverload and chose **both**: the split routes\n`GET /cve/history/by-artifact/{uuid}` and `GET /cve/history/by-cve/{cve_id}`\nare the canonical shape for new clients (typed path params, no sniff),\nwhile this overload remains so the v1.2.0 SDKs that already shipped\nagainst the single-route shape keep working. New code should prefer the\nsplit routes; the overload may be deprecated in v1.3.\n\nIssue #1375: prior to this fix the route was typed `Path<Uuid>`, so any\nCVE-id call (e.g. the release-gate `GET /sbom/cve/history/CVE-2019-10744`)\nfailed Axum's path extractor with a bare HTTP 400, leaving consumers\nunable to look up history by CVE.\n\nSends a `GET` request to `/api/v1/sbom/cve/history/{id}`\n\nArguments:\n- `id`: Artifact UUID or CVE identifier (e.g. CVE-2019-10744). Prefer the typed routes /cve/history/by-artifact/{uuid} or /cve/history/by-cve/{cve_id}.\n```ignore\nlet response = client.get_cve_history()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn get_cve_history(&self) -> builder::GetCveHistory<'_>;
+    #[doc = "Update CVE status for a synth (scan_findings-derived) Security tab row\n\nBackground (#1426): the Security tab read path projects `scan_findings`\ninto `CveHistoryEntry` rows whose `id` is a deterministic SHA-256 hash\n(see `synth_cve_id`). Those ids have no corresponding row in the\n`cve_history` table, so calls to `POST /cve/status/{id}` always 404 -- a\ndead acknowledge path. This route operates on the only stable identity a\nsynth row carries, the (artifact_id, cve_id) pair, and writes the\nunderlying `scan_findings` rows instead.\n\nThe wider design choice between (A) populating `cve_history` from the\nscanner loop and (B) treating `scan_findings` as the source of truth for\nthe Security tab is settled here in favour of B: less code, less risk of\ndata drift between two parallel tables, and `cve_history` remains in\nplace for the rare curated/admin write path via the legacy\n`POST /cve/status/{id}` route.\n\nSends a `POST` request to `/api/v1/sbom/cve/status/by-artifact/{artifact_id}/by-cve/{cve_id}`\n\nArguments:\n- `artifact_id`: Artifact UUID\n- `cve_id`: CVE identifier (e.g. CVE-2019-10744)\n- `body`\n```ignore\nlet response = client.update_cve_status_by_artifact_cve()\n    .artifact_id(artifact_id)\n    .cve_id(cve_id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn update_cve_status_by_artifact_cve(&self) -> builder::UpdateCveStatusByArtifactCve<'_>;
     #[doc = "Update CVE status\n\nSends a `POST` request to `/api/v1/sbom/cve/status/{id}`\n\nArguments:\n- `id`: CVE history entry ID\n- `body`\n```ignore\nlet response = client.update_cve_status()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn update_cve_status(&self) -> builder::UpdateCveStatus<'_>;
     #[doc = "Get CVE trends and statistics\n\nSends a `GET` request to `/api/v1/sbom/cve/trends`\n\n```ignore\nlet response = client.get_cve_trends()\n    .days(days)\n    .repository_id(repository_id)\n    .send()\n    .await;\n```"]
@@ -60522,7 +70550,7 @@ pub trait ClientSbomExt {
     fn delete_sbom(&self) -> builder::DeleteSbom<'_>;
     #[doc = "Get components of an SBOM\n\nSends a `GET` request to `/api/v1/sbom/{id}/components`\n\nArguments:\n- `id`: SBOM ID\n```ignore\nlet response = client.get_sbom_components()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn get_sbom_components(&self) -> builder::GetSbomComponents<'_>;
-    #[doc = "Convert an SBOM to a different format\n\nSends a `POST` request to `/api/v1/sbom/{id}/convert`\n\nArguments:\n- `id`: SBOM ID\n- `body`\n```ignore\nlet response = client.convert_sbom()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    #[doc = "Convert an SBOM to a different format\n\nReturns the converted SBOM as a [`SbomContentResponse`]: the metadata\nrow plus the full converted document under `content`. The `content` is\nload-bearing here. A consumer that asked for `target_format=spdx` needs\nthe SPDX document (`content.spdxVersion`, `content.SPDXID`, ...) to feed\ndownstream attestation tooling, and a `target_format=cyclonedx` request\nneeds `content.bomFormat == \"CycloneDX\"`. Returning metadata-only\n(`SbomResponse`) dropped the converted document entirely, so callers\ncould not tell an SPDX result from a CycloneDX one and round-trip\nconversion appeared to lose the document shape. (release-gate\n`test-sbom-convert.sh` 2.5.a / 2.5.b.)\n\nSends a `POST` request to `/api/v1/sbom/{id}/convert`\n\nArguments:\n- `id`: SBOM ID\n- `body`\n```ignore\nlet response = client.convert_sbom()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn convert_sbom(&self) -> builder::ConvertSbom<'_>;
 }
 impl ClientSbomExt for Client {
@@ -60538,8 +70566,17 @@ impl ClientSbomExt for Client {
     fn check_license_compliance(&self) -> builder::CheckLicenseCompliance<'_> {
         builder::CheckLicenseCompliance::new(self)
     }
+    fn get_cve_history_by_artifact(&self) -> builder::GetCveHistoryByArtifact<'_> {
+        builder::GetCveHistoryByArtifact::new(self)
+    }
+    fn get_cve_history_by_cve(&self) -> builder::GetCveHistoryByCve<'_> {
+        builder::GetCveHistoryByCve::new(self)
+    }
     fn get_cve_history(&self) -> builder::GetCveHistory<'_> {
         builder::GetCveHistory::new(self)
+    }
+    fn update_cve_status_by_artifact_cve(&self) -> builder::UpdateCveStatusByArtifactCve<'_> {
+        builder::UpdateCveStatusByArtifactCve::new(self)
     }
     fn update_cve_status(&self) -> builder::UpdateCveStatus<'_> {
         builder::UpdateCveStatus::new(self)
@@ -60908,7 +70945,7 @@ pub trait ClientSsoExt {
     fn exchange_code(&self) -> builder::ExchangeCode<'_>;
     #[doc = "Authenticate via LDAP\n\nSends a `POST` request to `/api/v1/auth/sso/ldap/{id}/login`\n\nArguments:\n- `id`: LDAP provider configuration ID\n- `body`\n```ignore\nlet response = client.ldap_login()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn ldap_login(&self) -> builder::LdapLogin<'_>;
-    #[doc = "Handle OIDC authorization callback\n\nSends a `GET` request to `/api/v1/auth/sso/oidc/{id}/callback`\n\nArguments:\n- `id`: OIDC provider configuration ID\n- `code`\n- `state`\n```ignore\nlet response = client.oidc_callback()\n    .id(id)\n    .code(code)\n    .state(state)\n    .send()\n    .await;\n```"]
+    #[doc = "Handle OIDC authorization callback\n\nSends a `GET` request to `/api/v1/auth/sso/oidc/{id}/callback`\n\nArguments:\n- `id`: OIDC provider configuration ID\n- `code`\n- `error`\n- `error_description`\n- `error_uri`\n- `state`\n```ignore\nlet response = client.oidc_callback()\n    .id(id)\n    .code(code)\n    .error(error)\n    .error_description(error_description)\n    .error_uri(error_uri)\n    .state(state)\n    .send()\n    .await;\n```"]
     fn oidc_callback(&self) -> builder::OidcCallback<'_>;
     #[doc = "Initiate OIDC login redirect\n\nSends a `GET` request to `/api/v1/auth/sso/oidc/{id}/login`\n\nArguments:\n- `id`: OIDC provider configuration ID\n```ignore\nlet response = client.oidc_login()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn oidc_login(&self) -> builder::OidcLogin<'_>;
@@ -61002,6 +71039,16 @@ impl ClientSsoExt for Client {
         builder::SamlLogin::new(self)
     }
 }
+#[doc = "Public system configuration"]
+pub trait ClientSystemExt {
+    #[doc = "Return runtime configuration\n\nReachable without authentication so frontends can discover pre-login\naffordances (upload limits, guest access, available login providers). The\nsecurity-posture fields (scanner/auth-provider/permission/plugin-signing/\nstorage configuration) are returned **only to authenticated admins**; for\nanonymous and non-admin callers they are omitted so the instance's\ndefensive configuration cannot be fingerprinted by an unauthenticated\nattacker.\n\nSends a `GET` request to `/api/v1/system/config`\n\n```ignore\nlet response = client.get_system_config()\n    .send()\n    .await;\n```"]
+    fn get_system_config(&self) -> builder::GetSystemConfig<'_>;
+}
+impl ClientSystemExt for Client {
+    fn get_system_config(&self) -> builder::GetSystemConfig<'_> {
+        builder::GetSystemConfig::new(self)
+    }
+}
 #[doc = "Crash reporting and telemetry"]
 pub trait ClientTelemetryExt {
     #[doc = "GET /api/v1/admin/telemetry/crashes\n\nSends a `GET` request to `/api/v1/admin/telemetry/crashes`\n\n```ignore\nlet response = client.list_crashes()\n    .page(page)\n    .per_page(per_page)\n    .send()\n    .await;\n```"]
@@ -61078,12 +71125,24 @@ pub trait ClientUsersExt {
     fn list_users(&self) -> builder::ListUsers<'_>;
     #[doc = "Create user\n\nSends a `POST` request to `/api/v1/users`\n\n```ignore\nlet response = client.create_user()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn create_user(&self) -> builder::CreateUser<'_>;
+    #[doc = "Get the authenticated caller's own user record\n\nSends a `GET` request to `/api/v1/users/me`\n\n```ignore\nlet response = client.get_current_user_record()\n    .send()\n    .await;\n```"]
+    fn get_current_user_record(&self) -> builder::GetCurrentUserRecord<'_>;
+    #[doc = "Change the authenticated caller's own password\n\nResolves the subject to `auth.user_id`, so the shared\n`change_password_inner` requires the current password (non-admin self path)\nexactly as `POST /users/:id/password` does. Registered in\n`self_password_router` so it inherits the password-change rate limit (#1026).\n\nSends a `POST` request to `/api/v1/users/me/password`\n\n```ignore\nlet response = client.change_current_user_password()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn change_current_user_password(&self) -> builder::ChangeCurrentUserPassword<'_>;
+    #[doc = "List the authenticated caller's own API tokens\n\nSends a `GET` request to `/api/v1/users/me/tokens`\n\n```ignore\nlet response = client.list_current_user_tokens()\n    .send()\n    .await;\n```"]
+    fn list_current_user_tokens(&self) -> builder::ListCurrentUserTokens<'_>;
+    #[doc = "Create an API token for the authenticated caller\n\nThe #1315 admin-only-scope enforcement is applied inside\n`create_api_token_inner`, so a non-admin cannot mint `*`/`admin`/`delete:*`/\n`write:users` tokens via this alias any more than via `/users/:id/tokens`.\n\nSends a `POST` request to `/api/v1/users/me/tokens`\n\n```ignore\nlet response = client.create_current_user_api_token()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn create_current_user_api_token(&self) -> builder::CreateCurrentUserApiToken<'_>;
+    #[doc = "Revoke one of the authenticated caller's own API tokens\n\nSends a `DELETE` request to `/api/v1/users/me/tokens/{token_id}`\n\nArguments:\n- `token_id`: API token ID\n```ignore\nlet response = client.revoke_current_user_api_token()\n    .token_id(token_id)\n    .send()\n    .await;\n```"]
+    fn revoke_current_user_api_token(&self) -> builder::RevokeCurrentUserApiToken<'_>;
     #[doc = "Get user details\n\nSends a `GET` request to `/api/v1/users/{id}`\n\nArguments:\n- `id`: User ID\n```ignore\nlet response = client.get_user()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn get_user(&self) -> builder::GetUser<'_>;
     #[doc = "Delete user\n\nSends a `DELETE` request to `/api/v1/users/{id}`\n\nArguments:\n- `id`: User ID\n```ignore\nlet response = client.delete_user()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn delete_user(&self) -> builder::DeleteUser<'_>;
     #[doc = "Update user\n\nSends a `PATCH` request to `/api/v1/users/{id}`\n\nArguments:\n- `id`: User ID\n- `body`\n```ignore\nlet response = client.update_user()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn update_user(&self) -> builder::UpdateUser<'_>;
+    #[doc = "Force a user to change their password on next login (admin only).\nSets must_change_password=true and invalidates existing sessions so the\nuser is prompted immediately on their next login\n\nSends a `POST` request to `/api/v1/users/{id}/force-password-change`\n\nArguments:\n- `id`: User ID\n```ignore\nlet response = client.force_password_change()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn force_password_change(&self) -> builder::ForcePasswordChange<'_>;
     #[doc = "Change user password\n\nSends a `POST` request to `/api/v1/users/{id}/password`\n\nArguments:\n- `id`: User ID\n- `body`\n```ignore\nlet response = client.change_password()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn change_password(&self) -> builder::ChangePassword<'_>;
     #[doc = "Reset user password (admin only)\nGenerates a new temporary password and sets must_change_password=true\n\nSends a `POST` request to `/api/v1/users/{id}/password/reset`\n\nArguments:\n- `id`: User ID\n```ignore\nlet response = client.reset_password()\n    .id(id)\n    .send()\n    .await;\n```"]
@@ -61108,6 +71167,21 @@ impl ClientUsersExt for Client {
     fn create_user(&self) -> builder::CreateUser<'_> {
         builder::CreateUser::new(self)
     }
+    fn get_current_user_record(&self) -> builder::GetCurrentUserRecord<'_> {
+        builder::GetCurrentUserRecord::new(self)
+    }
+    fn change_current_user_password(&self) -> builder::ChangeCurrentUserPassword<'_> {
+        builder::ChangeCurrentUserPassword::new(self)
+    }
+    fn list_current_user_tokens(&self) -> builder::ListCurrentUserTokens<'_> {
+        builder::ListCurrentUserTokens::new(self)
+    }
+    fn create_current_user_api_token(&self) -> builder::CreateCurrentUserApiToken<'_> {
+        builder::CreateCurrentUserApiToken::new(self)
+    }
+    fn revoke_current_user_api_token(&self) -> builder::RevokeCurrentUserApiToken<'_> {
+        builder::RevokeCurrentUserApiToken::new(self)
+    }
     fn get_user(&self) -> builder::GetUser<'_> {
         builder::GetUser::new(self)
     }
@@ -61116,6 +71190,9 @@ impl ClientUsersExt for Client {
     }
     fn update_user(&self) -> builder::UpdateUser<'_> {
         builder::UpdateUser::new(self)
+    }
+    fn force_password_change(&self) -> builder::ForcePasswordChange<'_> {
+        builder::ForcePasswordChange::new(self)
     }
     fn change_password(&self) -> builder::ChangePassword<'_> {
         builder::ChangePassword::new(self)
@@ -61146,7 +71223,7 @@ impl ClientUsersExt for Client {
 pub trait ClientWebhooksExt {
     #[doc = "List webhooks\n\nSends a `GET` request to `/api/v1/webhooks`\n\n```ignore\nlet response = client.list_webhooks()\n    .enabled(enabled)\n    .page(page)\n    .per_page(per_page)\n    .repository_id(repository_id)\n    .send()\n    .await;\n```"]
     fn list_webhooks(&self) -> builder::ListWebhooks<'_>;
-    #[doc = "Create webhook\n\nSends a `POST` request to `/api/v1/webhooks`\n\n```ignore\nlet response = client.create_webhook()\n    .body(body)\n    .send()\n    .await;\n```"]
+    #[doc = "Create webhook\n\nGenerates a fresh signing secret (or accepts a caller-supplied one),\nencrypts it at rest, and returns the raw secret in the response body\n**once**. After this call, GET on the webhook returns only\n`secret_digest`, never the raw secret.\n\nSends a `POST` request to `/api/v1/webhooks`\n\n```ignore\nlet response = client.create_webhook()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn create_webhook(&self) -> builder::CreateWebhook<'_>;
     #[doc = "Get webhook by ID\n\nSends a `GET` request to `/api/v1/webhooks/{id}`\n\nArguments:\n- `id`: Webhook ID\n```ignore\nlet response = client.get_webhook()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn get_webhook(&self) -> builder::GetWebhook<'_>;
@@ -61160,6 +71237,8 @@ pub trait ClientWebhooksExt {
     fn disable_webhook(&self) -> builder::DisableWebhook<'_>;
     #[doc = "Enable webhook\n\nSends a `POST` request to `/api/v1/webhooks/{id}/enable`\n\nArguments:\n- `id`: Webhook ID\n```ignore\nlet response = client.enable_webhook()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn enable_webhook(&self) -> builder::EnableWebhook<'_>;
+    #[doc = "Rotate the signing secret for a webhook\n\nGenerates a new raw secret, encrypts it, moves the existing\n`secret_encrypted` into `secret_previous_encrypted`, and stamps an\nexpiry 24 hours in the future. The new raw secret is returned in the\nresponse body **once**. The HMAC signing path (added in a later ticket)\nsigns deliveries with both secrets while the previous one is within\nits expiry window so consumers can rotate without dropped events.\n\nIf a previous-secret window is still active when the rotate request\narrives, the request is REJECTED with HTTP 409 Conflict. This prevents\ntwo near-simultaneous rotations from clobbering the original\n`secret_previous_encrypted` material before the operator has finished\ndistributing the previous new key. The 409 body is structured:\n`{\"error\": \"rotation_already_in_progress\", \"expires_at\": \"<RFC3339>\"}`.\n\nSends a `POST` request to `/api/v1/webhooks/{id}/rotate-secret`\n\nArguments:\n- `id`: Webhook ID\n```ignore\nlet response = client.rotate_webhook_secret()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn rotate_webhook_secret(&self) -> builder::RotateWebhookSecret<'_>;
     #[doc = "Test webhook by sending a test payload\n\nSends a `POST` request to `/api/v1/webhooks/{id}/test`\n\nArguments:\n- `id`: Webhook ID\n```ignore\nlet response = client.test_webhook()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn test_webhook(&self) -> builder::TestWebhook<'_>;
 }
@@ -61188,6 +71267,9 @@ impl ClientWebhooksExt for Client {
     fn enable_webhook(&self) -> builder::EnableWebhook<'_> {
         builder::EnableWebhook::new(self)
     }
+    fn rotate_webhook_secret(&self) -> builder::RotateWebhookSecret<'_> {
+        builder::RotateWebhookSecret::new(self)
+    }
     fn test_webhook(&self) -> builder::TestWebhook<'_> {
         builder::TestWebhook::new(self)
     }
@@ -61201,6 +71283,343 @@ pub mod builder {
         ByteStream, ClientHooks, ClientInfo, Error, OperationInfo, RequestBuilderExt,
         ResponseValue, encode_path,
     };
+    #[doc = "Builder for [`ClientAgeGateExt::list_reviews`]\n\n[`ClientAgeGateExt::list_reviews`]: super::ClientAgeGateExt::list_reviews"]
+    #[derive(Debug, Clone)]
+    pub struct ListReviews<'a> {
+        client: &'a super::Client,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        repository_key: Result<Option<::std::string::String>, String>,
+        status: Result<Option<::std::string::String>, String>,
+    }
+    impl<'a> ListReviews<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                page: Ok(None),
+                per_page: Ok(None),
+                repository_key: Ok(None),
+                status: Ok(None),
+            }
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn repository_key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.repository_key = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for repository_key failed".to_string()
+            });
+            self
+        }
+        pub fn status<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.status = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for status failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/age-gate/reviews`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::AgeGateReviewListResponse>, Error<()>> {
+            let Self {
+                client,
+                page,
+                per_page,
+                repository_key,
+                status,
+            } = self;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let repository_key = repository_key.map_err(Error::InvalidRequest)?;
+            let status = status.map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/admin/age-gate/reviews", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new(
+                    "repository_key",
+                    &repository_key,
+                ))
+                .query(&progenitor_client::QueryParam::new("status", &status))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_reviews",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAgeGateExt::get_review`]\n\n[`ClientAgeGateExt::get_review`]: super::ClientAgeGateExt::get_review"]
+    #[derive(Debug, Clone)]
+    pub struct GetReview<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetReview<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/age-gate/reviews/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/age-gate/reviews/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_review",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAgeGateExt::approve_review`]\n\n[`ClientAgeGateExt::approve_review`]: super::ClientAgeGateExt::approve_review"]
+    #[derive(Debug, Clone)]
+    pub struct ApproveReview<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::ReviewActionRequest, String>,
+    }
+    impl<'a> ApproveReview<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ReviewActionRequest>,
+            <V as std::convert::TryInto<types::ReviewActionRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `ReviewActionRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::ReviewActionRequest,
+                ) -> types::builder::ReviewActionRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/admin/age-gate/reviews/{id}/approve`"]
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::ReviewActionRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/age-gate/reviews/{}/approve",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "approve_review",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAgeGateExt::reject_review`]\n\n[`ClientAgeGateExt::reject_review`]: super::ClientAgeGateExt::reject_review"]
+    #[derive(Debug, Clone)]
+    pub struct RejectReview<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::ReviewActionRequest, String>,
+    }
+    impl<'a> RejectReview<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ReviewActionRequest>,
+            <V as std::convert::TryInto<types::ReviewActionRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `ReviewActionRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::ReviewActionRequest,
+                ) -> types::builder::ReviewActionRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/admin/age-gate/reviews/{id}/reject`"]
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::ReviewActionRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/age-gate/reviews/{}/reject",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "reject_review",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientAnalyticsExt::get_stale_artifacts`]\n\n[`ClientAnalyticsExt::get_stale_artifacts`]: super::ClientAnalyticsExt::get_stale_artifacts"]
     #[derive(Debug, Clone)]
     pub struct GetStaleArtifacts<'a> {
@@ -62005,6 +72424,7 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -62152,6 +72572,948 @@ pub mod builder {
                 200u16 => ResponseValue::from_response(response).await,
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::ci_oidc_list_providers`]\n\n[`ClientAdminExt::ci_oidc_list_providers`]: super::ClientAdminExt::ci_oidc_list_providers"]
+    #[derive(Debug, Clone)]
+    pub struct CiOidcListProviders<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> CiOidcListProviders<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CiOidcProviderResponse>>, Error<()>>
+        {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/admin/ci-oidc/", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "ci_oidc_list_providers",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::create_provider`]\n\n[`ClientAdminExt::create_provider`]: super::ClientAdminExt::create_provider"]
+    #[derive(Debug, Clone)]
+    pub struct CreateProvider<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::CreateCiOidcProviderRequest, String>,
+    }
+    impl<'a> CreateProvider<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateCiOidcProviderRequest>,
+            <V as std::convert::TryInto<types::CreateCiOidcProviderRequest>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CreateCiOidcProviderRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateCiOidcProviderRequest,
+                ) -> types::builder::CreateCiOidcProviderRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/admin/ci-oidc/`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| {
+                    types::CreateCiOidcProviderRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/admin/ci-oidc/", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_provider",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::get_provider`]\n\n[`ClientAdminExt::get_provider`]: super::ClientAdminExt::get_provider"]
+    #[derive(Debug, Clone)]
+    pub struct GetProvider<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetProvider<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_provider",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::update_provider`]\n\n[`ClientAdminExt::update_provider`]: super::ClientAdminExt::update_provider"]
+    #[derive(Debug, Clone)]
+    pub struct UpdateProvider<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::UpdateCiOidcProviderRequest, String>,
+    }
+    impl<'a> UpdateProvider<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::UpdateCiOidcProviderRequest>,
+            <V as std::convert::TryInto<types::UpdateCiOidcProviderRequest>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `UpdateCiOidcProviderRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::UpdateCiOidcProviderRequest,
+                ) -> types::builder::UpdateCiOidcProviderRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/admin/ci-oidc/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::UpdateCiOidcProviderRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "update_provider",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::delete_provider`]\n\n[`ClientAdminExt::delete_provider`]: super::ClientAdminExt::delete_provider"]
+    #[derive(Debug, Clone)]
+    pub struct DeleteProvider<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> DeleteProvider<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/admin/ci-oidc/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "delete_provider",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::list_mappings`]\n\n[`ClientAdminExt::list_mappings`]: super::ClientAdminExt::list_mappings"]
+    #[derive(Debug, Clone)]
+    pub struct ListMappings<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> ListMappings<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/{id}/mappings`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CiOidcMappingResponse>>, Error<()>>
+        {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}/mappings",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_mappings",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::create_mapping`]\n\n[`ClientAdminExt::create_mapping`]: super::ClientAdminExt::create_mapping"]
+    #[derive(Debug, Clone)]
+    pub struct CreateMapping<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::CreateCiOidcMappingRequest, String>,
+    }
+    impl<'a> CreateMapping<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateCiOidcMappingRequest>,
+            <V as std::convert::TryInto<types::CreateCiOidcMappingRequest>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CreateCiOidcMappingRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateCiOidcMappingRequest,
+                ) -> types::builder::CreateCiOidcMappingRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/admin/ci-oidc/{id}/mappings`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::CreateCiOidcMappingRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}/mappings",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_mapping",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::get_mapping`]\n\n[`ClientAdminExt::get_mapping`]: super::ClientAdminExt::get_mapping"]
+    #[derive(Debug, Clone)]
+    pub struct GetMapping<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        mid: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetMapping<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                mid: Err("mid was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn mid<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.mid = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for mid failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error<()>> {
+            let Self { client, id, mid } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let mid = mid.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}/mappings/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+                encode_path(&mid.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_mapping",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::update_mapping`]\n\n[`ClientAdminExt::update_mapping`]: super::ClientAdminExt::update_mapping"]
+    #[derive(Debug, Clone)]
+    pub struct UpdateMapping<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        mid: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::UpdateCiOidcMappingRequest, String>,
+    }
+    impl<'a> UpdateMapping<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                mid: Err("mid was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn mid<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.mid = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for mid failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::UpdateCiOidcMappingRequest>,
+            <V as std::convert::TryInto<types::UpdateCiOidcMappingRequest>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `UpdateCiOidcMappingRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::UpdateCiOidcMappingRequest,
+                ) -> types::builder::UpdateCiOidcMappingRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error<()>> {
+            let Self {
+                client,
+                id,
+                mid,
+                body,
+            } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let mid = mid.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::UpdateCiOidcMappingRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}/mappings/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+                encode_path(&mid.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "update_mapping",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::delete_mapping`]\n\n[`ClientAdminExt::delete_mapping`]: super::ClientAdminExt::delete_mapping"]
+    #[derive(Debug, Clone)]
+    pub struct DeleteMapping<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        mid: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> DeleteMapping<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                mid: Err("mid was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn mid<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.mid = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for mid failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, id, mid } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let mid = mid.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}/mappings/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+                encode_path(&mid.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "delete_mapping",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::toggle_mapping`]\n\n[`ClientAdminExt::toggle_mapping`]: super::ClientAdminExt::toggle_mapping"]
+    #[derive(Debug, Clone)]
+    pub struct ToggleMapping<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        mid: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::CiOidcToggleRequest, String>,
+    }
+    impl<'a> ToggleMapping<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                mid: Err("mid was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn mid<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.mid = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for mid failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CiOidcToggleRequest>,
+            <V as std::convert::TryInto<types::CiOidcToggleRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `CiOidcToggleRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CiOidcToggleRequest,
+                ) -> types::builder::CiOidcToggleRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PATCH` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}/toggle`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error<()>> {
+            let Self {
+                client,
+                id,
+                mid,
+                body,
+            } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let mid = mid.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::CiOidcToggleRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}/mappings/{}/toggle",
+                client.baseurl,
+                encode_path(&id.to_string()),
+                encode_path(&mid.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .patch(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "toggle_mapping",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::toggle_provider`]\n\n[`ClientAdminExt::toggle_provider`]: super::ClientAdminExt::toggle_provider"]
+    #[derive(Debug, Clone)]
+    pub struct ToggleProvider<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::CiOidcToggleRequest, String>,
+    }
+    impl<'a> ToggleProvider<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CiOidcToggleRequest>,
+            <V as std::convert::TryInto<types::CiOidcToggleRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `CiOidcToggleRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CiOidcToggleRequest,
+                ) -> types::builder::CiOidcToggleRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PATCH` request to `/api/v1/admin/ci-oidc/{id}/toggle`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::CiOidcToggleRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/ci-oidc/{}/toggle",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .patch(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "toggle_provider",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -63015,6 +74377,84 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientAdminExt::rescan_for_inventory`]\n\n[`ClientAdminExt::rescan_for_inventory`]: super::ClientAdminExt::rescan_for_inventory"]
+    #[derive(Debug, Clone)]
+    pub struct RescanForInventory<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::RescanForInventoryRequest, String>,
+    }
+    impl<'a> RescanForInventory<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::RescanForInventoryRequest>,
+            <V as std::convert::TryInto<types::RescanForInventoryRequest>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `RescanForInventoryRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::RescanForInventoryRequest,
+                ) -> types::builder::RescanForInventoryRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/admin/rescan-for-inventory`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::RescanForInventoryResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| {
+                    types::RescanForInventoryRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/admin/rescan-for-inventory", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "rescan_for_inventory",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientAdminExt::trigger_search_reindex`]\n\n[`ClientAdminExt::trigger_search_reindex`]: super::ClientAdminExt::trigger_search_reindex"]
     #[derive(Debug, Clone)]
     pub struct TriggerSearchReindex<'a> {
@@ -63163,6 +74603,76 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::send_test_email`]\n\n[`ClientAdminExt::send_test_email`]: super::ClientAdminExt::send_test_email"]
+    #[derive(Debug, Clone)]
+    pub struct SendTestEmail<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::SmtpTestRequest, String>,
+    }
+    impl<'a> SendTestEmail<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::SmtpTestRequest>,
+            <V as std::convert::TryInto<types::SmtpTestRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `SmtpTestRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(types::builder::SmtpTestRequest) -> types::builder::SmtpTestRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/admin/smtp/test`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SmtpTestResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::SmtpTestRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/admin/smtp/test", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "send_test_email",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -64639,6 +76149,69 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientAdminExt::oci_blob_report`]\n\n[`ClientAdminExt::oci_blob_report`]: super::ClientAdminExt::oci_blob_report"]
+    #[derive(Debug, Clone)]
+    pub struct OciBlobReport<'a> {
+        client: &'a super::Client,
+        grace_hours: Result<Option<i64>, String>,
+    }
+    impl<'a> OciBlobReport<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                grace_hours: Ok(None),
+            }
+        }
+        pub fn grace_hours<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i64>,
+        {
+            self.grace_hours = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i64` for grace_hours failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/storage-gc/oci-blob-report`"]
+        pub async fn send(self) -> Result<ResponseValue<types::OciBlobFootprintReport>, Error<()>> {
+            let Self {
+                client,
+                grace_hours,
+            } = self;
+            let grace_hours = grace_hours.map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/admin/storage-gc/oci-blob-report", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new(
+                    "grace_hours",
+                    &grace_hours,
+                ))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "oci_blob_report",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientTelemetryExt::list_crashes`]\n\n[`ClientTelemetryExt::list_crashes`]: super::ClientTelemetryExt::list_crashes"]
     #[derive(Debug, Clone)]
     pub struct ListCrashes<'a> {
@@ -66063,6 +77636,75 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientAuthExt::exchange_ci_token`]\n\n[`ClientAuthExt::exchange_ci_token`]: super::ClientAuthExt::exchange_ci_token"]
+    #[derive(Debug, Clone)]
+    pub struct ExchangeCiToken<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::CiTokenRequest, String>,
+    }
+    impl<'a> ExchangeCiToken<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CiTokenRequest>,
+            <V as std::convert::TryInto<types::CiTokenRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `CiTokenRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(types::builder::CiTokenRequest) -> types::builder::CiTokenRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/auth/ci/token`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CiTokenResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::CiTokenRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/auth/ci/token", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "exchange_ci_token",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientAuthExt::login`]\n\n[`ClientAuthExt::login`]: super::ClientAuthExt::login"]
     #[derive(Debug, Clone)]
     pub struct Login<'a> {
@@ -66135,14 +77777,41 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct Logout<'a> {
         client: &'a super::Client,
+        body: Result<types::builder::RefreshTokenRequest, String>,
     }
     impl<'a> Logout<'a> {
         pub fn new(client: &'a super::Client) -> Self {
-            Self { client: client }
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::RefreshTokenRequest>,
+            <V as std::convert::TryInto<types::RefreshTokenRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `RefreshTokenRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::RefreshTokenRequest,
+                ) -> types::builder::RefreshTokenRequest,
+        {
+            self.body = self.body.map(f);
+            self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/logout`"]
         pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
-            let Self { client } = self;
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::RefreshTokenRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
             let url = format!("{}/api/v1/auth/logout", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
             header_map.append(
@@ -66150,7 +77819,12 @@ pub mod builder {
                 ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
             );
             #[allow(unused_mut)]
-            let mut request = client.client.post(url).headers(header_map).build()?;
+            let mut request = client
+                .client
+                .post(url)
+                .json(&body)
+                .headers(header_map)
+                .build()?;
             let info = OperationInfo {
                 operation_id: "logout",
             };
@@ -66435,16 +78109,22 @@ pub mod builder {
     pub struct OidcCallback<'a> {
         client: &'a super::Client,
         id: Result<::uuid::Uuid, String>,
-        code: Result<::std::string::String, String>,
-        state: Result<::std::string::String, String>,
+        code: Result<Option<::std::string::String>, String>,
+        error: Result<Option<::std::string::String>, String>,
+        error_description: Result<Option<::std::string::String>, String>,
+        error_uri: Result<Option<::std::string::String>, String>,
+        state: Result<Option<::std::string::String>, String>,
     }
     impl<'a> OidcCallback<'a> {
         pub fn new(client: &'a super::Client) -> Self {
             Self {
                 client: client,
                 id: Err("id was not initialized".to_string()),
-                code: Err("code was not initialized".to_string()),
-                state: Err("state was not initialized".to_string()),
+                code: Ok(None),
+                error: Ok(None),
+                error_description: Ok(None),
+                error_uri: Ok(None),
+                state: Ok(None),
             }
         }
         pub fn id<V>(mut self, value: V) -> Self
@@ -66460,8 +78140,36 @@ pub mod builder {
         where
             V: std::convert::TryInto<::std::string::String>,
         {
-            self.code = value.try_into().map_err(|_| {
+            self.code = value.try_into().map(Some).map_err(|_| {
                 "conversion to `:: std :: string :: String` for code failed".to_string()
+            });
+            self
+        }
+        pub fn error<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.error = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for error failed".to_string()
+            });
+            self
+        }
+        pub fn error_description<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.error_description = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for error_description failed"
+                    .to_string()
+            });
+            self
+        }
+        pub fn error_uri<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.error_uri = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for error_uri failed".to_string()
             });
             self
         }
@@ -66469,7 +78177,7 @@ pub mod builder {
         where
             V: std::convert::TryInto<::std::string::String>,
         {
-            self.state = value.try_into().map_err(|_| {
+            self.state = value.try_into().map(Some).map_err(|_| {
                 "conversion to `:: std :: string :: String` for state failed".to_string()
             });
             self
@@ -66480,10 +78188,16 @@ pub mod builder {
                 client,
                 id,
                 code,
+                error,
+                error_description,
+                error_uri,
                 state,
             } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let code = code.map_err(Error::InvalidRequest)?;
+            let error = error.map_err(Error::InvalidRequest)?;
+            let error_description = error_description.map_err(Error::InvalidRequest)?;
+            let error_uri = error_uri.map_err(Error::InvalidRequest)?;
             let state = state.map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/api/v1/auth/sso/oidc/{}/callback",
@@ -66500,6 +78214,12 @@ pub mod builder {
                 .client
                 .get(url)
                 .query(&progenitor_client::QueryParam::new("code", &code))
+                .query(&progenitor_client::QueryParam::new("error", &error))
+                .query(&progenitor_client::QueryParam::new(
+                    "error_description",
+                    &error_description,
+                ))
+                .query(&progenitor_client::QueryParam::new("error_uri", &error_uri))
                 .query(&progenitor_client::QueryParam::new("state", &state))
                 .headers(header_map)
                 .build()?;
@@ -66513,6 +78233,7 @@ pub mod builder {
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
                 400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -66809,6 +78530,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -67315,6 +79037,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -67458,6 +79181,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -67517,6 +79241,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -68250,7 +79975,7 @@ pub mod builder {
     #[derive(Debug, Clone)]
     pub struct CreateCurationRule<'a> {
         client: &'a super::Client,
-        body: Result<types::builder::CreateRuleRequest, String>,
+        body: Result<types::builder::CurationCreateRuleRequest, String>,
     }
     impl<'a> CreateCurationRule<'a> {
         pub fn new(client: &'a super::Client) -> Self {
@@ -68261,20 +79986,23 @@ pub mod builder {
         }
         pub fn body<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::CreateRuleRequest>,
-            <V as std::convert::TryInto<types::CreateRuleRequest>>::Error: std::fmt::Display,
+            V: std::convert::TryInto<types::CurationCreateRuleRequest>,
+            <V as std::convert::TryInto<types::CurationCreateRuleRequest>>::Error:
+                std::fmt::Display,
         {
-            self.body = value
-                .try_into()
-                .map(From::from)
-                .map_err(|s| format!("conversion to `CreateRuleRequest` for body failed: {}", s));
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CurationCreateRuleRequest` for body failed: {}",
+                    s
+                )
+            });
             self
         }
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                    types::builder::CreateRuleRequest,
-                ) -> types::builder::CreateRuleRequest,
+                    types::builder::CurationCreateRuleRequest,
+                ) -> types::builder::CurationCreateRuleRequest,
         {
             self.body = self.body.map(f);
             self
@@ -68283,7 +80011,9 @@ pub mod builder {
         pub async fn send(self) -> Result<ResponseValue<types::RuleResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
-                .and_then(|v| types::CreateRuleRequest::try_from(v).map_err(|e| e.to_string()))
+                .and_then(|v| {
+                    types::CurationCreateRuleRequest::try_from(v).map_err(|e| e.to_string())
+                })
                 .map_err(Error::InvalidRequest)?;
             let url = format!("{}/api/v1/curation/rules", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -68315,12 +80045,72 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientCurationExt::get_curation_rule`]\n\n[`ClientCurationExt::get_curation_rule`]: super::ClientCurationExt::get_curation_rule"]
+    #[derive(Debug, Clone)]
+    pub struct GetCurationRule<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetCurationRule<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/curation/rules/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::RuleResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/curation/rules/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_curation_rule",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientCurationExt::update_curation_rule`]\n\n[`ClientCurationExt::update_curation_rule`]: super::ClientCurationExt::update_curation_rule"]
     #[derive(Debug, Clone)]
     pub struct UpdateCurationRule<'a> {
         client: &'a super::Client,
         id: Result<::uuid::Uuid, String>,
-        body: Result<types::builder::UpdateRuleRequest, String>,
+        body: Result<types::builder::CurationUpdateRuleRequest, String>,
     }
     impl<'a> UpdateCurationRule<'a> {
         pub fn new(client: &'a super::Client) -> Self {
@@ -68341,20 +80131,23 @@ pub mod builder {
         }
         pub fn body<V>(mut self, value: V) -> Self
         where
-            V: std::convert::TryInto<types::UpdateRuleRequest>,
-            <V as std::convert::TryInto<types::UpdateRuleRequest>>::Error: std::fmt::Display,
+            V: std::convert::TryInto<types::CurationUpdateRuleRequest>,
+            <V as std::convert::TryInto<types::CurationUpdateRuleRequest>>::Error:
+                std::fmt::Display,
         {
-            self.body = value
-                .try_into()
-                .map(From::from)
-                .map_err(|s| format!("conversion to `UpdateRuleRequest` for body failed: {}", s));
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CurationUpdateRuleRequest` for body failed: {}",
+                    s
+                )
+            });
             self
         }
         pub fn body_map<F>(mut self, f: F) -> Self
         where
             F: std::ops::FnOnce(
-                    types::builder::UpdateRuleRequest,
-                ) -> types::builder::UpdateRuleRequest,
+                    types::builder::CurationUpdateRuleRequest,
+                ) -> types::builder::CurationUpdateRuleRequest,
         {
             self.body = self.body.map(f);
             self
@@ -68364,7 +80157,9 @@ pub mod builder {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
-                .and_then(|v| types::UpdateRuleRequest::try_from(v).map_err(|e| e.to_string()))
+                .and_then(|v| {
+                    types::CurationUpdateRuleRequest::try_from(v).map_err(|e| e.to_string())
+                })
                 .map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/api/v1/curation/rules/{}",
@@ -69579,6 +81374,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -69649,6 +81445,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -69660,12 +81458,16 @@ pub mod builder {
     pub struct GetGroup<'a> {
         client: &'a super::Client,
         id: Result<::uuid::Uuid, String>,
+        member_limit: Result<Option<i32>, String>,
+        member_offset: Result<Option<i32>, String>,
     }
     impl<'a> GetGroup<'a> {
         pub fn new(client: &'a super::Client) -> Self {
             Self {
                 client: client,
                 id: Err("id was not initialized".to_string()),
+                member_limit: Ok(None),
+                member_offset: Ok(None),
             }
         }
         pub fn id<V>(mut self, value: V) -> Self
@@ -69677,10 +81479,37 @@ pub mod builder {
                 .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
             self
         }
+        pub fn member_limit<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.member_limit = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for member_limit failed".to_string());
+            self
+        }
+        pub fn member_offset<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.member_offset = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for member_offset failed".to_string());
+            self
+        }
         #[doc = "Sends a `GET` request to `/api/v1/groups/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GroupResponse>, Error<()>> {
-            let Self { client, id } = self;
+        pub async fn send(self) -> Result<ResponseValue<types::GroupDetailResponse>, Error<()>> {
+            let Self {
+                client,
+                id,
+                member_limit,
+                member_offset,
+            } = self;
             let id = id.map_err(Error::InvalidRequest)?;
+            let member_limit = member_limit.map_err(Error::InvalidRequest)?;
+            let member_offset = member_offset.map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/api/v1/groups/{}",
                 client.baseurl,
@@ -69699,6 +81528,14 @@ pub mod builder {
                     ::reqwest::header::ACCEPT,
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
+                .query(&progenitor_client::QueryParam::new(
+                    "member_limit",
+                    &member_limit,
+                ))
+                .query(&progenitor_client::QueryParam::new(
+                    "member_offset",
+                    &member_offset,
+                ))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -69710,6 +81547,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -69797,6 +81635,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -69850,6 +81690,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -69931,6 +81773,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -70012,6 +81856,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -70652,6 +82498,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 201u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -72955,6 +84803,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -73253,6 +85103,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -73357,6 +85208,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -73426,6 +85278,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -73650,6 +85503,85 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::get_subscription`]\n\n[`ClientPeersExt::get_subscription`]: super::ClientPeersExt::get_subscription"]
+    #[derive(Debug, Clone)]
+    pub struct GetSubscription<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        repo_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetSubscription<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                repo_id: Err("repo_id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn repo_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.repo_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for repo_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/repositories/{repo_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SubscriptionResponse>, Error<()>> {
+            let Self {
+                client,
+                id,
+                repo_id,
+            } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let repo_id = repo_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/peers/{}/repositories/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+                encode_path(&repo_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_subscription",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -73720,6 +85652,84 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPeersExt::run_subscription_now`]\n\n[`ClientPeersExt::run_subscription_now`]: super::ClientPeersExt::run_subscription_now"]
+    #[derive(Debug, Clone)]
+    pub struct RunSubscriptionNow<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        repo_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> RunSubscriptionNow<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                repo_id: Err("repo_id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn repo_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.repo_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for repo_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/repositories/{repo_id}/sync`"]
+        pub async fn send(self) -> Result<ResponseValue<types::RunNowResponse>, Error<()>> {
+            let Self {
+                client,
+                id,
+                repo_id,
+            } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let repo_id = repo_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/peers/{}/repositories/{}/sync",
+                client.baseurl,
+                encode_path(&id.to_string()),
+                encode_path(&repo_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "run_subscription_now",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                202u16 => ResponseValue::from_response(response).await,
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -76580,6 +88590,158 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientPromotionExt::get_release_target`]\n\n[`ClientPromotionExt::get_release_target`]: super::ClientPromotionExt::get_release_target"]
+    #[derive(Debug, Clone)]
+    pub struct GetReleaseTarget<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> GetReleaseTarget<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/promotion/repositories/{key}/release-target`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ReleaseTargetResponse>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/promotion/repositories/{}/release-target",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_release_target",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientPromotionExt::set_release_target`]\n\n[`ClientPromotionExt::set_release_target`]: super::ClientPromotionExt::set_release_target"]
+    #[derive(Debug, Clone)]
+    pub struct SetReleaseTarget<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        body: Result<types::builder::SetReleaseTargetRequest, String>,
+    }
+    impl<'a> SetReleaseTarget<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::SetReleaseTargetRequest>,
+            <V as std::convert::TryInto<types::SetReleaseTargetRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `SetReleaseTargetRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::SetReleaseTargetRequest,
+                ) -> types::builder::SetReleaseTargetRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/promotion/repositories/{key}/release-target`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ReleaseTargetResponse>, Error<()>> {
+            let Self { client, key, body } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::SetReleaseTargetRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/promotion/repositories/{}/release-target",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "set_release_target",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientQualityExt::list_checks`]\n\n[`ClientQualityExt::list_checks`]: super::ClientQualityExt::list_checks"]
     #[derive(Debug, Clone)]
     pub struct ListChecks<'a> {
@@ -77574,6 +89736,233 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientQuarantineExt::get_quarantine_status`]\n\n[`ClientQuarantineExt::get_quarantine_status`]: super::ClientQuarantineExt::get_quarantine_status"]
+    #[derive(Debug, Clone)]
+    pub struct GetQuarantineStatus<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetQuarantineStatus<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/quarantine/{artifact_id}`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::QuarantineStatusResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quarantine/{}",
+                client.baseurl,
+                encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_quarantine_status",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQuarantineExt::reject_quarantined_artifact`]\n\n[`ClientQuarantineExt::reject_quarantined_artifact`]: super::ClientQuarantineExt::reject_quarantined_artifact"]
+    #[derive(Debug, Clone)]
+    pub struct RejectQuarantinedArtifact<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::RejectRequest, String>,
+    }
+    impl<'a> RejectQuarantinedArtifact<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::RejectRequest>,
+            <V as std::convert::TryInto<types::RejectRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `RejectRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(types::builder::RejectRequest) -> types::builder::RejectRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/quarantine/{artifact_id}/reject`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::QuarantineActionResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+                body,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::RejectRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quarantine/{}/reject",
+                client.baseurl,
+                encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "reject_quarantined_artifact",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientQuarantineExt::release_artifact`]\n\n[`ClientQuarantineExt::release_artifact`]: super::ClientQuarantineExt::release_artifact"]
+    #[derive(Debug, Clone)]
+    pub struct ReleaseArtifact<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> ReleaseArtifact<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/quarantine/{artifact_id}/release`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::QuarantineActionResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/quarantine/{}/release",
+                client.baseurl,
+                encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "release_artifact",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientRepositoriesExt::list_repositories`]\n\n[`ClientRepositoriesExt::list_repositories`]: super::ClientRepositoriesExt::list_repositories"]
     #[derive(Debug, Clone)]
     pub struct ListRepositories<'a> {
@@ -77762,6 +90151,7 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -77875,6 +90265,7 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -77966,8 +90357,158 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAgeGateExt::get_repo_age_gate`]\n\n[`ClientAgeGateExt::get_repo_age_gate`]: super::ClientAgeGateExt::get_repo_age_gate"]
+    #[derive(Debug, Clone)]
+    pub struct GetRepoAgeGate<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> GetRepoAgeGate<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/age-gate`"]
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateConfigResponse>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/age-gate",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_repo_age_gate",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAgeGateExt::update_repo_age_gate`]\n\n[`ClientAgeGateExt::update_repo_age_gate`]: super::ClientAgeGateExt::update_repo_age_gate"]
+    #[derive(Debug, Clone)]
+    pub struct UpdateRepoAgeGate<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        body: Result<types::builder::UpdateAgeGateConfigRequest, String>,
+    }
+    impl<'a> UpdateRepoAgeGate<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::UpdateAgeGateConfigRequest>,
+            <V as std::convert::TryInto<types::UpdateAgeGateConfigRequest>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `UpdateAgeGateConfigRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::UpdateAgeGateConfigRequest,
+                ) -> types::builder::UpdateAgeGateConfigRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/age-gate`"]
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateConfigResponse>, Error<()>> {
+            let Self { client, key, body } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::UpdateAgeGateConfigRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/age-gate",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "update_repo_age_gate",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -77977,6 +90518,7 @@ pub mod builder {
     pub struct ListArtifacts<'a> {
         client: &'a super::Client,
         key: Result<::std::string::String, String>,
+        group_by: Result<Option<::std::string::String>, String>,
         page: Result<Option<i32>, String>,
         path_prefix: Result<Option<::std::string::String>, String>,
         per_page: Result<Option<i32>, String>,
@@ -77987,6 +90529,7 @@ pub mod builder {
             Self {
                 client: client,
                 key: Err("key was not initialized".to_string()),
+                group_by: Ok(None),
                 page: Ok(None),
                 path_prefix: Ok(None),
                 per_page: Ok(None),
@@ -77999,6 +90542,15 @@ pub mod builder {
         {
             self.key = value.try_into().map_err(|_| {
                 "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn group_by<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.group_by = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for group_by failed".to_string()
             });
             self
         }
@@ -78046,12 +90598,14 @@ pub mod builder {
             let Self {
                 client,
                 key,
+                group_by,
                 page,
                 path_prefix,
                 per_page,
                 q,
             } = self;
             let key = key.map_err(Error::InvalidRequest)?;
+            let group_by = group_by.map_err(Error::InvalidRequest)?;
             let page = page.map_err(Error::InvalidRequest)?;
             let path_prefix = path_prefix.map_err(Error::InvalidRequest)?;
             let per_page = per_page.map_err(Error::InvalidRequest)?;
@@ -78074,6 +90628,7 @@ pub mod builder {
                     ::reqwest::header::ACCEPT,
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
+                .query(&progenitor_client::QueryParam::new("group_by", &group_by))
                 .query(&progenitor_client::QueryParam::new("page", &page))
                 .query(&progenitor_client::QueryParam::new(
                     "path_prefix",
@@ -78328,6 +90883,7 @@ pub mod builder {
                 200u16 => Ok(ResponseValue::empty(response)),
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -78480,6 +91036,84 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientRepositoriesExt::invalidate_cache`]\n\n[`ClientRepositoriesExt::invalidate_cache`]: super::ClientRepositoriesExt::invalidate_cache"]
+    #[derive(Debug, Clone)]
+    pub struct InvalidateCache<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        path: Result<::std::string::String, String>,
+    }
+    impl<'a> InvalidateCache<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                path: Err("path was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn path<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.path = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for path failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/cache/invalidate`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::InvalidateCacheResponse>, Error<()>> {
+            let Self { client, key, path } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let path = path.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/cache/invalidate",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("path", &path))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "invalidate_cache",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientRepositoriesExt::download_artifact`]\n\n[`ClientRepositoriesExt::download_artifact`]: super::ClientRepositoriesExt::download_artifact"]
     #[derive(Debug, Clone)]
     pub struct DownloadArtifact<'a> {
@@ -78540,6 +91174,237 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientEmailSubscriptionsExt::list_subscriptions`]\n\n[`ClientEmailSubscriptionsExt::list_subscriptions`]: super::ClientEmailSubscriptionsExt::list_subscriptions"]
+    #[derive(Debug, Clone)]
+    pub struct ListSubscriptions<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> ListSubscriptions<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/email-subscriptions`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::EmailSubscriptionListResponse>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/email-subscriptions",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_subscriptions",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientEmailSubscriptionsExt::create_subscription`]\n\n[`ClientEmailSubscriptionsExt::create_subscription`]: super::ClientEmailSubscriptionsExt::create_subscription"]
+    #[derive(Debug, Clone)]
+    pub struct CreateSubscription<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        body: Result<types::builder::CreateEmailSubscriptionRequest, String>,
+    }
+    impl<'a> CreateSubscription<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateEmailSubscriptionRequest>,
+            <V as std::convert::TryInto<types::CreateEmailSubscriptionRequest>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CreateEmailSubscriptionRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateEmailSubscriptionRequest,
+                ) -> types::builder::CreateEmailSubscriptionRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/email-subscriptions`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::EmailSubscriptionResponse>, Error<()>> {
+            let Self { client, key, body } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::CreateEmailSubscriptionRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/email-subscriptions",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_subscription",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                201u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientEmailSubscriptionsExt::delete_subscription`]\n\n[`ClientEmailSubscriptionsExt::delete_subscription`]: super::ClientEmailSubscriptionsExt::delete_subscription"]
+    #[derive(Debug, Clone)]
+    pub struct DeleteSubscription<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        subscription_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> DeleteSubscription<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                subscription_id: Err("subscription_id was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn subscription_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.subscription_id = value.try_into().map_err(|_| {
+                "conversion to `:: uuid :: Uuid` for subscription_id failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/email-subscriptions/{subscription_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self {
+                client,
+                key,
+                subscription_id,
+            } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let subscription_id = subscription_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/email-subscriptions/{}",
+                client.baseurl,
+                encode_path(&key.to_string()),
+                encode_path(&subscription_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "delete_subscription",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -78920,6 +91785,7 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
                 400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -79107,6 +91973,7 @@ pub mod builder {
                 200u16 => ResponseValue::from_response(response).await,
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -79176,6 +92043,445 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
                 400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoriesExt::list_pypi_tracks`]\n\n[`ClientRepositoriesExt::list_pypi_tracks`]: super::ClientRepositoriesExt::list_pypi_tracks"]
+    #[derive(Debug, Clone)]
+    pub struct ListPypiTracks<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> ListPypiTracks<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/pypi-tracks`"]
+        pub async fn send(self) -> Result<ResponseValue<types::PypiTracksListResponse>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/pypi-tracks",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_pypi_tracks",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoriesExt::put_pypi_track`]\n\n[`ClientRepositoriesExt::put_pypi_track`]: super::ClientRepositoriesExt::put_pypi_track"]
+    #[derive(Debug, Clone)]
+    pub struct PutPypiTrack<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        project: Result<::std::string::String, String>,
+        body: Result<types::builder::PypiTrackRequest, String>,
+    }
+    impl<'a> PutPypiTrack<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                project: Err("project was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn project<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.project = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for project failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::PypiTrackRequest>,
+            <V as std::convert::TryInto<types::PypiTrackRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `PypiTrackRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::PypiTrackRequest,
+                ) -> types::builder::PypiTrackRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/pypi-tracks/{project}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::PypiTrackResponse>, Error<()>> {
+            let Self {
+                client,
+                key,
+                project,
+                body,
+            } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let project = project.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::PypiTrackRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/pypi-tracks/{}",
+                client.baseurl,
+                encode_path(&key.to_string()),
+                encode_path(&project.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "put_pypi_track",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoriesExt::delete_pypi_track`]\n\n[`ClientRepositoriesExt::delete_pypi_track`]: super::ClientRepositoriesExt::delete_pypi_track"]
+    #[derive(Debug, Clone)]
+    pub struct DeletePypiTrack<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        project: Result<::std::string::String, String>,
+    }
+    impl<'a> DeletePypiTrack<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                project: Err("project was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn project<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.project = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for project failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/pypi-tracks/{project}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self {
+                client,
+                key,
+                project,
+            } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let project = project.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/pypi-tracks/{}",
+                client.baseurl,
+                encode_path(&key.to_string()),
+                encode_path(&project.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "delete_pypi_track",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoriesExt::get_routing_rules`]\n\n[`ClientRepositoriesExt::get_routing_rules`]: super::ClientRepositoriesExt::get_routing_rules"]
+    #[derive(Debug, Clone)]
+    pub struct GetRoutingRules<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> GetRoutingRules<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/routing-rules`"]
+        pub async fn send(self) -> Result<ResponseValue<types::RoutingRulesResponse>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/routing-rules",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_routing_rules",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoriesExt::set_routing_rules`]\n\n[`ClientRepositoriesExt::set_routing_rules`]: super::ClientRepositoriesExt::set_routing_rules"]
+    #[derive(Debug, Clone)]
+    pub struct SetRoutingRules<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        body: Result<types::builder::SetRoutingRulesRequest, String>,
+    }
+    impl<'a> SetRoutingRules<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::SetRoutingRulesRequest>,
+            <V as std::convert::TryInto<types::SetRoutingRulesRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `SetRoutingRulesRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::SetRoutingRulesRequest,
+                ) -> types::builder::SetRoutingRulesRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/routing-rules`"]
+        pub async fn send(self) -> Result<ResponseValue<types::RoutingRulesResponse>, Error<()>> {
+            let Self { client, key, body } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::SetRoutingRulesRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/routing-rules",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "set_routing_rules",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoriesExt::delete_routing_rules`]\n\n[`ClientRepositoriesExt::delete_routing_rules`]: super::ClientRepositoriesExt::delete_routing_rules"]
+    #[derive(Debug, Clone)]
+    pub struct DeleteRoutingRules<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> DeleteRoutingRules<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/routing-rules`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/routing-rules",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "delete_routing_rules",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
@@ -79525,6 +92831,311 @@ pub mod builder {
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 502u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoryTokensExt::list_repo_tokens`]\n\n[`ClientRepositoryTokensExt::list_repo_tokens`]: super::ClientRepositoryTokensExt::list_repo_tokens"]
+    #[derive(Debug, Clone)]
+    pub struct ListRepoTokens<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> ListRepoTokens<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/tokens`"]
+        pub async fn send(self) -> Result<ResponseValue<types::RepoTokenListResponse>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/tokens",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_repo_tokens",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoryTokensExt::create_repo_token`]\n\n[`ClientRepositoryTokensExt::create_repo_token`]: super::ClientRepositoryTokensExt::create_repo_token"]
+    #[derive(Debug, Clone)]
+    pub struct CreateRepoToken<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        body: Result<types::builder::CreateRepoTokenRequest, String>,
+    }
+    impl<'a> CreateRepoToken<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateRepoTokenRequest>,
+            <V as std::convert::TryInto<types::CreateRepoTokenRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CreateRepoTokenRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateRepoTokenRequest,
+                ) -> types::builder::CreateRepoTokenRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/tokens`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::CreateRepoTokenResponse>, Error<()>> {
+            let Self { client, key, body } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::CreateRepoTokenRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/tokens",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_repo_token",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoryTokensExt::get_repo_token`]\n\n[`ClientRepositoryTokensExt::get_repo_token`]: super::ClientRepositoryTokensExt::get_repo_token"]
+    #[derive(Debug, Clone)]
+    pub struct GetRepoToken<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        token_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> GetRepoToken<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                token_id: Err("token_id was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn token_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.token_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for token_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/tokens/{token_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::RepoTokenResponse>, Error<()>> {
+            let Self {
+                client,
+                key,
+                token_id,
+            } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let token_id = token_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/tokens/{}",
+                client.baseurl,
+                encode_path(&key.to_string()),
+                encode_path(&token_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_repo_token",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoryTokensExt::revoke_repo_token`]\n\n[`ClientRepositoryTokensExt::revoke_repo_token`]: super::ClientRepositoryTokensExt::revoke_repo_token"]
+    #[derive(Debug, Clone)]
+    pub struct RevokeRepoToken<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        token_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> RevokeRepoToken<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                token_id: Err("token_id was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn token_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.token_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for token_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/tokens/{token_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self {
+                client,
+                key,
+                token_id,
+            } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let token_id = token_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/tokens/{}",
+                client.baseurl,
+                encode_path(&key.to_string()),
+                encode_path(&token_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "revoke_repo_token",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                204u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -79918,13 +93529,13 @@ pub mod builder {
             }
         }
     }
-    #[doc = "Builder for [`ClientSbomExt::get_cve_history`]\n\n[`ClientSbomExt::get_cve_history`]: super::ClientSbomExt::get_cve_history"]
+    #[doc = "Builder for [`ClientSbomExt::get_cve_history_by_artifact`]\n\n[`ClientSbomExt::get_cve_history_by_artifact`]: super::ClientSbomExt::get_cve_history_by_artifact"]
     #[derive(Debug, Clone)]
-    pub struct GetCveHistory<'a> {
+    pub struct GetCveHistoryByArtifact<'a> {
         client: &'a super::Client,
         artifact_id: Result<::uuid::Uuid, String>,
     }
-    impl<'a> GetCveHistory<'a> {
+    impl<'a> GetCveHistoryByArtifact<'a> {
         pub fn new(client: &'a super::Client) -> Self {
             Self {
                 client: client,
@@ -79940,7 +93551,7 @@ pub mod builder {
                 .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
             self
         }
-        #[doc = "Sends a `GET` request to `/api/v1/sbom/cve/history/{artifact_id}`"]
+        #[doc = "Sends a `GET` request to `/api/v1/sbom/cve/history/by-artifact/{artifact_id}`"]
         pub async fn send(
             self,
         ) -> Result<ResponseValue<::std::vec::Vec<types::CveHistoryEntry>>, Error<()>> {
@@ -79950,9 +93561,134 @@ pub mod builder {
             } = self;
             let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
             let url = format!(
-                "{}/api/v1/sbom/cve/history/{}",
+                "{}/api/v1/sbom/cve/history/by-artifact/{}",
                 client.baseurl,
                 encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_cve_history_by_artifact",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientSbomExt::get_cve_history_by_cve`]\n\n[`ClientSbomExt::get_cve_history_by_cve`]: super::ClientSbomExt::get_cve_history_by_cve"]
+    #[derive(Debug, Clone)]
+    pub struct GetCveHistoryByCve<'a> {
+        client: &'a super::Client,
+        cve_id: Result<::std::string::String, String>,
+    }
+    impl<'a> GetCveHistoryByCve<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                cve_id: Err("cve_id was not initialized".to_string()),
+            }
+        }
+        pub fn cve_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.cve_id = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for cve_id failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/sbom/cve/history/by-cve/{cve_id}`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CveHistoryEntry>>, Error<()>> {
+            let Self { client, cve_id } = self;
+            let cve_id = cve_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/sbom/cve/history/by-cve/{}",
+                client.baseurl,
+                encode_path(&cve_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_cve_history_by_cve",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientSbomExt::get_cve_history`]\n\n[`ClientSbomExt::get_cve_history`]: super::ClientSbomExt::get_cve_history"]
+    #[derive(Debug, Clone)]
+    pub struct GetCveHistory<'a> {
+        client: &'a super::Client,
+        id: Result<::std::string::String, String>,
+    }
+    impl<'a> GetCveHistory<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.id = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for id failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/sbom/cve/history/{id}`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CveHistoryEntry>>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/sbom/cve/history/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
             );
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
             header_map.append(
@@ -79978,6 +93714,115 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientSbomExt::update_cve_status_by_artifact_cve`]\n\n[`ClientSbomExt::update_cve_status_by_artifact_cve`]: super::ClientSbomExt::update_cve_status_by_artifact_cve"]
+    #[derive(Debug, Clone)]
+    pub struct UpdateCveStatusByArtifactCve<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<::uuid::Uuid, String>,
+        cve_id: Result<::std::string::String, String>,
+        body: Result<types::builder::UpdateCveStatusRequest, String>,
+    }
+    impl<'a> UpdateCveStatusByArtifactCve<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+                cve_id: Err("cve_id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn cve_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.cve_id = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for cve_id failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::UpdateCveStatusRequest>,
+            <V as std::convert::TryInto<types::UpdateCveStatusRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `UpdateCveStatusRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::UpdateCveStatusRequest,
+                ) -> types::builder::UpdateCveStatusRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/sbom/cve/status/by-artifact/{artifact_id}/by-cve/{cve_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::CveHistoryEntry>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+                cve_id,
+                body,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let cve_id = cve_id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::UpdateCveStatusRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/sbom/cve/status/by-artifact/{}/by-cve/{}",
+                client.baseurl,
+                encode_path(&artifact_id.to_string()),
+                encode_path(&cve_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "update_cve_status_by_artifact_cve",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -80623,7 +94468,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/{id}/convert`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SbomResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SbomContentResponse>, Error<()>> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -81481,6 +95326,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -81566,6 +95412,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -81626,6 +95473,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -82021,7 +95869,8 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
                 400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -82342,6 +96191,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -83135,6 +96985,7 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -84183,6 +98034,47 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientSystemExt::get_system_config`]\n\n[`ClientSystemExt::get_system_config`]: super::ClientSystemExt::get_system_config"]
+    #[derive(Debug, Clone)]
+    pub struct GetSystemConfig<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> GetSystemConfig<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/system/config`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SystemConfigResponse>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/system/config", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_system_config",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientRepositoriesExt::get_tree`]\n\n[`ClientRepositoriesExt::get_tree`]: super::ClientRepositoriesExt::get_tree"]
     #[derive(Debug, Clone)]
     pub struct GetTree<'a> {
@@ -84437,6 +98329,7 @@ pub mod builder {
                 201u16 => ResponseValue::from_response(response).await,
                 400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -84871,6 +98764,284 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientUsersExt::get_current_user_record`]\n\n[`ClientUsersExt::get_current_user_record`]: super::ClientUsersExt::get_current_user_record"]
+    #[derive(Debug, Clone)]
+    pub struct GetCurrentUserRecord<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> GetCurrentUserRecord<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/users/me`"]
+        pub async fn send(self) -> Result<ResponseValue<types::AdminUserResponse>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/users/me", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_current_user_record",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUsersExt::change_current_user_password`]\n\n[`ClientUsersExt::change_current_user_password`]: super::ClientUsersExt::change_current_user_password"]
+    #[derive(Debug, Clone)]
+    pub struct ChangeCurrentUserPassword<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::ChangePasswordRequest, String>,
+    }
+    impl<'a> ChangeCurrentUserPassword<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ChangePasswordRequest>,
+            <V as std::convert::TryInto<types::ChangePasswordRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `ChangePasswordRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::ChangePasswordRequest,
+                ) -> types::builder::ChangePasswordRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/users/me/password`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::ChangePasswordRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/users/me/password", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "change_current_user_password",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUsersExt::list_current_user_tokens`]\n\n[`ClientUsersExt::list_current_user_tokens`]: super::ClientUsersExt::list_current_user_tokens"]
+    #[derive(Debug, Clone)]
+    pub struct ListCurrentUserTokens<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> ListCurrentUserTokens<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/users/me/tokens`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ApiTokenListResponse>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/users/me/tokens", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_current_user_tokens",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUsersExt::create_current_user_api_token`]\n\n[`ClientUsersExt::create_current_user_api_token`]: super::ClientUsersExt::create_current_user_api_token"]
+    #[derive(Debug, Clone)]
+    pub struct CreateCurrentUserApiToken<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::CreateApiTokenRequest, String>,
+    }
+    impl<'a> CreateCurrentUserApiToken<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateApiTokenRequest>,
+            <V as std::convert::TryInto<types::CreateApiTokenRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CreateApiTokenRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateApiTokenRequest,
+                ) -> types::builder::CreateApiTokenRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/users/me/tokens`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::ApiTokenCreatedResponse>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::CreateApiTokenRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/users/me/tokens", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "create_current_user_api_token",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUsersExt::revoke_current_user_api_token`]\n\n[`ClientUsersExt::revoke_current_user_api_token`]: super::ClientUsersExt::revoke_current_user_api_token"]
+    #[derive(Debug, Clone)]
+    pub struct RevokeCurrentUserApiToken<'a> {
+        client: &'a super::Client,
+        token_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> RevokeCurrentUserApiToken<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                token_id: Err("token_id was not initialized".to_string()),
+            }
+        }
+        pub fn token_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.token_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for token_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/users/me/tokens/{token_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, token_id } = self;
+            let token_id = token_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/users/me/tokens/{}",
+                client.baseurl,
+                encode_path(&token_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "revoke_current_user_api_token",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientUsersExt::get_user`]\n\n[`ClientUsersExt::get_user`]: super::ClientUsersExt::get_user"]
     #[derive(Debug, Clone)]
     pub struct GetUser<'a> {
@@ -85066,6 +99237,70 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientUsersExt::force_password_change`]\n\n[`ClientUsersExt::force_password_change`]: super::ClientUsersExt::force_password_change"]
+    #[derive(Debug, Clone)]
+    pub struct ForcePasswordChange<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> ForcePasswordChange<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/users/{id}/force-password-change`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::ForcePasswordChangeResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/users/{}/force-password-change",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "force_password_change",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -85791,7 +100026,9 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/webhooks`"]
-        pub async fn send(self) -> Result<ResponseValue<types::WebhookResponse>, Error<()>> {
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::WebhookSecretCreatedResponse>, Error<()>> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateWebhookRequest::try_from(v).map_err(|e| e.to_string()))
@@ -86228,6 +100465,70 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientWebhooksExt::rotate_webhook_secret`]\n\n[`ClientWebhooksExt::rotate_webhook_secret`]: super::ClientWebhooksExt::rotate_webhook_secret"]
+    #[derive(Debug, Clone)]
+    pub struct RotateWebhookSecret<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> RotateWebhookSecret<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/webhooks/{id}/rotate-secret`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::RotateWebhookSecretResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/webhooks/{}/rotate-secret",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "rotate_webhook_secret",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientWebhooksExt::test_webhook`]\n\n[`ClientWebhooksExt::test_webhook`]: super::ClientWebhooksExt::test_webhook"]
     #[derive(Debug, Clone)]
     pub struct TestWebhook<'a> {
@@ -86420,6 +100721,7 @@ pub mod prelude {
     #[allow(unused_imports)]
     pub use super::Client;
     pub use super::ClientAdminExt;
+    pub use super::ClientAgeGateExt;
     pub use super::ClientAnalyticsExt;
     pub use super::ClientApprovalExt;
     pub use super::ClientArtifactLabelsExt;
@@ -86427,6 +100729,7 @@ pub mod prelude {
     pub use super::ClientAuthExt;
     pub use super::ClientBuildsExt;
     pub use super::ClientCurationExt;
+    pub use super::ClientEmailSubscriptionsExt;
     pub use super::ClientGroupsExt;
     pub use super::ClientHealthExt;
     pub use super::ClientLifecycleExt;
@@ -86439,14 +100742,17 @@ pub mod prelude {
     pub use super::ClientPluginsExt;
     pub use super::ClientPromotionExt;
     pub use super::ClientQualityExt;
+    pub use super::ClientQuarantineExt;
     pub use super::ClientRepositoriesExt;
     pub use super::ClientRepositoryLabelsExt;
+    pub use super::ClientRepositoryTokensExt;
     pub use super::ClientSbomExt;
     pub use super::ClientSearchExt;
     pub use super::ClientSecurityExt;
     pub use super::ClientServiceAccountsExt;
     pub use super::ClientSigningExt;
     pub use super::ClientSsoExt;
+    pub use super::ClientSystemExt;
     pub use super::ClientTelemetryExt;
     pub use super::ClientUploadsExt;
     pub use super::ClientUsersExt;

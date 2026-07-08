@@ -544,7 +544,7 @@ async fn cve_history(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
 
     let resp = client
         .get_cve_history()
-        .artifact_id(aid)
+        .id(aid.to_string())
         .send()
         .await
         .map_err(|e| sdk_err("get CVE history", e))?;

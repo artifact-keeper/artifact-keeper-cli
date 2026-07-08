@@ -226,6 +226,8 @@ async fn create_webhook(
         secret: secret.map(|s| s.to_string()),
         repository_id: repo_id,
         headers: None,
+        event_schema_version: None,
+        payload_template: None,
     };
 
     let webhook = client
@@ -935,6 +937,10 @@ mod tests {
             headers: None,
             last_triggered_at: None,
             created_at: Utc::now(),
+            event_schema_version: "2026-04-01".to_string(),
+            payload_template: artifact_keeper_sdk::types::PayloadTemplate::Generic,
+            secret_digest: None,
+            secret_rotation_active: None,
         }
     }
 
@@ -1224,7 +1230,9 @@ mod tests {
             "repository_id": null,
             "headers": null,
             "last_triggered_at": null,
-            "created_at": "2026-01-15T12:00:00Z"
+            "created_at": "2026-01-15T12:00:00Z",
+            "event_schema_version": "2026-04-01",
+            "payload_template": "generic"
         })
     }
 

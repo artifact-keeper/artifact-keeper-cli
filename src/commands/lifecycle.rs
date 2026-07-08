@@ -285,7 +285,7 @@ async fn create_policy(
         name: name.to_string(),
         max_severity: max_severity.to_string(),
         block_on_fail,
-        block_unscanned,
+        block_unscanned: Some(block_unscanned),
         max_artifact_age_days: max_age_days,
         min_staging_hours,
         repository_id,
