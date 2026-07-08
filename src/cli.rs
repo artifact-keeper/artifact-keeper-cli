@@ -348,6 +348,15 @@ pub enum Command {
         #[arg(default_value = ".")]
         dir: String,
     },
+
+    /// Manage age-gate (publish-age cooldown) for remote proxy repositories
+    #[command(
+        after_help = "Examples:\n  ak age-gate get npm-proxy\n  ak age-gate set npm-proxy --min-age-days 7 --enabled\n  ak age-gate reviews --status pending\n  ak age-gate review <review-id>\n  ak age-gate approve <review-id> --reason \"Vetted\"\n  ak age-gate reject <review-id> --reason \"Too new\""
+    )]
+    AgeGate {
+        #[command(subcommand)]
+        command: commands::age_gate::AgeGateCommand,
+    },
 }
 
 impl Cli {
@@ -423,6 +432,7 @@ impl Cli {
             Command::Tui => commands::tui::execute(&global).await,
             Command::Completion { shell } => commands::completion::execute(shell),
             Command::ManPages { dir } => commands::completion::generate_man_pages(&dir),
+            Command::AgeGate { command } => command.execute(&global).await,
         }
     }
 }
