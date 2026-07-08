@@ -162,7 +162,11 @@ async fn set_config(
     eprintln!(
         "Age gate for '{}' is now {} (min age {} days).",
         config.repository_key,
-        if config.enabled { "enabled" } else { "disabled" },
+        if config.enabled {
+            "enabled"
+        } else {
+            "disabled"
+        },
         config.min_age_days
     );
 
@@ -233,7 +237,13 @@ async fn list_reviews(
 
     let table_str = {
         let mut table = new_table(vec![
-            "ID", "REPOSITORY", "PACKAGE", "VERSION", "STATUS", "REQ", "REQUESTED",
+            "ID",
+            "REPOSITORY",
+            "PACKAGE",
+            "VERSION",
+            "STATUS",
+            "REQ",
+            "REQUESTED",
         ]);
 
         for r in &resp.items {
@@ -366,7 +376,13 @@ fn format_config_detail(item: &serde_json::Value) -> String {
 
 fn format_review_table(items: &[serde_json::Value]) -> String {
     let mut table = new_table(vec![
-        "ID", "REPOSITORY", "PACKAGE", "VERSION", "STATUS", "REQ", "REQUESTED",
+        "ID",
+        "REPOSITORY",
+        "PACKAGE",
+        "VERSION",
+        "STATUS",
+        "REQ",
+        "REQUESTED",
     ]);
 
     for r in items {
@@ -455,7 +471,14 @@ mod tests {
 
     #[test]
     fn parse_set_enabled() {
-        let cli = parse(&["test", "set", "npm-proxy", "--min-age-days", "7", "--enabled"]);
+        let cli = parse(&[
+            "test",
+            "set",
+            "npm-proxy",
+            "--min-age-days",
+            "7",
+            "--enabled",
+        ]);
         match cli.command {
             AgeGateCommand::Set {
                 repo,
@@ -490,7 +513,14 @@ mod tests {
 
     #[test]
     fn parse_set_disabled() {
-        let cli = parse(&["test", "set", "npm-proxy", "--min-age-days", "0", "--disabled"]);
+        let cli = parse(&[
+            "test",
+            "set",
+            "npm-proxy",
+            "--min-age-days",
+            "0",
+            "--disabled",
+        ]);
         match cli.command {
             AgeGateCommand::Set {
                 enabled, disabled, ..
@@ -875,7 +905,9 @@ mod tests {
         approved["status"] = json!("approved");
 
         Mock::given(method("POST"))
-            .and(path(format!("/api/v1/admin/age-gate/reviews/{NIL_UUID}/approve")))
+            .and(path(format!(
+                "/api/v1/admin/age-gate/reviews/{NIL_UUID}/approve"
+            )))
             .respond_with(ResponseTemplate::new(200).set_body_json(approved))
             .mount(&server)
             .await;
@@ -895,7 +927,9 @@ mod tests {
         rejected["status"] = json!("rejected");
 
         Mock::given(method("POST"))
-            .and(path(format!("/api/v1/admin/age-gate/reviews/{NIL_UUID}/reject")))
+            .and(path(format!(
+                "/api/v1/admin/age-gate/reviews/{NIL_UUID}/reject"
+            )))
             .respond_with(ResponseTemplate::new(200).set_body_json(rejected))
             .mount(&server)
             .await;

@@ -240,7 +240,9 @@ fn format_tokens_table(tokens: &[RepoTokenResponse]) -> (Vec<Value>, String) {
                 .map(|e| e.format("%Y-%m-%d").to_string())
                 .unwrap_or_else(|| "never".to_string());
             let status = token_status(t);
-            table.add_row(vec![&id_short, &t.name, &scopes, &created, &expires, &status]);
+            table.add_row(vec![
+                &id_short, &t.name, &scopes, &created, &expires, &status,
+            ]);
         }
 
         table.to_string()
@@ -370,10 +372,11 @@ mod tests {
 
     #[test]
     fn parses_create_with_scopes() {
-        let cli =
-            TestCli::parse_from(["ak", "create", "my-repo", "ci", "--scopes", "read,write"]);
+        let cli = TestCli::parse_from(["ak", "create", "my-repo", "ci", "--scopes", "read,write"]);
         match cli.command {
-            RepoTokenCommand::Create { key, name, scopes, .. } => {
+            RepoTokenCommand::Create {
+                key, name, scopes, ..
+            } => {
                 assert_eq!(key, "my-repo");
                 assert_eq!(name, "ci");
                 assert_eq!(scopes.as_deref(), Some("read,write"));
