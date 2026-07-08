@@ -32,3 +32,4 @@ pub mod totp;
 pub mod tui;
 pub mod webhook;
 pub mod age_gate;
+pub mod repo_token;
