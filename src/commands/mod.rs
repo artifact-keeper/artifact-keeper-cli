@@ -27,6 +27,7 @@ pub mod repo;
 pub mod repo_token;
 pub mod sbom;
 pub mod scan;
+pub mod service_account;
 pub mod setup;
 pub mod sign;
 pub mod sso;
