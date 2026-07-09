@@ -75,14 +75,7 @@ impl AppConfig {
             }
         }
         let content = toml::to_string_pretty(self).into_diagnostic()?;
-        std::fs::write(&path, content).into_diagnostic()?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
-                .into_diagnostic()?;
-        }
-        Ok(())
+        write_private_atomic(&path, &content)
     }
 
     /// Get the active instance config, resolving from flag → env → default.
@@ -101,6 +94,45 @@ impl AppConfig {
 
         Ok((name, instance))
     }
+}
+
+/// Write `content` to `path` without the file ever being readable by other
+/// users, and without readers observing a partially written file.
+///
+/// The content is first written to a uniquely named temporary file created in
+/// the same directory as `path` (so the final rename stays on one filesystem
+/// and is atomic), then renamed over `path`, replacing any previous version.
+///
+/// On Unix the temporary file is created with mode `0o600` (via `O_CREAT |
+/// O_EXCL`), so at no point does a file with the secret content exist with
+/// group/world-readable permissions — unlike a plain `fs::write` followed by
+/// `set_permissions`, which leaves a umask-dependent race window. On other
+/// platforms the file inherits the default ACLs of the (already restricted)
+/// parent directory.
+pub(crate) fn write_private_atomic(path: &std::path::Path, content: &str) -> Result<()> {
+    use std::io::Write;
+
+    let parent = match path.parent() {
+        Some(p) if !p.as_os_str().is_empty() => p.to_path_buf(),
+        _ => PathBuf::from("."),
+    };
+
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(".ak-write-").suffix(".tmp");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        builder.permissions(std::fs::Permissions::from_mode(0o600));
+    }
+
+    let mut tmp = builder.tempfile_in(&parent).into_diagnostic()?;
+    tmp.write_all(content.as_bytes()).into_diagnostic()?;
+    tmp.as_file().sync_all().into_diagnostic()?;
+    // `persist` renames the temp file over `path`, atomically replacing any
+    // existing file; on failure the temp file is cleaned up.
+    tmp.persist(path)
+        .map_err(|e| AkError::ConfigError(format!("Failed to write {}: {}", path.display(), e)))?;
+    Ok(())
 }
 
 /// Returns the path to the config directory.
@@ -360,6 +392,75 @@ url = "https://test.com"
 
             let loaded = AppConfig::load().unwrap();
             assert_eq!(loaded.output_format, "yaml");
+        });
+    }
+
+    // ---- write_private_atomic ----
+
+    #[test]
+    fn write_private_atomic_creates_file_with_content() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("secret.json");
+        write_private_atomic(&path, "top-secret").unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "top-secret");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_private_atomic_sets_owner_only_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("secret.json");
+        write_private_atomic(&path, "token").unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(
+            mode & 0o077,
+            0,
+            "credential file must not be group/world accessible, got {mode:o}"
+        );
+        assert_eq!(mode, 0o600, "credential file should be 0600, got {mode:o}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_private_atomic_overwrite_keeps_owner_only_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("secret.json");
+        // Simulate a pre-existing file with overly broad permissions.
+        std::fs::write(&path, "old").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+
+        write_private_atomic(&path, "new").unwrap();
+
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "new");
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "replaced file should be 0600, got {mode:o}");
+    }
+
+    #[test]
+    fn write_private_atomic_leaves_no_temp_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("secret.json");
+        write_private_atomic(&path, "a").unwrap();
+        write_private_atomic(&path, "b").unwrap();
+        let entries: Vec<_> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(entries, vec!["secret.json"], "no temp files should remain");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn save_config_is_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+        with_temp_config(|| {
+            let config = AppConfig::default();
+            config.save().unwrap();
+            let path = config_path().unwrap();
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600, "config.toml should be 0600, got {mode:o}");
         });
     }
 

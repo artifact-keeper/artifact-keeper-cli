@@ -50,6 +50,10 @@ pub enum ArtifactCommand {
         /// Output file path (defaults to artifact filename)
         #[arg(short, long)]
         output: Option<String>,
+
+        /// Overwrite the output file if it already exists
+        #[arg(long)]
+        force: bool,
     },
 
     /// List artifacts in a repository
@@ -162,9 +166,12 @@ impl ArtifactCommand {
                 )
                 .await
             }
-            Self::Pull { repo, path, output } => {
-                pull(&repo, &path, output.as_deref(), global).await
-            }
+            Self::Pull {
+                repo,
+                path,
+                output,
+                force,
+            } => pull(&repo, &path, output.as_deref(), force, global).await,
             Self::List {
                 repo,
                 search,
@@ -383,10 +390,57 @@ async fn single_put_upload(
         .map_err(|e| AkError::ServerError(format!("Invalid upload response: {e}")).into())
 }
 
+/// Open the pull output file for writing.
+///
+/// Always creates the file with `create_new` (`O_CREAT | O_EXCL`), which
+/// refuses to follow an existing symlink and never truncates existing data.
+/// Without `--force`, an existing file (or symlink) at the path is an error;
+/// with `--force`, the existing entry is removed first and the output is
+/// recreated as a regular file, so the download never writes through a
+/// symlink to some other location.
+async fn open_pull_output(out_path: &Path, force: bool) -> Result<tokio::fs::File> {
+    if force {
+        match tokio::fs::remove_file(out_path).await {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => {
+                return Err(AkError::ConfigError(format!(
+                    "Cannot overwrite '{}': {e}",
+                    out_path.display()
+                ))
+                .into());
+            }
+        }
+    }
+
+    tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(out_path)
+        .await
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                AkError::ConfigError(format!(
+                    "Output file '{}' already exists. Pass --force to overwrite it, \
+                     or use --output to choose a different path.",
+                    out_path.display()
+                ))
+                .into()
+            } else {
+                AkError::ConfigError(format!(
+                    "Cannot create output file '{}': {e}",
+                    out_path.display()
+                ))
+                .into()
+            }
+        })
+}
+
 async fn pull(
     repo: &str,
     artifact_path: &str,
     output: Option<&str>,
+    force: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -399,28 +453,56 @@ async fn pull(
         PathBuf::from(filename)
     });
 
+    // Fail fast (before the download) when the destination already exists.
+    let mut file = open_pull_output(&out_path, force).await?;
+
     let spinner = output::spinner(&format!("Downloading {artifact_path}..."));
 
-    let resp = client
+    let resp = match client
         .download_artifact()
         .key(repo)
         .path(artifact_path)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Download failed: {e}")))?;
+    {
+        Ok(resp) => resp,
+        Err(e) => {
+            spinner.finish_and_clear();
+            // Don't leave an empty placeholder file behind on failure.
+            drop(file);
+            let _ = tokio::fs::remove_file(&out_path).await;
+            return Err(AkError::ServerError(format!("Download failed: {e}")).into());
+        }
+    };
 
     spinner.finish_and_clear();
-
-    let mut file = tokio::fs::File::create(&out_path).await.into_diagnostic()?;
     let mut stream = resp.into_inner();
     let mut total_bytes: u64 = 0;
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| AkError::ServerError(format!("Download error: {e}")))?;
-        tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
-            .await
-            .into_diagnostic()?;
-        total_bytes += chunk.len() as u64;
+    let copy_result: Result<()> = async {
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(|e| AkError::ServerError(format!("Download error: {e}")))?;
+            tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
+                .await
+                .into_diagnostic()?;
+            total_bytes += chunk.len() as u64;
+        }
+        Ok(())
     }
+    .await;
+
+    if let Err(e) = copy_result {
+        // Remove the partial download so a retry doesn't require --force.
+        drop(file);
+        let _ = tokio::fs::remove_file(&out_path).await;
+        return Err(e);
+    }
+
+    // tokio::fs::File does not flush pending writes on drop; flush explicitly
+    // so the file is complete before success is reported.
+    tokio::io::AsyncWriteExt::flush(&mut file)
+        .await
+        .into_diagnostic()?;
+    drop(file);
 
     eprintln!(
         "Downloaded {}:{} -> {} ({})",
@@ -965,6 +1047,11 @@ async fn cross_instance_copy(
             .into_diagnostic()?;
         total_bytes += chunk.len() as u64;
     }
+    // tokio::fs::File does not flush pending writes on drop; flush before the
+    // re-open below so the upload doesn't read a truncated file.
+    tokio::io::AsyncWriteExt::flush(&mut file)
+        .await
+        .into_diagnostic()?;
     drop(file);
 
     let (dst_repo, dst_path) = match destination.split_once('/') {
@@ -1195,10 +1282,17 @@ mod tests {
     #[test]
     fn parse_pull() {
         let cli = parse(&["test", "pull", "my-repo", "org/pkg/1.0/pkg.jar"]);
-        if let ArtifactCommand::Pull { repo, path, output } = cli.command {
+        if let ArtifactCommand::Pull {
+            repo,
+            path,
+            output,
+            force,
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(path, "org/pkg/1.0/pkg.jar");
             assert!(output.is_none());
+            assert!(!force, "force must default to off");
         } else {
             panic!("Expected ArtifactCommand::Pull");
         }
@@ -1214,10 +1308,23 @@ mod tests {
             "-o",
             "local-pkg.jar",
         ]);
-        if let ArtifactCommand::Pull { repo, path, output } = cli.command {
+        if let ArtifactCommand::Pull {
+            repo, path, output, ..
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(path, "org/pkg/1.0/pkg.jar");
             assert_eq!(output.as_deref(), Some("local-pkg.jar"));
+        } else {
+            panic!("Expected ArtifactCommand::Pull");
+        }
+    }
+
+    #[test]
+    fn parse_pull_with_force() {
+        let cli = parse(&["test", "pull", "my-repo", "path/to/file", "--force"]);
+        if let ArtifactCommand::Pull { force, .. } = cli.command {
+            assert!(force);
         } else {
             panic!("Expected ArtifactCommand::Pull");
         }
@@ -2211,6 +2318,210 @@ mod tests {
         assert!(result.is_err(), "404 must remain an error");
         let msg = format!("{:?}", result.unwrap_err());
         assert!(msg.contains("404"), "error should carry the status: {msg}");
+        crate::test_utils::teardown_env();
+    }
+
+    // ---- open_pull_output (overwrite / symlink safety) ----
+
+    #[tokio::test]
+    async fn pull_output_fresh_path_creates_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("new-file.bin");
+        let file = open_pull_output(&out, false).await;
+        assert!(file.is_ok());
+        assert!(out.exists());
+    }
+
+    #[tokio::test]
+    async fn pull_output_existing_file_refused_without_force() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("existing.bin");
+        std::fs::write(&out, b"precious data").unwrap();
+
+        let result = open_pull_output(&out, false).await;
+        assert!(result.is_err());
+        let msg = format!("{:?}", result.unwrap_err());
+        assert!(
+            msg.contains("--force"),
+            "error should mention --force: {msg}"
+        );
+        // The existing file must be untouched.
+        assert_eq!(std::fs::read(&out).unwrap(), b"precious data");
+    }
+
+    #[tokio::test]
+    async fn pull_output_existing_file_overwritten_with_force() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("existing.bin");
+        std::fs::write(&out, b"old contents").unwrap();
+
+        let mut file = open_pull_output(&out, true).await.unwrap();
+        tokio::io::AsyncWriteExt::write_all(&mut file, b"new")
+            .await
+            .unwrap();
+        tokio::io::AsyncWriteExt::flush(&mut file).await.unwrap();
+        drop(file);
+
+        assert_eq!(std::fs::read(&out).unwrap(), b"new");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn pull_output_symlink_refused_without_force() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target.txt");
+        std::fs::write(&target, b"linked target").unwrap();
+        let link = dir.path().join("link.bin");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+
+        let result = open_pull_output(&link, false).await;
+        assert!(result.is_err(), "must not write through a symlink");
+        assert_eq!(
+            std::fs::read(&target).unwrap(),
+            b"linked target",
+            "symlink target must be untouched"
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn pull_output_force_replaces_symlink_not_target() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target.txt");
+        std::fs::write(&target, b"linked target").unwrap();
+        let link = dir.path().join("link.bin");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+
+        let mut file = open_pull_output(&link, true).await.unwrap();
+        tokio::io::AsyncWriteExt::write_all(&mut file, b"downloaded")
+            .await
+            .unwrap();
+        tokio::io::AsyncWriteExt::flush(&mut file).await.unwrap();
+        drop(file);
+
+        // The symlink itself was replaced by a regular file...
+        let meta = std::fs::symlink_metadata(&link).unwrap();
+        assert!(meta.file_type().is_file(), "output must be a regular file");
+        assert_eq!(std::fs::read(&link).unwrap(), b"downloaded");
+        // ...and the old target was not written through.
+        assert_eq!(std::fs::read(&target).unwrap(), b"linked target");
+    }
+
+    // ---- pull handler (wiremock) ----
+
+    #[tokio::test]
+    async fn handler_pull_downloads_to_fresh_path() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("^/api/v1/repositories/.+/download/.+$"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"artifact bytes".to_vec()))
+            .mount(&server)
+            .await;
+
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("pulled.bin");
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = pull(
+            "my-repo",
+            "path/to/pulled.bin",
+            Some(&out.to_string_lossy()),
+            false,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok(), "pull to fresh path must work: {result:?}");
+        assert_eq!(std::fs::read(&out).unwrap(), b"artifact bytes");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_pull_refuses_existing_output_without_force() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        // No mock mounted: the request must never be sent — the pull should
+        // fail fast on the local file check (wiremock would 404 anyway).
+        drop(server);
+
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("existing.bin");
+        std::fs::write(&out, b"do not clobber").unwrap();
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = pull(
+            "my-repo",
+            "path/to/existing.bin",
+            Some(&out.to_string_lossy()),
+            false,
+            &global,
+        )
+        .await;
+        assert!(
+            result.is_err(),
+            "existing output without --force must error"
+        );
+        assert_eq!(std::fs::read(&out).unwrap(), b"do not clobber");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_pull_overwrites_existing_output_with_force() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("^/api/v1/repositories/.+/download/.+$"))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(b"fresh copy".to_vec()))
+            .mount(&server)
+            .await;
+
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("existing.bin");
+        std::fs::write(&out, b"stale copy").unwrap();
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = pull(
+            "my-repo",
+            "path/to/existing.bin",
+            Some(&out.to_string_lossy()),
+            true,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok(), "--force overwrite must work: {result:?}");
+        assert_eq!(std::fs::read(&out).unwrap(), b"fresh copy");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_pull_failed_download_removes_placeholder() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("^/api/v1/repositories/.+/download/.+$"))
+            .respond_with(ResponseTemplate::new(404).set_body_json(json!({"error": "not found"})))
+            .mount(&server)
+            .await;
+
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("missing.bin");
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = pull(
+            "my-repo",
+            "path/to/missing.bin",
+            Some(&out.to_string_lossy()),
+            false,
+            &global,
+        )
+        .await;
+        assert!(result.is_err());
+        assert!(
+            !out.exists(),
+            "failed pull must not leave an empty placeholder file"
+        );
         crate::test_utils::teardown_env();
     }
 }

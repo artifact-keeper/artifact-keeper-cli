@@ -26,11 +26,25 @@ pub fn store_credential(instance: &str, cred: &StoredCredential) -> Result<()> {
         .is_ok();
 
     if keychain_ok {
+        // The keyring is now the source of truth for this instance. Purge any
+        // stale plaintext file-fallback entry left behind by a prior headless
+        // run so a rotated/old token doesn't linger on disk. Best-effort: the
+        // credential was stored successfully either way.
+        purge_file_fallback(instance);
         return Ok(());
     }
 
     eprintln!("Keychain unavailable, using file fallback");
     store_to_file(instance, &json)
+}
+
+/// Best-effort removal of a file-fallback credential entry.
+///
+/// Used after a successful keyring write so a superseded token doesn't remain
+/// readable in `credentials.json`. Errors (e.g. unreadable file) are ignored;
+/// a missing file or missing entry is not an error to begin with.
+fn purge_file_fallback(instance: &str) {
+    let _ = delete_from_file(instance);
 }
 
 /// Retrieve a credential for a given instance.
@@ -98,14 +112,9 @@ fn save_all_file_creds(creds: &HashMap<String, String>) -> Result<()> {
         }
     }
     let content = serde_json::to_string_pretty(creds).into_diagnostic()?;
-    fs::write(&path, content).into_diagnostic()?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
-            .into_diagnostic()?;
-    }
-    Ok(())
+    // Atomic write with owner-only permissions from creation: the plaintext
+    // token file must never be observable with broader permissions.
+    super::write_private_atomic(&path, &content)
 }
 
 fn store_to_file(instance: &str, json: &str) -> Result<()> {
@@ -226,6 +235,73 @@ mod tests {
             let loaded = load_from_file("inst").unwrap().unwrap();
             assert!(loaded.contains("\"new\""));
             assert!(!loaded.contains("\"old\""));
+        });
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn credentials_file_is_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+        with_temp_config(|| {
+            store_to_file("inst", r#"{"access_token":"t","refresh_token":null}"#).unwrap();
+            let path = credentials_path().unwrap();
+            let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600, "credentials.json should be 0600, got {mode:o}");
+        });
+    }
+
+    #[test]
+    fn credentials_write_leaves_no_temp_files() {
+        with_temp_config(|| {
+            store_to_file("a", r#"{"access_token":"1","refresh_token":null}"#).unwrap();
+            store_to_file("b", r#"{"access_token":"2","refresh_token":null}"#).unwrap();
+            let dir = super::super::config_dir().unwrap();
+            let entries: Vec<_> = std::fs::read_dir(&dir)
+                .unwrap()
+                .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+                .collect();
+            assert_eq!(entries, vec!["credentials.json"]);
+        });
+    }
+
+    #[test]
+    fn purge_file_fallback_removes_stale_entry() {
+        with_temp_config(|| {
+            let json = r#"{"access_token":"stale-token","refresh_token":null}"#;
+            store_to_file("rotated-inst", json).unwrap();
+
+            purge_file_fallback("rotated-inst");
+
+            let loaded = load_from_file("rotated-inst").unwrap();
+            assert!(loaded.is_none(), "stale file-fallback entry must be purged");
+            // The raw file must no longer contain the old token bytes.
+            let path = credentials_path().unwrap();
+            if path.exists() {
+                let content = std::fs::read_to_string(&path).unwrap();
+                assert!(!content.contains("stale-token"));
+            }
+        });
+    }
+
+    #[test]
+    fn purge_file_fallback_missing_file_is_noop() {
+        with_temp_config(|| {
+            // No credentials.json exists at all; must not panic or create one.
+            purge_file_fallback("nonexistent");
+            assert!(!credentials_path().unwrap().exists());
+        });
+    }
+
+    #[test]
+    fn purge_file_fallback_keeps_other_instances() {
+        with_temp_config(|| {
+            store_to_file("keep", r#"{"access_token":"k","refresh_token":null}"#).unwrap();
+            store_to_file("purge", r#"{"access_token":"p","refresh_token":null}"#).unwrap();
+
+            purge_file_fallback("purge");
+
+            assert!(load_from_file("purge").unwrap().is_none());
+            assert!(load_from_file("keep").unwrap().is_some());
         });
     }
 
