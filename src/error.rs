@@ -50,6 +50,16 @@ pub enum AkError {
     #[diagnostic(code(ak::config_error))]
     ConfigError(String),
 
+    #[error("CA certificate error: {0}")]
+    #[diagnostic(
+        code(ak::ca_cert),
+        help(
+            "Provide a readable PEM-encoded certificate file (one or more \
+             '-----BEGIN CERTIFICATE-----' blocks) via --ca-cert <path> or AK_CA_CERT."
+        )
+    )]
+    CaCert(String),
+
     #[error("Refusing to send a password over unencrypted HTTP to '{0}'")]
     #[diagnostic(
         code(ak::insecure_transport),

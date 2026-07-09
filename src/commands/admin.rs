@@ -2359,7 +2359,7 @@ async fn install_plugin_zip(path: &str, global: &GlobalArgs) -> Result<()> {
     let form = reqwest::multipart::Form::new().part("file", part);
 
     let spinner = output::spinner("Installing plugin from ZIP...");
-    let http = reqwest::Client::new();
+    let http = super::client::raw_http_client()?;
     let resp = http
         .post(&url)
         .header(reqwest::header::AUTHORIZATION, auth_header)

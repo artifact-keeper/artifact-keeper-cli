@@ -38,6 +38,12 @@ pub struct Cli {
     #[arg(long, global = true, env = "AK_NO_INPUT")]
     pub no_input: bool,
 
+    /// Path to a PEM file with additional root CA certificate(s) to trust,
+    /// for instances behind a private/enterprise CA (may be a bundle with
+    /// multiple certificates). TLS verification remains enabled.
+    #[arg(long, global = true, env = "AK_CA_CERT", value_name = "PATH")]
+    pub ca_cert: Option<std::path::PathBuf>,
+
     /// Color output
     #[arg(long, global = true, default_value = "auto", env = "AK_COLOR")]
     pub color: ColorMode,
@@ -461,6 +467,13 @@ impl Cli {
             self.format.resolve(explicitly_set)
         };
 
+        // Record the custom CA path for all HTTP client construction sites
+        // (SDK wrappers, raw chunked-upload HTTP, doctor, TUI). The AK_CA_CERT
+        // env var is already folded into the flag by clap.
+        if let Some(ca_cert) = self.ca_cert {
+            crate::transport::set_ca_cert_override(ca_cert);
+        }
+
         let global = GlobalArgs {
             format,
             instance: self.instance,
@@ -537,6 +550,54 @@ mod tests {
 
     fn parse(args: &[&str]) -> std::result::Result<Cli, clap::Error> {
         Cli::try_parse_from(args)
+    }
+
+    // ---- Global --ca-cert flag ----
+
+    #[test]
+    fn parse_ca_cert_flag() {
+        let cli = parse(&["ak", "--ca-cert", "/etc/ssl/corp-ca.pem", "auth", "whoami"]).unwrap();
+        assert_eq!(
+            cli.ca_cert,
+            Some(std::path::PathBuf::from("/etc/ssl/corp-ca.pem"))
+        );
+    }
+
+    #[test]
+    fn parse_ca_cert_flag_is_global() {
+        // Global flags may appear after the subcommand.
+        let cli = parse(&["ak", "repo", "list", "--ca-cert", "bundle.pem"]).unwrap();
+        assert_eq!(cli.ca_cert, Some(std::path::PathBuf::from("bundle.pem")));
+    }
+
+    #[test]
+    fn parse_ca_cert_defaults_to_none() {
+        let _guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var("AK_CA_CERT") };
+        let cli = parse(&["ak", "auth", "whoami"]).unwrap();
+        assert_eq!(cli.ca_cert, None);
+    }
+
+    #[test]
+    fn parse_ca_cert_from_env() {
+        let _guard = crate::test_utils::ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::set_var("AK_CA_CERT", "/env/ca.pem") };
+        let cli = parse(&["ak", "auth", "whoami"]).unwrap();
+        assert_eq!(cli.ca_cert, Some(std::path::PathBuf::from("/env/ca.pem")));
+
+        // Explicit flag wins over the environment variable.
+        let cli = parse(&["ak", "--ca-cert", "/flag/ca.pem", "auth", "whoami"]).unwrap();
+        assert_eq!(cli.ca_cert, Some(std::path::PathBuf::from("/flag/ca.pem")));
+        unsafe { std::env::remove_var("AK_CA_CERT") };
+    }
+
+    #[test]
+    fn parse_ca_cert_requires_value() {
+        assert!(parse(&["ak", "--ca-cert"]).is_err());
     }
 
     // ---- Basic command parsing ----

@@ -847,7 +847,7 @@ async fn job_stream(id: &str, global: &GlobalArgs) -> Result<()> {
         job_id
     );
 
-    let http = reqwest::Client::new();
+    let http = super::client::raw_http_client()?;
     let resp = http
         .get(&url)
         .header(reqwest::header::AUTHORIZATION, auth_header)

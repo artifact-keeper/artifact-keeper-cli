@@ -334,7 +334,7 @@ async fn create_account(name: &str, description: Option<&str>, global: &GlobalAr
     // `200 OK` here, but the generated client (`create_service_account`) only
     // accepts `201`, so every successful create was reported as an error even
     // though the account was created (#98). Accept any 2xx success status.
-    let result = reqwest::Client::new()
+    let result = super::client::raw_http_client()?
         .post(format!("{base_url}/api/v1/service-accounts"))
         .header(reqwest::header::AUTHORIZATION, &auth_header)
         .json(&body)
