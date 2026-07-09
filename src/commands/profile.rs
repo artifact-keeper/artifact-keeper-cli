@@ -1,8 +1,8 @@
 use artifact_keeper_sdk::ClientAuthExt;
 use artifact_keeper_sdk::ClientUsersExt;
 use artifact_keeper_sdk::types::{
-    ApiTokenCreatedResponse, ApiTokenResponse, ChangePasswordRequest, CreateApiTokenRequest,
-    UpdateUserRequest, UserResponse,
+    AdminUserResponse, ApiTokenCreatedResponse, ApiTokenResponse, ChangePasswordRequest,
+    CreateApiTokenRequest, UpdateUserRequest, UserResponse,
 };
 use clap::Subcommand;
 use miette::Result;
@@ -18,6 +18,9 @@ use crate::output::{self, OutputFormat};
 pub enum ProfileCommand {
     /// Show your user profile
     Show,
+
+    /// Show your full account record (self-service `/users/me`)
+    Whoami,
 
     /// Update your profile fields
     Update {
@@ -70,6 +73,7 @@ impl ProfileCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Show => show_profile(global).await,
+            Self::Whoami => whoami(global).await,
             Self::Update {
                 display_name,
                 email,
@@ -110,6 +114,29 @@ async fn show_profile(global: &GlobalArgs) -> Result<()> {
     }
 
     let (info, table_str) = format_profile_detail(&user);
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn whoami(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching account record...");
+
+    let resp = client
+        .get_current_user_record()
+        .send()
+        .await
+        .map_err(|e| sdk_err("get current user record", e))?;
+    let user = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", user.id);
+        return Ok(());
+    }
+
+    let (info, table_str) = format_whoami_detail(&user);
     println!("{}", output::render(&info, &global.format, Some(table_str)));
 
     Ok(())
@@ -185,15 +212,6 @@ async fn change_password(global: &GlobalArgs) -> Result<()> {
         .map_err(|e| AkError::ConfigError(format!("Failed to read password: {e}")))?;
 
     let client = client_for(global)?;
-    let spinner = output::spinner("Fetching current user...");
-
-    let me_resp = client
-        .get_current_user()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get current user", e))?;
-    let me = me_resp.into_inner();
-    spinner.finish_and_clear();
 
     let body = ChangePasswordRequest {
         current_password: Some(current),
@@ -202,8 +220,7 @@ async fn change_password(global: &GlobalArgs) -> Result<()> {
 
     let spinner = output::spinner("Changing password...");
     client
-        .change_password()
-        .id(me.id)
+        .change_current_user_password()
         .body(body)
         .send()
         .await
@@ -216,20 +233,10 @@ async fn change_password(global: &GlobalArgs) -> Result<()> {
 
 async fn list_tokens(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let spinner = output::spinner("Fetching current user...");
-
-    let me_resp = client
-        .get_current_user()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get current user", e))?;
-    let me = me_resp.into_inner();
-    spinner.finish_and_clear();
-
     let spinner = output::spinner("Fetching API tokens...");
+
     let resp = client
-        .list_user_tokens()
-        .id(me.id)
+        .list_current_user_tokens()
         .send()
         .await
         .map_err(|e| sdk_err("list API tokens", e))?;
@@ -264,15 +271,6 @@ async fn create_token(
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let spinner = output::spinner("Fetching current user...");
-
-    let me_resp = client
-        .get_current_user()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get current user", e))?;
-    let me = me_resp.into_inner();
-    spinner.finish_and_clear();
 
     let scope_list: Vec<String> = scopes
         .map(|s| s.split(',').map(|v| v.trim().to_string()).collect())
@@ -286,8 +284,7 @@ async fn create_token(
 
     let spinner = output::spinner("Creating API token...");
     let resp = client
-        .create_user_api_token()
-        .id(me.id)
+        .create_current_user_api_token()
         .body(body)
         .send()
         .await
@@ -310,20 +307,10 @@ async fn revoke_token(id: &str, global: &GlobalArgs) -> Result<()> {
     let token_id = parse_uuid(id, "token")?;
 
     let client = client_for(global)?;
-    let spinner = output::spinner("Fetching current user...");
-
-    let me_resp = client
-        .get_current_user()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get current user", e))?;
-    let me = me_resp.into_inner();
-    spinner.finish_and_clear();
 
     let spinner = output::spinner("Revoking API token...");
     client
-        .revoke_user_api_token()
-        .id(me.id)
+        .revoke_current_user_api_token()
         .token_id(token_id)
         .send()
         .await
@@ -368,6 +355,54 @@ fn format_profile_detail(user: &UserResponse) -> (Value, String) {
         display,
         if user.is_admin { "yes" } else { "no" },
         if user.totp_enabled { "yes" } else { "no" },
+    );
+
+    (info, table_str)
+}
+
+fn format_whoami_detail(user: &AdminUserResponse) -> (Value, String) {
+    let display = user.display_name.as_deref().unwrap_or("-");
+    let last_login = user
+        .last_login_at
+        .map(|t| t.to_rfc3339())
+        .unwrap_or_else(|| "never".to_string());
+
+    let info = serde_json::json!({
+        "id": user.id.to_string(),
+        "username": user.username,
+        "email": user.email,
+        "display_name": display,
+        "is_admin": user.is_admin,
+        "is_active": user.is_active,
+        "auth_provider": user.auth_provider,
+        "must_change_password": user.must_change_password,
+        "created_at": user.created_at.to_rfc3339(),
+        "last_login_at": user.last_login_at.map(|t| t.to_rfc3339()),
+    });
+
+    let table_str = format!(
+        "ID:                    {}\n\
+         Username:              {}\n\
+         Email:                 {}\n\
+         Display Name:          {}\n\
+         Admin:                 {}\n\
+         Active:                {}\n\
+         Auth Provider:         {}\n\
+         Must Change Password:  {}\n\
+         Last Login:            {}",
+        user.id,
+        user.username,
+        user.email,
+        display,
+        if user.is_admin { "yes" } else { "no" },
+        if user.is_active { "yes" } else { "no" },
+        user.auth_provider,
+        if user.must_change_password {
+            "yes"
+        } else {
+            "no"
+        },
+        last_login,
     );
 
     (info, table_str)
@@ -459,6 +494,12 @@ mod tests {
     fn parse_show() {
         let cli = parse(&["test", "show"]);
         assert!(matches!(cli.command, ProfileCommand::Show));
+    }
+
+    #[test]
+    fn parse_whoami() {
+        let cli = parse(&["test", "whoami"]);
+        assert!(matches!(cli.command, ProfileCommand::Whoami));
     }
 
     #[test]
@@ -620,6 +661,21 @@ mod tests {
         }
     }
 
+    fn make_admin_user() -> AdminUserResponse {
+        AdminUserResponse {
+            id: Uuid::nil(),
+            username: "alice".to_string(),
+            email: "alice@example.com".to_string(),
+            display_name: Some("Alice Smith".to_string()),
+            is_admin: false,
+            is_active: true,
+            auth_provider: "local".to_string(),
+            must_change_password: false,
+            created_at: Utc::now(),
+            last_login_at: None,
+        }
+    }
+
     #[test]
     fn format_profile_detail_populated() {
         let user = make_user();
@@ -646,6 +702,21 @@ mod tests {
 
         assert_eq!(info["display_name"], "-");
         assert!(table_str.contains("Display Name:  -"));
+    }
+
+    #[test]
+    fn format_whoami_detail_populated() {
+        let user = make_admin_user();
+        let (info, table_str) = format_whoami_detail(&user);
+
+        assert_eq!(info["username"], "alice");
+        assert_eq!(info["is_active"], true);
+        assert_eq!(info["auth_provider"], "local");
+        assert_eq!(info["must_change_password"], false);
+        assert_eq!(info["last_login_at"], serde_json::Value::Null);
+
+        assert!(table_str.contains("Auth Provider:         local"));
+        assert!(table_str.contains("Last Login:            never"));
     }
 
     #[test]
@@ -729,6 +800,21 @@ mod tests {
         })
     }
 
+    fn admin_user_json() -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "username": "alice",
+            "email": "alice@example.com",
+            "display_name": "Alice Smith",
+            "is_admin": false,
+            "is_active": true,
+            "auth_provider": "local",
+            "must_change_password": false,
+            "created_at": "2026-01-01T00:00:00Z",
+            "last_login_at": null
+        })
+    }
+
     #[tokio::test]
     async fn handler_show_profile() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
@@ -742,6 +828,24 @@ mod tests {
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = show_profile(&global).await;
+        assert!(result.is_ok());
+
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_whoami() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/users/me"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(admin_user_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = whoami(&global).await;
         assert!(result.is_ok());
 
         crate::test_utils::teardown_env();
@@ -788,13 +892,7 @@ mod tests {
         let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
-            .and(path("/api/v1/auth/me"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
-            .mount(&server)
-            .await;
-
-        Mock::given(method("GET"))
-            .and(path(format!("/api/v1/users/{NIL_UUID}/tokens")))
+            .and(path("/api/v1/users/me/tokens"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "items": [{
                     "id": NIL_UUID,
@@ -821,14 +919,8 @@ mod tests {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
 
-        Mock::given(method("GET"))
-            .and(path("/api/v1/auth/me"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
-            .mount(&server)
-            .await;
-
         Mock::given(method("POST"))
-            .and(path(format!("/api/v1/users/{NIL_UUID}/tokens")))
+            .and(path("/api/v1/users/me/tokens"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": NIL_UUID,
                 "name": "deploy-token",
@@ -849,14 +941,8 @@ mod tests {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
 
-        Mock::given(method("GET"))
-            .and(path("/api/v1/auth/me"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
-            .mount(&server)
-            .await;
-
         Mock::given(method("DELETE"))
-            .and(path(format!("/api/v1/users/{NIL_UUID}/tokens/{NIL_UUID}")))
+            .and(path(format!("/api/v1/users/me/tokens/{NIL_UUID}")))
             .respond_with(ResponseTemplate::new(200))
             .mount(&server)
             .await;
