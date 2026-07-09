@@ -13,6 +13,7 @@ pub mod doctor;
 pub mod dt;
 pub mod group;
 pub mod helpers;
+pub mod import;
 pub mod instance;
 pub mod label;
 pub mod license;
