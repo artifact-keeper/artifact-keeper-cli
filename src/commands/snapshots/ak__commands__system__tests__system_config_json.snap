@@ -1,0 +1,24 @@
+---
+source: src/commands/system.rs
+expression: parsed
+---
+auth:
+  ldap_enabled: false
+  oidc_enabled: true
+  sso_enabled: true
+demo_mode: false
+guest_access_enabled: true
+max_upload_size_bytes: 1048576
+oidc_issuer: "https://sso.example.com"
+permissions:
+  enforcement_enabled: true
+  rules_exist: false
+plugin_signing:
+  required: true
+  trusted_key_configured: false
+scanners:
+  dependency_track_enabled: true
+  openscap_enabled: false
+  trivy_enabled: true
+search_engine: opensearch
+storage_backend: s3
