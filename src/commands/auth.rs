@@ -4,8 +4,11 @@ use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 
 use super::client::{authenticated_client, build_client, client_for};
+use super::helpers::{parse_uuid, sdk_err};
 use crate::cli::GlobalArgs;
-use crate::config::credentials::{StoredCredential, delete_credential, store_credential};
+use crate::config::credentials::{
+    StoredCredential, delete_credential, get_credential, store_credential,
+};
 use crate::config::{AppConfig, InstanceConfig};
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -39,6 +42,52 @@ pub enum AuthCommand {
 
     /// Switch between accounts on the same instance
     Switch,
+
+    /// Refresh the stored access token using the saved refresh token
+    Refresh {
+        /// Instance to refresh (uses default if omitted)
+        instance: Option<String>,
+    },
+
+    /// Revoke an API token by ID
+    RevokeToken {
+        /// ID of the API token to revoke
+        id: String,
+    },
+
+    /// Verify a TOTP code to complete two-factor login
+    VerifyTotp {
+        /// The code from your authenticator app
+        code: String,
+
+        /// The one-time totp_token returned by `ak auth login` when 2FA is required
+        #[arg(long)]
+        totp_token: String,
+    },
+
+    /// Create a short-lived, single-use download ticket for a resource
+    DownloadTicket {
+        /// Resource path the ticket should grant access to
+        resource_path: String,
+
+        /// Purpose of the ticket
+        #[arg(long, default_value = "download")]
+        purpose: String,
+    },
+
+    /// Exchange a CI-issued OIDC JWT for an Artifact Keeper access token
+    CiExchange {
+        /// The pre-configured CI OIDC provider ID (UUID)
+        #[arg(long)]
+        provider_id: String,
+
+        /// The OIDC JWT to exchange (falls back to the AK_CI_JWT env var)
+        #[arg(long, env = "AK_CI_JWT")]
+        jwt: Option<String>,
+    },
+
+    /// Show whether initial setup (password change) is required
+    SetupStatus,
 }
 
 #[derive(Subcommand)]
@@ -62,7 +111,7 @@ impl AuthCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Login { url, token } => login(url.as_deref(), token, global).await,
-            Self::Logout { instance } => logout(instance.as_deref(), global),
+            Self::Logout { instance } => logout(instance.as_deref(), global).await,
             Self::Token { command } => match command {
                 TokenCommand::Create {
                     description,
@@ -76,6 +125,17 @@ impl AuthCommand {
                 eprintln!("Use `ak auth login` to log in with a different account.");
                 Ok(())
             }
+            Self::Refresh { instance } => refresh(instance.as_deref(), global).await,
+            Self::RevokeToken { id } => revoke_token(&id, global).await,
+            Self::VerifyTotp { code, totp_token } => verify_totp(&code, &totp_token, global).await,
+            Self::DownloadTicket {
+                resource_path,
+                purpose,
+            } => download_ticket(&resource_path, &purpose, global).await,
+            Self::CiExchange { provider_id, jwt } => {
+                ci_exchange(&provider_id, jwt.as_deref(), global).await
+            }
+            Self::SetupStatus => setup_status(global).await,
         }
     }
 }
@@ -208,12 +268,250 @@ async fn login_with_password(instance_name: &str, instance: &InstanceConfig) -> 
     Ok(())
 }
 
-fn logout(instance: Option<&str>, global: &GlobalArgs) -> Result<()> {
+async fn logout(instance: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let config = AppConfig::load()?;
-    let (instance_name, _) = config.resolve_instance(instance.or(global.instance.as_deref()))?;
+    let (instance_name, instance_cfg) =
+        config.resolve_instance(instance.or(global.instance.as_deref()))?;
+    let instance_name = instance_name.to_string();
 
-    delete_credential(instance_name)?;
+    // Best-effort server-side session invalidation. Never block a local logout
+    // on it — if the token is already invalid or the server is unreachable we
+    // still want to clear the local credential.
+    if let Ok(cred) = get_credential(&instance_name) {
+        if let Ok(client) = build_client(&instance_name, instance_cfg, Some(&cred)) {
+            let body = artifact_keeper_sdk::types::RefreshTokenRequest {
+                refresh_token: cred.refresh_token.clone(),
+            };
+            if let Err(e) = client.logout().body(body).send().await {
+                eprintln!(
+                    "Warning: server-side logout failed ({e}); clearing local credentials anyway."
+                );
+            }
+        }
+    }
+
+    delete_credential(&instance_name)?;
     eprintln!("Logged out from '{instance_name}'.");
+    Ok(())
+}
+
+async fn refresh(instance: Option<&str>, global: &GlobalArgs) -> Result<()> {
+    let config = AppConfig::load()?;
+    let (instance_name, instance_cfg) =
+        config.resolve_instance(instance.or(global.instance.as_deref()))?;
+    let instance_name = instance_name.to_string();
+
+    let cred = get_credential(&instance_name)?;
+    let refresh_token = cred.refresh_token.clone().ok_or_else(|| {
+        AkError::NotAuthenticated(format!(
+            "No refresh token stored for '{instance_name}'. Log in with username/password \
+             (`ak auth login`) to obtain one."
+        ))
+    })?;
+
+    let client = build_client(&instance_name, instance_cfg, Some(&cred))?;
+    let body = artifact_keeper_sdk::types::RefreshTokenRequest {
+        refresh_token: Some(refresh_token),
+    };
+
+    let resp = client
+        .refresh_token()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| AkError::NotAuthenticated(format!("Token refresh failed: {e}")))?;
+
+    let new_cred = StoredCredential {
+        access_token: resp.access_token.clone(),
+        refresh_token: Some(resp.refresh_token.clone()),
+    };
+    store_credential(&instance_name, &new_cred)?;
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", resp.access_token);
+        return Ok(());
+    }
+
+    let info = serde_json::json!({
+        "instance": instance_name,
+        "expires_in": resp.expires_in,
+        "token_type": resp.token_type,
+    });
+
+    let table_str = format!(
+        "Access token refreshed for '{instance_name}'.\n\
+         Expires in: {} seconds\n\
+         Token type: {}",
+        resp.expires_in, resp.token_type,
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    Ok(())
+}
+
+async fn revoke_token(id: &str, global: &GlobalArgs) -> Result<()> {
+    let token_id = parse_uuid(id, "token")?;
+
+    let client = client_for(global)?;
+    client
+        .revoke_api_token()
+        .token_id(token_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("revoke API token", e))?;
+
+    eprintln!("API token {id} revoked.");
+    Ok(())
+}
+
+async fn verify_totp(code: &str, totp_token: &str, global: &GlobalArgs) -> Result<()> {
+    let config = AppConfig::load()?;
+    let (instance_name, instance_cfg) = config.resolve_instance(global.instance.as_deref())?;
+    let instance_name = instance_name.to_string();
+
+    let anon_client = artifact_keeper_sdk::Client::new(&instance_cfg.url);
+    let body = artifact_keeper_sdk::types::TotpVerifyRequest {
+        code: code.to_string(),
+        totp_token: totp_token.to_string(),
+    };
+
+    let resp = anon_client
+        .verify_totp()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| AkError::NotAuthenticated(format!("TOTP verification failed: {e}")))?;
+
+    let cred = StoredCredential {
+        access_token: resp.access_token.clone(),
+        refresh_token: Some(resp.refresh_token.clone()),
+    };
+    store_credential(&instance_name, &cred)?;
+
+    eprintln!("Two-factor verification succeeded; logged in to '{instance_name}'.");
+    if resp.must_change_password {
+        eprintln!("Warning: You must change your password. Visit the web UI to update it.");
+    }
+    Ok(())
+}
+
+async fn download_ticket(resource_path: &str, purpose: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let body = artifact_keeper_sdk::types::CreateTicketRequest {
+        purpose: purpose.to_string(),
+        resource_path: Some(resource_path.to_string()),
+    };
+
+    let resp = client
+        .create_download_ticket()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("create download ticket", e))?;
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", resp.ticket);
+        return Ok(());
+    }
+
+    let info = serde_json::json!({
+        "ticket": resp.ticket,
+        "expires_in": resp.expires_in,
+        "resource_path": resource_path,
+    });
+
+    let table_str = format!(
+        "Download ticket created (single-use, expires in {} seconds):\n\
+         {}\n\n\
+         Note: this value grants access to '{}'. Consume it immediately and never log \
+         or share the URL that contains it.",
+        resp.expires_in, resp.ticket, resource_path,
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    Ok(())
+}
+
+async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) -> Result<()> {
+    let provider = parse_uuid(provider_id, "provider")?;
+    let jwt = jwt.ok_or_else(|| {
+        AkError::ConfigError("No OIDC JWT provided. Pass --jwt <token> or set AK_CI_JWT.".into())
+    })?;
+
+    let config = AppConfig::load()?;
+    let (instance_name, instance_cfg) = config.resolve_instance(global.instance.as_deref())?;
+    let instance_name = instance_name.to_string();
+
+    // The CI-issued JWT must be presented as the Bearer token on the exchange request.
+    let jwt_cred = StoredCredential {
+        access_token: jwt.to_string(),
+        refresh_token: None,
+    };
+    let client = build_client(&instance_name, instance_cfg, Some(&jwt_cred))?;
+
+    let body = artifact_keeper_sdk::types::CiTokenRequest {
+        provider_id: provider,
+    };
+
+    let resp = client
+        .exchange_ci_token()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| AkError::NotAuthenticated(format!("CI token exchange failed: {e}")))?;
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", resp.access_token);
+        return Ok(());
+    }
+
+    let info = serde_json::json!({
+        "access_token": resp.access_token,
+        "token_type": resp.token_type,
+        "expires_in": resp.expires_in,
+        "username": resp.username,
+    });
+
+    let table_str = format!(
+        "Exchanged CI OIDC token for an access token (user: {}).\n\
+         Token type:   {}\n\
+         Expires in:   {} seconds\n\
+         Access token: {}",
+        resp.username, resp.token_type, resp.expires_in, resp.access_token,
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    Ok(())
+}
+
+async fn setup_status(global: &GlobalArgs) -> Result<()> {
+    let config = AppConfig::load()?;
+    let (_instance_name, instance_cfg) = config.resolve_instance(global.instance.as_deref())?;
+
+    // Setup status is a pre-auth endpoint; no credentials required.
+    let client = artifact_keeper_sdk::Client::new(&instance_cfg.url);
+
+    let resp = client
+        .setup_status()
+        .send()
+        .await
+        .map_err(|e| sdk_err("get setup status", e))?;
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", resp.setup_required);
+        return Ok(());
+    }
+
+    let info = serde_json::json!({
+        "setup_required": resp.setup_required,
+    });
+
+    let table_str = format!(
+        "Initial setup required: {}",
+        if resp.setup_required { "yes" } else { "no" },
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
     Ok(())
 }
 
@@ -557,6 +855,340 @@ mod tests {
         // no_input=true should produce an error for login
         let result = login(None, false, &global).await;
         assert!(result.is_err());
+        crate::test_utils::teardown_env();
+    }
+
+    // ---- parsing tests for new subcommands ----
+
+    use clap::Parser;
+
+    #[derive(Parser)]
+    struct TestCli {
+        #[command(subcommand)]
+        command: AuthCommand,
+    }
+
+    fn parse_auth(args: &[&str]) -> AuthCommand {
+        TestCli::try_parse_from(args).unwrap().command
+    }
+
+    #[test]
+    fn parse_refresh_default() {
+        match parse_auth(&["auth", "refresh"]) {
+            AuthCommand::Refresh { instance } => assert!(instance.is_none()),
+            _ => panic!("expected Refresh"),
+        }
+    }
+
+    #[test]
+    fn parse_revoke_token() {
+        match parse_auth(&["auth", "revoke-token", "abc-123"]) {
+            AuthCommand::RevokeToken { id } => assert_eq!(id, "abc-123"),
+            _ => panic!("expected RevokeToken"),
+        }
+    }
+
+    #[test]
+    fn parse_revoke_token_missing_id() {
+        assert!(TestCli::try_parse_from(["auth", "revoke-token"]).is_err());
+    }
+
+    #[test]
+    fn parse_verify_totp() {
+        match parse_auth(&["auth", "verify-totp", "123456", "--totp-token", "tok"]) {
+            AuthCommand::VerifyTotp { code, totp_token } => {
+                assert_eq!(code, "123456");
+                assert_eq!(totp_token, "tok");
+            }
+            _ => panic!("expected VerifyTotp"),
+        }
+    }
+
+    #[test]
+    fn parse_verify_totp_requires_totp_token() {
+        assert!(TestCli::try_parse_from(["auth", "verify-totp", "123456"]).is_err());
+    }
+
+    #[test]
+    fn parse_download_ticket_default_purpose() {
+        match parse_auth(&["auth", "download-ticket", "npm-local/left-pad/1.0.0"]) {
+            AuthCommand::DownloadTicket {
+                resource_path,
+                purpose,
+            } => {
+                assert_eq!(resource_path, "npm-local/left-pad/1.0.0");
+                assert_eq!(purpose, "download");
+            }
+            _ => panic!("expected DownloadTicket"),
+        }
+    }
+
+    #[test]
+    fn parse_ci_exchange() {
+        match parse_auth(&[
+            "auth",
+            "ci-exchange",
+            "--provider-id",
+            "00000000-0000-0000-0000-000000000000",
+            "--jwt",
+            "ey.jwt.here",
+        ]) {
+            AuthCommand::CiExchange { provider_id, jwt } => {
+                assert_eq!(provider_id, "00000000-0000-0000-0000-000000000000");
+                assert_eq!(jwt.as_deref(), Some("ey.jwt.here"));
+            }
+            _ => panic!("expected CiExchange"),
+        }
+    }
+
+    #[test]
+    fn parse_setup_status() {
+        assert!(matches!(
+            parse_auth(&["auth", "setup-status"]),
+            AuthCommand::SetupStatus
+        ));
+    }
+
+    // ---- wiremock handler tests for new operations ----
+
+    fn login_response_json() -> serde_json::Value {
+        serde_json::json!({
+            "access_token": "new_access_token",
+            "refresh_token": "new_refresh_token",
+            "token_type": "Bearer",
+            "expires_in": 3600,
+            "must_change_password": false
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_logout_calls_server_then_clears() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/logout"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = logout(None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_logout_succeeds_when_server_errors() {
+        // No mock mounted for /logout -> server returns 404; logout must still succeed.
+        let (_server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = logout(None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_refresh_no_token_errors() {
+        // setup_env sets AK_TOKEN (access only, no refresh) -> refresh must error.
+        let (_server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = refresh(None, &global).await;
+        assert!(result.is_err());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_refresh_happy_path() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        // Drop AK_TOKEN so the stored file credential (with a refresh token) is used.
+        unsafe { std::env::remove_var("AK_TOKEN") };
+        let cred = serde_json::json!({
+            "access_token": "old_access",
+            "refresh_token": "old_refresh"
+        })
+        .to_string();
+        let mut all = std::collections::HashMap::new();
+        all.insert("test".to_string(), cred);
+        std::fs::write(
+            tmp.path().join("credentials.json"),
+            serde_json::to_string(&all).unwrap(),
+        )
+        .unwrap();
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/refresh"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(login_response_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = refresh(None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_revoke_token() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/auth/tokens/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = revoke_token(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_revoke_token_bad_uuid() {
+        let (_server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = revoke_token("not-a-uuid", &global).await;
+        assert!(result.is_err());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_verify_totp() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/totp/verify"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(login_response_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = verify_totp("123456", "totp-token", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_download_ticket() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/ticket"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "ticket": "tkt_abc123",
+                "expires_in": 30
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = download_ticket("npm-local/left-pad/1.0.0", "download", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_download_ticket_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/ticket"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "ticket": "tkt_abc123",
+                "expires_in": 30
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = download_ticket("some/path", "download", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_ci_exchange() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/ci/token"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "access_token": "ci_access_token",
+                "token_type": "Bearer",
+                "expires_in": 900,
+                "username": "ci-runner"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = ci_exchange(NIL_UUID, Some("ey.jwt.here"), &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_ci_exchange_missing_jwt() {
+        let (_server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = ci_exchange(NIL_UUID, None, &global).await;
+        assert!(result.is_err());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_setup_status() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/setup/status"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({ "setup_required": false })),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = setup_status(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_setup_status_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/setup/status"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({ "setup_required": true })),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = setup_status(&global).await;
+        assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
 
