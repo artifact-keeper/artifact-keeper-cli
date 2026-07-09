@@ -15,6 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ak lifecycle update <id>` (change name/enabled/priority/description/config/cron) and `ak lifecycle execute-all` to run every enabled policy
 - `ak admin telemetry crash <id>` and `ak admin telemetry delete-crash <id>` for single crash-report inspection and removal
 - `ak email-subscriptions` (alias `email-subs`) command group: `list`, `subscribe`, and `unsubscribe` for repository email notifications
+- Security Audit CI job (`cargo audit`) so vulnerable dependencies fail pull requests instead of accumulating silently
+
+### Security
+
+- Updated `quinn-proto` to 0.11.15 (RUSTSEC-2026-0185, unbounded out-of-order stream reassembly, high severity)
+- Updated `rustls-webpki` to 0.103.13 (RUSTSEC-2026-0098/0099 name-constraint bypasses, RUSTSEC-2026-0104 CRL-parsing panic)
+- Updated `time` to 0.3.47 (RUSTSEC-2026-0009, stack exhaustion)
+
+### Changed
+
+- Bumped MSRV from 1.86.0 to 1.88.0 (required by `time` 0.3.47)
 
 ## [1.0.0] - 2026-02-23
 
