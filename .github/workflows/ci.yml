@@ -140,8 +140,14 @@ jobs:
           # "e2e-test-secret-key-not-for-production" trips that check (it
           # embeds the weak substrings "test-secret" / "secret-key"), so
           # the backend never booted and "Wait for backend" timed out.
-          # Generate a strong, random 64-hex-char secret per run instead.
-          JWT_SECRET="$(openssl rand -hex 32)"
+          # Generate a strong, random secret per run instead. Use base64
+          # (not hex): the backend also rejects "low entropy" secrets with
+          # fewer than 16 DISTINCT characters, and a hex string draws from
+          # only 16 symbols so a random one occasionally lands at 14-15
+          # distinct and is rejected (flaky). base64 draws from 64 symbols,
+          # so `openssl rand -base64 48` reliably clears the check — and it
+          # is exactly what the backend's error message recommends.
+          JWT_SECRET="$(openssl rand -base64 48)"
           docker run -d --name e2e-backend \
             --network ${{ job.services.postgres.network }} \
             -e DATABASE_URL="postgresql://registry:registry@postgres:5432/artifact_registry_test" \
