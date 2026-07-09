@@ -57,7 +57,7 @@ pub enum ColorMode {
 pub enum Command {
     /// Authenticate with an Artifact Keeper instance
     #[command(
-        after_help = "Examples:\n  ak auth login\n  ak auth login https://registry.company.com\n  ak auth login --token\n  ak auth whoami\n  ak auth logout"
+        after_help = "Examples:\n  ak auth login\n  ak auth login https://registry.company.com\n  ak auth login --token\n  ak auth whoami\n  ak auth refresh\n  ak auth revoke-token <id>\n  ak auth setup-status\n  ak auth logout"
     )]
     Auth {
         #[command(subcommand)]
