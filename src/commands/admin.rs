@@ -62,6 +62,43 @@ pub enum AdminCommand {
         #[command(subcommand)]
         command: TelemetryCommand,
     },
+
+    /// Manage CI OIDC providers and identity mappings
+    CiOidc {
+        #[command(subcommand)]
+        command: CiOidcCommand,
+    },
+
+    /// Run storage garbage collection and view storage reports
+    StorageGc {
+        #[command(subcommand)]
+        command: StorageGcCommand,
+    },
+
+    /// List configured storage backends
+    StorageBackends,
+
+    /// Trigger an OpenSearch reindex of all artifacts and repositories
+    SearchReindex,
+
+    /// Rescan existing artifacts to enqueue inventory processing
+    Rescan {
+        /// Maximum number of artifacts to enqueue
+        #[arg(long)]
+        limit: Option<i64>,
+    },
+
+    /// Send a test email to verify SMTP configuration
+    SmtpTest {
+        /// Recipient email address
+        to: String,
+    },
+
+    /// Manage remote instances and proxy requests to them
+    Instance {
+        #[command(subcommand)]
+        command: RemoteInstanceCommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -94,6 +131,30 @@ pub enum BackupCommand {
         /// Restore artifact files
         #[arg(long)]
         artifacts: bool,
+    },
+    /// Show a backup's details
+    Get {
+        /// Backup ID
+        id: String,
+    },
+    /// Delete a backup
+    Delete {
+        /// Backup ID
+        id: String,
+
+        /// Skip confirmation prompt
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Cancel a running backup
+    Cancel {
+        /// Backup ID
+        id: String,
+    },
+    /// Execute a pending backup
+    Execute {
+        /// Backup ID
+        id: String,
     },
 }
 
@@ -248,6 +309,270 @@ pub enum TelemetryCommand {
     },
 }
 
+#[derive(Subcommand)]
+pub enum CiOidcCommand {
+    /// List CI OIDC providers
+    List,
+    /// Create a CI OIDC provider
+    Create {
+        /// Provider name
+        name: String,
+
+        /// OIDC issuer URL
+        issuer_url: String,
+
+        /// Expected audience claim
+        #[arg(long)]
+        audience: Option<String>,
+
+        /// Provider type (e.g. github, gitlab)
+        #[arg(long)]
+        provider_type: Option<String>,
+
+        /// Enable the provider on creation
+        #[arg(long)]
+        enabled: bool,
+    },
+    /// Show a CI OIDC provider
+    Get {
+        /// Provider ID
+        id: String,
+    },
+    /// Update a CI OIDC provider
+    Update {
+        /// Provider ID
+        id: String,
+
+        /// New provider name
+        #[arg(long)]
+        name: Option<String>,
+
+        /// New issuer URL
+        #[arg(long)]
+        issuer_url: Option<String>,
+
+        /// New expected audience claim
+        #[arg(long)]
+        audience: Option<String>,
+
+        /// New provider type
+        #[arg(long)]
+        provider_type: Option<String>,
+
+        /// Set enabled state
+        #[arg(long)]
+        enabled: Option<bool>,
+    },
+    /// Delete a CI OIDC provider
+    Delete {
+        /// Provider ID
+        id: String,
+
+        /// Skip confirmation prompt
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Enable or disable a CI OIDC provider
+    Toggle {
+        /// Provider ID
+        id: String,
+
+        /// Enabled state to set (true/false)
+        #[arg(long, action = clap::ArgAction::Set)]
+        enabled: bool,
+    },
+    /// Manage identity mappings for a provider
+    Mapping {
+        #[command(subcommand)]
+        command: CiOidcMappingCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum CiOidcMappingCommand {
+    /// List identity mappings for a provider
+    List {
+        /// Provider ID
+        provider_id: String,
+    },
+    /// Create an identity mapping
+    Create {
+        /// Provider ID
+        provider_id: String,
+
+        /// Mapping name
+        name: String,
+
+        /// Claim filters as a JSON object
+        #[arg(long, default_value = "{}")]
+        claim_filters: String,
+
+        /// Match priority (lower runs first)
+        #[arg(long)]
+        priority: Option<i32>,
+
+        /// Comma-separated repository UUIDs the mapping grants access to
+        #[arg(long)]
+        allowed_repo_ids: Option<String>,
+
+        /// Enable the mapping on creation
+        #[arg(long)]
+        enabled: bool,
+    },
+    /// Show an identity mapping
+    Get {
+        /// Provider ID
+        provider_id: String,
+
+        /// Mapping ID
+        mapping_id: String,
+    },
+    /// Update an identity mapping
+    Update {
+        /// Provider ID
+        provider_id: String,
+
+        /// Mapping ID
+        mapping_id: String,
+
+        /// New mapping name
+        #[arg(long)]
+        name: Option<String>,
+
+        /// New claim filters as a JSON object
+        #[arg(long)]
+        claim_filters: Option<String>,
+
+        /// New match priority
+        #[arg(long)]
+        priority: Option<i32>,
+
+        /// New comma-separated repository UUIDs
+        #[arg(long)]
+        allowed_repo_ids: Option<String>,
+
+        /// Set enabled state
+        #[arg(long)]
+        enabled: Option<bool>,
+    },
+    /// Delete an identity mapping
+    Delete {
+        /// Provider ID
+        provider_id: String,
+
+        /// Mapping ID
+        mapping_id: String,
+
+        /// Skip confirmation prompt
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Enable or disable an identity mapping
+    Toggle {
+        /// Provider ID
+        provider_id: String,
+
+        /// Mapping ID
+        mapping_id: String,
+
+        /// Enabled state to set (true/false)
+        #[arg(long, action = clap::ArgAction::Set)]
+        enabled: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum StorageGcCommand {
+    /// Run the storage garbage collector
+    Run {
+        /// Report what would be removed without deleting anything
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Show the OCI blob storage footprint report
+    OciReport {
+        /// Grace window in hours used to compute aged figures
+        #[arg(long)]
+        grace_hours: Option<i64>,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum RemoteInstanceCommand {
+    /// List remote instances
+    List,
+    /// Register a new remote instance
+    Create {
+        /// Instance name
+        name: String,
+
+        /// Instance base URL
+        url: String,
+
+        /// API key for the remote instance
+        #[arg(long)]
+        api_key: String,
+    },
+    /// Delete a remote instance
+    Delete {
+        /// Remote instance ID
+        id: String,
+
+        /// Skip confirmation prompt
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Proxy a request through a remote instance
+    Proxy {
+        #[command(subcommand)]
+        command: ProxyCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ProxyCommand {
+    /// Proxy a GET request
+    Get {
+        /// Remote instance ID
+        id: String,
+
+        /// Sub-path to proxy
+        path: String,
+    },
+    /// Proxy a PUT request
+    Put {
+        /// Remote instance ID
+        id: String,
+
+        /// Sub-path to proxy
+        path: String,
+
+        /// Request body
+        #[arg(long)]
+        body: Option<String>,
+    },
+    /// Proxy a POST request
+    Post {
+        /// Remote instance ID
+        id: String,
+
+        /// Sub-path to proxy
+        path: String,
+
+        /// Request body
+        #[arg(long)]
+        body: Option<String>,
+    },
+    /// Proxy a DELETE request
+    Delete {
+        /// Remote instance ID
+        id: String,
+
+        /// Sub-path to proxy
+        path: String,
+    },
+}
+
 impl AdminCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
@@ -261,6 +586,10 @@ impl AdminCommand {
                     database,
                     artifacts,
                 } => restore_backup(&id, database, artifacts, global).await,
+                BackupCommand::Get { id } => get_backup(&id, global).await,
+                BackupCommand::Delete { id, yes } => delete_backup(&id, yes, global).await,
+                BackupCommand::Cancel { id } => cancel_backup(&id, global).await,
+                BackupCommand::Execute { id } => execute_backup(&id, global).await,
             },
             Self::Cleanup {
                 audit_logs,
@@ -336,6 +665,144 @@ impl AdminCommand {
                     per_page,
                 } => list_crashes(pending, page, per_page, global).await,
                 TelemetryCommand::Submit { ids } => submit_crashes(&ids, global).await,
+            },
+            Self::CiOidc { command } => match command {
+                CiOidcCommand::List => list_ci_oidc_providers(global).await,
+                CiOidcCommand::Create {
+                    name,
+                    issuer_url,
+                    audience,
+                    provider_type,
+                    enabled,
+                } => {
+                    create_ci_oidc_provider(
+                        &name,
+                        &issuer_url,
+                        audience.as_deref(),
+                        provider_type.as_deref(),
+                        enabled,
+                        global,
+                    )
+                    .await
+                }
+                CiOidcCommand::Get { id } => get_ci_oidc_provider(&id, global).await,
+                CiOidcCommand::Update {
+                    id,
+                    name,
+                    issuer_url,
+                    audience,
+                    provider_type,
+                    enabled,
+                } => {
+                    update_ci_oidc_provider(
+                        &id,
+                        name.as_deref(),
+                        issuer_url.as_deref(),
+                        audience.as_deref(),
+                        provider_type.as_deref(),
+                        enabled,
+                        global,
+                    )
+                    .await
+                }
+                CiOidcCommand::Delete { id, yes } => {
+                    delete_ci_oidc_provider(&id, yes, global).await
+                }
+                CiOidcCommand::Toggle { id, enabled } => {
+                    toggle_ci_oidc_provider(&id, enabled, global).await
+                }
+                CiOidcCommand::Mapping { command } => match command {
+                    CiOidcMappingCommand::List { provider_id } => {
+                        list_ci_oidc_mappings(&provider_id, global).await
+                    }
+                    CiOidcMappingCommand::Create {
+                        provider_id,
+                        name,
+                        claim_filters,
+                        priority,
+                        allowed_repo_ids,
+                        enabled,
+                    } => {
+                        create_ci_oidc_mapping(
+                            &provider_id,
+                            &name,
+                            &claim_filters,
+                            priority,
+                            allowed_repo_ids.as_deref(),
+                            enabled,
+                            global,
+                        )
+                        .await
+                    }
+                    CiOidcMappingCommand::Get {
+                        provider_id,
+                        mapping_id,
+                    } => get_ci_oidc_mapping(&provider_id, &mapping_id, global).await,
+                    CiOidcMappingCommand::Update {
+                        provider_id,
+                        mapping_id,
+                        name,
+                        claim_filters,
+                        priority,
+                        allowed_repo_ids,
+                        enabled,
+                    } => {
+                        update_ci_oidc_mapping(
+                            &provider_id,
+                            &mapping_id,
+                            name.as_deref(),
+                            claim_filters.as_deref(),
+                            priority,
+                            allowed_repo_ids.as_deref(),
+                            enabled,
+                            global,
+                        )
+                        .await
+                    }
+                    CiOidcMappingCommand::Delete {
+                        provider_id,
+                        mapping_id,
+                        yes,
+                    } => delete_ci_oidc_mapping(&provider_id, &mapping_id, yes, global).await,
+                    CiOidcMappingCommand::Toggle {
+                        provider_id,
+                        mapping_id,
+                        enabled,
+                    } => toggle_ci_oidc_mapping(&provider_id, &mapping_id, enabled, global).await,
+                },
+            },
+            Self::StorageGc { command } => match command {
+                StorageGcCommand::Run { dry_run } => run_storage_gc(dry_run, global).await,
+                StorageGcCommand::OciReport { grace_hours } => {
+                    oci_blob_report(grace_hours, global).await
+                }
+            },
+            Self::StorageBackends => list_storage_backends(global).await,
+            Self::SearchReindex => trigger_search_reindex(global).await,
+            Self::Rescan { limit } => rescan_for_inventory(limit, global).await,
+            Self::SmtpTest { to } => send_test_email(&to, global).await,
+            Self::Instance { command } => match command {
+                RemoteInstanceCommand::List => list_instances(global).await,
+                RemoteInstanceCommand::Create { name, url, api_key } => {
+                    create_instance(&name, &url, &api_key, global).await
+                }
+                RemoteInstanceCommand::Delete { id, yes } => {
+                    delete_instance(&id, yes, global).await
+                }
+                RemoteInstanceCommand::Proxy { command } => match command {
+                    ProxyCommand::Get { id, path } => {
+                        proxy_request(&id, "GET", &path, None, global).await
+                    }
+                    ProxyCommand::Put { id, path, body } => {
+                        proxy_request(&id, "PUT", &path, body, global).await
+                    }
+                    ProxyCommand::Post { id, path, body } => {
+                        proxy_request(&id, "POST", &path, body, global).await
+                    }
+                    ProxyCommand::Delete { id, path } => {
+                        proxy_request(&id, "DELETE", &path, None, global).await
+                    }
+                },
             },
         }
     }
@@ -1471,6 +1938,1076 @@ fn format_metrics_display(info: &serde_json::Value) -> String {
         info["active_peers"].as_i64().unwrap_or(0),
         info["pending_sync_tasks"].as_i64().unwrap_or(0),
     )
+}
+
+// ---- Backup detail operations ----
+
+fn render_backup(b: &artifact_keeper_sdk::types::BackupResponse, global: &GlobalArgs) {
+    let info = serde_json::json!({
+        "id": b.id.to_string(),
+        "status": b.status,
+        "type": b.type_,
+        "artifacts": b.artifact_count,
+        "size": format_bytes(b.size_bytes),
+        "size_bytes": b.size_bytes,
+        "storage_path": b.storage_path,
+        "created_at": b.created_at.to_rfc3339(),
+        "started_at": b.started_at.map(|t| t.to_rfc3339()),
+        "completed_at": b.completed_at.map(|t| t.to_rfc3339()),
+        "error": b.error_message,
+    });
+
+    let completed = b
+        .completed_at
+        .map(|t| t.format("%Y-%m-%d %H:%M").to_string())
+        .unwrap_or_else(|| "-".to_string());
+
+    let table_str = format!(
+        "ID:          {}\n\
+         Status:      {}\n\
+         Type:        {}\n\
+         Artifacts:   {}\n\
+         Size:        {}\n\
+         Created:     {}\n\
+         Completed:   {}",
+        b.id,
+        b.status,
+        b.type_,
+        b.artifact_count,
+        format_bytes(b.size_bytes),
+        b.created_at.format("%Y-%m-%d %H:%M"),
+        completed,
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+}
+
+async fn get_backup(backup_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(backup_id, "backup")?;
+    let spinner = output::spinner("Fetching backup...");
+
+    let backup = client
+        .get_backup()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get backup", e))?;
+
+    spinner.finish_and_clear();
+    render_backup(&backup, global);
+    Ok(())
+}
+
+async fn delete_backup(backup_id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(backup_id, "backup")?;
+
+    if !confirm_action(
+        &format!("Delete backup {backup_id}? This cannot be undone"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let spinner = output::spinner("Deleting backup...");
+    client
+        .delete_backup()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("delete backup", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &serde_json::json!({ "id": backup_id, "status": "deleted" }),
+        backup_id,
+        &format!("Backup {backup_id} deleted."),
+        global,
+    );
+    Ok(())
+}
+
+async fn cancel_backup(backup_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(backup_id, "backup")?;
+    let spinner = output::spinner("Cancelling backup...");
+
+    client
+        .cancel_backup()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("cancel backup", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &serde_json::json!({ "id": backup_id, "status": "cancelled" }),
+        backup_id,
+        &format!("Backup {backup_id} cancelled."),
+        global,
+    );
+    Ok(())
+}
+
+async fn execute_backup(backup_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(backup_id, "backup")?;
+    let spinner = output::spinner("Executing backup...");
+
+    let backup = client
+        .execute_backup()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("execute backup", e))?;
+
+    spinner.finish_and_clear();
+    render_backup(&backup, global);
+    Ok(())
+}
+
+// ---- CI OIDC providers ----
+
+fn provider_json(p: &artifact_keeper_sdk::types::CiOidcProviderResponse) -> serde_json::Value {
+    serde_json::json!({
+        "id": p.id.to_string(),
+        "name": p.name,
+        "issuer_url": p.issuer_url,
+        "audience": p.audience,
+        "provider_type": p.provider_type,
+        "is_enabled": p.is_enabled,
+        "mapping_count": p.mapping_count,
+        "created_at": p.created_at.to_rfc3339(),
+        "updated_at": p.updated_at.to_rfc3339(),
+    })
+}
+
+fn provider_table(p: &artifact_keeper_sdk::types::CiOidcProviderResponse) -> String {
+    format!(
+        "ID:            {}\n\
+         Name:          {}\n\
+         Issuer URL:    {}\n\
+         Audience:      {}\n\
+         Provider Type: {}\n\
+         Enabled:       {}\n\
+         Mappings:      {}",
+        p.id, p.name, p.issuer_url, p.audience, p.provider_type, p.is_enabled, p.mapping_count,
+    )
+}
+
+async fn list_ci_oidc_providers(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching CI OIDC providers...");
+
+    let resp = client
+        .ci_oidc_list_providers()
+        .send()
+        .await
+        .map_err(|e| sdk_err("list CI OIDC providers", e))?;
+
+    spinner.finish_and_clear();
+
+    if resp.is_empty() {
+        eprintln!("No CI OIDC providers found.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for p in resp.iter() {
+            println!("{}", p.id);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = resp.iter().map(provider_json).collect();
+
+    let table_str = {
+        let mut table = new_table(vec!["ID", "NAME", "ISSUER", "ENABLED", "MAPPINGS"]);
+        for p in resp.iter() {
+            let id_short = short_id(&p.id);
+            table.add_row(vec![
+                &id_short,
+                &p.name,
+                &p.issuer_url,
+                &p.is_enabled.to_string(),
+                &p.mapping_count.to_string(),
+            ]);
+        }
+        table.to_string()
+    };
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+    Ok(())
+}
+
+async fn get_ci_oidc_provider(provider_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+    let spinner = output::spinner("Fetching CI OIDC provider...");
+
+    let p = client
+        .get_provider()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get CI OIDC provider", e))?;
+
+    spinner.finish_and_clear();
+    let info = provider_json(&p);
+    println!(
+        "{}",
+        output::render(&info, &global.format, Some(provider_table(&p)))
+    );
+    Ok(())
+}
+
+async fn create_ci_oidc_provider(
+    name: &str,
+    issuer_url: &str,
+    audience: Option<&str>,
+    provider_type: Option<&str>,
+    enabled: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Creating CI OIDC provider...");
+
+    let body = artifact_keeper_sdk::types::CreateCiOidcProviderRequest {
+        name: name.to_string(),
+        issuer_url: issuer_url.to_string(),
+        audience: audience.map(|s| s.to_string()),
+        provider_type: provider_type.map(|s| s.to_string()),
+        is_enabled: enabled.then_some(true),
+    };
+
+    let p = client
+        .create_provider()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("create CI OIDC provider", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &provider_json(&p),
+        &p.id.to_string(),
+        &format!("CI OIDC provider '{}' created (ID: {}).", p.name, p.id),
+        global,
+    );
+    Ok(())
+}
+
+async fn update_ci_oidc_provider(
+    provider_id: &str,
+    name: Option<&str>,
+    issuer_url: Option<&str>,
+    audience: Option<&str>,
+    provider_type: Option<&str>,
+    enabled: Option<bool>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+    let spinner = output::spinner("Updating CI OIDC provider...");
+
+    let body = artifact_keeper_sdk::types::UpdateCiOidcProviderRequest {
+        name: name.map(|s| s.to_string()),
+        issuer_url: issuer_url.map(|s| s.to_string()),
+        audience: audience.map(|s| s.to_string()),
+        provider_type: provider_type.map(|s| s.to_string()),
+        is_enabled: enabled,
+    };
+
+    let p = client
+        .update_provider()
+        .id(id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update CI OIDC provider", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &provider_json(&p),
+        &p.id.to_string(),
+        &format!("CI OIDC provider '{}' updated (ID: {}).", p.name, p.id),
+        global,
+    );
+    Ok(())
+}
+
+async fn delete_ci_oidc_provider(
+    provider_id: &str,
+    skip_confirm: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+
+    if !confirm_action(
+        &format!("Delete CI OIDC provider {provider_id}? This cannot be undone"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let spinner = output::spinner("Deleting CI OIDC provider...");
+    client
+        .delete_provider()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("delete CI OIDC provider", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &serde_json::json!({ "id": provider_id, "status": "deleted" }),
+        provider_id,
+        &format!("CI OIDC provider {provider_id} deleted."),
+        global,
+    );
+    Ok(())
+}
+
+async fn toggle_ci_oidc_provider(
+    provider_id: &str,
+    enabled: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+    let spinner = output::spinner("Toggling CI OIDC provider...");
+
+    let body = artifact_keeper_sdk::types::CiOidcToggleRequest { enabled };
+
+    let p = client
+        .toggle_provider()
+        .id(id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("toggle CI OIDC provider", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &provider_json(&p),
+        &p.id.to_string(),
+        &format!(
+            "CI OIDC provider '{}' {} (ID: {}).",
+            p.name,
+            if p.is_enabled { "enabled" } else { "disabled" },
+            p.id
+        ),
+        global,
+    );
+    Ok(())
+}
+
+// ---- CI OIDC identity mappings ----
+
+fn parse_repo_ids(csv: Option<&str>) -> Result<Option<Vec<uuid::Uuid>>> {
+    match csv {
+        None => Ok(None),
+        Some(s) => {
+            let mut ids = Vec::new();
+            for part in s.split(',') {
+                let trimmed = part.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                ids.push(parse_uuid(trimmed, "repository")?);
+            }
+            Ok(Some(ids))
+        }
+    }
+}
+
+fn mapping_json(m: &artifact_keeper_sdk::types::CiOidcMappingResponse) -> serde_json::Value {
+    serde_json::json!({
+        "id": m.id.to_string(),
+        "provider_id": m.provider_id.to_string(),
+        "name": m.name,
+        "priority": m.priority,
+        "is_enabled": m.is_enabled,
+        "allowed_repo_ids": m
+            .allowed_repo_ids
+            .as_ref()
+            .map(|v| v.iter().map(|u| u.to_string()).collect::<Vec<_>>()),
+        "claim_filters": m.claim_filters,
+        "created_at": m.created_at.to_rfc3339(),
+        "updated_at": m.updated_at.to_rfc3339(),
+    })
+}
+
+fn mapping_table(m: &artifact_keeper_sdk::types::CiOidcMappingResponse) -> String {
+    let repos = m
+        .allowed_repo_ids
+        .as_ref()
+        .map(|v| v.len().to_string())
+        .unwrap_or_else(|| "all".to_string());
+    format!(
+        "ID:            {}\n\
+         Provider ID:   {}\n\
+         Name:          {}\n\
+         Priority:      {}\n\
+         Enabled:       {}\n\
+         Allowed Repos: {}\n\
+         Claim Filters: {}",
+        m.id, m.provider_id, m.name, m.priority, m.is_enabled, repos, m.claim_filters,
+    )
+}
+
+async fn list_ci_oidc_mappings(provider_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+    let spinner = output::spinner("Fetching identity mappings...");
+
+    let resp = client
+        .list_mappings()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("list identity mappings", e))?;
+
+    spinner.finish_and_clear();
+
+    if resp.is_empty() {
+        eprintln!("No identity mappings found.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for m in resp.iter() {
+            println!("{}", m.id);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = resp.iter().map(mapping_json).collect();
+
+    let table_str = {
+        let mut table = new_table(vec!["ID", "NAME", "PRIORITY", "ENABLED", "REPOS"]);
+        for m in resp.iter() {
+            let id_short = short_id(&m.id);
+            let repos = m
+                .allowed_repo_ids
+                .as_ref()
+                .map(|v| v.len().to_string())
+                .unwrap_or_else(|| "all".to_string());
+            table.add_row(vec![
+                &id_short,
+                &m.name,
+                &m.priority.to_string(),
+                &m.is_enabled.to_string(),
+                &repos,
+            ]);
+        }
+        table.to_string()
+    };
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+    Ok(())
+}
+
+async fn get_ci_oidc_mapping(
+    provider_id: &str,
+    mapping_id: &str,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+    let mid = parse_uuid(mapping_id, "mapping")?;
+    let spinner = output::spinner("Fetching identity mapping...");
+
+    let m = client
+        .get_mapping()
+        .id(id)
+        .mid(mid)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get identity mapping", e))?;
+
+    spinner.finish_and_clear();
+    println!(
+        "{}",
+        output::render(&mapping_json(&m), &global.format, Some(mapping_table(&m)))
+    );
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn create_ci_oidc_mapping(
+    provider_id: &str,
+    name: &str,
+    claim_filters: &str,
+    priority: Option<i32>,
+    allowed_repo_ids: Option<&str>,
+    enabled: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+
+    let filters: serde_json::Value = serde_json::from_str(claim_filters).map_err(|e| {
+        crate::error::AkError::ConfigError(format!("Invalid claim-filters JSON: {e}"))
+    })?;
+    let allowed = parse_repo_ids(allowed_repo_ids)?;
+
+    let spinner = output::spinner("Creating identity mapping...");
+
+    let body = artifact_keeper_sdk::types::CreateCiOidcMappingRequest {
+        name: name.to_string(),
+        claim_filters: filters,
+        priority,
+        allowed_repo_ids: allowed,
+        is_enabled: enabled.then_some(true),
+    };
+
+    let m = client
+        .create_mapping()
+        .id(id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("create identity mapping", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &mapping_json(&m),
+        &m.id.to_string(),
+        &format!("Identity mapping '{}' created (ID: {}).", m.name, m.id),
+        global,
+    );
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn update_ci_oidc_mapping(
+    provider_id: &str,
+    mapping_id: &str,
+    name: Option<&str>,
+    claim_filters: Option<&str>,
+    priority: Option<i32>,
+    allowed_repo_ids: Option<&str>,
+    enabled: Option<bool>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+    let mid = parse_uuid(mapping_id, "mapping")?;
+
+    let filters = match claim_filters {
+        None => None,
+        Some(s) => Some(serde_json::from_str::<serde_json::Value>(s).map_err(|e| {
+            crate::error::AkError::ConfigError(format!("Invalid claim-filters JSON: {e}"))
+        })?),
+    };
+    let allowed = parse_repo_ids(allowed_repo_ids)?;
+
+    let spinner = output::spinner("Updating identity mapping...");
+
+    let body = artifact_keeper_sdk::types::UpdateCiOidcMappingRequest {
+        name: name.map(|s| s.to_string()),
+        claim_filters: filters,
+        priority,
+        allowed_repo_ids: allowed,
+        is_enabled: enabled,
+    };
+
+    let m = client
+        .update_mapping()
+        .id(id)
+        .mid(mid)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update identity mapping", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &mapping_json(&m),
+        &m.id.to_string(),
+        &format!("Identity mapping '{}' updated (ID: {}).", m.name, m.id),
+        global,
+    );
+    Ok(())
+}
+
+async fn delete_ci_oidc_mapping(
+    provider_id: &str,
+    mapping_id: &str,
+    skip_confirm: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+    let mid = parse_uuid(mapping_id, "mapping")?;
+
+    if !confirm_action(
+        &format!("Delete identity mapping {mapping_id}? This cannot be undone"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let spinner = output::spinner("Deleting identity mapping...");
+    client
+        .delete_mapping()
+        .id(id)
+        .mid(mid)
+        .send()
+        .await
+        .map_err(|e| sdk_err("delete identity mapping", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &serde_json::json!({ "id": mapping_id, "status": "deleted" }),
+        mapping_id,
+        &format!("Identity mapping {mapping_id} deleted."),
+        global,
+    );
+    Ok(())
+}
+
+async fn toggle_ci_oidc_mapping(
+    provider_id: &str,
+    mapping_id: &str,
+    enabled: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(provider_id, "provider")?;
+    let mid = parse_uuid(mapping_id, "mapping")?;
+    let spinner = output::spinner("Toggling identity mapping...");
+
+    let body = artifact_keeper_sdk::types::CiOidcToggleRequest { enabled };
+
+    let m = client
+        .toggle_mapping()
+        .id(id)
+        .mid(mid)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("toggle identity mapping", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &mapping_json(&m),
+        &m.id.to_string(),
+        &format!(
+            "Identity mapping '{}' {} (ID: {}).",
+            m.name,
+            if m.is_enabled { "enabled" } else { "disabled" },
+            m.id
+        ),
+        global,
+    );
+    Ok(())
+}
+
+// ---- Storage GC and reports ----
+
+async fn run_storage_gc(dry_run: bool, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Running storage garbage collection...");
+
+    let body = artifact_keeper_sdk::types::StorageGcRequest {
+        dry_run: dry_run.then_some(true),
+    };
+
+    let r = client
+        .run_storage_gc()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("run storage GC", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "dry_run": r.dry_run,
+        "artifacts_removed": r.artifacts_removed,
+        "storage_keys_deleted": r.storage_keys_deleted,
+        "bytes_freed": r.bytes_freed,
+        "bytes_freed_human": format_bytes(r.bytes_freed),
+        "errors": r.errors,
+    });
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        println!("{}", output::render(&info, &global.format, None));
+    } else {
+        eprintln!(
+            "Storage GC complete{}:",
+            if r.dry_run { " (dry run)" } else { "" }
+        );
+        eprintln!("  Artifacts removed:     {}", r.artifacts_removed);
+        eprintln!("  Storage keys deleted:  {}", r.storage_keys_deleted);
+        eprintln!("  Bytes freed:           {}", format_bytes(r.bytes_freed));
+        if !r.errors.is_empty() {
+            eprintln!("  Errors:");
+            for e in &r.errors {
+                eprintln!("    - {e}");
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn oci_blob_report(grace_hours: Option<i64>, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching OCI blob footprint report...");
+
+    let mut req = client.oci_blob_report();
+    if let Some(h) = grace_hours {
+        req = req.grace_hours(h);
+    }
+
+    let r = req
+        .send()
+        .await
+        .map_err(|e| sdk_err("get OCI blob report", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "grace_hours": r.grace_hours,
+        "total_blob_rows": r.total_blob_rows,
+        "distinct_digests": r.distinct_digests,
+        "logical_bytes": r.logical_bytes,
+        "physical_bytes": r.physical_bytes,
+        "aged_distinct_digests": r.aged_distinct_digests,
+        "aged_physical_bytes": r.aged_physical_bytes,
+        "per_repository": r.per_repository.iter().map(|p| serde_json::json!({
+            "repository_id": p.repository_id.to_string(),
+            "blob_rows": p.blob_rows,
+            "logical_bytes": p.logical_bytes,
+        })).collect::<Vec<_>>(),
+    });
+
+    let table_str = format!(
+        "Grace Window (hrs):     {}\n\
+         Total Blob Rows:        {}\n\
+         Distinct Digests:       {}\n\
+         Logical Bytes:          {}\n\
+         Physical Bytes:         {}\n\
+         Aged Distinct Digests:  {}\n\
+         Aged Physical Bytes:    {}\n\
+         Repositories:           {}",
+        r.grace_hours,
+        r.total_blob_rows,
+        r.distinct_digests,
+        format_bytes(r.logical_bytes),
+        format_bytes(r.physical_bytes),
+        r.aged_distinct_digests,
+        format_bytes(r.aged_physical_bytes),
+        r.per_repository.len(),
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    Ok(())
+}
+
+async fn list_storage_backends(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching storage backends...");
+
+    let resp = client
+        .list_storage_backends()
+        .send()
+        .await
+        .map_err(|e| sdk_err("list storage backends", e))?;
+
+    spinner.finish_and_clear();
+
+    if resp.is_empty() {
+        eprintln!("No storage backends configured.");
+        return Ok(());
+    }
+
+    match global.format {
+        OutputFormat::Quiet | OutputFormat::Table => {
+            for b in resp.iter() {
+                println!("{b}");
+            }
+        }
+        OutputFormat::Json | OutputFormat::Yaml => {
+            println!("{}", output::render(&*resp, &global.format, None));
+        }
+    }
+    Ok(())
+}
+
+// ---- Search reindex / rescan ----
+
+async fn trigger_search_reindex(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Triggering OpenSearch reindex...");
+
+    let resp = client
+        .trigger_search_reindex()
+        .send()
+        .await
+        .map_err(|e| sdk_err("trigger search reindex", e))?;
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({ "message": resp.message, "status": resp.status });
+        println!("{}", output::render(&info, &global.format, None));
+    } else {
+        eprintln!("{}", resp.message);
+        eprintln!("Status: {}", resp.status);
+    }
+    Ok(())
+}
+
+async fn rescan_for_inventory(limit: Option<i64>, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Enqueuing artifacts for rescan...");
+
+    let body = artifact_keeper_sdk::types::RescanForInventoryRequest { limit };
+
+    let resp = client
+        .rescan_for_inventory()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("rescan for inventory", e))?;
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({
+            "artifacts_enqueued": resp.artifacts_enqueued,
+            "limit": resp.limit,
+        });
+        println!("{}", output::render(&info, &global.format, None));
+    } else {
+        eprintln!(
+            "Enqueued {} artifact(s) for rescan (limit {}).",
+            resp.artifacts_enqueued, resp.limit
+        );
+    }
+    Ok(())
+}
+
+// ---- SMTP test ----
+
+async fn send_test_email(to: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Sending test email...");
+
+    let body = artifact_keeper_sdk::types::SmtpTestRequest { to: to.to_string() };
+
+    let resp = client
+        .send_test_email()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("send test email", e))?;
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({ "success": resp.success, "message": resp.message });
+        println!("{}", output::render(&info, &global.format, None));
+    } else if resp.success {
+        eprintln!("Test email sent to {to}: {}", resp.message);
+    } else {
+        eprintln!("Test email failed: {}", resp.message);
+    }
+    Ok(())
+}
+
+// ---- Remote instances and proxy ----
+
+fn instance_json(i: &artifact_keeper_sdk::types::RemoteInstanceResponse) -> serde_json::Value {
+    serde_json::json!({
+        "id": i.id.to_string(),
+        "name": i.name,
+        "url": i.url,
+        "created_at": i.created_at.to_rfc3339(),
+    })
+}
+
+async fn list_instances(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching remote instances...");
+
+    let resp = client
+        .list_instances()
+        .send()
+        .await
+        .map_err(|e| sdk_err("list remote instances", e))?;
+
+    spinner.finish_and_clear();
+
+    if resp.is_empty() {
+        eprintln!("No remote instances found.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for i in resp.iter() {
+            println!("{}", i.id);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = resp.iter().map(instance_json).collect();
+
+    let table_str = {
+        let mut table = new_table(vec!["ID", "NAME", "URL", "CREATED"]);
+        for i in resp.iter() {
+            let id_short = short_id(&i.id);
+            let created = i.created_at.format("%Y-%m-%d %H:%M").to_string();
+            table.add_row(vec![&id_short, &i.name, &i.url, &created]);
+        }
+        table.to_string()
+    };
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+    Ok(())
+}
+
+async fn create_instance(name: &str, url: &str, api_key: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Registering remote instance...");
+
+    let body = artifact_keeper_sdk::types::CreateInstanceRequest {
+        name: name.to_string(),
+        url: url.to_string(),
+        api_key: api_key.to_string(),
+    };
+
+    let i = client
+        .create_instance()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("create remote instance", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &instance_json(&i),
+        &i.id.to_string(),
+        &format!("Remote instance '{}' registered (ID: {}).", i.name, i.id),
+        global,
+    );
+    Ok(())
+}
+
+async fn delete_instance(instance_id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(instance_id, "instance")?;
+
+    if !confirm_action(
+        &format!("Delete remote instance {instance_id}?"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let spinner = output::spinner("Deleting remote instance...");
+    client
+        .delete_instance()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("delete remote instance", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &serde_json::json!({ "id": instance_id, "status": "deleted" }),
+        instance_id,
+        &format!("Remote instance {instance_id} deleted."),
+        global,
+    );
+    Ok(())
+}
+
+async fn proxy_request(
+    instance_id: &str,
+    method: &str,
+    path: &str,
+    body: Option<String>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(instance_id, "instance")?;
+    let spinner = output::spinner("Proxying request...");
+
+    let status = match method {
+        "GET" => client
+            .proxy_get()
+            .id(id)
+            .path(path)
+            .send()
+            .await
+            .map_err(|e| sdk_err("proxy request", e))?
+            .status(),
+        "DELETE" => client
+            .proxy_delete()
+            .id(id)
+            .path(path)
+            .send()
+            .await
+            .map_err(|e| sdk_err("proxy request", e))?
+            .status(),
+        "PUT" => client
+            .proxy_put()
+            .id(id)
+            .path(path)
+            .body(body.unwrap_or_default())
+            .send()
+            .await
+            .map_err(|e| sdk_err("proxy request", e))?
+            .status(),
+        "POST" => client
+            .proxy_post()
+            .id(id)
+            .path(path)
+            .body(body.unwrap_or_default())
+            .send()
+            .await
+            .map_err(|e| sdk_err("proxy request", e))?
+            .status(),
+        other => {
+            return Err(crate::error::AkError::ConfigError(format!(
+                "Unsupported proxy method: {other}"
+            ))
+            .into());
+        }
+    };
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({
+            "method": method,
+            "path": path,
+            "status": status.as_u16(),
+        });
+        println!("{}", output::render(&info, &global.format, None));
+    } else {
+        eprintln!("Proxied {method} /{path} -> {status}");
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -3101,6 +4638,470 @@ mod tests {
         .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
+    }
+
+    // ---- Backup detail subcommand parsing ----
+
+    #[test]
+    fn parse_backup_get() {
+        let cli = parse(&["test", "backup", "get", "abc123"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Backup {
+                command: BackupCommand::Get { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_backup_delete_with_yes() {
+        let cli = parse(&["test", "backup", "delete", "abc123", "--yes"]);
+        if let AdminCommand::Backup {
+            command: BackupCommand::Delete { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "abc123");
+            assert!(yes);
+        } else {
+            panic!("Expected BackupCommand::Delete");
+        }
+    }
+
+    #[test]
+    fn parse_backup_cancel() {
+        let cli = parse(&["test", "backup", "cancel", "abc123"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Backup {
+                command: BackupCommand::Cancel { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_backup_execute() {
+        let cli = parse(&["test", "backup", "execute", "abc123"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Backup {
+                command: BackupCommand::Execute { .. }
+            }
+        ));
+    }
+
+    // ---- CI OIDC provider parsing ----
+
+    #[test]
+    fn parse_ci_oidc_list() {
+        let cli = parse(&["test", "ci-oidc", "list"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::CiOidc {
+                command: CiOidcCommand::List
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_ci_oidc_create() {
+        let cli = parse(&[
+            "test",
+            "ci-oidc",
+            "create",
+            "gh",
+            "https://token.actions.githubusercontent.com",
+            "--audience",
+            "ak",
+            "--provider-type",
+            "github",
+            "--enabled",
+        ]);
+        if let AdminCommand::CiOidc {
+            command:
+                CiOidcCommand::Create {
+                    name,
+                    issuer_url,
+                    audience,
+                    provider_type,
+                    enabled,
+                },
+        } = cli.command
+        {
+            assert_eq!(name, "gh");
+            assert_eq!(issuer_url, "https://token.actions.githubusercontent.com");
+            assert_eq!(audience.as_deref(), Some("ak"));
+            assert_eq!(provider_type.as_deref(), Some("github"));
+            assert!(enabled);
+        } else {
+            panic!("Expected CiOidcCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_ci_oidc_create_missing_issuer_fails() {
+        let result = try_parse(&["test", "ci-oidc", "create", "gh"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_ci_oidc_get() {
+        let cli = parse(&["test", "ci-oidc", "get", "pid"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::CiOidc {
+                command: CiOidcCommand::Get { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_ci_oidc_update() {
+        let cli = parse(&[
+            "test",
+            "ci-oidc",
+            "update",
+            "pid",
+            "--name",
+            "new",
+            "--enabled",
+            "false",
+        ]);
+        if let AdminCommand::CiOidc {
+            command: CiOidcCommand::Update {
+                id, name, enabled, ..
+            },
+        } = cli.command
+        {
+            assert_eq!(id, "pid");
+            assert_eq!(name.as_deref(), Some("new"));
+            assert_eq!(enabled, Some(false));
+        } else {
+            panic!("Expected CiOidcCommand::Update");
+        }
+    }
+
+    #[test]
+    fn parse_ci_oidc_delete() {
+        let cli = parse(&["test", "ci-oidc", "delete", "pid", "--yes"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::CiOidc {
+                command: CiOidcCommand::Delete { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_ci_oidc_toggle_requires_value() {
+        let cli = parse(&["test", "ci-oidc", "toggle", "pid", "--enabled", "true"]);
+        if let AdminCommand::CiOidc {
+            command: CiOidcCommand::Toggle { id, enabled },
+        } = cli.command
+        {
+            assert_eq!(id, "pid");
+            assert!(enabled);
+        } else {
+            panic!("Expected CiOidcCommand::Toggle");
+        }
+        // --enabled with no value must fail (ArgAction::Set)
+        assert!(try_parse(&["test", "ci-oidc", "toggle", "pid", "--enabled"]).is_err());
+    }
+
+    // ---- CI OIDC mapping parsing ----
+
+    #[test]
+    fn parse_ci_oidc_mapping_list() {
+        let cli = parse(&["test", "ci-oidc", "mapping", "list", "pid"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::CiOidc {
+                command: CiOidcCommand::Mapping {
+                    command: CiOidcMappingCommand::List { .. }
+                }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_ci_oidc_mapping_create() {
+        let cli = parse(&[
+            "test",
+            "ci-oidc",
+            "mapping",
+            "create",
+            "pid",
+            "ci-map",
+            "--claim-filters",
+            "{\"repository\":\"acme/app\"}",
+            "--priority",
+            "10",
+            "--allowed-repo-ids",
+            "00000000-0000-0000-0000-000000000001,00000000-0000-0000-0000-000000000002",
+            "--enabled",
+        ]);
+        if let AdminCommand::CiOidc {
+            command:
+                CiOidcCommand::Mapping {
+                    command:
+                        CiOidcMappingCommand::Create {
+                            provider_id,
+                            name,
+                            claim_filters,
+                            priority,
+                            allowed_repo_ids,
+                            enabled,
+                        },
+                },
+        } = cli.command
+        {
+            assert_eq!(provider_id, "pid");
+            assert_eq!(name, "ci-map");
+            assert_eq!(claim_filters, "{\"repository\":\"acme/app\"}");
+            assert_eq!(priority, Some(10));
+            assert!(allowed_repo_ids.is_some());
+            assert!(enabled);
+        } else {
+            panic!("Expected CiOidcMappingCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_ci_oidc_mapping_create_default_filters() {
+        let cli = parse(&["test", "ci-oidc", "mapping", "create", "pid", "m"]);
+        if let AdminCommand::CiOidc {
+            command:
+                CiOidcCommand::Mapping {
+                    command: CiOidcMappingCommand::Create { claim_filters, .. },
+                },
+        } = cli.command
+        {
+            assert_eq!(claim_filters, "{}");
+        } else {
+            panic!("Expected CiOidcMappingCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_ci_oidc_mapping_toggle() {
+        let cli = parse(&[
+            "test",
+            "ci-oidc",
+            "mapping",
+            "toggle",
+            "pid",
+            "mid",
+            "--enabled",
+            "false",
+        ]);
+        if let AdminCommand::CiOidc {
+            command:
+                CiOidcCommand::Mapping {
+                    command: CiOidcMappingCommand::Toggle { enabled, .. },
+                },
+        } = cli.command
+        {
+            assert!(!enabled);
+        } else {
+            panic!("Expected CiOidcMappingCommand::Toggle");
+        }
+    }
+
+    // ---- parse_repo_ids helper ----
+
+    #[test]
+    fn parse_repo_ids_none() {
+        assert!(parse_repo_ids(None).unwrap().is_none());
+    }
+
+    #[test]
+    fn parse_repo_ids_valid_csv() {
+        let out = parse_repo_ids(Some(
+            "00000000-0000-0000-0000-000000000001, 00000000-0000-0000-0000-000000000002",
+        ))
+        .unwrap()
+        .unwrap();
+        assert_eq!(out.len(), 2);
+    }
+
+    #[test]
+    fn parse_repo_ids_skips_empty() {
+        let out = parse_repo_ids(Some("00000000-0000-0000-0000-000000000001,,"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(out.len(), 1);
+    }
+
+    #[test]
+    fn parse_repo_ids_invalid_fails() {
+        assert!(parse_repo_ids(Some("not-a-uuid")).is_err());
+    }
+
+    // ---- Storage GC / backends parsing ----
+
+    #[test]
+    fn parse_storage_gc_run() {
+        let cli = parse(&["test", "storage-gc", "run", "--dry-run"]);
+        if let AdminCommand::StorageGc {
+            command: StorageGcCommand::Run { dry_run },
+        } = cli.command
+        {
+            assert!(dry_run);
+        } else {
+            panic!("Expected StorageGcCommand::Run");
+        }
+    }
+
+    #[test]
+    fn parse_storage_gc_oci_report() {
+        let cli = parse(&["test", "storage-gc", "oci-report", "--grace-hours", "48"]);
+        if let AdminCommand::StorageGc {
+            command: StorageGcCommand::OciReport { grace_hours },
+        } = cli.command
+        {
+            assert_eq!(grace_hours, Some(48));
+        } else {
+            panic!("Expected StorageGcCommand::OciReport");
+        }
+    }
+
+    #[test]
+    fn parse_storage_backends() {
+        let cli = parse(&["test", "storage-backends"]);
+        assert!(matches!(cli.command, AdminCommand::StorageBackends));
+    }
+
+    // ---- Reindex / rescan / smtp parsing ----
+
+    #[test]
+    fn parse_search_reindex() {
+        let cli = parse(&["test", "search-reindex"]);
+        assert!(matches!(cli.command, AdminCommand::SearchReindex));
+    }
+
+    #[test]
+    fn parse_rescan_with_limit() {
+        let cli = parse(&["test", "rescan", "--limit", "500"]);
+        if let AdminCommand::Rescan { limit } = cli.command {
+            assert_eq!(limit, Some(500));
+        } else {
+            panic!("Expected AdminCommand::Rescan");
+        }
+    }
+
+    #[test]
+    fn parse_smtp_test() {
+        let cli = parse(&["test", "smtp-test", "ops@example.com"]);
+        if let AdminCommand::SmtpTest { to } = cli.command {
+            assert_eq!(to, "ops@example.com");
+        } else {
+            panic!("Expected AdminCommand::SmtpTest");
+        }
+    }
+
+    #[test]
+    fn parse_smtp_test_missing_recipient_fails() {
+        assert!(try_parse(&["test", "smtp-test"]).is_err());
+    }
+
+    // ---- Remote instance / proxy parsing ----
+
+    #[test]
+    fn parse_instance_list() {
+        let cli = parse(&["test", "instance", "list"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Instance {
+                command: RemoteInstanceCommand::List
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_instance_create() {
+        let cli = parse(&[
+            "test",
+            "instance",
+            "create",
+            "east",
+            "https://east.example.com",
+            "--api-key",
+            "secret",
+        ]);
+        if let AdminCommand::Instance {
+            command: RemoteInstanceCommand::Create { name, url, api_key },
+        } = cli.command
+        {
+            assert_eq!(name, "east");
+            assert_eq!(url, "https://east.example.com");
+            assert_eq!(api_key, "secret");
+        } else {
+            panic!("Expected RemoteInstanceCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_instance_create_missing_api_key_fails() {
+        let result = try_parse(&[
+            "test",
+            "instance",
+            "create",
+            "east",
+            "https://east.example.com",
+        ]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_instance_delete() {
+        let cli = parse(&["test", "instance", "delete", "iid", "--yes"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Instance {
+                command: RemoteInstanceCommand::Delete { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_instance_proxy_get() {
+        let cli = parse(&["test", "instance", "proxy", "get", "iid", "v1/repositories"]);
+        if let AdminCommand::Instance {
+            command:
+                RemoteInstanceCommand::Proxy {
+                    command: ProxyCommand::Get { id, path },
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "iid");
+            assert_eq!(path, "v1/repositories");
+        } else {
+            panic!("Expected ProxyCommand::Get");
+        }
+    }
+
+    #[test]
+    fn parse_instance_proxy_post_with_body() {
+        let cli = parse(&[
+            "test",
+            "instance",
+            "proxy",
+            "post",
+            "iid",
+            "v1/x",
+            "--body",
+            "{\"k\":1}",
+        ]);
+        if let AdminCommand::Instance {
+            command:
+                RemoteInstanceCommand::Proxy {
+                    command: ProxyCommand::Post { body, .. },
+                },
+        } = cli.command
+        {
+            assert_eq!(body.as_deref(), Some("{\"k\":1}"));
+        } else {
+            panic!("Expected ProxyCommand::Post");
+        }
     }
 
     // ---- insta snapshot tests ----
