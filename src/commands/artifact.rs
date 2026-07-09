@@ -425,7 +425,7 @@ async fn list(
 
     if matches!(global.format, OutputFormat::Quiet) {
         for a in &resp.items {
-            println!("{}", a.path);
+            println!("{}", output::sanitize_terminal(&a.path));
         }
         return Ok(());
     }
@@ -454,15 +454,16 @@ async fn list(
             .set_header(vec!["PATH", "VERSION", "SIZE", "DOWNLOADS", "CREATED"]);
 
         for a in &resp.items {
-            let version = a.version.as_deref().unwrap_or("-");
+            let path = output::sanitize_terminal(&a.path);
+            let version = output::sanitize_terminal(a.version.as_deref().unwrap_or("-"));
             let size = format_bytes(a.size_bytes);
             let created = a.created_at.format("%Y-%m-%d").to_string();
             table.add_row(vec![
-                a.path.as_str(),
+                path,
                 version,
-                &size,
-                &a.download_count.to_string(),
-                &created,
+                size,
+                a.download_count.to_string(),
+                created,
             ]);
         }
 
@@ -741,7 +742,7 @@ async fn search(
 
     if matches!(global.format, OutputFormat::Quiet) {
         for item in &resp.items {
-            println!("{}", item.name);
+            println!("{}", output::sanitize_terminal(&item.name));
         }
         return Ok(());
     }
@@ -770,19 +771,15 @@ async fn search(
             .set_header(vec!["NAME", "REPOSITORY", "FORMAT", "VERSION", "SIZE"]);
 
         for item in &resp.items {
-            let version = item.version.as_deref().unwrap_or("-");
-            let format_str = item.format.as_deref().unwrap_or("-");
+            let name = output::sanitize_terminal(&item.name);
+            let repository = output::sanitize_terminal(&item.repository_key);
+            let version = output::sanitize_terminal(item.version.as_deref().unwrap_or("-"));
+            let format_str = output::sanitize_terminal(item.format.as_deref().unwrap_or("-"));
             let size = item
                 .size_bytes
                 .map(format_bytes)
                 .unwrap_or_else(|| "-".into());
-            table.add_row(vec![
-                item.name.as_str(),
-                item.repository_key.as_str(),
-                format_str,
-                version,
-                &size,
-            ]);
+            table.add_row(vec![name, repository, format_str, version, size]);
         }
 
         table.to_string()

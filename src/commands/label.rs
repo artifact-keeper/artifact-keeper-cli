@@ -142,7 +142,11 @@ async fn list_labels(repo_key: &str, global: &GlobalArgs) -> Result<()> {
 
     if matches!(global.format, OutputFormat::Quiet) {
         for l in &resp.items {
-            println!("{}={}", l.key, l.value);
+            println!(
+                "{}={}",
+                output::sanitize_terminal(&l.key),
+                output::sanitize_terminal(&l.value)
+            );
         }
         return Ok(());
     }
@@ -165,7 +169,11 @@ async fn list_labels(repo_key: &str, global: &GlobalArgs) -> Result<()> {
 
         for l in &resp.items {
             let created = l.created_at.format("%Y-%m-%d").to_string();
-            table.add_row(vec![&l.key, &l.value, &created]);
+            table.add_row(vec![
+                output::sanitize_terminal(&l.key),
+                output::sanitize_terminal(&l.value),
+                created,
+            ]);
         }
 
         table.to_string()
@@ -221,9 +229,9 @@ fn format_label_table(items: &[serde_json::Value]) -> String {
 
     for l in items {
         table.add_row(vec![
-            l["key"].as_str().unwrap_or("-"),
-            l["value"].as_str().unwrap_or("-"),
-            l["created_at"].as_str().unwrap_or("-"),
+            output::sanitize_terminal(l["key"].as_str().unwrap_or("-")),
+            output::sanitize_terminal(l["value"].as_str().unwrap_or("-")),
+            output::sanitize_terminal(l["created_at"].as_str().unwrap_or("-")),
         ]);
     }
 
@@ -340,7 +348,11 @@ async fn list_artifact_labels(id: &str, global: &GlobalArgs) -> Result<()> {
 
     if matches!(global.format, OutputFormat::Quiet) {
         for l in &resp.items {
-            println!("{}={}", l.key, l.value);
+            println!(
+                "{}={}",
+                output::sanitize_terminal(&l.key),
+                output::sanitize_terminal(&l.value)
+            );
         }
         return Ok(());
     }
