@@ -399,6 +399,14 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::quarantine::QuarantineCommand,
     },
+    /// Curate proxied/staged packages: rules, approvals, and quarantine actions
+    #[command(
+        after_help = "Examples:\n  ak curation packages --staging-repo <repo-id> --status pending\n  ak curation package <package-id>\n  ak curation approve <package-id>\n  ak curation block <package-id>\n  ak curation bulk-approve <id> <id> --reason \"Vetted\"\n  ak curation re-evaluate --staging-repo <repo-id> --default-action block\n  ak curation rules --staging-repo <repo-id>\n  ak curation create-rule 'lodash*' --action block --reason \"Banned\"\n  ak curation update-rule <rule-id> --action approve --package-pattern 'left-pad*' --reason \"OK\" --enabled\n  ak curation delete-rule <rule-id>\n  ak curation stats --staging-repo <repo-id>"
+    )]
+    Curation {
+        #[command(subcommand)]
+        command: commands::curation::CurationCommand,
+    },
 }
 
 impl Cli {
@@ -480,6 +488,7 @@ impl Cli {
             Command::ServiceAccount { command } => command.execute(&global).await,
             Command::Import { command } => command.execute(&global).await,
             Command::Quarantine { command } => command.execute(&global).await,
+            Command::Curation { command } => command.execute(&global).await,
         }
     }
 }
