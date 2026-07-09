@@ -381,6 +381,15 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::service_account::ServiceAccountCommand,
     },
+
+    /// Import artifacts from a legacy registry (Artifactory/Nexus)
+    #[command(
+        after_help = "Examples:\n  ak import source add legacy https://artifactory.corp --source-type artifactory --username admin --password ***\n  ak import source list\n  ak import source test <connection-id>\n  ak import job create --source <connection-id> --job-type full\n  ak import assess run <job-id>\n  ak import job start <job-id>\n  ak import job status <job-id>\n  ak import job report <job-id>"
+    )]
+    Import {
+        #[command(subcommand)]
+        command: commands::import::ImportCommand,
+    },
 }
 
 impl Cli {
@@ -460,6 +469,7 @@ impl Cli {
             Command::RepoToken { command } => command.execute(&global).await,
             Command::Builds { command } => command.execute(&global).await,
             Command::ServiceAccount { command } => command.execute(&global).await,
+            Command::Import { command } => command.execute(&global).await,
         }
     }
 }
