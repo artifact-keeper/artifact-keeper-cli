@@ -50,6 +50,17 @@ pub enum AkError {
     #[diagnostic(code(ak::config_error))]
     ConfigError(String),
 
+    #[error("Refusing to send a password over unencrypted HTTP to '{0}'")]
+    #[diagnostic(
+        code(ak::insecure_transport),
+        help(
+            "Anyone on the network path can read credentials sent over plain http://. \
+             Use an https:// URL, or explicitly accept the risk by re-adding the instance \
+             with `ak instance add --insecure-http` or setting AK_ALLOW_INSECURE_HTTP=1."
+        )
+    )]
+    InsecureTransport(String),
+
     #[error(transparent)]
     #[diagnostic(code(ak::io_error))]
     Io(#[from] std::io::Error),

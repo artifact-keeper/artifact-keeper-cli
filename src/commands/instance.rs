@@ -6,6 +6,7 @@ use crate::cli::GlobalArgs;
 use crate::config::{AppConfig, InstanceConfig};
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
+use crate::transport;
 
 #[derive(Subcommand)]
 pub enum InstanceCommand {
@@ -20,6 +21,11 @@ pub enum InstanceCommand {
         /// API version
         #[arg(long, default_value = "v1")]
         api_version: String,
+
+        /// Acknowledge that this instance uses unencrypted HTTP to a
+        /// non-loopback host (credentials will be sent in cleartext)
+        #[arg(long)]
+        insecure_http: bool,
     },
 
     /// Remove a configured instance
@@ -51,7 +57,8 @@ impl InstanceCommand {
                 name,
                 url,
                 api_version,
-            } => add_instance(&name, &url, &api_version),
+                insecure_http,
+            } => add_instance(&name, &url, &api_version, insecure_http),
             Self::Remove { name } => remove_instance(&name),
             Self::List => list_instances(&global.format),
             Self::Use { name } => use_instance(&name),
@@ -60,7 +67,7 @@ impl InstanceCommand {
     }
 }
 
-fn add_instance(name: &str, url: &str, api_version: &str) -> Result<()> {
+fn add_instance(name: &str, url: &str, api_version: &str, insecure_http: bool) -> Result<()> {
     let mut config = AppConfig::load()?;
 
     if config.instances.contains_key(name) {
@@ -73,13 +80,14 @@ fn add_instance(name: &str, url: &str, api_version: &str) -> Result<()> {
     let url = url.trim_end_matches('/').to_string();
     let is_first = config.instances.is_empty();
 
-    config.instances.insert(
-        name.to_string(),
-        InstanceConfig {
-            url: url.clone(),
-            api_version: api_version.to_string(),
-        },
-    );
+    let instance = InstanceConfig {
+        url: url.clone(),
+        api_version: api_version.to_string(),
+        allow_insecure_http: insecure_http,
+    };
+    transport::warn_if_insecure(name, &instance);
+
+    config.instances.insert(name.to_string(), instance);
 
     if is_first {
         config.default_instance = Some(name.to_string());
@@ -222,7 +230,7 @@ mod tests {
     #[test]
     fn add_instance_first_becomes_default() {
         with_temp_config(|| {
-            add_instance("prod", "https://prod.example.com", "v1").unwrap();
+            add_instance("prod", "https://prod.example.com", "v1", false).unwrap();
 
             let config = AppConfig::load().unwrap();
             assert!(config.instances.contains_key("prod"));
@@ -234,8 +242,8 @@ mod tests {
     #[test]
     fn add_instance_second_not_default() {
         with_temp_config(|| {
-            add_instance("prod", "https://prod.example.com", "v1").unwrap();
-            add_instance("staging", "https://staging.example.com", "v1").unwrap();
+            add_instance("prod", "https://prod.example.com", "v1", false).unwrap();
+            add_instance("staging", "https://staging.example.com", "v1", false).unwrap();
 
             let config = AppConfig::load().unwrap();
             assert_eq!(config.instances.len(), 2);
@@ -246,8 +254,8 @@ mod tests {
     #[test]
     fn add_instance_duplicate_fails() {
         with_temp_config(|| {
-            add_instance("prod", "https://prod.example.com", "v1").unwrap();
-            let result = add_instance("prod", "https://other.com", "v1");
+            add_instance("prod", "https://prod.example.com", "v1", false).unwrap();
+            let result = add_instance("prod", "https://other.com", "v1", false);
             assert!(result.is_err());
         });
     }
@@ -255,7 +263,7 @@ mod tests {
     #[test]
     fn add_instance_strips_trailing_slash() {
         with_temp_config(|| {
-            add_instance("test", "https://example.com/", "v1").unwrap();
+            add_instance("test", "https://example.com/", "v1", false).unwrap();
 
             let config = AppConfig::load().unwrap();
             assert_eq!(config.instances["test"].url, "https://example.com");
@@ -265,7 +273,7 @@ mod tests {
     #[test]
     fn add_instance_custom_api_version() {
         with_temp_config(|| {
-            add_instance("test", "https://example.com", "v2").unwrap();
+            add_instance("test", "https://example.com", "v2", false).unwrap();
 
             let config = AppConfig::load().unwrap();
             assert_eq!(config.instances["test"].api_version, "v2");
@@ -277,8 +285,8 @@ mod tests {
     #[test]
     fn remove_instance_exists() {
         with_temp_config(|| {
-            add_instance("prod", "https://prod.example.com", "v1").unwrap();
-            add_instance("staging", "https://staging.example.com", "v1").unwrap();
+            add_instance("prod", "https://prod.example.com", "v1", false).unwrap();
+            add_instance("staging", "https://staging.example.com", "v1", false).unwrap();
 
             remove_instance("staging").unwrap();
 
@@ -299,8 +307,8 @@ mod tests {
     #[test]
     fn remove_default_instance_switches_default() {
         with_temp_config(|| {
-            add_instance("alpha", "https://alpha.com", "v1").unwrap();
-            add_instance("beta", "https://beta.com", "v1").unwrap();
+            add_instance("alpha", "https://alpha.com", "v1", false).unwrap();
+            add_instance("beta", "https://beta.com", "v1", false).unwrap();
 
             // alpha is default (first added)
             remove_instance("alpha").unwrap();
@@ -315,7 +323,7 @@ mod tests {
     #[test]
     fn remove_last_instance_clears_default() {
         with_temp_config(|| {
-            add_instance("only", "https://only.com", "v1").unwrap();
+            add_instance("only", "https://only.com", "v1", false).unwrap();
             remove_instance("only").unwrap();
 
             let config = AppConfig::load().unwrap();
@@ -329,8 +337,8 @@ mod tests {
     #[test]
     fn use_instance_sets_default() {
         with_temp_config(|| {
-            add_instance("prod", "https://prod.com", "v1").unwrap();
-            add_instance("staging", "https://staging.com", "v1").unwrap();
+            add_instance("prod", "https://prod.com", "v1", false).unwrap();
+            add_instance("staging", "https://staging.com", "v1", false).unwrap();
 
             use_instance("staging").unwrap();
 
@@ -360,8 +368,8 @@ mod tests {
     #[test]
     fn list_instances_with_entries() {
         with_temp_config(|| {
-            add_instance("prod", "https://prod.com", "v1").unwrap();
-            add_instance("staging", "https://staging.com", "v1").unwrap();
+            add_instance("prod", "https://prod.com", "v1", false).unwrap();
+            add_instance("staging", "https://staging.com", "v1", false).unwrap();
 
             list_instances(&OutputFormat::Quiet).unwrap();
             list_instances(&OutputFormat::Json).unwrap();
@@ -375,7 +383,7 @@ mod tests {
     #[test]
     fn info_instance_default() {
         with_temp_config(|| {
-            add_instance("prod", "https://prod.com", "v1").unwrap();
+            add_instance("prod", "https://prod.com", "v1", false).unwrap();
 
             let global = GlobalArgs {
                 format: OutputFormat::Quiet,
@@ -389,8 +397,8 @@ mod tests {
     #[test]
     fn info_instance_by_name() {
         with_temp_config(|| {
-            add_instance("prod", "https://prod.com", "v1").unwrap();
-            add_instance("staging", "https://staging.com", "v1").unwrap();
+            add_instance("prod", "https://prod.com", "v1", false).unwrap();
+            add_instance("staging", "https://staging.com", "v1", false).unwrap();
 
             let global = GlobalArgs {
                 format: OutputFormat::Json,
