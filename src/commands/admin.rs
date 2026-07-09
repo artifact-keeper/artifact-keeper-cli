@@ -3,7 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -711,14 +711,14 @@ async fn create_user(
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", resp.user.id);
-        return Ok(());
-    }
-
-    eprintln!(
-        "User '{}' created (ID: {}).",
-        resp.user.username, resp.user.id
+    emit_mutation(
+        &*resp,
+        &resp.user.id.to_string(),
+        &format!(
+            "User '{}' created (ID: {}).",
+            resp.user.username, resp.user.id
+        ),
+        global,
     );
 
     if let Some(password) = &resp.generated_password {
@@ -759,7 +759,12 @@ async fn update_user(
         .map_err(|e| sdk_err("update user", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("User '{}' updated (ID: {}).", user.username, user.id);
+    emit_mutation(
+        &*user,
+        &user.id.to_string(),
+        &format!("User '{}' updated (ID: {}).", user.username, user.id),
+        global,
+    );
 
     Ok(())
 }
@@ -787,7 +792,12 @@ async fn delete_user(user_id: &str, skip_confirm: bool, global: &GlobalArgs) -> 
         .map_err(|e| sdk_err("delete user", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("User {user_id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": user_id, "status": "deleted" }),
+        user_id,
+        &format!("User {user_id} deleted."),
+        global,
+    );
 
     Ok(())
 }
@@ -922,7 +932,12 @@ async fn remove_plugin(plugin_id: &str, skip_confirm: bool, global: &GlobalArgs)
         .map_err(|e| sdk_err("remove plugin", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Plugin {plugin_id} removed.");
+    emit_mutation(
+        &serde_json::json!({ "id": plugin_id, "status": "removed" }),
+        plugin_id,
+        &format!("Plugin {plugin_id} removed."),
+        global,
+    );
 
     Ok(())
 }

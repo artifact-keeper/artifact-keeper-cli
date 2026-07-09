@@ -8,7 +8,7 @@ use miette::{Result, miette};
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -315,12 +315,12 @@ async fn create_policy(
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", policy.id);
-        return Ok(());
-    }
-
-    eprintln!("Sync policy '{}' created (ID: {}).", policy.name, policy.id);
+    emit_mutation(
+        &*policy,
+        &policy.id.to_string(),
+        &format!("Sync policy '{}' created (ID: {}).", policy.name, policy.id),
+        global,
+    );
 
     Ok(())
 }
@@ -360,12 +360,12 @@ async fn update_policy(
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", policy.id);
-        return Ok(());
-    }
-
-    eprintln!("Sync policy '{}' updated.", policy.name);
+    emit_mutation(
+        &*policy,
+        &policy.id.to_string(),
+        &format!("Sync policy '{}' updated.", policy.name),
+        global,
+    );
 
     Ok(())
 }
@@ -392,7 +392,12 @@ async fn delete_policy(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Res
         .map_err(|e| sdk_err("delete sync policy", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Sync policy {id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "deleted" }),
+        id,
+        &format!("Sync policy {id} deleted."),
+        global,
+    );
 
     Ok(())
 }
@@ -423,17 +428,17 @@ async fn toggle_policy(id: &str, enable: bool, disable: bool, global: &GlobalArg
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", policy.enabled);
-        return Ok(());
-    }
-
     let state = if policy.enabled {
         "enabled"
     } else {
         "disabled"
     };
-    eprintln!("Sync policy '{}' {state}.", policy.name);
+    emit_mutation(
+        &*policy,
+        &policy.id.to_string(),
+        &format!("Sync policy '{}' {state}.", policy.name),
+        global,
+    );
 
     Ok(())
 }

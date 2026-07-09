@@ -75,7 +75,7 @@ pub enum Command {
 
     /// Browse and manage repositories
     #[command(
-        after_help = "Examples:\n  ak repo list\n  ak repo list --pkg-format npm\n  ak repo show my-npm-repo\n  ak repo create my-pypi --pkg-format pypi --type local"
+        after_help = "Examples:\n  ak repo list\n  ak repo list --pkg-format npm\n  ak repo show my-npm-repo\n  ak repo create my-pypi --pkg-format pypi --repo-type local\n  ak repo create pypi-proxy --pkg-format pypi --repo-type remote --upstream-url https://pypi.org"
     )]
     Repo {
         #[command(subcommand)]
@@ -189,7 +189,7 @@ pub enum Command {
 
     /// Manage lifecycle and retention policies
     #[command(
-        after_help = "Examples:\n  ak lifecycle list\n  ak lifecycle show <policy-id>\n  ak lifecycle create my-policy --max-severity high --block-on-fail\n  ak lifecycle preview <policy-id>\n  ak lifecycle execute <policy-id>"
+        after_help = "Examples:\n  ak lifecycle list\n  ak lifecycle show <policy-id>\n  ak lifecycle create cleanup-old --policy-type max_age_days --config '{\"days\": 90}'\n  ak lifecycle create keep-5 --policy-type max_versions --config '{\"keep\": 5}' --repo <repo-id>\n  ak lifecycle preview <policy-id>\n  ak lifecycle execute <policy-id>"
     )]
     Lifecycle {
         #[command(subcommand)]
@@ -198,7 +198,7 @@ pub enum Command {
 
     /// Signing & key management
     #[command(
-        after_help = "Examples:\n  ak sign key list\n  ak sign key create my-key --algorithm ed25519 --type signing --repo <uuid>\n  ak sign config show <repo-id>"
+        after_help = "Examples:\n  ak sign key list\n  ak sign key create my-key --algorithm rsa4096 --type signing --repo <uuid>\n  ak sign config show <repo-id>"
     )]
     Sign {
         #[command(subcommand)]
@@ -234,7 +234,7 @@ pub enum Command {
 
     /// Manage SSO authentication providers (LDAP, OIDC, SAML)
     #[command(
-        after_help = "Examples:\n  ak sso list\n  ak sso show <id> --type oidc\n  ak sso create ldap corp-ldap --server-url ldaps://ldap.corp.com --user-base-dn ou=users,dc=corp\n  ak sso test <id>\n  ak sso toggle <id> --type ldap --enable"
+        after_help = "Examples:\n  ak sso list\n  ak sso show <id> --type oidc\n  ak sso create ldap corp-ldap --server-url ldaps://ldap.corp.com --user-base-dn ou=users,dc=corp\n  ak sso test <id> --type ldap\n  ak sso toggle <id> --type ldap --enable"
     )]
     Sso {
         #[command(subcommand)]
@@ -954,9 +954,10 @@ mod tests {
             "lifecycle",
             "create",
             "my-policy",
-            "--max-severity",
-            "high",
-            "--block-on-fail",
+            "--policy-type",
+            "max_age_days",
+            "--config",
+            "{\"days\": 30}",
         ])
         .unwrap();
         assert!(matches!(cli.command, Command::Lifecycle { .. }));

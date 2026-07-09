@@ -3,7 +3,9 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, new_table, parse_uuid, print_page_info, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation, new_table, parse_uuid, print_page_info, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -293,12 +295,12 @@ async fn create_rule(
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", rule.id);
-        return Ok(());
-    }
-
-    eprintln!("Promotion rule '{}' created (ID: {}).", rule.name, rule.id);
+    emit_mutation(
+        &*rule,
+        &rule.id.to_string(),
+        &format!("Promotion rule '{}' created (ID: {}).", rule.name, rule.id),
+        global,
+    );
 
     Ok(())
 }
@@ -325,7 +327,12 @@ async fn delete_rule(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
         .map_err(|e| sdk_err("delete promotion rule", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Promotion rule {id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "deleted" }),
+        id,
+        &format!("Promotion rule {id} deleted."),
+        global,
+    );
 
     Ok(())
 }

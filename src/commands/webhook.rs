@@ -8,7 +8,7 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -239,12 +239,12 @@ async fn create_webhook(
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", webhook.id);
-        return Ok(());
-    }
-
-    eprintln!("Webhook '{}' created (ID: {}).", webhook.name, webhook.id);
+    emit_mutation(
+        &*webhook,
+        &webhook.id.to_string(),
+        &format!("Webhook '{}' created (ID: {}).", webhook.name, webhook.id),
+        global,
+    );
 
     Ok(())
 }
@@ -271,7 +271,12 @@ async fn delete_webhook(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Re
         .map_err(|e| sdk_err("delete webhook", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Webhook {id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "deleted" }),
+        id,
+        &format!("Webhook {id} deleted."),
+        global,
+    );
 
     Ok(())
 }
@@ -317,7 +322,12 @@ async fn enable_webhook(id: &str, global: &GlobalArgs) -> Result<()> {
         .map_err(|e| sdk_err("enable webhook", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Webhook {id} enabled.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "enabled" }),
+        id,
+        &format!("Webhook {id} enabled."),
+        global,
+    );
 
     Ok(())
 }
@@ -336,7 +346,12 @@ async fn disable_webhook(id: &str, global: &GlobalArgs) -> Result<()> {
         .map_err(|e| sdk_err("disable webhook", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Webhook {id} disabled.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "disabled" }),
+        id,
+        &format!("Webhook {id} disabled."),
+        global,
+    );
 
     Ok(())
 }

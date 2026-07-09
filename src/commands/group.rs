@@ -3,7 +3,9 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, new_table, parse_uuid, print_page_info, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation, new_table, parse_uuid, print_page_info, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -226,12 +228,12 @@ async fn create_group(name: &str, description: Option<&str>, global: &GlobalArgs
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", group.id);
-        return Ok(());
-    }
-
-    eprintln!("Group '{}' created (ID: {}).", group.name, group.id);
+    emit_mutation(
+        &*group,
+        &group.id.to_string(),
+        &format!("Group '{}' created (ID: {}).", group.name, group.id),
+        global,
+    );
 
     Ok(())
 }
@@ -258,7 +260,12 @@ async fn delete_group(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resu
         .map_err(|e| sdk_err("delete group", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Group {id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "deleted" }),
+        id,
+        &format!("Group {id} deleted."),
+        global,
+    );
 
     Ok(())
 }
@@ -283,7 +290,12 @@ async fn add_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Resul
         .map_err(|e| sdk_err("add member", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Added user {user_id} to group {group_id}.");
+    emit_mutation(
+        &serde_json::json!({ "id": group_id, "user_id": user_id, "status": "added" }),
+        group_id,
+        &format!("Added user {user_id} to group {group_id}."),
+        global,
+    );
 
     Ok(())
 }
@@ -343,7 +355,12 @@ async fn remove_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Re
         .map_err(|e| sdk_err("remove member", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Removed user {user_id} from group {group_id}.");
+    emit_mutation(
+        &serde_json::json!({ "id": group_id, "user_id": user_id, "status": "removed" }),
+        group_id,
+        &format!("Removed user {user_id} from group {group_id}."),
+        global,
+    );
 
     Ok(())
 }

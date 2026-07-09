@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -43,8 +43,8 @@ pub enum SignKeyCommand {
         /// Key name
         name: String,
 
-        /// Algorithm (e.g. ed25519, rsa-4096, ecdsa-p256)
-        #[arg(long)]
+        /// Signing algorithm. Supported: rsa2048, rsa4096 (default: rsa4096)
+        #[arg(long, default_value = "rsa4096")]
         algorithm: String,
 
         /// Key type (e.g. signing, encryption)
@@ -297,12 +297,12 @@ async fn create_key(
     let key = key.into_inner();
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", key.id);
-        return Ok(());
-    }
-
-    eprintln!("Signing key '{}' created (ID: {}).", key.name, key.id);
+    emit_mutation(
+        &key,
+        &key.id.to_string(),
+        &format!("Signing key '{}' created (ID: {}).", key.name, key.id),
+        global,
+    );
 
     Ok(())
 }

@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -223,14 +223,14 @@ async fn create_policy(
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", policy.id);
-        return Ok(());
-    }
-
-    eprintln!(
-        "License policy '{}' created (ID: {}).",
-        policy.name, policy.id
+    emit_mutation(
+        &*policy,
+        &policy.id.to_string(),
+        &format!(
+            "License policy '{}' created (ID: {}).",
+            policy.name, policy.id
+        ),
+        global,
     );
 
     Ok(())
@@ -258,7 +258,12 @@ async fn delete_policy(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Res
         .map_err(|e| sdk_err("delete license policy", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("License policy {id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "deleted" }),
+        id,
+        &format!("License policy {id} deleted."),
+        global,
+    );
 
     Ok(())
 }

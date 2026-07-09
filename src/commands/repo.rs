@@ -4,6 +4,7 @@ use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 
 use super::client::{client_for, client_for_optional_auth};
+use super::helpers::emit_mutation;
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -323,14 +324,14 @@ async fn create_repo(
         .await
         .map_err(|e| AkError::ServerError(format!("Failed to create repository: {e}")))?;
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", resp.key);
-        return Ok(());
-    }
-
-    eprintln!(
-        "Created repository '{}' (format: {}, type: {})",
-        resp.key, resp.format, resp.repo_type
+    emit_mutation(
+        &*resp,
+        &resp.key,
+        &format!(
+            "Created repository '{}' (format: {}, type: {})",
+            resp.key, resp.format, resp.repo_type
+        ),
+        global,
     );
 
     Ok(())
@@ -360,7 +361,12 @@ async fn delete_repo(key: &str, skip_confirm: bool, global: &GlobalArgs) -> Resu
         .await
         .map_err(|e| AkError::ServerError(format!("Failed to delete repository: {e}")))?;
 
-    eprintln!("Deleted repository '{key}'.");
+    emit_mutation(
+        &serde_json::json!({ "key": key, "status": "deleted" }),
+        key,
+        &format!("Deleted repository '{key}'."),
+        global,
+    );
     Ok(())
 }
 

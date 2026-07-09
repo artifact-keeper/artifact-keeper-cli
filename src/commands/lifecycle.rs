@@ -2,11 +2,12 @@ use artifact_keeper_sdk::ClientLifecycleExt;
 use clap::Subcommand;
 use miette::Result;
 
-use super::client::client_for;
+use super::client::{client_for, resolve_base_url_and_auth};
 use super::helpers::{
-    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
 
 #[derive(Subcommand)]
@@ -29,33 +30,35 @@ pub enum LifecycleCommand {
         /// Policy name
         name: String,
 
-        /// Maximum vulnerability severity to allow (e.g. critical, high, medium, low)
+        /// Policy type. One of: max_age_days, max_versions, no_downloads_days,
+        /// tag_pattern_keep, tag_pattern_delete, size_quota_bytes
         #[arg(long)]
-        max_severity: String,
+        policy_type: String,
 
-        /// Block artifacts that fail policy checks
+        /// Policy configuration as a JSON object. Required keys by type:
+        /// max_age_days / no_downloads_days => {"days": N};
+        /// max_versions => {"keep": N};
+        /// size_quota_bytes => {"bytes": N};
+        /// tag_pattern_keep / tag_pattern_delete => {"pattern": "<regex>"}
         #[arg(long)]
-        block_on_fail: bool,
+        config: String,
 
-        /// Block unscanned artifacts
+        /// Policy description
         #[arg(long)]
-        block_unscanned: bool,
+        description: Option<String>,
 
-        /// Maximum artifact age in days
+        /// Priority (higher priority policies run first)
         #[arg(long)]
-        max_age_days: Option<i32>,
+        priority: Option<i32>,
 
-        /// Minimum staging time in hours
-        #[arg(long)]
-        min_staging_hours: Option<i32>,
-
-        /// Bind to a specific repository ID
+        /// Bind to a specific repository ID (required for max_versions and
+        /// size_quota_bytes)
         #[arg(long)]
         repo: Option<String>,
 
-        /// Require artifact signatures
+        /// Cron schedule for automatic execution (e.g. "0 2 * * *")
         #[arg(long)]
-        require_signature: bool,
+        cron_schedule: Option<String>,
     },
 
     /// Delete a lifecycle policy
@@ -88,23 +91,21 @@ impl LifecycleCommand {
             Self::Show { id } => show_policy(&id, global).await,
             Self::Create {
                 name,
-                max_severity,
-                block_on_fail,
-                block_unscanned,
-                max_age_days,
-                min_staging_hours,
+                policy_type,
+                config,
+                description,
+                priority,
                 repo,
-                require_signature,
+                cron_schedule,
             } => {
                 create_policy(
                     &name,
-                    &max_severity,
-                    block_on_fail,
-                    block_unscanned,
-                    max_age_days,
-                    min_staging_hours,
+                    &policy_type,
+                    &config,
+                    description.as_deref(),
+                    priority,
                     repo.as_deref(),
-                    require_signature,
+                    cron_schedule.as_deref(),
                     global,
                 )
                 .await
@@ -264,51 +265,113 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+/// Valid lifecycle policy types accepted by the backend
+/// (`POST /api/v1/admin/lifecycle`).
+const VALID_POLICY_TYPES: &[&str] = &[
+    "max_age_days",
+    "max_versions",
+    "no_downloads_days",
+    "tag_pattern_keep",
+    "tag_pattern_delete",
+    "size_quota_bytes",
+];
+
 #[allow(clippy::too_many_arguments)]
 async fn create_policy(
     name: &str,
-    max_severity: &str,
-    block_on_fail: bool,
-    block_unscanned: bool,
-    max_age_days: Option<i32>,
-    min_staging_hours: Option<i32>,
+    policy_type: &str,
+    config: &str,
+    description: Option<&str>,
+    priority: Option<i32>,
     repo_id: Option<&str>,
-    require_signature: bool,
+    cron_schedule: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
+    if !VALID_POLICY_TYPES.contains(&policy_type) {
+        return Err(AkError::ConfigError(format!(
+            "Invalid policy type '{policy_type}'. Must be one of: {}",
+            VALID_POLICY_TYPES.join(", ")
+        ))
+        .into());
+    }
+
+    let config_json: serde_json::Value = serde_json::from_str(config)
+        .map_err(|e| AkError::ConfigError(format!("--config must be a JSON object: {e}")))?;
+    if !config_json.is_object() {
+        return Err(AkError::ConfigError("--config must be a JSON object".into()).into());
+    }
+
     let repository_id = parse_optional_uuid(repo_id, "repository")?;
 
-    let client = client_for(global)?;
+    // The backend's CreatePolicyRequest (name/policy_type/config/...) is not
+    // the shape the generated SDK models, so build the request body directly.
+    let mut body = serde_json::json!({
+        "name": name,
+        "policy_type": policy_type,
+        "config": config_json,
+    });
+    if let Some(d) = description {
+        body["description"] = serde_json::Value::from(d);
+    }
+    if let Some(p) = priority {
+        body["priority"] = serde_json::Value::from(p);
+    }
+    if let Some(rid) = repository_id {
+        body["repository_id"] = serde_json::Value::from(rid.to_string());
+    }
+    if let Some(c) = cron_schedule {
+        body["cron_schedule"] = serde_json::Value::from(c);
+    }
+
+    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
     let spinner = output::spinner("Creating lifecycle policy...");
 
-    let body = artifact_keeper_sdk::types::CreatePolicyRequest {
-        name: name.to_string(),
-        max_severity: max_severity.to_string(),
-        block_on_fail,
-        block_unscanned: Some(block_unscanned),
-        max_artifact_age_days: max_age_days,
-        min_staging_hours,
-        repository_id,
-        require_signature: require_signature.then_some(true),
-    };
-
-    let policy = client
-        .create_lifecycle_policy()
-        .body(body)
+    let http = reqwest::Client::new();
+    let resp = http
+        .post(format!(
+            "{}/api/v1/admin/lifecycle",
+            base_url.trim_end_matches('/')
+        ))
+        .header(reqwest::header::AUTHORIZATION, auth_header)
+        .json(&body)
         .send()
+        .await
+        .map_err(|e| sdk_err("create lifecycle policy", e))?;
+
+    let status = resp.status();
+    let text = resp
+        .text()
         .await
         .map_err(|e| sdk_err("create lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", policy.id);
-        return Ok(());
+    if !status.is_success() {
+        let msg = serde_json::from_str::<serde_json::Value>(&text)
+            .ok()
+            .and_then(|v| {
+                v.get("message")
+                    .and_then(|m| m.as_str())
+                    .map(str::to_string)
+            })
+            .unwrap_or(text);
+        return Err(AkError::ServerError(format!(
+            "create lifecycle policy failed (HTTP {}): {msg}",
+            status.as_u16()
+        ))
+        .into());
     }
 
-    eprintln!(
-        "Lifecycle policy '{}' created (ID: {}).",
-        policy.name, policy.id
+    let policy: serde_json::Value =
+        serde_json::from_str(&text).map_err(|e| sdk_err("parse lifecycle policy response", e))?;
+    let id = policy["id"].as_str().unwrap_or_default().to_string();
+    let pname = policy["name"].as_str().unwrap_or(name);
+
+    emit_mutation(
+        &policy,
+        &id,
+        &format!("Lifecycle policy '{pname}' created (ID: {id})."),
+        global,
     );
 
     Ok(())
@@ -336,7 +399,12 @@ async fn delete_policy(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Res
         .map_err(|e| sdk_err("delete lifecycle policy", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Lifecycle policy {id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "deleted": true }),
+        id,
+        &format!("Lifecycle policy {id} deleted."),
+        global,
+    );
 
     Ok(())
 }
@@ -546,29 +614,29 @@ mod tests {
         let cli = parse(&[
             "test",
             "create",
-            "security-policy",
-            "--max-severity",
-            "high",
+            "retention-policy",
+            "--policy-type",
+            "max_age_days",
+            "--config",
+            "{\"days\": 90}",
         ]);
         match cli.command {
             LifecycleCommand::Create {
                 name,
-                max_severity,
-                block_on_fail,
-                block_unscanned,
-                max_age_days,
-                min_staging_hours,
+                policy_type,
+                config,
+                description,
+                priority,
                 repo,
-                require_signature,
+                cron_schedule,
             } => {
-                assert_eq!(name, "security-policy");
-                assert_eq!(max_severity, "high");
-                assert!(!block_on_fail);
-                assert!(!block_unscanned);
-                assert!(max_age_days.is_none());
-                assert!(min_staging_hours.is_none());
+                assert_eq!(name, "retention-policy");
+                assert_eq!(policy_type, "max_age_days");
+                assert_eq!(config, "{\"days\": 90}");
+                assert!(description.is_none());
+                assert!(priority.is_none());
                 assert!(repo.is_none());
-                assert!(!require_signature);
+                assert!(cron_schedule.is_none());
             }
             _ => panic!("expected Create"),
         }
@@ -580,37 +648,36 @@ mod tests {
             "test",
             "create",
             "strict-policy",
-            "--max-severity",
-            "critical",
-            "--block-on-fail",
-            "--block-unscanned",
-            "--max-age-days",
-            "90",
-            "--min-staging-hours",
-            "24",
+            "--policy-type",
+            "max_versions",
+            "--config",
+            "{\"keep\": 5}",
+            "--description",
+            "keep latest 5",
+            "--priority",
+            "10",
             "--repo",
             "repo-id",
-            "--require-signature",
+            "--cron-schedule",
+            "0 2 * * *",
         ]);
         match cli.command {
             LifecycleCommand::Create {
                 name,
-                max_severity,
-                block_on_fail,
-                block_unscanned,
-                max_age_days,
-                min_staging_hours,
+                policy_type,
+                config,
+                description,
+                priority,
                 repo,
-                require_signature,
+                cron_schedule,
             } => {
                 assert_eq!(name, "strict-policy");
-                assert_eq!(max_severity, "critical");
-                assert!(block_on_fail);
-                assert!(block_unscanned);
-                assert_eq!(max_age_days, Some(90));
-                assert_eq!(min_staging_hours, Some(24));
+                assert_eq!(policy_type, "max_versions");
+                assert_eq!(config, "{\"keep\": 5}");
+                assert_eq!(description.as_deref(), Some("keep latest 5"));
+                assert_eq!(priority, Some(10));
                 assert_eq!(repo.as_deref(), Some("repo-id"));
-                assert!(require_signature);
+                assert_eq!(cron_schedule.as_deref(), Some("0 2 * * *"));
             }
             _ => panic!("expected Create"),
         }
@@ -618,13 +685,32 @@ mod tests {
 
     #[test]
     fn parse_create_missing_name() {
-        let result = try_parse(&["test", "create", "--max-severity", "high"]);
+        let result = try_parse(&[
+            "test",
+            "create",
+            "--policy-type",
+            "max_age_days",
+            "--config",
+            "{\"days\": 90}",
+        ]);
         assert!(result.is_err());
     }
 
     #[test]
-    fn parse_create_missing_max_severity() {
-        let result = try_parse(&["test", "create", "policy-name"]);
+    fn parse_create_missing_policy_type() {
+        let result = try_parse(&["test", "create", "policy-name", "--config", "{}"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_create_missing_config() {
+        let result = try_parse(&[
+            "test",
+            "create",
+            "policy-name",
+            "--policy-type",
+            "max_age_days",
+        ]);
         assert!(result.is_err());
     }
 
@@ -949,18 +1035,69 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
         let result = create_policy(
             "cleanup-old",
-            "high",
-            false,
-            false,
+            "max_age_days",
+            "{\"days\": 90}",
             None,
             None,
             None,
-            false,
+            None,
             &global,
         )
         .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_policy_json() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(lifecycle_policy_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = create_policy(
+            "cleanup-old",
+            "max_age_days",
+            "{\"days\": 90}",
+            Some("desc"),
+            Some(5),
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_policy_invalid_type() {
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result =
+            create_policy("bad", "not_a_type", "{}", None, None, None, None, &global).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn handler_create_policy_invalid_config() {
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = create_policy(
+            "bad",
+            "max_age_days",
+            "not-json",
+            None,
+            None,
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]

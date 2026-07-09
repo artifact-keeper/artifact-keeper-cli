@@ -6,7 +6,7 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -434,7 +434,12 @@ async fn delete_sbom(sbom_id: &str, skip_confirm: bool, global: &GlobalArgs) -> 
         .map_err(|e| sdk_err("delete SBOM", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("SBOM {sbom_id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": sbom_id, "status": "deleted" }),
+        sbom_id,
+        &format!("SBOM {sbom_id} deleted."),
+        global,
+    );
 
     Ok(())
 }
