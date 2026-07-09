@@ -926,58 +926,6 @@ fn release_target_detail(
     (info, table_str)
 }
 
-fn format_rule_table(items: &[serde_json::Value]) -> String {
-    let mut table = new_table(vec!["ID", "NAME", "SOURCE", "TARGET", "AUTO", "ENABLED"]);
-
-    for r in items {
-        let id = r["id"].as_str().unwrap_or("-");
-        let id_short = if id.len() >= 8 { &id[..8] } else { id };
-        let src = r["source_repo_id"].as_str().unwrap_or("-");
-        let src_short = if src.len() >= 8 { &src[..8] } else { src };
-        let tgt = r["target_repo_id"].as_str().unwrap_or("-");
-        let tgt_short = if tgt.len() >= 8 { &tgt[..8] } else { tgt };
-        let auto = if r["auto_promote"].as_bool().unwrap_or(false) {
-            "yes"
-        } else {
-            "no"
-        };
-        let enabled = if r["is_enabled"].as_bool().unwrap_or(false) {
-            "yes"
-        } else {
-            "no"
-        };
-        table.add_row(vec![
-            id_short,
-            r["name"].as_str().unwrap_or("-"),
-            src_short,
-            tgt_short,
-            auto,
-            enabled,
-        ]);
-    }
-
-    table.to_string()
-}
-
-fn format_history_table(items: &[serde_json::Value]) -> String {
-    let mut table = new_table(vec!["ID", "ARTIFACT", "SOURCE", "TARGET", "STATUS", "DATE"]);
-
-    for e in items {
-        let id = e["id"].as_str().unwrap_or("-");
-        let id_short = if id.len() >= 8 { &id[..8] } else { id };
-        table.add_row(vec![
-            id_short,
-            e["artifact_path"].as_str().unwrap_or("-"),
-            e["source_repo"].as_str().unwrap_or("-"),
-            e["target_repo"].as_str().unwrap_or("-"),
-            e["status"].as_str().unwrap_or("-"),
-            e["created_at"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
 async fn promotion_history(
     repo: &str,
     status: Option<&str>,
@@ -1361,111 +1309,6 @@ mod tests {
     }
 
     // ---- format functions ----
-
-    #[test]
-    fn format_rule_table_renders() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "name": "staging-to-prod",
-            "source_repo_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "target_repo_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-            "auto_promote": true,
-            "is_enabled": true,
-        })];
-        let table = format_rule_table(&items);
-        assert!(table.contains("00000000"));
-        assert!(table.contains("staging-to-prod"));
-        assert!(table.contains("aaaaaaaa"));
-        assert!(table.contains("bbbbbbbb"));
-        assert!(table.contains("yes"));
-    }
-
-    #[test]
-    fn format_rule_table_disabled_no_auto() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "name": "manual-rule",
-            "source_repo_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "target_repo_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-            "auto_promote": false,
-            "is_enabled": false,
-        })];
-        let table = format_rule_table(&items);
-        assert!(table.contains("manual-rule"));
-        // Both auto and enabled should show "no"
-        let no_count = table.matches("no").count();
-        assert!(no_count >= 2);
-    }
-
-    #[test]
-    fn format_rule_table_multiple_rows() {
-        let items = vec![
-            json!({
-                "id": "00000000-0000-0000-0000-000000000001",
-                "name": "rule-a",
-                "source_repo_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                "target_repo_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                "auto_promote": true,
-                "is_enabled": true,
-            }),
-            json!({
-                "id": "11111111-1111-1111-1111-111111111111",
-                "name": "rule-b",
-                "source_repo_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
-                "target_repo_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
-                "auto_promote": false,
-                "is_enabled": true,
-            }),
-        ];
-        let table = format_rule_table(&items);
-        assert!(table.contains("rule-a"));
-        assert!(table.contains("rule-b"));
-    }
-
-    #[test]
-    fn format_history_table_renders() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "artifact_path": "com/example/app/1.0.0",
-            "source_repo": "maven-staging",
-            "target_repo": "maven-releases",
-            "status": "completed",
-            "created_at": "2026-01-15 12:00",
-        })];
-        let table = format_history_table(&items);
-        assert!(table.contains("00000000"));
-        assert!(table.contains("com/example/app/1.0.0"));
-        assert!(table.contains("maven-staging"));
-        assert!(table.contains("maven-releases"));
-        assert!(table.contains("completed"));
-    }
-
-    #[test]
-    fn format_history_table_multiple_rows() {
-        let items = vec![
-            json!({
-                "id": "00000000-0000-0000-0000-000000000001",
-                "artifact_path": "pkg-a",
-                "source_repo": "staging",
-                "target_repo": "prod",
-                "status": "completed",
-                "created_at": "2026-01-15",
-            }),
-            json!({
-                "id": "11111111-1111-1111-1111-111111111111",
-                "artifact_path": "pkg-b",
-                "source_repo": "dev",
-                "target_repo": "staging",
-                "status": "pending",
-                "created_at": "2026-01-16",
-            }),
-        ];
-        let table = format_history_table(&items);
-        assert!(table.contains("pkg-a"));
-        assert!(table.contains("pkg-b"));
-        assert!(table.contains("completed"));
-        assert!(table.contains("pending"));
-    }
 
     // ---- wiremock handler tests ----
 
@@ -2204,12 +2047,5 @@ mod tests {
         let output = crate::output::render(&items, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("promotion_rule_json", parsed);
-    }
-
-    #[test]
-    fn snapshot_promotion_rule_table() {
-        let items = vec![rule_json()];
-        let table = format_rule_table(&items);
-        insta::assert_snapshot!("promotion_rule_table", table);
     }
 }

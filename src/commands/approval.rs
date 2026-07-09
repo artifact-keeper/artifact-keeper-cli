@@ -329,24 +329,6 @@ async fn show_approval(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
-fn format_approval_table(items: &[serde_json::Value]) -> String {
-    let mut table = new_table(vec!["ID", "SOURCE", "TARGET", "STATUS", "REQUESTED"]);
-
-    for a in items {
-        let id = a["id"].as_str().unwrap_or("-");
-        let id_short = if id.len() >= 8 { &id[..8] } else { id };
-        table.add_row(vec![
-            id_short,
-            a["source_repository"].as_str().unwrap_or("-"),
-            a["target_repository"].as_str().unwrap_or("-"),
-            a["status"].as_str().unwrap_or("-"),
-            a["requested_at"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
 fn format_approval_detail(item: &serde_json::Value) -> String {
     format!(
         "ID:               {}\n\
@@ -638,48 +620,6 @@ mod tests {
     // ---- format functions ----
 
     #[test]
-    fn format_approval_table_renders() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "artifact_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "source_repository": "maven-staging",
-            "target_repository": "maven-releases",
-            "status": "pending",
-            "requested_at": "2026-01-15 12:00",
-        })];
-        let table = format_approval_table(&items);
-        assert!(table.contains("00000000"));
-        assert!(table.contains("maven-staging"));
-        assert!(table.contains("maven-releases"));
-        assert!(table.contains("pending"));
-    }
-
-    #[test]
-    fn format_approval_table_multiple_rows() {
-        let items = vec![
-            json!({
-                "id": "00000000-0000-0000-0000-000000000001",
-                "source_repository": "npm-staging",
-                "target_repository": "npm-releases",
-                "status": "pending",
-                "requested_at": "2026-01-15",
-            }),
-            json!({
-                "id": "11111111-1111-1111-1111-111111111111",
-                "source_repository": "pypi-staging",
-                "target_repository": "pypi-releases",
-                "status": "approved",
-                "requested_at": "2026-01-16",
-            }),
-        ];
-        let table = format_approval_table(&items);
-        assert!(table.contains("npm-staging"));
-        assert!(table.contains("pypi-staging"));
-        assert!(table.contains("pending"));
-        assert!(table.contains("approved"));
-    }
-
-    #[test]
     fn format_approval_detail_renders() {
         let item = json!({
             "id": "00000000-0000-0000-0000-000000000001",
@@ -969,12 +909,5 @@ mod tests {
         let output = crate::output::render(&items, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("approval_list_json", parsed);
-    }
-
-    #[test]
-    fn snapshot_approval_list_table() {
-        let items = vec![approval_json()];
-        let table = format_approval_table(&items);
-        insta::assert_snapshot!("approval_list_table", table);
     }
 }

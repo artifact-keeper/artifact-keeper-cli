@@ -54,7 +54,7 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --workspace -- -D warnings -A dead_code
+      - run: cargo clippy --workspace -- -D warnings
 
   # Fails on any RUSTSEC advisory affecting Cargo.lock (vulnerabilities only;
   # informational warnings such as unmaintained/unsound do not fail the job).

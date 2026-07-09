@@ -354,41 +354,6 @@ async fn add_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Resul
     Ok(())
 }
 
-fn format_group_table(items: &[serde_json::Value]) -> String {
-    let mut table = new_table(vec!["ID", "NAME", "DESCRIPTION", "MEMBERS", "CREATED"]);
-
-    for g in items {
-        let id = g["id"].as_str().unwrap_or("-");
-        let id_short = if id.len() >= 8 { &id[..8] } else { id };
-        table.add_row(vec![
-            id_short,
-            g["name"].as_str().unwrap_or("-"),
-            g["description"].as_str().unwrap_or("-"),
-            &g["member_count"].to_string(),
-            g["created_at"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
-fn format_group_detail(item: &serde_json::Value) -> String {
-    format!(
-        "ID:           {}\n\
-         Name:         {}\n\
-         Description:  {}\n\
-         Members:      {}\n\
-         Created:      {}\n\
-         Updated:      {}",
-        item["id"].as_str().unwrap_or("-"),
-        item["name"].as_str().unwrap_or("-"),
-        item["description"].as_str().unwrap_or("-"),
-        item["member_count"],
-        item["created_at"].as_str().unwrap_or("-"),
-        item["updated_at"].as_str().unwrap_or("-"),
-    )
-}
-
 async fn remove_member(group_id: &str, user_id: &str, global: &GlobalArgs) -> Result<()> {
     let gid = parse_uuid(group_id, "group")?;
     let uid = parse_uuid(user_id, "user")?;
@@ -666,95 +631,6 @@ mod tests {
 
     // ---- format functions ----
 
-    #[test]
-    fn format_group_table_renders() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "name": "developers",
-            "description": "Core dev team",
-            "member_count": 5,
-            "created_at": "2026-01-15",
-        })];
-        let table = format_group_table(&items);
-        assert!(table.contains("00000000"));
-        assert!(table.contains("developers"));
-        assert!(table.contains("Core dev team"));
-        assert!(table.contains("5"));
-    }
-
-    #[test]
-    fn format_group_table_multiple_rows() {
-        let items = vec![
-            json!({
-                "id": "00000000-0000-0000-0000-000000000001",
-                "name": "admins",
-                "description": null,
-                "member_count": 2,
-                "created_at": "2026-01-01",
-            }),
-            json!({
-                "id": "11111111-1111-1111-1111-111111111111",
-                "name": "devs",
-                "description": "Developers",
-                "member_count": 10,
-                "created_at": "2026-02-01",
-            }),
-        ];
-        let table = format_group_table(&items);
-        assert!(table.contains("admins"));
-        assert!(table.contains("devs"));
-        assert!(table.contains("Developers"));
-    }
-
-    #[test]
-    fn format_group_table_null_description() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "name": "test",
-            "description": null,
-            "member_count": 0,
-            "created_at": "2026-01-01",
-        })];
-        let table = format_group_table(&items);
-        assert!(table.contains("-"));
-    }
-
-    #[test]
-    fn format_group_detail_renders() {
-        let item = json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "name": "developers",
-            "description": "Core dev team",
-            "member_count": 5,
-            "created_at": "2026-01-15T12:00:00Z",
-            "updated_at": "2026-01-20T12:00:00Z",
-        });
-        let detail = format_group_detail(&item);
-        assert!(detail.contains("00000000-0000-0000-0000-000000000001"));
-        assert!(detail.contains("developers"));
-        assert!(detail.contains("Core dev team"));
-        assert!(detail.contains("5"));
-        assert!(detail.contains("2026-01-15"));
-        assert!(detail.contains("2026-01-20"));
-    }
-
-    #[test]
-    fn format_group_detail_null_fields() {
-        let item = json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "name": "test",
-            "description": null,
-            "member_count": 0,
-            "created_at": null,
-            "updated_at": null,
-        });
-        let detail = format_group_detail(&item);
-        assert!(detail.contains("Name:"));
-        assert!(detail.contains("test"));
-        // Null description and dates show as "-"
-        assert!(detail.contains("-"));
-    }
-
     // ---- wiremock handler tests ----
 
     use wiremock::matchers::{method, path};
@@ -969,12 +845,5 @@ mod tests {
         let output = crate::output::render(&items, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("group_list_json", parsed);
-    }
-
-    #[test]
-    fn snapshot_group_list_table() {
-        let items = vec![group_json()];
-        let table = format_group_table(&items);
-        insta::assert_snapshot!("group_list_table", table);
     }
 }

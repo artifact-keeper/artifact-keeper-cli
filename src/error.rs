@@ -24,17 +24,6 @@ pub enum AkError {
     )]
     NotAuthenticated(String),
 
-    #[error("Authentication token expired for '{0}'")]
-    #[diagnostic(
-        code(ak::token_expired),
-        help("Run `ak auth login --instance {0}` to re-authenticate")
-    )]
-    TokenExpired(String),
-
-    #[error("Permission denied: {0}")]
-    #[diagnostic(code(ak::permission_denied))]
-    PermissionDenied(String),
-
     #[error("Server error: {0}")]
     #[diagnostic(code(ak::server_error))]
     ServerError(String),
@@ -127,18 +116,6 @@ mod tests {
         let err = AkError::NotAuthenticated("staging".into());
         let help = err.help().unwrap().to_string();
         assert!(help.contains("ak auth login"));
-    }
-
-    #[test]
-    fn token_expired_display() {
-        let err = AkError::TokenExpired("prod".into());
-        assert_eq!(err.to_string(), "Authentication token expired for 'prod'");
-    }
-
-    #[test]
-    fn permission_denied_display() {
-        let err = AkError::PermissionDenied("admin only".into());
-        assert_eq!(err.to_string(), "Permission denied: admin only");
     }
 
     #[test]

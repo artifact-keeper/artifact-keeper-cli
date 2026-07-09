@@ -406,38 +406,6 @@ async fn create_permission(
     Ok(())
 }
 
-fn format_permission_table(items: &[serde_json::Value]) -> String {
-    let mut table = new_table(vec!["ID", "PRINCIPAL", "TYPE", "TARGET", "TYPE", "ACTIONS"]);
-
-    for p in items {
-        let id = p["id"].as_str().unwrap_or("-");
-        let id_short = if id.len() >= 8 { &id[..8] } else { id };
-        let principal = p["principal_name"].as_str().unwrap_or("-");
-        let principal_type = p["principal_type"].as_str().unwrap_or("-");
-        let target = p["target_name"].as_str().unwrap_or("-");
-        let target_type = p["target_type"].as_str().unwrap_or("-");
-        let actions = p["actions"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .filter_map(|v| v.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            })
-            .unwrap_or_else(|| "-".to_string());
-        table.add_row(vec![
-            id_short,
-            principal,
-            principal_type,
-            target,
-            target_type,
-            &actions,
-        ]);
-    }
-
-    table.to_string()
-}
-
 async fn delete_permission(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
     let perm_id = parse_uuid(id, "permission")?;
 
@@ -780,86 +748,6 @@ mod tests {
 
     // ---- format functions ----
 
-    #[test]
-    fn format_permission_table_renders() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "principal_name": "alice",
-            "principal_type": "user",
-            "target_name": "maven-releases",
-            "target_type": "repository",
-            "actions": ["read", "write"],
-            "created_at": "2026-01-15",
-        })];
-        let table = format_permission_table(&items);
-        assert!(table.contains("00000000"));
-        assert!(table.contains("alice"));
-        assert!(table.contains("user"));
-        assert!(table.contains("maven-releases"));
-        assert!(table.contains("repository"));
-        assert!(table.contains("read, write"));
-    }
-
-    #[test]
-    fn format_permission_table_null_names() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "principal_name": null,
-            "principal_type": "group",
-            "target_name": null,
-            "target_type": "group",
-            "actions": ["admin"],
-            "created_at": "2026-01-01",
-        })];
-        let table = format_permission_table(&items);
-        assert!(table.contains("admin"));
-        assert!(table.contains("group"));
-    }
-
-    #[test]
-    fn format_permission_table_empty_actions() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "principal_name": "bob",
-            "principal_type": "user",
-            "target_name": "npm-local",
-            "target_type": "repository",
-            "actions": [],
-            "created_at": "2026-01-01",
-        })];
-        let table = format_permission_table(&items);
-        assert!(table.contains("bob"));
-    }
-
-    #[test]
-    fn format_permission_table_multiple_rows() {
-        let items = vec![
-            json!({
-                "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                "principal_name": "alice",
-                "principal_type": "user",
-                "target_name": "repo-a",
-                "target_type": "repository",
-                "actions": ["read"],
-                "created_at": "2026-01-01",
-            }),
-            json!({
-                "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
-                "principal_name": "dev-team",
-                "principal_type": "group",
-                "target_name": "repo-b",
-                "target_type": "repository",
-                "actions": ["read", "write", "admin"],
-                "created_at": "2026-01-02",
-            }),
-        ];
-        let table = format_permission_table(&items);
-        assert!(table.contains("alice"));
-        assert!(table.contains("dev-team"));
-        assert!(table.contains("repo-a"));
-        assert!(table.contains("repo-b"));
-    }
-
     // ---- wiremock handler tests ----
 
     use wiremock::matchers::{method, path};
@@ -1058,12 +946,5 @@ mod tests {
         let output = crate::output::render(&items, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("permission_list_json", parsed);
-    }
-
-    #[test]
-    fn snapshot_permission_list_table() {
-        let items = vec![perm_json()];
-        let table = format_permission_table(&items);
-        insta::assert_snapshot!("permission_list_table", table);
     }
 }
