@@ -321,6 +321,32 @@ fn redact_token(content: &str, token: &str) -> String {
     }
 }
 
+/// Build the `.netrc` line for Go module authentication and its redacted
+/// console display. The real line goes into the 0600 `.netrc` file; only the
+/// redacted form may be printed to the terminal.
+fn go_netrc_lines(host: &str, token: &str) -> (String, String) {
+    let line = format!("machine {host} login __token__ password {token}");
+    let display = redact_token(&line, token);
+    (line, display)
+}
+
+/// Build the yum/dnf `.repo` file content and its redacted console display.
+/// The real content goes into the repo file (via `sudo tee`); only the
+/// redacted form may be printed to the terminal.
+fn yum_repo_file(repo_key: &str, yum_url: &str, token: &str) -> (String, String) {
+    let content = format!(
+        "[artifact-keeper-{repo_key}]\n\
+         name=Artifact Keeper - {repo_key}\n\
+         baseurl={yum_url}\n\
+         enabled=1\n\
+         gpgcheck=0\n\
+         username=__token__\n\
+         password={token}\n"
+    );
+    let display = redact_token(&content, token);
+    (content, display)
+}
+
 fn confirm_write(path: &Path, content: &str, no_input: bool) -> Result<bool> {
     eprintln!("\nConfiguration to write to {}:\n", path.display());
     // Redact anything that looks like a token or password before printing
@@ -360,8 +386,10 @@ fn confirm_write(path: &Path, content: &str, no_input: bool) -> Result<bool> {
         .into_diagnostic()
 }
 
-/// Write content to a system path using `sudo tee`.
-fn sudo_write(path: &Path, content: &str) -> Result<()> {
+/// Write content to a system path using `sudo tee`, then set the file mode
+/// with `sudo chmod`. `tee` creates files with the default umask (typically
+/// 0644), so files that embed credentials must be tightened to `600` here.
+fn sudo_write(path: &Path, content: &str, mode: &str) -> Result<()> {
     let status = std::process::Command::new("sudo")
         .args(["tee", &path.to_string_lossy()])
         .stdin(std::process::Stdio::piped())
@@ -378,6 +406,19 @@ fn sudo_write(path: &Path, content: &str) -> Result<()> {
 
     if !status.success() {
         return Err(AkError::ConfigError(format!("Failed to write {}", path.display())).into());
+    }
+
+    let chmod_status = std::process::Command::new("sudo")
+        .args(["chmod", mode, &path.to_string_lossy()])
+        .status()
+        .into_diagnostic()?;
+
+    if !chmod_status.success() {
+        return Err(AkError::ConfigError(format!(
+            "Failed to set permissions on {}",
+            path.display()
+        ))
+        .into());
     }
 
     Ok(())
@@ -666,14 +707,14 @@ async fn setup_go(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     eprintln!("  export GONOSUMCHECK=\"{host}\"");
     eprintln!();
 
-    let netrc_line = format!("machine {host} login __token__ password {}", ctx.token);
+    let (netrc_line, netrc_display) = go_netrc_lines(host, &ctx.token);
     let netrc_path = home_dir()?.join(".netrc");
 
     eprintln!(
         "For authentication, add this line to {}:",
         netrc_path.display()
     );
-    eprintln!("  {netrc_line}");
+    eprintln!("  {netrc_display}");
 
     if global.no_input {
         return Ok(());
@@ -785,17 +826,7 @@ async fn setup_yum(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("rpm", repo, global).await?;
     let yum_url = format!("{}/{}/", ctx.registry_url, ctx.repo_key);
 
-    let repo_content = format!(
-        "[artifact-keeper-{repo_key}]\n\
-         name=Artifact Keeper - {repo_key}\n\
-         baseurl={yum_url}\n\
-         enabled=1\n\
-         gpgcheck=0\n\
-         username=__token__\n\
-         password={token}\n",
-        repo_key = ctx.repo_key,
-        token = ctx.token,
-    );
+    let (repo_content, repo_display) = yum_repo_file(&ctx.repo_key, &yum_url, &ctx.token);
 
     let repo_path = PathBuf::from(format!(
         "/etc/yum.repos.d/artifact-keeper-{}.repo",
@@ -806,14 +837,14 @@ async fn setup_yum(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         "This requires writing to {} (needs sudo).",
         repo_path.display()
     );
-    eprintln!("\nConfiguration:\n{repo_content}");
+    eprintln!("\nConfiguration:\n{repo_display}");
 
     if global.no_input {
         eprintln!("Run the following command manually:");
         eprintln!(
             "  sudo tee {} <<'EOF'\n{}EOF",
             repo_path.display(),
-            repo_content
+            repo_display
         );
         return Ok(());
     }
@@ -829,7 +860,7 @@ async fn setup_yum(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    sudo_write(&repo_path, &repo_content)?;
+    sudo_write(&repo_path, &repo_content, "600")?;
     eprintln!(
         "yum/dnf is now configured to use repository '{}'.",
         ctx.repo_key
@@ -888,11 +919,16 @@ async fn setup_apt(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    for (path, content, desc) in [
-        (&sources_path, sources_content.as_str(), "sources list"),
-        (&auth_path, auth_content.as_str(), "auth config"),
+    for (path, content, desc, mode) in [
+        (
+            &sources_path,
+            sources_content.as_str(),
+            "sources list",
+            "644",
+        ),
+        (&auth_path, auth_content.as_str(), "auth config", "600"),
     ] {
-        sudo_write(path, content)?;
+        sudo_write(path, content, mode)?;
         eprintln!("Wrote {desc}: {}", path.display());
     }
 
@@ -1172,6 +1208,68 @@ mod tests {
         let path = dir.path().join("test.conf");
         let result = confirm_write(&path, "content", true).unwrap();
         assert!(result);
+    }
+
+    // ---- redact_token ----
+
+    #[test]
+    fn redact_token_long_token_shows_ends_only() {
+        let out = redact_token("password unit-test-token-1234", "unit-test-token-1234");
+        assert_eq!(out, "password unit...1234");
+    }
+
+    #[test]
+    fn redact_token_short_token_fully_masked() {
+        let out = redact_token("password abc12345", "abc12345");
+        assert_eq!(out, "password ****");
+    }
+
+    // ---- go_netrc_lines (setup go console redaction) ----
+
+    #[test]
+    fn go_netrc_file_line_keeps_real_token() {
+        let token = "unit-test-token-1234";
+        let (line, _) = go_netrc_lines("example.com", token);
+        assert_eq!(
+            line,
+            format!("machine example.com login __token__ password {token}")
+        );
+    }
+
+    #[test]
+    fn go_netrc_console_display_is_redacted() {
+        let token = "unit-test-token-1234";
+        let (line, display) = go_netrc_lines("example.com", token);
+        // The line written to .netrc must contain the real token...
+        assert!(line.contains(token));
+        // ...but the console display must never expose it.
+        assert!(!display.contains(token));
+        assert!(display.contains("unit...1234"));
+    }
+
+    // ---- yum_repo_file (setup yum console redaction) ----
+
+    #[test]
+    fn yum_repo_file_content_keeps_real_token() {
+        let token = "unit-test-token-1234";
+        let (content, _) = yum_repo_file("rpm-local", "https://ak.example.com/api/v1/rpm/", token);
+        assert!(content.contains(&format!("password={token}")));
+        assert!(content.contains("[artifact-keeper-rpm-local]"));
+        assert!(content.contains("baseurl=https://ak.example.com/api/v1/rpm/"));
+    }
+
+    #[test]
+    fn yum_repo_console_display_is_redacted() {
+        let token = "unit-test-token-1234";
+        let (content, display) =
+            yum_repo_file("rpm-local", "https://ak.example.com/api/v1/rpm/", token);
+        // The .repo file content must contain the real token...
+        assert!(content.contains(token));
+        // ...but the console display must never expose it.
+        assert!(!display.contains(token));
+        assert!(display.contains("password=unit...1234"));
+        // Non-secret fields are displayed unchanged.
+        assert!(display.contains("baseurl=https://ak.example.com/api/v1/rpm/"));
     }
 
     // ---- DetectedEcosystem struct ----
