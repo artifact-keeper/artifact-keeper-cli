@@ -390,6 +390,15 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::import::ImportCommand,
     },
+
+    /// Manage the quarantine hold on artifacts (#1770 quarantine subsystem)
+    #[command(
+        after_help = "Examples:\n  ak quarantine status <artifact-id>\n  ak quarantine release <artifact-id>\n  ak quarantine reject <artifact-id> --reason \"Malware detected\"\n  ak quarantine purge <artifact-id> --reason \"CVE\""
+    )]
+    Quarantine {
+        #[command(subcommand)]
+        command: commands::quarantine::QuarantineCommand,
+    },
 }
 
 impl Cli {
@@ -470,6 +479,7 @@ impl Cli {
             Command::Builds { command } => command.execute(&global).await,
             Command::ServiceAccount { command } => command.execute(&global).await,
             Command::Import { command } => command.execute(&global).await,
+            Command::Quarantine { command } => command.execute(&global).await,
         }
     }
 }
