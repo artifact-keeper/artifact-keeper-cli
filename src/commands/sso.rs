@@ -1,7 +1,8 @@
 use artifact_keeper_sdk::ClientSsoExt;
 use artifact_keeper_sdk::types::{
     CreateLdapConfigRequest, CreateOidcConfigRequest, CreateSamlConfigRequest, LdapConfigResponse,
-    LdapTestResult, OidcConfigResponse, SamlConfigResponse, ToggleRequest,
+    LdapTestResult, OidcConfigResponse, SamlConfigResponse, SsoProviderInfo, ToggleRequest,
+    UpdateLdapConfigRequest, UpdateOidcConfigRequest, UpdateSamlConfigRequest,
 };
 use clap::Subcommand;
 use miette::Result;
@@ -70,6 +71,171 @@ pub enum SsoCommand {
         /// Enable the provider
         #[arg(long)]
         enable: bool,
+    },
+
+    /// Update an SSO provider configuration (partial; only supplied fields change)
+    Update {
+        #[command(subcommand)]
+        command: Box<SsoUpdateCommand>,
+    },
+
+    /// List enabled SSO providers as offered at the login screen
+    ///
+    /// By default queries the authenticated admin view
+    /// (`GET /admin/sso/providers`). Pass `--public` to query the
+    /// unauthenticated discovery endpoint (`GET /auth/sso/providers`),
+    /// i.e. exactly what an anonymous user sees on the login page.
+    Providers {
+        /// Query the public (unauthenticated) discovery endpoint instead
+        #[arg(long)]
+        public: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum SsoUpdateCommand {
+    /// Update an LDAP provider
+    Ldap {
+        /// Provider ID
+        id: String,
+
+        #[arg(long)]
+        name: Option<String>,
+
+        #[arg(long)]
+        server_url: Option<String>,
+
+        #[arg(long)]
+        user_base_dn: Option<String>,
+
+        #[arg(long)]
+        user_filter: Option<String>,
+
+        #[arg(long)]
+        username_attribute: Option<String>,
+
+        #[arg(long)]
+        email_attribute: Option<String>,
+
+        #[arg(long)]
+        display_name_attribute: Option<String>,
+
+        #[arg(long)]
+        groups_attribute: Option<String>,
+
+        #[arg(long)]
+        bind_dn: Option<String>,
+
+        #[arg(long)]
+        bind_password: Option<String>,
+
+        #[arg(long)]
+        group_base_dn: Option<String>,
+
+        #[arg(long)]
+        group_filter: Option<String>,
+
+        #[arg(long)]
+        admin_group_dn: Option<String>,
+
+        /// Use StartTLS (true/false)
+        #[arg(long)]
+        use_starttls: Option<bool>,
+
+        #[arg(long)]
+        priority: Option<i32>,
+
+        /// Enable or disable the provider (true/false)
+        #[arg(long)]
+        is_enabled: Option<bool>,
+    },
+
+    /// Update an OIDC provider
+    Oidc {
+        /// Provider ID
+        id: String,
+
+        #[arg(long)]
+        name: Option<String>,
+
+        #[arg(long)]
+        issuer_url: Option<String>,
+
+        #[arg(long)]
+        client_id: Option<String>,
+
+        #[arg(long)]
+        client_secret: Option<String>,
+
+        /// Auto-provision users on first login (true/false)
+        #[arg(long)]
+        auto_create_users: Option<bool>,
+
+        /// Requested OIDC scopes (repeatable; replaces the existing scope set)
+        #[arg(long = "scope")]
+        scope: Vec<String>,
+
+        /// Accept legacy RSA signing keys (true/false)
+        #[arg(long)]
+        allow_legacy_rsa_keys: Option<bool>,
+
+        /// Map IdP groups onto local groups (true/false)
+        #[arg(long)]
+        map_groups_to_groups: Option<bool>,
+
+        /// Enable PKCE (true/false)
+        #[arg(long)]
+        pkce_enabled: Option<bool>,
+
+        /// Enable or disable the provider (true/false)
+        #[arg(long)]
+        is_enabled: Option<bool>,
+    },
+
+    /// Update a SAML provider
+    Saml {
+        /// Provider ID
+        id: String,
+
+        #[arg(long)]
+        name: Option<String>,
+
+        #[arg(long)]
+        entity_id: Option<String>,
+
+        #[arg(long)]
+        sso_url: Option<String>,
+
+        #[arg(long)]
+        certificate: Option<String>,
+
+        #[arg(long)]
+        sp_entity_id: Option<String>,
+
+        #[arg(long)]
+        slo_url: Option<String>,
+
+        #[arg(long)]
+        name_id_format: Option<String>,
+
+        #[arg(long)]
+        admin_group: Option<String>,
+
+        /// Sign authentication requests (true/false)
+        #[arg(long)]
+        sign_requests: Option<bool>,
+
+        /// Require signed assertions (true/false)
+        #[arg(long)]
+        require_signed_assertions: Option<bool>,
+
+        /// Use an absolute ACS URL (true/false)
+        #[arg(long)]
+        use_absolute_acs_url: Option<bool>,
+
+        /// Enable or disable the provider (true/false)
+        #[arg(long)]
+        is_enabled: Option<bool>,
     },
 }
 
@@ -198,6 +364,115 @@ impl SsoCommand {
             Self::Test { id, r#type } => test_provider(&id, &r#type, global).await,
             Self::Toggle { id, r#type, enable } => {
                 toggle_provider(&id, &r#type, enable, global).await
+            }
+            Self::Update { command } => command.execute(global).await, // Box<SsoUpdateCommand> derefs to call execute
+            Self::Providers { public } => list_enabled_providers(public, global).await,
+        }
+    }
+}
+
+impl SsoUpdateCommand {
+    pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
+        match self {
+            SsoUpdateCommand::Ldap {
+                id,
+                name,
+                server_url,
+                user_base_dn,
+                user_filter,
+                username_attribute,
+                email_attribute,
+                display_name_attribute,
+                groups_attribute,
+                bind_dn,
+                bind_password,
+                group_base_dn,
+                group_filter,
+                admin_group_dn,
+                use_starttls,
+                priority,
+                is_enabled,
+            } => {
+                let body = UpdateLdapConfigRequest {
+                    name,
+                    server_url,
+                    user_base_dn,
+                    user_filter,
+                    username_attribute,
+                    email_attribute,
+                    display_name_attribute,
+                    groups_attribute,
+                    bind_dn,
+                    bind_password,
+                    group_base_dn,
+                    group_filter,
+                    admin_group_dn,
+                    use_starttls,
+                    priority,
+                    is_enabled,
+                };
+                update_ldap(&id, body, global).await
+            }
+            SsoUpdateCommand::Oidc {
+                id,
+                name,
+                issuer_url,
+                client_id,
+                client_secret,
+                auto_create_users,
+                scope,
+                allow_legacy_rsa_keys,
+                map_groups_to_groups,
+                pkce_enabled,
+                is_enabled,
+            } => {
+                let body = UpdateOidcConfigRequest {
+                    name,
+                    issuer_url,
+                    client_id,
+                    client_secret,
+                    auto_create_users,
+                    scopes: if scope.is_empty() { None } else { Some(scope) },
+                    attribute_mapping: None,
+                    attribute_mapping_replace: None,
+                    allow_legacy_rsa_keys,
+                    map_groups_to_groups,
+                    pkce_enabled,
+                    is_enabled,
+                };
+                update_oidc(&id, body, global).await
+            }
+            SsoUpdateCommand::Saml {
+                id,
+                name,
+                entity_id,
+                sso_url,
+                certificate,
+                sp_entity_id,
+                slo_url,
+                name_id_format,
+                admin_group,
+                sign_requests,
+                require_signed_assertions,
+                use_absolute_acs_url,
+                is_enabled,
+            } => {
+                let body = UpdateSamlConfigRequest {
+                    name,
+                    entity_id,
+                    sso_url,
+                    certificate,
+                    sp_entity_id,
+                    slo_url,
+                    name_id_format,
+                    admin_group,
+                    attribute_mapping: None,
+                    sign_requests,
+                    require_signed_assertions,
+                    use_absolute_acs_url,
+                    is_enabled,
+                };
+                update_saml(&id, body, global).await
             }
         }
     }
@@ -616,9 +891,149 @@ async fn toggle_provider(
     Ok(())
 }
 
+async fn update_ldap(id: &str, body: UpdateLdapConfigRequest, global: &GlobalArgs) -> Result<()> {
+    let provider_id = parse_uuid(id, "provider")?;
+    let client = client_for(global)?;
+    let spinner = output::spinner("Updating LDAP provider...");
+
+    let resp = client
+        .update_ldap()
+        .id(provider_id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update LDAP provider", e))?;
+
+    spinner.finish_and_clear();
+    let p = resp.into_inner();
+    emit_mutation(
+        &p,
+        &p.id.to_string(),
+        &format!("LDAP provider '{}' updated (ID: {}).", p.name, p.id),
+        global,
+    );
+    Ok(())
+}
+
+async fn update_oidc(id: &str, body: UpdateOidcConfigRequest, global: &GlobalArgs) -> Result<()> {
+    let provider_id = parse_uuid(id, "provider")?;
+    let client = client_for(global)?;
+    let spinner = output::spinner("Updating OIDC provider...");
+
+    let resp = client
+        .update_oidc()
+        .id(provider_id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update OIDC provider", e))?;
+
+    spinner.finish_and_clear();
+    let p = resp.into_inner();
+    emit_mutation(
+        &p,
+        &p.id.to_string(),
+        &format!("OIDC provider '{}' updated (ID: {}).", p.name, p.id),
+        global,
+    );
+    Ok(())
+}
+
+async fn update_saml(id: &str, body: UpdateSamlConfigRequest, global: &GlobalArgs) -> Result<()> {
+    let provider_id = parse_uuid(id, "provider")?;
+    let client = client_for(global)?;
+    let spinner = output::spinner("Updating SAML provider...");
+
+    let resp = client
+        .update_saml()
+        .id(provider_id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update SAML provider", e))?;
+
+    spinner.finish_and_clear();
+    let p = resp.into_inner();
+    emit_mutation(
+        &p,
+        &p.id.to_string(),
+        &format!("SAML provider '{}' updated (ID: {}).", p.name, p.id),
+        global,
+    );
+    Ok(())
+}
+
+async fn list_enabled_providers(public: bool, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching enabled SSO providers...");
+
+    let providers = if public {
+        client
+            .list_providers()
+            .send()
+            .await
+            .map_err(|e| sdk_err("list public SSO providers", e))?
+            .into_inner()
+    } else {
+        client
+            .list_sso_providers_admin()
+            .send()
+            .await
+            .map_err(|e| sdk_err("list SSO providers", e))?
+            .into_inner()
+    };
+
+    spinner.finish_and_clear();
+
+    if providers.is_empty() {
+        eprintln!("No enabled SSO providers.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for p in &providers {
+            println!("{}", p.id);
+        }
+        return Ok(());
+    }
+
+    let (entries, table_str) = format_provider_infos(&providers);
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+
+    Ok(())
+}
+
 // ---------------------------------------------------------------------------
 // Formatting helpers (pure functions, testable without HTTP)
 // ---------------------------------------------------------------------------
+
+fn format_provider_infos(providers: &[SsoProviderInfo]) -> (Vec<Value>, String) {
+    let entries: Vec<Value> = providers
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "id": p.id.to_string(),
+                "name": p.name,
+                "type": p.provider_type,
+                "login_url": p.login_url,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = new_table(vec!["ID", "NAME", "TYPE", "LOGIN URL"]);
+        for p in providers {
+            let id_short = short_id(&p.id);
+            table.add_row(vec![&id_short, &p.name, &p.provider_type, &p.login_url]);
+        }
+        table.to_string()
+    };
+
+    (entries, table_str)
+}
 
 fn format_providers_table(
     ldap: &[LdapConfigResponse],
@@ -1726,6 +2141,327 @@ mod tests {
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = toggle_provider(NIL_UUID, "oidc", true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    // ---- update / providers parse tests ----
+
+    #[test]
+    fn parse_update_oidc() {
+        let cli = parse(&[
+            "test",
+            "update",
+            "oidc",
+            "some-id",
+            "--issuer-url",
+            "https://new.okta.com",
+            "--auto-create-users",
+            "true",
+            "--scope",
+            "openid",
+            "--scope",
+            "profile",
+        ]);
+        let SsoCommand::Update { command } = cli.command else {
+            panic!("Expected Update");
+        };
+        if let SsoUpdateCommand::Oidc {
+            id,
+            issuer_url,
+            auto_create_users,
+            scope,
+            client_id,
+            ..
+        } = *command
+        {
+            assert_eq!(id, "some-id");
+            assert_eq!(issuer_url.unwrap(), "https://new.okta.com");
+            assert_eq!(auto_create_users, Some(true));
+            assert_eq!(scope, vec!["openid", "profile"]);
+            // Unmentioned fields stay None so they are not clobbered.
+            assert!(client_id.is_none());
+        } else {
+            panic!("Expected Update Oidc");
+        }
+    }
+
+    #[test]
+    fn parse_update_ldap_partial() {
+        let cli = parse(&[
+            "test",
+            "update",
+            "ldap",
+            "some-id",
+            "--priority",
+            "5",
+            "--is-enabled",
+            "false",
+        ]);
+        let SsoCommand::Update { command } = cli.command else {
+            panic!("Expected Update");
+        };
+        if let SsoUpdateCommand::Ldap {
+            id,
+            priority,
+            is_enabled,
+            server_url,
+            ..
+        } = *command
+        {
+            assert_eq!(id, "some-id");
+            assert_eq!(priority, Some(5));
+            assert_eq!(is_enabled, Some(false));
+            assert!(server_url.is_none());
+        } else {
+            panic!("Expected Update Ldap");
+        }
+    }
+
+    #[test]
+    fn parse_update_saml() {
+        let cli = parse(&[
+            "test",
+            "update",
+            "saml",
+            "some-id",
+            "--sso-url",
+            "https://idp/sso",
+            "--sign-requests",
+            "true",
+        ]);
+        let SsoCommand::Update { command } = cli.command else {
+            panic!("Expected Update");
+        };
+        if let SsoUpdateCommand::Saml {
+            id,
+            sso_url,
+            sign_requests,
+            entity_id,
+            ..
+        } = *command
+        {
+            assert_eq!(id, "some-id");
+            assert_eq!(sso_url.unwrap(), "https://idp/sso");
+            assert_eq!(sign_requests, Some(true));
+            assert!(entity_id.is_none());
+        } else {
+            panic!("Expected Update Saml");
+        }
+    }
+
+    #[test]
+    fn parse_providers_default_admin() {
+        let cli = parse(&["test", "providers"]);
+        if let SsoCommand::Providers { public } = cli.command {
+            assert!(!public);
+        } else {
+            panic!("Expected Providers");
+        }
+    }
+
+    #[test]
+    fn parse_providers_public() {
+        let cli = parse(&["test", "providers", "--public"]);
+        if let SsoCommand::Providers { public } = cli.command {
+            assert!(public);
+        } else {
+            panic!("Expected Providers --public");
+        }
+    }
+
+    // ---- format_provider_infos ----
+
+    fn make_provider_info(name: &str, ptype: &str) -> SsoProviderInfo {
+        SsoProviderInfo {
+            id: Uuid::nil(),
+            name: name.to_string(),
+            provider_type: ptype.to_string(),
+            login_url: format!("/api/v1/auth/sso/{ptype}/{NIL_UUID}/login"),
+        }
+    }
+
+    #[test]
+    fn format_provider_infos_renders() {
+        let providers = vec![
+            make_provider_info("okta", "oidc"),
+            make_provider_info("azure", "saml"),
+        ];
+        let (entries, table_str) = format_provider_infos(&providers);
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0]["name"], "okta");
+        assert_eq!(entries[0]["type"], "oidc");
+        assert!(table_str.contains("okta"));
+        assert!(table_str.contains("azure"));
+        assert!(table_str.contains("LOGIN URL"));
+    }
+
+    // ---- update / providers handler tests ----
+
+    fn provider_info_json(name: &str, ptype: &str) -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "name": name,
+            "provider_type": ptype,
+            "login_url": format!("/api/v1/auth/sso/{ptype}/{NIL_UUID}/login"),
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_update_oidc() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path(format!("/api/v1/admin/sso/oidc/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(oidc_json()))
+            .mount(&server)
+            .await;
+
+        let body = UpdateOidcConfigRequest {
+            name: None,
+            issuer_url: Some("https://new.okta.com".to_string()),
+            client_id: None,
+            client_secret: None,
+            auto_create_users: Some(true),
+            scopes: Some(vec!["openid".to_string()]),
+            attribute_mapping: None,
+            attribute_mapping_replace: None,
+            allow_legacy_rsa_keys: None,
+            map_groups_to_groups: None,
+            pkce_enabled: None,
+            is_enabled: None,
+        };
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_oidc(NIL_UUID, body, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_ldap() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path(format!("/api/v1/admin/sso/ldap/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(ldap_json()))
+            .mount(&server)
+            .await;
+
+        let body = UpdateLdapConfigRequest {
+            name: None,
+            server_url: None,
+            user_base_dn: None,
+            user_filter: None,
+            username_attribute: None,
+            email_attribute: None,
+            display_name_attribute: None,
+            groups_attribute: None,
+            bind_dn: None,
+            bind_password: None,
+            group_base_dn: None,
+            group_filter: None,
+            admin_group_dn: None,
+            use_starttls: None,
+            priority: Some(5),
+            is_enabled: Some(false),
+        };
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_ldap(NIL_UUID, body, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_saml() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path(format!("/api/v1/admin/sso/saml/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(saml_json()))
+            .mount(&server)
+            .await;
+
+        let body = UpdateSamlConfigRequest {
+            name: None,
+            entity_id: None,
+            sso_url: Some("https://idp/sso".to_string()),
+            certificate: None,
+            sp_entity_id: None,
+            slo_url: None,
+            name_id_format: None,
+            admin_group: None,
+            attribute_mapping: None,
+            sign_requests: Some(true),
+            require_signed_assertions: None,
+            use_absolute_acs_url: None,
+            is_enabled: None,
+        };
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_saml(NIL_UUID, body, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_enabled_providers_admin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/sso/providers"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(json!([provider_info_json("okta", "oidc")])),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_enabled_providers(false, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_enabled_providers_public() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/auth/sso/providers"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(json!([provider_info_json("azure", "saml")])),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_enabled_providers(true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_enabled_providers_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/sso/providers"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_enabled_providers(false, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
