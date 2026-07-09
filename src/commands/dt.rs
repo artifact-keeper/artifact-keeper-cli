@@ -75,6 +75,16 @@ pub enum DtProjectCommand {
         uuid: String,
     },
 
+    /// Fetch the raw findings projection for a project (GET .../projects/{uuid})
+    ///
+    /// Note: the backend's `get_project` route returns the project's
+    /// Dependency-Track *findings*, not project metadata — use `show` for
+    /// metadata. Provided for parity with the API operation.
+    Get {
+        /// Project UUID
+        uuid: String,
+    },
+
     /// List findings (vulnerabilities) for a project
     Findings {
         /// Project UUID
@@ -145,6 +155,7 @@ impl DtProjectCommand {
         match self {
             Self::List => project_list(global).await,
             Self::Show { uuid } => project_show(&uuid, global).await,
+            Self::Get { uuid } => project_get(&uuid, global).await,
             Self::Components { uuid } => project_components(&uuid, global).await,
             Self::Findings { uuid, severity } => {
                 project_findings(&uuid, severity.as_deref(), global).await
@@ -381,6 +392,45 @@ async fn project_findings(
     );
 
     eprintln!("{} finding(s).", findings_count);
+
+    Ok(())
+}
+
+async fn project_get(uuid: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = crate::output::spinner("Fetching project findings...");
+
+    let findings = client
+        .get_project()
+        .project_uuid(uuid)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get project", e))?;
+
+    spinner.finish_and_clear();
+
+    let findings = findings.into_inner();
+
+    if findings.is_empty() {
+        eprintln!("No findings found.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for f in &findings {
+            println!("{}", f.vulnerability.vuln_id);
+        }
+        return Ok(());
+    }
+
+    let (entries, table_str) = format_findings_table(&findings);
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+
+    eprintln!("{} finding(s).", findings.len());
 
     Ok(())
 }
@@ -1103,6 +1153,16 @@ mod tests {
     }
 
     #[test]
+    fn parse_project_get() {
+        let cli = parse(&["test", "project", "get", "proj-uuid-123"]);
+        if let DtCommand::Project(DtProjectCommand::Get { uuid }) = cli.command {
+            assert_eq!(uuid, "proj-uuid-123");
+        } else {
+            panic!("Expected Project Get");
+        }
+    }
+
+    #[test]
     fn parse_project_components() {
         let cli = parse(&["test", "project", "components", "proj-uuid"]);
         if let DtCommand::Project(DtProjectCommand::Components { uuid }) = cli.command {
@@ -1733,6 +1793,62 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = project_findings("some-uuid", None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_get_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(r"/api/v1/dependency-track/projects/[^/]+$"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = project_get("some-uuid", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_project_get_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(r"/api/v1/dependency-track/projects/[^/]+$"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                {
+                    "vulnerability": {
+                        "uuid": "vuln-uuid-1",
+                        "vulnId": "CVE-2024-1234",
+                        "severity": "CRITICAL",
+                        "source": "NVD",
+                        "title": "Test vuln",
+                        "cvssV3BaseScore": 9.8,
+                        "cwe": null,
+                        "description": null
+                    },
+                    "component": {
+                        "uuid": "comp-uuid-1",
+                        "name": "lodash",
+                        "version": "4.17.20",
+                        "group": null,
+                        "purl": null
+                    },
+                    "analysis": null,
+                    "attribution": null
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = project_get("some-uuid", &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

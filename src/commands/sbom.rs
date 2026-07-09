@@ -121,6 +121,42 @@ pub enum SbomCveCommand {
         #[arg(long)]
         reason: Option<String>,
     },
+
+    /// Show CVE history for one artifact (typed UUID route)
+    ///
+    /// Canonical replacement for the artifact branch of the overloaded
+    /// `history <id>` route. Takes a strict artifact UUID.
+    HistoryByArtifact {
+        /// Artifact UUID
+        artifact_id: String,
+    },
+
+    /// Show CVE history for a single CVE across all accessible artifacts
+    HistoryByCve {
+        /// CVE identifier (e.g. CVE-2019-10744)
+        cve_id: String,
+    },
+
+    /// Update CVE status by (artifact, CVE) pair for scan-derived rows
+    ///
+    /// Targets the stable (artifact_id, cve_id) identity of a Security-tab
+    /// row instead of a `cve_history` primary key, so synthesized findings
+    /// (which have no `cve_history` row) can be acknowledged.
+    UpdateStatusByArtifactCve {
+        /// Artifact UUID
+        artifact_id: String,
+
+        /// CVE identifier (e.g. CVE-2019-10744)
+        cve_id: String,
+
+        /// New status (open, fixed, acknowledged, false_positive)
+        #[arg(long)]
+        status: String,
+
+        /// Reason for the status change
+        #[arg(long)]
+        reason: Option<String>,
+    },
 }
 
 impl SbomCommand {
@@ -168,6 +204,25 @@ impl SbomCveCommand {
                 status,
                 reason,
             } => cve_update_status(&cve_id, &status, reason.as_deref(), global).await,
+            Self::HistoryByArtifact { artifact_id } => {
+                cve_history_by_artifact(&artifact_id, global).await
+            }
+            Self::HistoryByCve { cve_id } => cve_history_by_cve(&cve_id, global).await,
+            Self::UpdateStatusByArtifactCve {
+                artifact_id,
+                cve_id,
+                status,
+                reason,
+            } => {
+                cve_update_status_by_artifact_cve(
+                    &artifact_id,
+                    &cve_id,
+                    &status,
+                    reason.as_deref(),
+                    global,
+                )
+                .await
+            }
         }
     }
 }
@@ -557,26 +612,69 @@ async fn cve_history(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
     let entries = resp.into_inner();
     spinner.finish_and_clear();
 
+    render_cve_history(&entries, global);
+    Ok(())
+}
+
+async fn cve_history_by_artifact(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let aid = parse_uuid(artifact_id, "artifact")?;
+
+    let spinner = output::spinner("Fetching CVE history...");
+
+    let resp = client
+        .get_cve_history_by_artifact()
+        .artifact_id(aid)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get CVE history by artifact", e))?;
+
+    let entries = resp.into_inner();
+    spinner.finish_and_clear();
+
+    render_cve_history(&entries, global);
+    Ok(())
+}
+
+async fn cve_history_by_cve(cve_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+
+    let spinner = output::spinner("Fetching CVE history...");
+
+    let resp = client
+        .get_cve_history_by_cve()
+        .cve_id(cve_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get CVE history by CVE", e))?;
+
+    let entries = resp.into_inner();
+    spinner.finish_and_clear();
+
+    render_cve_history(&entries, global);
+    Ok(())
+}
+
+/// Render a list of CVE history entries honoring the output format.
+fn render_cve_history(entries: &[CveHistoryEntry], global: &GlobalArgs) {
     if entries.is_empty() {
         eprintln!("No CVE history found.");
-        return Ok(());
+        return;
     }
 
     if matches!(global.format, OutputFormat::Quiet) {
-        for e in &entries {
+        for e in entries {
             println!("{}", e.cve_id);
         }
-        return Ok(());
+        return;
     }
 
-    let (json_entries, table_str) = format_cve_history_table(&entries);
+    let (json_entries, table_str) = format_cve_history_table(entries);
 
     println!(
         "{}",
         output::render(&json_entries, &global.format, Some(table_str))
     );
-
-    Ok(())
 }
 
 async fn cve_trends(days: i32, repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
@@ -673,9 +771,48 @@ async fn cve_update_status(
     let entry = resp.into_inner();
     spinner.finish_and_clear();
 
+    render_updated_cve(&entry, global);
+    Ok(())
+}
+
+async fn cve_update_status_by_artifact_cve(
+    artifact_id: &str,
+    cve_id: &str,
+    status: &str,
+    reason: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let aid = parse_uuid(artifact_id, "artifact")?;
+
+    let spinner = output::spinner("Updating CVE status...");
+
+    let body = artifact_keeper_sdk::types::UpdateCveStatusRequest {
+        status: status.to_string(),
+        reason: reason.map(|s| s.to_string()),
+    };
+
+    let resp = client
+        .update_cve_status_by_artifact_cve()
+        .artifact_id(aid)
+        .cve_id(cve_id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update CVE status by artifact/CVE", e))?;
+
+    let entry = resp.into_inner();
+    spinner.finish_and_clear();
+
+    render_updated_cve(&entry, global);
+    Ok(())
+}
+
+/// Render the result of a CVE status update honoring the output format.
+fn render_updated_cve(entry: &CveHistoryEntry, global: &GlobalArgs) {
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", entry.id);
-        return Ok(());
+        return;
     }
 
     let info = serde_json::json!({
@@ -704,8 +841,6 @@ async fn cve_update_status(
     );
 
     println!("{}", output::render(&info, &global.format, Some(table_str)));
-
-    Ok(())
 }
 
 // ---------------------------------------------------------------------------
@@ -1145,6 +1280,67 @@ mod tests {
     #[test]
     fn parse_cve_update_status_missing_status() {
         let result = try_parse(&["test", "cve", "update-status", "cve-id-123"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_cve_history_by_artifact() {
+        let cli = parse(&["test", "cve", "history-by-artifact", "artifact-uuid"]);
+        if let SbomCommand::Cve(SbomCveCommand::HistoryByArtifact { artifact_id }) = cli.command {
+            assert_eq!(artifact_id, "artifact-uuid");
+        } else {
+            panic!("Expected Cve HistoryByArtifact");
+        }
+    }
+
+    #[test]
+    fn parse_cve_history_by_cve() {
+        let cli = parse(&["test", "cve", "history-by-cve", "CVE-2019-10744"]);
+        if let SbomCommand::Cve(SbomCveCommand::HistoryByCve { cve_id }) = cli.command {
+            assert_eq!(cve_id, "CVE-2019-10744");
+        } else {
+            panic!("Expected Cve HistoryByCve");
+        }
+    }
+
+    #[test]
+    fn parse_cve_update_status_by_artifact_cve() {
+        let cli = parse(&[
+            "test",
+            "cve",
+            "update-status-by-artifact-cve",
+            "artifact-uuid",
+            "CVE-2019-10744",
+            "--status",
+            "acknowledged",
+            "--reason",
+            "not exploitable",
+        ]);
+        if let SbomCommand::Cve(SbomCveCommand::UpdateStatusByArtifactCve {
+            artifact_id,
+            cve_id,
+            status,
+            reason,
+        }) = cli.command
+        {
+            assert_eq!(artifact_id, "artifact-uuid");
+            assert_eq!(cve_id, "CVE-2019-10744");
+            assert_eq!(status, "acknowledged");
+            assert_eq!(reason.as_deref(), Some("not exploitable"));
+        } else {
+            panic!("Expected Cve UpdateStatusByArtifactCve");
+        }
+    }
+
+    #[test]
+    fn parse_cve_update_status_by_artifact_cve_missing_status() {
+        let result = try_parse(&[
+            "test",
+            "cve",
+            "update-status-by-artifact-cve",
+            "artifact-uuid",
+            "CVE-2019-10744",
+        ]);
         assert!(result.is_err());
     }
 
@@ -1799,6 +1995,99 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = cve_update_status(NIL_UUID, "false_positive", None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    fn cve_entry_json(cve_id: &str, status: &str) -> serde_json::Value {
+        serde_json::json!({
+            "id": NIL_UUID,
+            "artifact_id": NIL_UUID,
+            "cve_id": cve_id,
+            "severity": "HIGH",
+            "affected_component": "lodash",
+            "status": status,
+            "cvss_score": 8.5,
+            "first_detected_at": "2024-02-21T00:00:00Z",
+            "last_detected_at": "2024-02-21T00:00:00Z",
+            "created_at": "2024-02-21T00:00:00Z",
+            "updated_at": "2024-02-21T12:00:00Z",
+            "acknowledged_at": null,
+            "acknowledged_by": null,
+            "acknowledged_reason": null,
+            "affected_version": null,
+            "component_id": null,
+            "cve_published_at": null,
+            "fixed_version": null,
+            "sbom_id": null,
+            "scan_result_id": null
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_cve_history_by_artifact() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/sbom/cve/history/by-artifact/.+"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!([cve_entry_json("CVE-2024-1234", "open")])),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = cve_history_by_artifact(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_cve_history_by_cve() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/sbom/cve/history/by-cve/.+"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!([
+                cve_entry_json("CVE-2019-10744", "open")
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = cve_history_by_cve("CVE-2019-10744", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_cve_update_status_by_artifact_cve() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex(
+                "/api/v1/sbom/cve/status/by-artifact/.+/by-cve/.+",
+            ))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(cve_entry_json("CVE-2019-10744", "acknowledged")),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = cve_update_status_by_artifact_cve(
+            NIL_UUID,
+            "CVE-2019-10744",
+            "acknowledged",
+            Some("not exploitable"),
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

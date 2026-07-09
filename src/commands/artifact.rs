@@ -1,13 +1,15 @@
 use std::path::{Path, PathBuf};
 
-use artifact_keeper_sdk::{ClientPromotionExt, ClientRepositoriesExt, ClientSearchExt};
+use artifact_keeper_sdk::{
+    ClientArtifactsExt, ClientPromotionExt, ClientRepositoriesExt, ClientSearchExt,
+};
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
 use super::client::{build_client, client_for, client_for_optional_auth};
-use super::helpers::emit_mutation;
+use super::helpers::{emit_mutation, parse_uuid};
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
 use crate::error::AkError;
@@ -75,6 +77,24 @@ pub enum ArtifactCommand {
 
         /// Artifact path
         path: String,
+    },
+
+    /// Show an artifact by its global ID
+    Show {
+        /// Artifact ID
+        id: String,
+    },
+
+    /// Show format-specific metadata for an artifact by its global ID
+    Metadata {
+        /// Artifact ID
+        id: String,
+    },
+
+    /// Show download statistics for an artifact by its global ID
+    Stats {
+        /// Artifact ID
+        id: String,
     },
 
     /// Delete an artifact
@@ -152,6 +172,9 @@ impl ArtifactCommand {
                 per_page,
             } => list(&repo, search.as_deref(), page, per_page, global).await,
             Self::Info { repo, path } => info(&repo, &path, global).await,
+            Self::Show { id } => show_by_id(&id, global).await,
+            Self::Metadata { id } => show_metadata(&id, global).await,
+            Self::Stats { id } => show_stats(&id, global).await,
             Self::Delete { repo, path, yes } => delete(&repo, &path, yes, global).await,
             Self::Search {
                 query,
@@ -509,6 +532,135 @@ async fn info(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Result<()
         artifact.download_count,
         artifact.repository_key,
         artifact.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn show_by_id(id: &str, global: &GlobalArgs) -> Result<()> {
+    let artifact_id = parse_uuid(id, "artifact")?;
+    let client = client_for(global)?;
+
+    let artifact = client
+        .get_artifact()
+        .id(artifact_id)
+        .send()
+        .await
+        .map_err(|e| AkError::ServerError(format!("Failed to get artifact: {e}")))?
+        .into_inner();
+
+    let info = serde_json::json!({
+        "id": artifact.id.to_string(),
+        "path": artifact.path,
+        "name": artifact.name,
+        "version": artifact.version,
+        "size": format_bytes(artifact.size_bytes),
+        "size_bytes": artifact.size_bytes,
+        "content_type": artifact.content_type,
+        "sha256": artifact.checksum_sha256,
+        "downloads": artifact.download_count,
+        "repository": artifact.repository_key,
+        "created_at": artifact.created_at.to_rfc3339(),
+    });
+
+    let table_str = format!(
+        "ID:           {}\n\
+         Path:         {}\n\
+         Name:         {}\n\
+         Version:      {}\n\
+         Size:         {}\n\
+         Content Type: {}\n\
+         SHA-256:      {}\n\
+         Downloads:    {}\n\
+         Repository:   {}\n\
+         Created:      {}",
+        artifact.id,
+        artifact.path,
+        artifact.name,
+        artifact.version.as_deref().unwrap_or("-"),
+        format_bytes(artifact.size_bytes),
+        artifact.content_type,
+        artifact.checksum_sha256,
+        artifact.download_count,
+        artifact.repository_key,
+        artifact.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn show_metadata(id: &str, global: &GlobalArgs) -> Result<()> {
+    let artifact_id = parse_uuid(id, "artifact")?;
+    let client = client_for(global)?;
+
+    let meta = client
+        .get_artifact_metadata()
+        .id(artifact_id)
+        .send()
+        .await
+        .map_err(|e| AkError::ServerError(format!("Failed to get artifact metadata: {e}")))?
+        .into_inner();
+
+    let info = serde_json::json!({
+        "artifact_id": meta.artifact_id.to_string(),
+        "format": meta.format,
+        "metadata": meta.metadata,
+        "properties": meta.properties,
+    });
+
+    let table_str = format!(
+        "Artifact:   {}\n\
+         Format:     {}\n\
+         Metadata:   {}\n\
+         Properties: {}",
+        meta.artifact_id,
+        meta.format,
+        serde_json::to_string(&meta.metadata).unwrap_or_else(|_| "-".to_string()),
+        serde_json::to_string(&meta.properties).unwrap_or_else(|_| "-".to_string()),
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn show_stats(id: &str, global: &GlobalArgs) -> Result<()> {
+    let artifact_id = parse_uuid(id, "artifact")?;
+    let client = client_for(global)?;
+
+    let stats = client
+        .get_artifact_stats()
+        .id(artifact_id)
+        .send()
+        .await
+        .map_err(|e| AkError::ServerError(format!("Failed to get artifact stats: {e}")))?
+        .into_inner();
+
+    let info = serde_json::json!({
+        "artifact_id": stats.artifact_id.to_string(),
+        "download_count": stats.download_count,
+        "first_downloaded": stats.first_downloaded.map(|t| t.to_rfc3339()),
+        "last_downloaded": stats.last_downloaded.map(|t| t.to_rfc3339()),
+    });
+
+    let fmt_dt = |dt: Option<chrono::DateTime<chrono::Utc>>| {
+        dt.map(|t| t.format("%Y-%m-%d %H:%M:%S UTC").to_string())
+            .unwrap_or_else(|| "-".to_string())
+    };
+
+    let table_str = format!(
+        "Artifact:        {}\n\
+         Downloads:       {}\n\
+         First Download:  {}\n\
+         Last Download:   {}",
+        stats.artifact_id,
+        stats.download_count,
+        fmt_dt(stats.first_downloaded),
+        fmt_dt(stats.last_downloaded),
     );
 
     println!("{}", output::render(&info, &global.format, Some(table_str)));
@@ -1129,6 +1281,43 @@ mod tests {
         assert!(try_parse(&["test", "info"]).is_err());
     }
 
+    // ---- Show/Metadata/Stats (by-id) subcommand parsing ----
+
+    #[test]
+    fn parse_show_by_id() {
+        let cli = parse(&["test", "show", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]);
+        if let ArtifactCommand::Show { id } = cli.command {
+            assert_eq!(id, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        } else {
+            panic!("Expected ArtifactCommand::Show");
+        }
+    }
+
+    #[test]
+    fn parse_show_by_id_missing_id_fails() {
+        assert!(try_parse(&["test", "show"]).is_err());
+    }
+
+    #[test]
+    fn parse_metadata_by_id() {
+        let cli = parse(&["test", "metadata", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]);
+        if let ArtifactCommand::Metadata { id } = cli.command {
+            assert_eq!(id, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        } else {
+            panic!("Expected ArtifactCommand::Metadata");
+        }
+    }
+
+    #[test]
+    fn parse_stats_by_id() {
+        let cli = parse(&["test", "stats", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]);
+        if let ArtifactCommand::Stats { id } = cli.command {
+            assert_eq!(id, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        } else {
+            panic!("Expected ArtifactCommand::Stats");
+        }
+    }
+
     // ---- Delete subcommand parsing ----
 
     #[test]
@@ -1565,6 +1754,79 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = info("my-repo", "nonexistent", &global).await;
         assert!(result.is_err());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_by_id() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(r"/api/v1/artifacts/[^/]+$"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "path": "org/example/lib/1.0/lib-1.0.jar",
+                "name": "lib",
+                "version": "1.0",
+                "size_bytes": 2621440_i64,
+                "content_type": "application/java-archive",
+                "checksum_sha256": "abc123def456",
+                "analyzable": true,
+                "download_count": 150_i64,
+                "repository_key": "maven-central",
+                "created_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_by_id("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_metadata() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(r"/api/v1/artifacts/[^/]+/metadata$"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "artifact_id": "00000000-0000-0000-0000-000000000001",
+                "format": "maven",
+                "metadata": { "groupId": "org.example" },
+                "properties": { "build": "42" }
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_metadata("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_stats() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex(r"/api/v1/artifacts/[^/]+/stats$"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "artifact_id": "00000000-0000-0000-0000-000000000001",
+                "download_count": 150_i64,
+                "first_downloaded": "2026-01-10T10:00:00Z",
+                "last_downloaded": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_stats("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
 
