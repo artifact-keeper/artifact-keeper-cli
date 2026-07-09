@@ -48,6 +48,15 @@ pub enum RepoLabelCommand {
         /// Label key to remove
         label_key: String,
     },
+
+    /// Set (replace) all labels on a repository
+    Set {
+        /// Repository key
+        key: String,
+
+        /// Labels in key=value format (value optional); replaces all existing labels
+        labels: Vec<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -95,6 +104,7 @@ impl LabelCommand {
                 RepoLabelCommand::Remove { key, label_key } => {
                     remove_label(&key, &label_key, global).await
                 }
+                RepoLabelCommand::Set { key, labels } => set_labels(&key, &labels, global).await,
             },
             Self::Artifact { command } => match command {
                 ArtifactLabelCommand::List { id } => list_artifact_labels(&id, global).await,
@@ -241,6 +251,65 @@ async fn remove_label(repo_key: &str, label_key: &str, global: &GlobalArgs) -> R
         }),
         repo_key,
         &format!("Label '{label_key}' removed from repository '{repo_key}'."),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn set_labels(repo_key: &str, labels: &[String], global: &GlobalArgs) -> Result<()> {
+    let entries: Vec<artifact_keeper_sdk::types::LabelEntrySchema> = labels
+        .iter()
+        .map(|l| match l.split_once('=') {
+            Some((k, v)) => artifact_keeper_sdk::types::LabelEntrySchema {
+                key: k.to_string(),
+                value: Some(v.to_string()),
+            },
+            None => artifact_keeper_sdk::types::LabelEntrySchema {
+                key: l.to_string(),
+                value: None,
+            },
+        })
+        .collect();
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Setting labels...");
+
+    let body = artifact_keeper_sdk::types::SetLabelsRequest { labels: entries };
+
+    let resp = client
+        .set_repo_labels()
+        .key(repo_key)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("set labels", e))?;
+
+    spinner.finish_and_clear();
+
+    let result: Vec<_> = resp
+        .items
+        .iter()
+        .map(|l| {
+            serde_json::json!({
+                "key": l.key,
+                "value": l.value,
+            })
+        })
+        .collect();
+
+    emit_mutation(
+        &serde_json::json!({
+            "repo_key": repo_key,
+            "count": resp.items.len(),
+            "labels": result,
+            "status": "set",
+        }),
+        repo_key,
+        &format!(
+            "Set {} label(s) on repository '{repo_key}'.",
+            resp.items.len()
+        ),
         global,
     );
 
@@ -513,6 +582,44 @@ mod tests {
     fn parse_repo_remove_missing_label_key() {
         let result = try_parse(&["test", "repo", "remove", "maven-releases"]);
         assert!(result.is_err());
+    }
+
+    // ---- parsing: repo set ----
+
+    #[test]
+    fn parse_repo_set() {
+        let cli = parse(&[
+            "test",
+            "repo",
+            "set",
+            "maven-releases",
+            "env=production",
+            "team=platform",
+        ]);
+        match cli.command {
+            LabelCommand::Repo {
+                command: RepoLabelCommand::Set { key, labels },
+            } => {
+                assert_eq!(key, "maven-releases");
+                assert_eq!(labels, vec!["env=production", "team=platform"]);
+            }
+            _ => panic!("expected Repo Set"),
+        }
+    }
+
+    #[test]
+    fn parse_repo_set_empty_labels() {
+        // `set` with zero labels is allowed (clears all labels)
+        let cli = parse(&["test", "repo", "set", "maven-releases"]);
+        match cli.command {
+            LabelCommand::Repo {
+                command: RepoLabelCommand::Set { key, labels },
+            } => {
+                assert_eq!(key, "maven-releases");
+                assert!(labels.is_empty());
+            }
+            _ => panic!("expected Repo Set"),
+        }
     }
 
     // ---- parsing: missing nested subcommand ----
@@ -804,6 +911,27 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = remove_label("npm-local", "env", &global).await;
         assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_set_labels() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path("/api/v1/repositories/npm-local/labels"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [label_json()],
+                "total": 1_u64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let labels = vec!["env=production".to_string(), "team".to_string()];
+        let result = set_labels("npm-local", &labels, &global).await;
+        assert!(result.is_ok(), "set failed: {:?}", result.err());
         crate::test_utils::teardown_env();
     }
 

@@ -42,6 +42,19 @@ pub enum GroupCommand {
         description: Option<String>,
     },
 
+    /// Update a group's name and/or description
+    Update {
+        /// Group ID
+        id: String,
+
+        /// New group name
+        name: String,
+
+        /// New description
+        #[arg(long)]
+        description: Option<String>,
+    },
+
     /// Delete a group
     Delete {
         /// Group ID
@@ -83,6 +96,11 @@ impl GroupCommand {
             Self::Create { name, description } => {
                 create_group(&name, description.as_deref(), global).await
             }
+            Self::Update {
+                id,
+                name,
+                description,
+            } => update_group(&id, &name, description.as_deref(), global).await,
             Self::Delete { id, yes } => delete_group(&id, yes, global).await,
             Self::AddMember { group, user } => add_member(&group, &user, global).await,
             Self::RemoveMember { group, user } => remove_member(&group, &user, global).await,
@@ -232,6 +250,42 @@ async fn create_group(name: &str, description: Option<&str>, global: &GlobalArgs
         &*group,
         &group.id.to_string(),
         &format!("Group '{}' created (ID: {}).", group.name, group.id),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn update_group(
+    id: &str,
+    name: &str,
+    description: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let group_id = parse_uuid(id, "group")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Updating group...");
+
+    let body = artifact_keeper_sdk::types::CreateGroupRequest {
+        name: name.to_string(),
+        description: description.map(|s| s.to_string()),
+    };
+
+    let group = client
+        .update_group()
+        .id(group_id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update group", e))?;
+
+    spinner.finish_and_clear();
+
+    emit_mutation(
+        &*group,
+        &group.id.to_string(),
+        &format!("Group '{}' updated (ID: {}).", group.name, group.id),
         global,
     );
 
@@ -481,6 +535,55 @@ mod tests {
     #[test]
     fn parse_create_missing_name() {
         let result = try_parse(&["test", "create"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: update ----
+
+    #[test]
+    fn parse_update_minimal() {
+        let cli = parse(&["test", "update", "group-id", "new-name"]);
+        match cli.command {
+            GroupCommand::Update {
+                id,
+                name,
+                description,
+            } => {
+                assert_eq!(id, "group-id");
+                assert_eq!(name, "new-name");
+                assert!(description.is_none());
+            }
+            _ => panic!("expected Update"),
+        }
+    }
+
+    #[test]
+    fn parse_update_with_description() {
+        let cli = parse(&[
+            "test",
+            "update",
+            "group-id",
+            "new-name",
+            "--description",
+            "Updated team",
+        ]);
+        match cli.command {
+            GroupCommand::Update {
+                id,
+                name,
+                description,
+            } => {
+                assert_eq!(id, "group-id");
+                assert_eq!(name, "new-name");
+                assert_eq!(description.as_deref(), Some("Updated team"));
+            }
+            _ => panic!("expected Update"),
+        }
+    }
+
+    #[test]
+    fn parse_update_missing_name() {
+        let result = try_parse(&["test", "update", "group-id"]);
         assert!(result.is_err());
     }
 
@@ -764,6 +867,47 @@ mod tests {
         let result = create_group("developers", Some("Core dev team"), &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_group_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path(format!("/api/v1/groups/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(group_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_group(NIL_UUID, "developers", Some("Core dev team"), &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_group_json() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path(format!("/api/v1/groups/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(group_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = update_group(NIL_UUID, "developers", None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_group_invalid_id() {
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_group("not-a-uuid", "name", None, &global).await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]

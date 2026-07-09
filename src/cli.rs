@@ -357,6 +357,16 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::age_gate::AgeGateCommand,
     },
+    /// Manage repository email subscriptions (event notifications)
+    #[command(
+        name = "email-subscriptions",
+        visible_alias = "email-subs",
+        after_help = "Examples:\n  ak email-subscriptions list my-repo\n  ak email-subs subscribe my-repo --recipients ops@example.com --events artifact.uploaded,scan.completed\n  ak email-subscriptions unsubscribe my-repo <subscription-id>"
+    )]
+    EmailSubscriptions {
+        #[command(subcommand)]
+        command: commands::email_subscriptions::EmailSubscriptionsCommand,
+    },
     /// Manage repository-scoped access tokens
     #[command(
         after_help = "Examples:\n  ak repo-token list my-repo\n  ak repo-token create my-repo ci-token --scopes read,write\n  ak repo-token show my-repo <token-id>\n  ak repo-token revoke my-repo <token-id>"
@@ -506,6 +516,7 @@ impl Cli {
             Command::Completion { shell } => commands::completion::execute(shell),
             Command::ManPages { dir } => commands::completion::generate_man_pages(&dir),
             Command::AgeGate { command } => command.execute(&global).await,
+            Command::EmailSubscriptions { command } => command.execute(&global).await,
             Command::RepoToken { command } => command.execute(&global).await,
             Command::Builds { command } => command.execute(&global).await,
             Command::ServiceAccount { command } => command.execute(&global).await,
@@ -529,6 +540,28 @@ mod tests {
     }
 
     // ---- Basic command parsing ----
+
+    #[test]
+    fn parse_email_subscriptions_list() {
+        let cli = parse(&["ak", "email-subscriptions", "list", "my-repo"]).unwrap();
+        assert!(matches!(cli.command, Command::EmailSubscriptions { .. }));
+    }
+
+    #[test]
+    fn parse_email_subscriptions_alias() {
+        let cli = parse(&[
+            "ak",
+            "email-subs",
+            "subscribe",
+            "my-repo",
+            "--recipients",
+            "ops@example.com",
+            "--events",
+            "artifact.uploaded",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::EmailSubscriptions { .. }));
+    }
 
     #[test]
     fn parse_auth_login() {

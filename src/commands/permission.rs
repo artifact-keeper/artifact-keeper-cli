@@ -53,6 +53,38 @@ pub enum PermissionCommand {
         actions: Vec<String>,
     },
 
+    /// Show a permission rule
+    Show {
+        /// Permission ID
+        id: String,
+    },
+
+    /// Update a permission rule (replaces all fields)
+    Update {
+        /// Permission ID
+        id: String,
+
+        /// Principal ID (user or group UUID)
+        #[arg(long)]
+        principal: String,
+
+        /// Principal type (user, group)
+        #[arg(long)]
+        principal_type: String,
+
+        /// Target ID (repository or group UUID)
+        #[arg(long)]
+        target: String,
+
+        /// Target type (repository, group)
+        #[arg(long)]
+        target_type: String,
+
+        /// Actions to grant (comma-separated: read, write, admin)
+        #[arg(long, value_delimiter = ',')]
+        actions: Vec<String>,
+    },
+
     /// Delete a permission rule
     Delete {
         /// Permission ID
@@ -99,9 +131,139 @@ impl PermissionCommand {
                 )
                 .await
             }
+            Self::Show { id } => show_permission(&id, global).await,
+            Self::Update {
+                id,
+                principal,
+                principal_type,
+                target,
+                target_type,
+                actions,
+            } => {
+                update_permission(
+                    &id,
+                    &principal,
+                    &principal_type,
+                    &target,
+                    &target_type,
+                    actions,
+                    global,
+                )
+                .await
+            }
             Self::Delete { id, yes } => delete_permission(&id, yes, global).await,
         }
     }
+}
+
+fn permission_json(p: &artifact_keeper_sdk::types::PermissionResponse) -> serde_json::Value {
+    serde_json::json!({
+        "id": p.id.to_string(),
+        "principal_id": p.principal_id.to_string(),
+        "principal_type": p.principal_type,
+        "principal_name": p.principal_name,
+        "target_id": p.target_id.to_string(),
+        "target_type": p.target_type,
+        "target_name": p.target_name,
+        "actions": p.actions,
+        "created_at": p.created_at.to_rfc3339(),
+        "updated_at": p.updated_at.to_rfc3339(),
+    })
+}
+
+async fn show_permission(id: &str, global: &GlobalArgs) -> Result<()> {
+    let perm_id = parse_uuid(id, "permission")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching permission...");
+
+    let perm = client
+        .get_permission()
+        .id(perm_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get permission", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = permission_json(&perm);
+
+    let table_str = format!(
+        "ID:            {}\n\
+         Principal:     {} ({})\n\
+         Principal ID:  {}\n\
+         Target:        {} ({})\n\
+         Target ID:     {}\n\
+         Actions:       {}\n\
+         Created:       {}\n\
+         Updated:       {}",
+        perm.id,
+        perm.principal_name.as_deref().unwrap_or("-"),
+        perm.principal_type,
+        perm.principal_id,
+        perm.target_name.as_deref().unwrap_or("-"),
+        perm.target_type,
+        perm.target_id,
+        perm.actions.join(", "),
+        perm.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+        perm.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn update_permission(
+    id: &str,
+    principal: &str,
+    principal_type: &str,
+    target: &str,
+    target_type: &str,
+    actions: Vec<String>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let perm_id = parse_uuid(id, "permission")?;
+    let principal_id = parse_uuid(principal, "principal")?;
+    let target_id = parse_uuid(target, "target")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Updating permission...");
+
+    let body = artifact_keeper_sdk::types::CreatePermissionRequest {
+        principal_id,
+        principal_type: principal_type.to_string(),
+        target_id,
+        target_type: target_type.to_string(),
+        actions,
+    };
+
+    let perm = client
+        .update_permission()
+        .id(perm_id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update permission", e))?;
+
+    spinner.finish_and_clear();
+
+    emit_mutation(
+        &*perm,
+        &perm.id.to_string(),
+        &format!(
+            "Permission updated (ID: {}): {} {} on {} {}",
+            perm.id,
+            perm.principal_type,
+            perm.principal_name.as_deref().unwrap_or("?"),
+            perm.target_type,
+            perm.target_name.as_deref().unwrap_or("?"),
+        ),
+        global,
+    );
+
+    Ok(())
 }
 
 async fn list_permissions(
@@ -509,6 +671,82 @@ mod tests {
         }
     }
 
+    // ---- parsing: show ----
+
+    #[test]
+    fn parse_show() {
+        let cli = parse(&["test", "show", "00000000-0000-0000-0000-000000000001"]);
+        match cli.command {
+            PermissionCommand::Show { id } => {
+                assert_eq!(id, "00000000-0000-0000-0000-000000000001");
+            }
+            _ => panic!("expected Show"),
+        }
+    }
+
+    #[test]
+    fn parse_show_missing_id() {
+        assert!(try_parse(&["test", "show"]).is_err());
+    }
+
+    // ---- parsing: update ----
+
+    #[test]
+    fn parse_update_all_required() {
+        let cli = parse(&[
+            "test",
+            "update",
+            "00000000-0000-0000-0000-000000000009",
+            "--principal",
+            "00000000-0000-0000-0000-000000000001",
+            "--principal-type",
+            "user",
+            "--target",
+            "00000000-0000-0000-0000-000000000002",
+            "--target-type",
+            "repository",
+            "--actions",
+            "read,write",
+        ]);
+        match cli.command {
+            PermissionCommand::Update {
+                id,
+                principal,
+                principal_type,
+                target,
+                target_type,
+                actions,
+            } => {
+                assert_eq!(id, "00000000-0000-0000-0000-000000000009");
+                assert_eq!(principal, "00000000-0000-0000-0000-000000000001");
+                assert_eq!(principal_type, "user");
+                assert_eq!(target, "00000000-0000-0000-0000-000000000002");
+                assert_eq!(target_type, "repository");
+                assert_eq!(actions, vec!["read", "write"]);
+            }
+            _ => panic!("expected Update"),
+        }
+    }
+
+    #[test]
+    fn parse_update_missing_id() {
+        let result = try_parse(&[
+            "test",
+            "update",
+            "--principal",
+            "id1",
+            "--principal-type",
+            "user",
+            "--target",
+            "id2",
+            "--target-type",
+            "repository",
+            "--actions",
+            "read",
+        ]);
+        assert!(result.is_err());
+    }
+
     // ---- parsing: delete ----
 
     #[test]
@@ -727,6 +965,72 @@ mod tests {
         .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_permission() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/permissions/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(perm_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = show_permission(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_permission_invalid_id() {
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = show_permission("not-a-uuid", &global).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn handler_update_permission_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path(format!("/api/v1/permissions/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(perm_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_permission(
+            NIL_UUID,
+            NIL_UUID,
+            "user",
+            NIL_UUID,
+            "repository",
+            vec!["read".to_string(), "write".to_string()],
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_permission_invalid_id() {
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_permission(
+            "not-a-uuid",
+            NIL_UUID,
+            "user",
+            NIL_UUID,
+            "repository",
+            vec!["read".to_string()],
+            &global,
+        )
+        .await;
+        assert!(result.is_err());
     }
 
     #[tokio::test]

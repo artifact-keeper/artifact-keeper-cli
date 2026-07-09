@@ -5,6 +5,17 @@ All notable changes to the Artifact Keeper CLI (`ak`) will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `ak group update <id> <name> [--description]` to rename/redescribe a group
+- `ak permission show <id>` and `ak permission update <id>` for reading and replacing permission rules
+- `ak label repo set <key> <labels...>` to replace all labels on a repository in one call
+- `ak lifecycle update <id>` (change name/enabled/priority/description/config/cron) and `ak lifecycle execute-all` to run every enabled policy
+- `ak admin telemetry crash <id>` and `ak admin telemetry delete-crash <id>` for single crash-report inspection and removal
+- `ak email-subscriptions` (alias `email-subs`) command group: `list`, `subscribe`, and `unsubscribe` for repository email notifications
+
 ## [1.0.0] - 2026-02-23
 
 ### Stable Release
