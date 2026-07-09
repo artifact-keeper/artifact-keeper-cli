@@ -228,6 +228,10 @@ jobs:
     name: Create Release
     needs: [build, completions, packages]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # Required for keyless (Sigstore OIDC) signing with cosign.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -236,18 +240,61 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      # Pinned to a cosign v2 release: cosign v3 changed keyless sign-blob to
+      # bundle-only output (--bundle), dropping the .sig/.pem flow used below.
+      - uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.6.3"
+
+      - name: Sign release artifacts (cosign keyless)
+        run: |
+          cd artifacts
+          for f in ak-linux-* ak-darwin-* ak-windows-* \
+                   ak-completions.tar.gz ak-man-pages.tar.gz \
+                   *.deb *.rpm; do
+            # Skip checksum files and anything already produced by signing.
+            case "$f" in
+              *.sha256|*.sig|*.pem) continue ;;
+            esac
+            [ -f "$f" ] || continue
+            cosign sign-blob --yes \
+              --output-signature "${f}.sig" \
+              --output-certificate "${f}.pem" \
+              "$f"
+          done
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+          body: |
+            ## Verifying signatures
+
+            All release artifacts are signed with [cosign](https://docs.sigstore.dev/cosign/signing/signing_with_blobs/)
+            (keyless, via the GitHub Actions OIDC identity). Each artifact has a
+            `.sig` (signature) and `.pem` (signing certificate) file. To verify a
+            download, e.g. `ak-linux-amd64`:
+
+            ```sh
+            cosign verify-blob \
+              --certificate ak-linux-amd64.pem \
+              --signature ak-linux-amd64.sig \
+              --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/release.yml@${{ github.ref }}" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              ak-linux-amd64
+            ```
           files: |
             artifacts/ak-linux-*
             artifacts/ak-darwin-*
             artifacts/ak-windows-*
-            artifacts/ak-completions.tar.gz
-            artifacts/ak-man-pages.tar.gz
+            artifacts/ak-completions.tar.gz*
+            artifacts/ak-man-pages.tar.gz*
             artifacts/*.deb
+            artifacts/*.deb.sig
+            artifacts/*.deb.pem
             artifacts/*.rpm
+            artifacts/*.rpm.sig
+            artifacts/*.rpm.pem
 
   homebrew:
     name: Update Homebrew Tap

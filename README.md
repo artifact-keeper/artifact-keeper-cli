@@ -50,7 +50,33 @@ Pre-built binaries for every platform are available on the [Releases](https://gi
 | macOS ARM64 (Apple Silicon) | `ak-darwin-arm64` |
 | Windows x86_64 | `ak-windows-amd64.exe` |
 
-Each binary includes a `.sha256` checksum file for verification.
+Each binary includes a `.sha256` checksum file for integrity verification.
+
+#### Verifying signatures
+
+Release artifacts are also signed with [cosign](https://docs.sigstore.dev/cosign/system_config/installation/)
+using [Sigstore keyless signing](https://docs.sigstore.dev/cosign/signing/overview/) — the signing
+identity is the release workflow itself, authenticated via GitHub Actions OIDC, so there is no
+long-lived signing key that can leak. Every artifact is published with a `.sig` (signature) and
+`.pem` (signing certificate) file.
+
+To verify authenticity (not just integrity) of a download, e.g. `ak-linux-amd64` from release `vX.Y.Z`:
+
+```bash
+cosign verify-blob \
+  --certificate ak-linux-amd64.pem \
+  --signature ak-linux-amd64.sig \
+  --certificate-identity "https://github.com/artifact-keeper/artifact-keeper-cli/.github/workflows/release.yml@refs/tags/vX.Y.Z" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ak-linux-amd64
+```
+
+A successful verification prints `Verified OK`. The `--certificate-identity` value pins the exact
+workflow and tag that produced the signature; to accept any release tag from this repository's
+release workflow, pass
+`--certificate-identity-regexp '^https://github\.com/artifact-keeper/artifact-keeper-cli/\.github/workflows/release\.yml@refs/tags/v.*$'`
+instead. The same command works for the `.deb`/`.rpm` packages and the completions/man-page
+tarballs — substitute the file name.
 
 ## Quick Start
 
