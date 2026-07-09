@@ -171,7 +171,7 @@ pub enum Command {
     /// Manage artifact quality gates
     #[command(
         alias = "qg",
-        after_help = "Examples:\n  ak quality-gate list\n  ak quality-gate show <gate-id>\n  ak quality-gate create strict --max-critical 0 --max-high 5 --action block\n  ak quality-gate check <artifact-id>\n  ak quality-gate delete <gate-id>"
+        after_help = "Examples:\n  ak quality-gate list\n  ak quality-gate show <gate-id>\n  ak quality-gate create strict --max-critical 0 --max-high 5 --action block\n  ak quality-gate check <artifact-id>\n  ak quality-gate delete <gate-id>\n  ak quality-gate checks --artifact <artifact-id>\n  ak quality-gate check-trigger --artifact <artifact-id>\n  ak quality-gate check-issues <check-id>\n  ak quality-gate health-dashboard\n  ak quality-gate artifact-health <artifact-id>\n  ak quality-gate repo-health <repo-key>\n  ak quality-gate suppress <issue-id> --reason \"false positive\"\n  ak quality-gate unsuppress <issue-id>"
     )]
     QualityGate {
         #[command(subcommand)]
