@@ -178,9 +178,9 @@ pub enum Command {
         command: commands::quality_gate::QualityGateCommand,
     },
 
-    /// Tag repositories with key-value labels
+    /// Tag repositories and artifacts with key-value labels
     #[command(
-        after_help = "Examples:\n  ak label repo list my-repo\n  ak label repo add my-repo env=production\n  ak label repo remove my-repo env"
+        after_help = "Examples:\n  ak label repo list my-repo\n  ak label repo add my-repo env=production\n  ak label repo remove my-repo env\n  ak label artifact list <artifact-id>\n  ak label artifact add <artifact-id> env=production\n  ak label artifact set <artifact-id> env=production team=platform\n  ak label artifact remove <artifact-id> env"
     )]
     Label {
         #[command(subcommand)]
@@ -986,6 +986,39 @@ mod tests {
     #[test]
     fn parse_label_repo_remove() {
         let cli = parse(&["ak", "label", "repo", "remove", "my-repo", "env"]).unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
+    }
+
+    #[test]
+    fn parse_label_artifact_list() {
+        let cli = parse(&["ak", "label", "artifact", "list", "abc-123"]).unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
+    }
+
+    #[test]
+    fn parse_label_artifact_add() {
+        let cli = parse(&["ak", "label", "artifact", "add", "abc-123", "env=prod"]).unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
+    }
+
+    #[test]
+    fn parse_label_artifact_set() {
+        let cli = parse(&[
+            "ak",
+            "label",
+            "artifact",
+            "set",
+            "abc-123",
+            "env=prod",
+            "team=platform",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Label { .. }));
+    }
+
+    #[test]
+    fn parse_label_artifact_remove() {
+        let cli = parse(&["ak", "label", "artifact", "remove", "abc-123", "env"]).unwrap();
         assert!(matches!(cli.command, Command::Label { .. }));
     }
 
