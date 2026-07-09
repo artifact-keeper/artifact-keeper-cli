@@ -225,7 +225,7 @@ pub enum Command {
 
     /// Manage federation peer instances
     #[command(
-        after_help = "Examples:\n  ak peer list\n  ak peer list --status active --region us-east-1\n  ak peer show <peer-id>\n  ak peer register my-peer --url https://peer.example.com --api-key <key>\n  ak peer unregister <peer-id>\n  ak peer test <peer-id>\n  ak peer sync <peer-id>\n  ak peer tasks <peer-id>"
+        after_help = "Examples:\n  ak peer list\n  ak peer list --status active --region us-east-1\n  ak peer show <peer-id>\n  ak peer register my-peer --url https://peer.example.com --api-key <key>\n  ak peer unregister <peer-id>\n  ak peer test <peer-id>\n  ak peer sync <peer-id>\n  ak peer tasks <peer-id>\n  ak peer identity\n  ak peer heartbeat <peer-id> --cache-used-bytes 1048576\n  ak peer connection list <peer-id>\n  ak peer subscription assign <peer-id> <repo-id> --mode pull\n  ak peer label set <peer-id> --label env=prod --label tier=gold\n  ak peer transfer init <peer-id> --artifact-id <artifact-id>"
     )]
     Peer {
         #[command(subcommand)]
