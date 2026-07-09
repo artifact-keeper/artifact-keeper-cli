@@ -7,6 +7,7 @@ use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
 use super::client::{build_client, client_for, client_for_optional_auth};
+use super::helpers::emit_mutation;
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
 use crate::error::AkError;
@@ -547,7 +548,12 @@ async fn delete(
         .await
         .map_err(|e| AkError::ServerError(format!("Failed to delete artifact: {e}")))?;
 
-    eprintln!("Deleted '{artifact_path}' from '{repo}'.");
+    emit_mutation(
+        &serde_json::json!({ "repo_key": repo, "path": artifact_path, "status": "deleted" }),
+        artifact_path,
+        &format!("Deleted '{artifact_path}' from '{repo}'."),
+        global,
+    );
     Ok(())
 }
 
@@ -710,9 +716,18 @@ async fn same_instance_copy(
 
     spinner.finish_and_clear();
 
-    eprintln!(
-        "Copied '{}' from '{}' to '{}'.",
-        src_path, src_repo, destination
+    emit_mutation(
+        &serde_json::json!({
+            "source": format!("{src_repo}/{src_path}"),
+            "destination": destination,
+            "status": "copied",
+        }),
+        destination,
+        &format!(
+            "Copied '{}' from '{}' to '{}'.",
+            src_path, src_repo, destination
+        ),
+        global,
     );
 
     Ok(())

@@ -3,7 +3,9 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, new_table, parse_uuid, print_page_info, sdk_err};
+use super::helpers::{
+    confirm_action, emit_mutation, new_table, parse_uuid, print_page_info, sdk_err,
+};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -225,18 +227,18 @@ async fn create_permission(
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", perm.id);
-        return Ok(());
-    }
-
-    eprintln!(
-        "Permission created (ID: {}): {} {} on {} {}",
-        perm.id,
-        perm.principal_type,
-        perm.principal_name.as_deref().unwrap_or("?"),
-        perm.target_type,
-        perm.target_name.as_deref().unwrap_or("?"),
+    emit_mutation(
+        &*perm,
+        &perm.id.to_string(),
+        &format!(
+            "Permission created (ID: {}): {} {} on {} {}",
+            perm.id,
+            perm.principal_type,
+            perm.principal_name.as_deref().unwrap_or("?"),
+            perm.target_type,
+            perm.target_name.as_deref().unwrap_or("?"),
+        ),
+        global,
     );
 
     Ok(())
@@ -296,7 +298,12 @@ async fn delete_permission(id: &str, skip_confirm: bool, global: &GlobalArgs) ->
         .map_err(|e| sdk_err("delete permission", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Permission {id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "deleted" }),
+        id,
+        &format!("Permission {id} deleted."),
+        global,
+    );
 
     Ok(())
 }

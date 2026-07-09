@@ -9,7 +9,7 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -155,12 +155,12 @@ async fn update_profile(
         .map_err(|e| sdk_err("update profile", e))?;
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", me.id);
-        return Ok(());
-    }
-
-    eprintln!("Profile updated.");
+    emit_mutation(
+        &serde_json::json!({ "status": "updated" }),
+        "profile",
+        "Profile updated.",
+        global,
+    );
     Ok(())
 }
 
@@ -330,7 +330,12 @@ async fn revoke_token(id: &str, global: &GlobalArgs) -> Result<()> {
         .map_err(|e| sdk_err("revoke API token", e))?;
     spinner.finish_and_clear();
 
-    eprintln!("Token {id} revoked.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "revoked" }),
+        id,
+        &format!("Token {id} revoked."),
+        global,
+    );
     Ok(())
 }
 

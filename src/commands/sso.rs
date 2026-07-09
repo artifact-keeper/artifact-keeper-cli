@@ -8,7 +8,7 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -52,6 +52,10 @@ pub enum SsoCommand {
     Test {
         /// Provider ID
         id: String,
+
+        /// Provider type (only 'ldap' supports connectivity testing)
+        #[arg(long, value_parser = ["ldap", "oidc", "saml"], default_value = "ldap")]
+        r#type: String,
     },
 
     /// Enable or disable an SSO provider
@@ -191,7 +195,7 @@ impl SsoCommand {
                 }
             },
             Self::Delete { id, r#type, yes } => delete_provider(&id, &r#type, yes, global).await,
-            Self::Test { id } => test_provider(&id, global).await,
+            Self::Test { id, r#type } => test_provider(&id, &r#type, global).await,
             Self::Toggle { id, r#type, enable } => {
                 toggle_provider(&id, &r#type, enable, global).await
             }
@@ -347,12 +351,12 @@ async fn create_ldap(
     spinner.finish_and_clear();
     let p = resp.into_inner();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", p.id);
-        return Ok(());
-    }
-
-    eprintln!("LDAP provider '{}' created (ID: {}).", p.name, p.id);
+    emit_mutation(
+        &p,
+        &p.id.to_string(),
+        &format!("LDAP provider '{}' created (ID: {}).", p.name, p.id),
+        global,
+    );
     Ok(())
 }
 
@@ -408,12 +412,12 @@ async fn create_oidc(
     spinner.finish_and_clear();
     let p = resp.into_inner();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", p.id);
-        return Ok(());
-    }
-
-    eprintln!("OIDC provider '{}' created (ID: {}).", p.name, p.id);
+    emit_mutation(
+        &p,
+        &p.id.to_string(),
+        &format!("OIDC provider '{}' created (ID: {}).", p.name, p.id),
+        global,
+    );
     Ok(())
 }
 
@@ -454,12 +458,12 @@ async fn create_saml(
     spinner.finish_and_clear();
     let p = resp.into_inner();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", p.id);
-        return Ok(());
-    }
-
-    eprintln!("SAML provider '{}' created (ID: {}).", p.name, p.id);
+    emit_mutation(
+        &p,
+        &p.id.to_string(),
+        &format!("SAML provider '{}' created (ID: {}).", p.name, p.id),
+        global,
+    );
     Ok(())
 }
 
@@ -511,13 +515,30 @@ async fn delete_provider(
     }
 
     spinner.finish_and_clear();
-    eprintln!("Provider {id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "deleted" }),
+        id,
+        &format!("Provider {id} deleted."),
+        global,
+    );
 
     Ok(())
 }
 
-async fn test_provider(id: &str, global: &GlobalArgs) -> Result<()> {
+async fn test_provider(id: &str, provider_type: &str, global: &GlobalArgs) -> Result<()> {
     let provider_id = parse_uuid(id, "provider")?;
+
+    // The backend only exposes a connectivity-test endpoint for LDAP providers
+    // (`POST /admin/sso/ldap/{id}/test`); OIDC/SAML have no test route. Reject
+    // those up front with a clear message instead of hitting the LDAP endpoint
+    // (which would 404 for a non-LDAP provider id).
+    if provider_type != "ldap" {
+        return Err(AkError::ConfigError(format!(
+            "Connectivity testing is only supported for LDAP providers, not '{provider_type}'. \
+             OIDC/SAML providers are validated at login time."
+        ))
+        .into());
+    }
 
     let client = client_for(global)?;
     let spinner = output::spinner("Testing LDAP connectivity...");
@@ -1124,8 +1145,20 @@ mod tests {
     #[test]
     fn parse_test() {
         let cli = parse(&["test", "test", "some-id"]);
-        if let SsoCommand::Test { id } = cli.command {
+        if let SsoCommand::Test { id, r#type } = cli.command {
             assert_eq!(id, "some-id");
+            assert_eq!(r#type, "ldap");
+        } else {
+            panic!("Expected Test");
+        }
+    }
+
+    #[test]
+    fn parse_test_with_type() {
+        let cli = parse(&["test", "test", "some-id", "--type", "oidc"]);
+        if let SsoCommand::Test { id, r#type } = cli.command {
+            assert_eq!(id, "some-id");
+            assert_eq!(r#type, "oidc");
         } else {
             panic!("Expected Test");
         }
@@ -1666,9 +1699,18 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = test_provider(NIL_UUID, &global).await;
+        let result = test_provider(NIL_UUID, "ldap", &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_test_provider_non_ldap_rejected() {
+        // OIDC/SAML have no backend test endpoint; the CLI should reject early
+        // rather than hitting the LDAP route.
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        assert!(test_provider(NIL_UUID, "oidc", &global).await.is_err());
+        assert!(test_provider(NIL_UUID, "saml", &global).await.is_err());
     }
 
     #[tokio::test]

@@ -4,7 +4,7 @@ use miette::Result;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -356,12 +356,12 @@ async fn create_gate(
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", gate.id);
-        return Ok(());
-    }
-
-    eprintln!("Quality gate '{}' created (ID: {}).", gate.name, gate.id);
+    emit_mutation(
+        &*gate,
+        &gate.id.to_string(),
+        &format!("Quality gate '{}' created (ID: {}).", gate.name, gate.id),
+        global,
+    );
 
     Ok(())
 }
@@ -406,7 +406,12 @@ async fn update_gate(
         .map_err(|e| sdk_err("update quality gate", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Quality gate '{}' updated.", gate.name);
+    emit_mutation(
+        &*gate,
+        &gate.id.to_string(),
+        &format!("Quality gate '{}' updated.", gate.name),
+        global,
+    );
 
     Ok(())
 }
@@ -433,7 +438,12 @@ async fn delete_gate(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
         .map_err(|e| sdk_err("delete quality gate", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Quality gate {id} deleted.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "deleted" }),
+        id,
+        &format!("Quality gate {id} deleted."),
+        global,
+    );
 
     Ok(())
 }

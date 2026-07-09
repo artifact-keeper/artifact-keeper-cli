@@ -1,7 +1,10 @@
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
+use serde::Serialize;
 
+use crate::cli::GlobalArgs;
 use crate::error::AkError;
+use crate::output::{self, OutputFormat};
 
 /// Create a new table with the standard preset and headers.
 pub fn new_table(headers: Vec<&str>) -> Table {
@@ -21,6 +24,24 @@ pub fn short_id(id: &uuid::Uuid) -> String {
 /// Map an SDK error to an AkError with a descriptive message.
 pub fn sdk_err(action: &str, e: impl std::fmt::Display) -> AkError {
     AkError::ServerError(format!("Failed to {action}: {e}"))
+}
+
+/// Emit the result of a mutation (create/update/delete) honoring the output
+/// format so results are machine-consumable.
+///
+/// - `Quiet`: prints just the `id` to stdout (for scripting `$(... )` capture).
+/// - `Json`/`Yaml`: renders the full `value` object to **stdout** so callers can
+///   pipe it to `jq` and extract the created/updated ID.
+/// - `Table`: prints the human-readable `human` message to **stderr** (leaving
+///   stdout clean).
+pub fn emit_mutation<T: Serialize>(value: &T, id: &str, human: &str, global: &GlobalArgs) {
+    match global.format {
+        OutputFormat::Quiet => println!("{id}"),
+        OutputFormat::Json | OutputFormat::Yaml => {
+            println!("{}", output::render(value, &global.format, None));
+        }
+        OutputFormat::Table => eprintln!("{human}"),
+    }
 }
 
 /// Parse a string as a UUID, returning a friendly error with the given label.

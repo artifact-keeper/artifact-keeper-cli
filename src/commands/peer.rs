@@ -5,7 +5,7 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -186,12 +186,12 @@ async fn register_peer(
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", peer.id);
-        return Ok(());
-    }
-
-    eprintln!("Peer '{}' registered (ID: {}).", peer.name, peer.id);
+    emit_mutation(
+        &*peer,
+        &peer.id.to_string(),
+        &format!("Peer '{}' registered (ID: {}).", peer.name, peer.id),
+        global,
+    );
 
     Ok(())
 }
@@ -218,7 +218,12 @@ async fn unregister_peer(id: &str, skip_confirm: bool, global: &GlobalArgs) -> R
         .map_err(|e| sdk_err("unregister peer", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Peer {id} unregistered.");
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "unregistered" }),
+        id,
+        &format!("Peer {id} unregistered."),
+        global,
+    );
 
     Ok(())
 }

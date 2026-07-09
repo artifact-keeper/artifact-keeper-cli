@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -1006,25 +1006,12 @@ async fn create_policy(
 
     let p = policy.into_inner();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", p.id);
-        return Ok(());
-    }
-
-    let entry = serde_json::json!({
-        "id": p.id.to_string(),
-        "name": p.name,
-        "max_severity": p.max_severity,
-        "block_on_fail": p.block_on_fail,
-        "block_unscanned": p.block_unscanned,
-        "is_enabled": p.is_enabled,
-    });
-
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        println!("{}", output::render(&[entry], &global.format, None));
-    } else {
-        eprintln!("Policy '{}' created (ID: {}).", p.name, short_id(&p.id));
-    }
+    emit_mutation(
+        &p,
+        &p.id.to_string(),
+        &format!("Policy '{}' created (ID: {}).", p.name, short_id(&p.id)),
+        global,
+    );
 
     Ok(())
 }
@@ -1078,25 +1065,12 @@ async fn update_policy(
 
     let p = policy.into_inner();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", p.id);
-        return Ok(());
-    }
-
-    let entry = serde_json::json!({
-        "id": p.id.to_string(),
-        "name": p.name,
-        "max_severity": p.max_severity,
-        "block_on_fail": p.block_on_fail,
-        "block_unscanned": p.block_unscanned,
-        "is_enabled": p.is_enabled,
-    });
-
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        println!("{}", output::render(&[entry], &global.format, None));
-    } else {
-        eprintln!("Policy '{}' updated (ID: {}).", p.name, short_id(&p.id));
-    }
+    emit_mutation(
+        &p,
+        &p.id.to_string(),
+        &format!("Policy '{}' updated (ID: {}).", p.name, short_id(&p.id)),
+        global,
+    );
 
     Ok(())
 }
@@ -1120,9 +1094,12 @@ async fn delete_policy(policy_id: &str, yes: bool, global: &GlobalArgs) -> Resul
 
     spinner.finish_and_clear();
 
-    if !matches!(global.format, OutputFormat::Quiet) {
-        eprintln!("Policy {} deleted.", &policy_id);
-    }
+    emit_mutation(
+        &serde_json::json!({ "id": policy_id, "status": "deleted" }),
+        policy_id,
+        &format!("Policy {} deleted.", &policy_id),
+        global,
+    );
 
     Ok(())
 }
@@ -1230,7 +1207,7 @@ async fn update_repo_security(
         severity_threshold: Some(severity_threshold.to_string()),
     };
 
-    let config = client
+    client
         .update_repo_security()
         .key(repo_key)
         .body(body)
@@ -1240,28 +1217,12 @@ async fn update_repo_security(
 
     spinner.finish_and_clear();
 
-    let c = config.into_inner();
-
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", c.id);
-        return Ok(());
-    }
-
-    let entry = serde_json::json!({
-        "id": c.id.to_string(),
-        "repository_id": c.repository_id.to_string(),
-        "scan_enabled": c.scan_enabled,
-        "scan_on_upload": c.scan_on_upload,
-        "scan_on_proxy": c.scan_on_proxy,
-        "block_on_policy_violation": c.block_on_policy_violation,
-        "severity_threshold": c.severity_threshold,
-    });
-
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        println!("{}", output::render(&[entry], &global.format, None));
-    } else {
-        eprintln!("Security config updated for repository '{repo_key}'.");
-    }
+    emit_mutation(
+        &serde_json::json!({ "repo_key": repo_key, "status": "updated" }),
+        repo_key,
+        &format!("Security config updated for repository '{repo_key}'."),
+        global,
+    );
 
     Ok(())
 }

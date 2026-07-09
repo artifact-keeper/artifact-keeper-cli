@@ -3,7 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{new_table, sdk_err};
+use super::helpers::{emit_mutation, new_table, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -137,7 +137,17 @@ async fn add_label(repo_key: &str, label: &str, global: &GlobalArgs) -> Result<(
         .map_err(|e| sdk_err("add label", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Label '{label_key}={label_value}' added to repository '{repo_key}'.");
+    emit_mutation(
+        &serde_json::json!({
+            "repo_key": repo_key,
+            "key": label_key,
+            "value": label_value,
+            "status": "added",
+        }),
+        repo_key,
+        &format!("Label '{label_key}={label_value}' added to repository '{repo_key}'."),
+        global,
+    );
 
     Ok(())
 }
@@ -169,7 +179,16 @@ async fn remove_label(repo_key: &str, label_key: &str, global: &GlobalArgs) -> R
         .map_err(|e| sdk_err("remove label", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Label '{label_key}' removed from repository '{repo_key}'.");
+    emit_mutation(
+        &serde_json::json!({
+            "repo_key": repo_key,
+            "key": label_key,
+            "status": "removed",
+        }),
+        repo_key,
+        &format!("Label '{label_key}' removed from repository '{repo_key}'."),
+        global,
+    );
 
     Ok(())
 }
