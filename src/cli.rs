@@ -407,6 +407,14 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::curation::CurationCommand,
     },
+    /// Inspect server health, readiness, metrics, and alerting
+    #[command(
+        after_help = "Examples:\n  ak monitoring health\n  ak monitoring live\n  ak monitoring ready\n  ak monitoring metrics\n  ak monitoring alerts\n  ak monitoring suppress database --until 2026-07-10T00:00:00Z\n  ak monitoring check\n  ak monitoring health-log --limit 50 --service storage"
+    )]
+    Monitoring {
+        #[command(subcommand)]
+        command: commands::monitoring::MonitoringCommand,
+    },
 }
 
 impl Cli {
@@ -489,6 +497,7 @@ impl Cli {
             Command::Import { command } => command.execute(&global).await,
             Command::Quarantine { command } => command.execute(&global).await,
             Command::Curation { command } => command.execute(&global).await,
+            Command::Monitoring { command } => command.execute(&global).await,
         }
     }
 }
