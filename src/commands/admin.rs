@@ -2,7 +2,7 @@ use artifact_keeper_sdk::{ClientAdminExt, ClientPluginsExt, ClientTelemetryExt, 
 use clap::Subcommand;
 use miette::Result;
 
-use super::client::client_for;
+use super::client::{client_for, resolve_base_url_and_auth};
 use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -343,6 +343,74 @@ pub enum PluginsCommand {
         /// Skip confirmation prompt
         #[arg(long)]
         yes: bool,
+    },
+    /// Show details for a single plugin
+    Show {
+        /// Plugin ID
+        id: String,
+    },
+    /// Manage plugin configuration
+    Config {
+        #[command(subcommand)]
+        command: PluginConfigCommand,
+    },
+    /// Enable a plugin
+    Enable {
+        /// Plugin ID
+        id: String,
+    },
+    /// Disable a plugin
+    Disable {
+        /// Plugin ID
+        id: String,
+    },
+    /// Reload a plugin (hot-reload)
+    Reload {
+        /// Plugin ID
+        id: String,
+    },
+    /// Show recent lifecycle events for a plugin
+    Events {
+        /// Plugin ID
+        id: String,
+
+        /// Maximum number of events to return
+        #[arg(long)]
+        limit: Option<i64>,
+    },
+    /// Install a plugin from a local filesystem path (development use only)
+    InstallLocal {
+        /// Local filesystem path to the plugin directory
+        path: String,
+    },
+    /// Install a plugin from a ZIP package
+    InstallZip {
+        /// Path to the plugin ZIP file
+        path: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum PluginConfigCommand {
+    /// Get the current configuration for a plugin
+    Get {
+        /// Plugin ID
+        id: String,
+    },
+    /// Update a plugin's configuration
+    Set {
+        /// Plugin ID
+        id: String,
+
+        /// Configuration entries as key=value pairs (values parsed as JSON,
+        /// falling back to a string literal)
+        #[arg(value_name = "KEY=VALUE")]
+        values: Vec<String>,
+
+        /// Load the full configuration object from a JSON file (merged under
+        /// any key=value pairs, which take precedence)
+        #[arg(long, value_name = "PATH")]
+        config_file: Option<String>,
     },
 }
 
@@ -815,6 +883,21 @@ impl AdminCommand {
                     install_plugin(&url, r#ref.as_deref(), global).await
                 }
                 PluginsCommand::Remove { id, yes } => remove_plugin(&id, yes, global).await,
+                PluginsCommand::Show { id } => show_plugin(&id, global).await,
+                PluginsCommand::Config { command } => match command {
+                    PluginConfigCommand::Get { id } => get_plugin_config(&id, global).await,
+                    PluginConfigCommand::Set {
+                        id,
+                        values,
+                        config_file,
+                    } => set_plugin_config(&id, &values, config_file.as_deref(), global).await,
+                },
+                PluginsCommand::Enable { id } => set_plugin_enabled(&id, true, global).await,
+                PluginsCommand::Disable { id } => set_plugin_enabled(&id, false, global).await,
+                PluginsCommand::Reload { id } => reload_plugin(&id, global).await,
+                PluginsCommand::Events { id, limit } => plugin_events(&id, limit, global).await,
+                PluginsCommand::InstallLocal { path } => install_plugin_local(&path, global).await,
+                PluginsCommand::InstallZip { path } => install_plugin_zip(&path, global).await,
             },
             Self::Formats { command } => match command {
                 FormatHandlerCommand::List { r#type, enabled } => {
@@ -1790,6 +1873,72 @@ async fn show_format_handler(format_key: &str, global: &GlobalArgs) -> Result<()
     Ok(())
 }
 
+async fn show_plugin(plugin_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(plugin_id, "plugin")?;
+    let spinner = output::spinner("Fetching plugin...");
+
+    let resp = client
+        .get_plugin()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get plugin", e))?;
+    let p = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", p.name);
+        return Ok(());
+    }
+
+    let info = serde_json::json!({
+        "id": p.id.to_string(),
+        "name": p.name,
+        "display_name": p.display_name,
+        "version": p.version,
+        "type": p.plugin_type,
+        "status": p.status,
+        "author": p.author,
+        "description": p.description,
+        "homepage": p.homepage,
+        "installed_at": p.installed_at.to_rfc3339(),
+        "enabled_at": p.enabled_at.map(|t| t.to_rfc3339()),
+        "config_schema": p.config_schema,
+    });
+
+    let table_str = format!(
+        "ID:            {}\n\
+         Name:          {}\n\
+         Display Name:  {}\n\
+         Version:       {}\n\
+         Type:          {}\n\
+         Status:        {}\n\
+         Author:        {}\n\
+         Homepage:      {}\n\
+         Description:   {}\n\
+         Installed:     {}\n\
+         Enabled:       {}",
+        p.id,
+        p.name,
+        p.display_name,
+        p.version,
+        p.plugin_type,
+        p.status,
+        p.author.as_deref().unwrap_or("-"),
+        p.homepage.as_deref().unwrap_or("-"),
+        p.description.as_deref().unwrap_or("-"),
+        p.installed_at.format("%Y-%m-%d %H:%M:%S"),
+        p.enabled_at
+            .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
+            .unwrap_or_else(|| "-".to_string()),
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
 async fn set_format_handler_enabled(
     format_key: &str,
     enable: bool,
@@ -1832,6 +1981,153 @@ async fn set_format_handler_enabled(
         &format_handler_json(&handler),
         &handler.format_key,
         &format!("Format handler '{}' {}.", handler.format_key, state),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn get_plugin_config(plugin_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(plugin_id, "plugin")?;
+    let spinner = output::spinner("Fetching plugin config...");
+
+    let resp = client
+        .get_plugin_config()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get plugin config", e))?;
+    let cfg = resp.into_inner();
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "plugin_id": cfg.plugin_id.to_string(),
+        "config": cfg.config,
+        "schema": cfg.schema,
+    });
+
+    let table_str = format_plugin_config(&cfg.config);
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn set_plugin_config(
+    plugin_id: &str,
+    values: &[String],
+    config_file: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(plugin_id, "plugin")?;
+
+    let mut config = serde_json::Map::new();
+
+    if let Some(path) = config_file {
+        let contents = std::fs::read_to_string(path).map_err(|e| {
+            crate::error::AkError::ConfigError(format!("Failed to read config file {path}: {e}"))
+        })?;
+        let parsed: serde_json::Value = serde_json::from_str(&contents).map_err(|e| {
+            crate::error::AkError::ConfigError(format!("Invalid JSON in config file {path}: {e}"))
+        })?;
+        match parsed {
+            serde_json::Value::Object(map) => config = map,
+            _ => {
+                return Err(crate::error::AkError::ConfigError(
+                    "Config file must contain a JSON object".to_string(),
+                )
+                .into());
+            }
+        }
+    }
+
+    for entry in values {
+        let (key, raw) = entry.split_once('=').ok_or_else(|| {
+            crate::error::AkError::ConfigError(format!(
+                "Invalid config entry '{entry}': expected KEY=VALUE"
+            ))
+        })?;
+        // Parse the value as JSON so numbers/bools/objects are typed; fall back
+        // to a plain string literal when it is not valid JSON.
+        let value = serde_json::from_str::<serde_json::Value>(raw)
+            .unwrap_or_else(|_| serde_json::Value::String(raw.to_string()));
+        config.insert(key.to_string(), value);
+    }
+
+    if config.is_empty() {
+        return Err(crate::error::AkError::ConfigError(
+            "No configuration provided: pass KEY=VALUE pairs or --config-file".to_string(),
+        )
+        .into());
+    }
+
+    let body = artifact_keeper_sdk::types::UpdatePluginConfigRequest { config };
+
+    let spinner = output::spinner("Updating plugin config...");
+    let resp = client
+        .update_plugin_config()
+        .id(id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("update plugin config", e))?;
+    let cfg = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({
+            "plugin_id": cfg.plugin_id.to_string(),
+            "config": cfg.config,
+            "schema": cfg.schema,
+        });
+        println!("{}", output::render(&info, &global.format, None));
+    } else if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", cfg.plugin_id);
+    } else {
+        eprintln!("Plugin {plugin_id} configuration updated.");
+    }
+
+    Ok(())
+}
+
+async fn set_plugin_enabled(plugin_id: &str, enable: bool, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(plugin_id, "plugin")?;
+
+    let (action, verb) = if enable {
+        ("enable plugin", "enabled")
+    } else {
+        ("disable plugin", "disabled")
+    };
+
+    let spinner = output::spinner(if enable {
+        "Enabling plugin..."
+    } else {
+        "Disabling plugin..."
+    });
+
+    if enable {
+        client
+            .enable_plugin()
+            .id(id)
+            .send()
+            .await
+            .map_err(|e| sdk_err(action, e))?;
+    } else {
+        client
+            .disable_plugin()
+            .id(id)
+            .send()
+            .await
+            .map_err(|e| sdk_err(action, e))?;
+    }
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &serde_json::json!({ "id": plugin_id, "status": verb }),
+        plugin_id,
+        &format!("Plugin {plugin_id} {verb}."),
         global,
     );
 
@@ -1931,6 +2227,173 @@ async fn test_format_handler(
     let table_str = lines.join("\n");
 
     println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn reload_plugin(plugin_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(plugin_id, "plugin")?;
+    let spinner = output::spinner("Reloading plugin...");
+
+    let resp = client
+        .reload_plugin()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("reload plugin", e))?;
+    let p = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        let info = serde_json::json!({
+            "id": p.id.to_string(),
+            "name": p.name,
+            "version": p.version,
+            "status": p.status,
+        });
+        println!("{}", output::render(&info, &global.format, None));
+    } else if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", p.id);
+    } else {
+        eprintln!(
+            "Plugin '{}' v{} reloaded (status: {}).",
+            p.name, p.version, p.status
+        );
+    }
+
+    Ok(())
+}
+
+async fn plugin_events(plugin_id: &str, limit: Option<i64>, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(plugin_id, "plugin")?;
+    let spinner = output::spinner("Fetching plugin events...");
+
+    let mut req = client.get_plugin_events().id(id);
+    if let Some(limit) = limit {
+        req = req.limit(limit);
+    }
+    let resp = req
+        .send()
+        .await
+        .map_err(|e| sdk_err("get plugin events", e))?;
+    let events = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if events.is_empty() {
+        eprintln!("No events for plugin {plugin_id}.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        println!("{}", output::render(&events, &global.format, None));
+        return Ok(());
+    }
+
+    let table_str = format_plugin_events(&events);
+    println!(
+        "{}",
+        output::render(&events, &global.format, Some(table_str))
+    );
+
+    Ok(())
+}
+
+async fn install_plugin_local(path: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Installing plugin from local path...");
+
+    let body = artifact_keeper_sdk::types::InstallFromLocalRequest {
+        path: path.to_string(),
+    };
+
+    let resp = client
+        .install_from_local()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("install plugin from local path", e))?;
+    let resp = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", resp.plugin_id);
+        return Ok(());
+    }
+
+    eprintln!(
+        "Plugin '{}' v{} installed (format: {}).",
+        resp.name, resp.version, resp.format_key
+    );
+    eprintln!("{}", resp.message);
+
+    Ok(())
+}
+
+async fn install_plugin_zip(path: &str, global: &GlobalArgs) -> Result<()> {
+    // The `install_from_zip` endpoint uses multipart/form-data, which the
+    // generated SDK does not model (Progenitor skips multipart operations), so
+    // this is wired via a raw multipart HTTP request — the same raw-HTTP
+    // workaround used by chunked upload and migration streaming.
+    let bytes = std::fs::read(path).map_err(|e| {
+        crate::error::AkError::ConfigError(format!("Failed to read ZIP file {path}: {e}"))
+    })?;
+
+    let file_name = std::path::Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("plugin.zip")
+        .to_string();
+
+    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
+    let url = format!(
+        "{}/api/v1/plugins/install/zip",
+        base_url.trim_end_matches('/')
+    );
+
+    let part = reqwest::multipart::Part::bytes(bytes)
+        .file_name(file_name)
+        .mime_str("application/zip")
+        .map_err(|e| sdk_err("build ZIP upload", e))?;
+    let form = reqwest::multipart::Form::new().part("file", part);
+
+    let spinner = output::spinner("Installing plugin from ZIP...");
+    let http = reqwest::Client::new();
+    let resp = http
+        .post(&url)
+        .header(reqwest::header::AUTHORIZATION, auth_header)
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| sdk_err("install plugin from ZIP", e))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let body = resp.text().await.unwrap_or_default();
+        spinner.finish_and_clear();
+        return Err(crate::error::AkError::ServerError(format!(
+            "Failed to install plugin from ZIP: HTTP {status}: {body}"
+        ))
+        .into());
+    }
+
+    let parsed: artifact_keeper_sdk::types::PluginInstallResponse = resp
+        .json()
+        .await
+        .map_err(|e| sdk_err("parse ZIP install response", e))?;
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", parsed.plugin_id);
+        return Ok(());
+    }
+
+    eprintln!(
+        "Plugin '{}' v{} installed (format: {}).",
+        parsed.name, parsed.version, parsed.format_key
+    );
+    eprintln!("{}", parsed.message);
 
     Ok(())
 }
@@ -2878,6 +3341,41 @@ fn format_plugins_table(items: &[serde_json::Value]) -> String {
         ]);
     }
 
+    table.to_string()
+}
+
+/// Format a plugin configuration map as a KEY/VALUE table string.
+fn format_plugin_config(config: &serde_json::Map<String, serde_json::Value>) -> String {
+    if config.is_empty() {
+        return "(no configuration set)".to_string();
+    }
+    let mut table = new_table(vec!["KEY", "VALUE"]);
+    for (key, value) in config {
+        let rendered = match value {
+            serde_json::Value::String(s) => s.clone(),
+            other => other.to_string(),
+        };
+        table.add_row(vec![key.as_str(), rendered.as_str()]);
+    }
+    table.to_string()
+}
+
+/// Format a list of plugin lifecycle events as a table string.
+fn format_plugin_events(events: &[serde_json::Value]) -> String {
+    let mut table = new_table(vec!["EVENT", "STATUS", "MESSAGE", "TIMESTAMP"]);
+    for e in events {
+        let event_type = e["event_type"]
+            .as_str()
+            .or_else(|| e["type"].as_str())
+            .unwrap_or("-");
+        let status = e["status"].as_str().unwrap_or("-");
+        let message = e["message"].as_str().unwrap_or("-");
+        let ts = e["created_at"]
+            .as_str()
+            .or_else(|| e["timestamp"].as_str())
+            .unwrap_or("-");
+        table.add_row(vec![event_type, status, message, ts]);
+    }
     table.to_string()
 }
 
@@ -4852,6 +5350,198 @@ mod tests {
         assert!(try_parse(&["test", "plugins", "remove"]).is_err());
     }
 
+    #[test]
+    fn parse_plugins_show() {
+        let cli = parse(&["test", "plugins", "show", "plugin-id"]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Show { id },
+        } = cli.command
+        {
+            assert_eq!(id, "plugin-id");
+        } else {
+            panic!("expected plugins show");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_show_missing_id_fails() {
+        assert!(try_parse(&["test", "plugins", "show"]).is_err());
+    }
+
+    #[test]
+    fn parse_plugins_config_get() {
+        let cli = parse(&["test", "plugins", "config", "get", "plugin-id"]);
+        if let AdminCommand::Plugins {
+            command:
+                PluginsCommand::Config {
+                    command: PluginConfigCommand::Get { id },
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "plugin-id");
+        } else {
+            panic!("expected plugins config get");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_config_set() {
+        let cli = parse(&[
+            "test",
+            "plugins",
+            "config",
+            "set",
+            "plugin-id",
+            "key=value",
+            "n=1",
+        ]);
+        if let AdminCommand::Plugins {
+            command:
+                PluginsCommand::Config {
+                    command:
+                        PluginConfigCommand::Set {
+                            id,
+                            values,
+                            config_file,
+                        },
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "plugin-id");
+            assert_eq!(values, vec!["key=value".to_string(), "n=1".to_string()]);
+            assert!(config_file.is_none());
+        } else {
+            panic!("expected plugins config set");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_config_set_with_file() {
+        let cli = parse(&[
+            "test",
+            "plugins",
+            "config",
+            "set",
+            "plugin-id",
+            "--config-file",
+            "cfg.json",
+        ]);
+        if let AdminCommand::Plugins {
+            command:
+                PluginsCommand::Config {
+                    command:
+                        PluginConfigCommand::Set {
+                            id,
+                            values,
+                            config_file,
+                        },
+                },
+        } = cli.command
+        {
+            assert_eq!(id, "plugin-id");
+            assert!(values.is_empty());
+            assert_eq!(config_file.as_deref(), Some("cfg.json"));
+        } else {
+            panic!("expected plugins config set");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_enable() {
+        let cli = parse(&["test", "plugins", "enable", "plugin-id"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Plugins {
+                command: PluginsCommand::Enable { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_plugins_disable() {
+        let cli = parse(&["test", "plugins", "disable", "plugin-id"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Plugins {
+                command: PluginsCommand::Disable { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_plugins_reload() {
+        let cli = parse(&["test", "plugins", "reload", "plugin-id"]);
+        assert!(matches!(
+            cli.command,
+            AdminCommand::Plugins {
+                command: PluginsCommand::Reload { .. }
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_plugins_events() {
+        let cli = parse(&["test", "plugins", "events", "plugin-id", "--limit", "5"]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Events { id, limit },
+        } = cli.command
+        {
+            assert_eq!(id, "plugin-id");
+            assert_eq!(limit, Some(5));
+        } else {
+            panic!("expected plugins events");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_events_default_limit() {
+        let cli = parse(&["test", "plugins", "events", "plugin-id"]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::Events { limit, .. },
+        } = cli.command
+        {
+            assert!(limit.is_none());
+        } else {
+            panic!("expected plugins events");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_install_local() {
+        let cli = parse(&["test", "plugins", "install-local", "/path/to/plugin"]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::InstallLocal { path },
+        } = cli.command
+        {
+            assert_eq!(path, "/path/to/plugin");
+        } else {
+            panic!("expected plugins install-local");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_install_zip() {
+        let cli = parse(&["test", "plugins", "install-zip", "/path/plugin.zip"]);
+        if let AdminCommand::Plugins {
+            command: PluginsCommand::InstallZip { path },
+        } = cli.command
+        {
+            assert_eq!(path, "/path/plugin.zip");
+        } else {
+            panic!("expected plugins install-zip");
+        }
+    }
+
+    #[test]
+    fn parse_plugins_install_local_missing_path_fails() {
+        assert!(try_parse(&["test", "plugins", "install-local"]).is_err());
+    }
+
+    #[test]
+    fn parse_plugins_install_zip_missing_path_fails() {
+        assert!(try_parse(&["test", "plugins", "install-zip"]).is_err());
+    }
+
     // ---- Reindex subcommand parsing ----
 
     #[test]
@@ -5256,6 +5946,49 @@ mod tests {
         let table = format_plugins_table(&items);
         assert!(table.contains("NAME"));
         assert!(table.contains("VERSION"));
+    }
+
+    #[test]
+    fn format_plugin_config_renders() {
+        let mut config = serde_json::Map::new();
+        config.insert("api_key".to_string(), json!("secret"));
+        config.insert("retries".to_string(), json!(3));
+        let table = format_plugin_config(&config);
+        assert!(table.contains("KEY"));
+        assert!(table.contains("api_key"));
+        assert!(table.contains("secret"));
+        assert!(table.contains("retries"));
+        assert!(table.contains('3'));
+    }
+
+    #[test]
+    fn format_plugin_config_empty() {
+        let config = serde_json::Map::new();
+        let table = format_plugin_config(&config);
+        assert!(table.contains("no configuration"));
+    }
+
+    #[test]
+    fn format_plugin_events_renders() {
+        let events = vec![
+            json!({
+                "event_type": "installed",
+                "status": "success",
+                "message": "Plugin installed",
+                "created_at": "2026-01-15T10:00:00Z"
+            }),
+            json!({
+                "type": "reloaded",
+                "status": "success",
+                "message": "hot reload",
+                "timestamp": "2026-01-16T10:00:00Z"
+            }),
+        ];
+        let table = format_plugin_events(&events);
+        assert!(table.contains("EVENT"));
+        assert!(table.contains("installed"));
+        assert!(table.contains("reloaded"));
+        assert!(table.contains("hot reload"));
     }
 
     #[test]
@@ -5857,6 +6590,260 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = remove_plugin("00000000-0000-0000-0000-000000000001", true, &global).await;
         assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_plugin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/plugins/[^/]+$"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "name": "unity-format",
+                "display_name": "Unity Format",
+                "version": "1.0.0",
+                "plugin_type": "format",
+                "status": "active",
+                "config_schema": {},
+                "author": "AK Team",
+                "installed_at": "2026-01-15T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_plugin("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_get_plugin_config() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/plugins/.+/config"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "plugin_id": "00000000-0000-0000-0000-000000000001",
+                "config": { "api_key": "secret", "retries": 3 },
+                "schema": {}
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = get_plugin_config("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_set_plugin_config() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/plugins/.+/config"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "plugin_id": "00000000-0000-0000-0000-000000000001",
+                "config": { "api_key": "new", "retries": 5 },
+                "schema": {}
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let values = vec!["api_key=new".to_string(), "retries=5".to_string()];
+        let result = set_plugin_config(
+            "00000000-0000-0000-0000-000000000001",
+            &values,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_set_plugin_config_no_input_fails() {
+        let (_server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result =
+            set_plugin_config("00000000-0000-0000-0000-000000000001", &[], None, &global).await;
+        assert!(result.is_err());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_enable_plugin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/plugins/.+/enable"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result =
+            set_plugin_enabled("00000000-0000-0000-0000-000000000001", true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_disable_plugin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/plugins/.+/disable"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result =
+            set_plugin_enabled("00000000-0000-0000-0000-000000000001", false, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_reload_plugin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/plugins/.+/reload"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "name": "unity-format",
+                "display_name": "Unity Format",
+                "version": "1.0.0",
+                "plugin_type": "format",
+                "status": "active",
+                "source_type": "git",
+                "capabilities": {},
+                "resource_limits": {},
+                "installed_at": "2026-01-15T10:00:00Z",
+                "updated_at": "2026-01-16T10:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = reload_plugin("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_plugin_events() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/plugins/.+/events"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([
+                {
+                    "event_type": "installed",
+                    "status": "success",
+                    "message": "Plugin installed",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }
+            ])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Table);
+        let result = plugin_events("00000000-0000-0000-0000-000000000001", Some(10), &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_plugin_events_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/plugins/.+/events"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = plugin_events("00000000-0000-0000-0000-000000000001", None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_install_plugin_local() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/plugins/install/local"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "plugin_id": "00000000-0000-0000-0000-000000000001",
+                "name": "unity-format",
+                "version": "1.0.0",
+                "format_key": "unity",
+                "message": "Plugin installed successfully"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = install_plugin_local("/opt/plugins/unity", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_install_plugin_zip() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/plugins/install/zip"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "plugin_id": "00000000-0000-0000-0000-000000000001",
+                "name": "unity-format",
+                "version": "1.0.0",
+                "format_key": "unity",
+                "message": "Plugin installed successfully from ZIP"
+            })))
+            .mount(&server)
+            .await;
+
+        let zip_path = tmp.path().join("plugin.zip");
+        std::fs::write(&zip_path, b"PK\x03\x04 fake zip bytes").unwrap();
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = install_plugin_zip(zip_path.to_str().unwrap(), &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_install_plugin_zip_missing_file_fails() {
+        let (_server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = install_plugin_zip("/nonexistent/path/plugin.zip", &global).await;
+        assert!(result.is_err());
         crate::test_utils::teardown_env();
     }
 

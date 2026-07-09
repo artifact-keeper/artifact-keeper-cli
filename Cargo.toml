@@ -30,7 +30,7 @@ clap_mangen = "0.2"
 tokio = { version = "1", features = ["full"] }
 
 # HTTP client (must match progenitor-client's reqwest version)
-reqwest = { version = "0.13", features = ["json", "stream"] }
+reqwest = { version = "0.13", features = ["json", "stream", "multipart"] }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
