@@ -38,10 +38,11 @@ pub fn build_client(
             .map_err(|e| AkError::ConfigError(format!("Invalid token: {e}")))?,
     );
 
-    let http_client = reqwest::ClientBuilder::new()
+    let builder = reqwest::ClientBuilder::new()
         .default_headers(headers)
         .connect_timeout(Duration::from_secs(15))
-        .timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(30));
+    let http_client = transport::apply_custom_ca(builder)?
         .build()
         .into_diagnostic()?;
 
@@ -49,6 +50,37 @@ pub fn build_client(
         &instance.url,
         http_client,
     ))
+}
+
+/// Build an unauthenticated SDK client for a URL, honoring the custom CA
+/// configuration (`--ca-cert` / `AK_CA_CERT`).
+///
+/// Used by pre-auth flows (login, TOTP verify, setup status) that must work
+/// against instances behind a private CA before any credentials exist.
+pub fn anon_client(url: &str) -> Result<artifact_keeper_sdk::Client> {
+    let builder = reqwest::ClientBuilder::new()
+        .connect_timeout(Duration::from_secs(15))
+        .timeout(Duration::from_secs(30));
+    let http_client = transport::apply_custom_ca(builder)?
+        .build()
+        .into_diagnostic()?;
+    Ok(artifact_keeper_sdk::Client::new_with_client(
+        url,
+        http_client,
+    ))
+}
+
+/// Build a plain reqwest client (no default auth headers) honoring the custom
+/// CA configuration, for raw HTTP calls made outside the SDK (chunked upload,
+/// SSE streams, multipart imports).
+///
+/// Deliberately sets no overall request timeout: these paths stream large
+/// bodies (uploads/downloads) where a fixed deadline would be wrong.
+pub fn raw_http_client() -> Result<reqwest::Client> {
+    let builder = reqwest::ClientBuilder::new().connect_timeout(Duration::from_secs(15));
+    transport::apply_custom_ca(builder)?
+        .build()
+        .into_diagnostic()
 }
 
 /// Resolve instance and build an authenticated client from GlobalArgs.
@@ -98,16 +130,7 @@ pub fn client_for_optional_auth(global: &GlobalArgs) -> Result<artifact_keeper_s
         return Ok(client);
     }
 
-    let http_client = reqwest::ClientBuilder::new()
-        .connect_timeout(Duration::from_secs(15))
-        .timeout(Duration::from_secs(30))
-        .build()
-        .into_diagnostic()?;
-
-    Ok(artifact_keeper_sdk::Client::new_with_client(
-        &instance.url,
-        http_client,
-    ))
+    anon_client(&instance.url)
 }
 
 #[cfg(test)]
@@ -169,5 +192,78 @@ mod tests {
             let client = build_client("test", &instance, Some(&cred));
             assert!(client.is_ok(), "Failed to build client for URL: {url}");
         }
+    }
+
+    // ---- custom CA (--ca-cert / AK_CA_CERT) ----
+
+    use crate::test_utils::ENV_LOCK;
+    use crate::transport::test_ca::{TEST_CA_PEM_1, TEST_CA_PEM_2};
+
+    fn https_instance() -> InstanceConfig {
+        InstanceConfig {
+            url: "https://registry.internal.corp:8443".to_string(),
+            api_version: "v1".to_string(),
+            allow_insecure_http: false,
+        }
+    }
+
+    fn cred() -> StoredCredential {
+        StoredCredential {
+            access_token: "token".to_string(),
+            refresh_token: None,
+        }
+    }
+
+    #[test]
+    fn build_client_with_custom_ca_bundle() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("bundle.pem");
+        std::fs::write(&path, format!("{TEST_CA_PEM_1}{TEST_CA_PEM_2}")).unwrap();
+        unsafe { std::env::set_var(transport::CA_CERT_ENV, &path) };
+
+        let client = build_client("test", &https_instance(), Some(&cred()));
+        assert!(client.is_ok(), "{:?}", client.err());
+        assert!(anon_client("https://registry.internal.corp:8443").is_ok());
+        assert!(raw_http_client().is_ok());
+
+        unsafe { std::env::remove_var(transport::CA_CERT_ENV) };
+    }
+
+    #[test]
+    fn build_client_with_invalid_ca_is_clear_error() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("bad.pem");
+        std::fs::write(&path, "not a certificate").unwrap();
+        unsafe { std::env::set_var(transport::CA_CERT_ENV, &path) };
+
+        for msg in [
+            build_client("test", &https_instance(), Some(&cred()))
+                .err()
+                .map(|e| e.to_string()),
+            anon_client("https://registry.internal.corp:8443")
+                .err()
+                .map(|e| e.to_string()),
+            raw_http_client().err().map(|e| e.to_string()),
+        ] {
+            let msg = msg.expect("client build must fail with an invalid CA file");
+            assert!(msg.contains("CA certificate error"), "{msg}");
+        }
+
+        unsafe { std::env::remove_var(transport::CA_CERT_ENV) };
+    }
+
+    #[test]
+    fn build_client_with_missing_ca_file_is_clear_error() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::set_var(transport::CA_CERT_ENV, "/nonexistent/ca.pem") };
+
+        let err = build_client("test", &https_instance(), Some(&cred()))
+            .map(|_| ())
+            .expect_err("client build must fail with a missing CA file");
+        assert!(err.to_string().contains("cannot read"), "{err}");
+
+        unsafe { std::env::remove_var(transport::CA_CERT_ENV) };
     }
 }

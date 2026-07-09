@@ -158,7 +158,7 @@ async fn subscribe(
     let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
     let spinner = output::spinner("Creating email subscription...");
 
-    let http = reqwest::Client::new();
+    let http = super::client::raw_http_client()?;
     let resp = http
         .post(format!(
             "{}/api/v1/repositories/{repo}/email-subscriptions",

@@ -370,7 +370,7 @@ async fn single_put_upload(
         .extend(["api", "v1", "repositories", repo, "artifacts"])
         .extend(artifact_path.split('/'));
 
-    let resp = reqwest::Client::new()
+    let resp = super::client::raw_http_client()?
         .put(url)
         .header(reqwest::header::AUTHORIZATION, auth_header)
         .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")

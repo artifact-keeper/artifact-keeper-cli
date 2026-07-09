@@ -315,15 +315,7 @@ impl App {
             Some(ref c) => build_client(instance_name, &instance, Some(c)).ok(),
             None => {
                 // Fall back to unauthenticated client
-                let http_client = reqwest::ClientBuilder::new()
-                    .connect_timeout(std::time::Duration::from_secs(15))
-                    .timeout(std::time::Duration::from_secs(30))
-                    .build()
-                    .ok()?;
-                Some(artifact_keeper_sdk::Client::new_with_client(
-                    &instance.url,
-                    http_client,
-                ))
+                super::client::anon_client(&instance.url).ok()
             }
         }
     }
@@ -336,13 +328,12 @@ impl App {
                 None => continue,
             };
 
-            let http_client = match reqwest::ClientBuilder::new()
+            let builder = reqwest::ClientBuilder::new()
                 .connect_timeout(std::time::Duration::from_secs(3))
-                .timeout(std::time::Duration::from_secs(5))
-                .build()
-            {
-                Ok(c) => c,
-                Err(_) => {
+                .timeout(std::time::Duration::from_secs(5));
+            let http_client = match crate::transport::apply_custom_ca(builder).map(|b| b.build()) {
+                Ok(Ok(c)) => c,
+                _ => {
                     self.instances[i].status = "error".to_string();
                     continue;
                 }

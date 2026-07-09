@@ -387,7 +387,7 @@ async fn create_policy(
     let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
     let spinner = output::spinner("Creating lifecycle policy...");
 
-    let http = reqwest::Client::new();
+    let http = super::client::raw_http_client()?;
     let resp = http
         .post(format!(
             "{}/api/v1/admin/lifecycle",
@@ -497,7 +497,7 @@ async fn update_policy(
     let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
     let spinner = output::spinner("Updating lifecycle policy...");
 
-    let http = reqwest::Client::new();
+    let http = super::client::raw_http_client()?;
     let resp = http
         .patch(format!(
             "{}/api/v1/admin/lifecycle/{id}",

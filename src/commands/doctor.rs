@@ -126,11 +126,14 @@ fn pluralize<'a>(count: u32, singular: &'a str, plural: &'a str) -> &'a str {
 
 fn build_diag_client(
     instance: &InstanceConfig,
-) -> std::result::Result<artifact_keeper_sdk::Client, reqwest::Error> {
-    let http_client = reqwest::ClientBuilder::new()
+) -> std::result::Result<artifact_keeper_sdk::Client, String> {
+    let builder = reqwest::ClientBuilder::new()
         .connect_timeout(DIAG_CONNECT_TIMEOUT)
-        .timeout(DIAG_REQUEST_TIMEOUT)
-        .build()?;
+        .timeout(DIAG_REQUEST_TIMEOUT);
+    let http_client = crate::transport::apply_custom_ca(builder)
+        .map_err(|e| e.to_string())?
+        .build()
+        .map_err(|e| e.to_string())?;
 
     Ok(artifact_keeper_sdk::Client::new_with_client(
         &instance.url,
@@ -149,10 +152,12 @@ fn build_diag_client_with_auth(
         HeaderValue::from_str(&auth_value).map_err(|e| e.to_string())?,
     );
 
-    let http_client = reqwest::ClientBuilder::new()
+    let builder = reqwest::ClientBuilder::new()
         .default_headers(headers)
         .connect_timeout(DIAG_CONNECT_TIMEOUT)
-        .timeout(DIAG_REQUEST_TIMEOUT)
+        .timeout(DIAG_REQUEST_TIMEOUT);
+    let http_client = crate::transport::apply_custom_ca(builder)
+        .map_err(|e| e.to_string())?
         .build()
         .map_err(|e| e.to_string())?;
 

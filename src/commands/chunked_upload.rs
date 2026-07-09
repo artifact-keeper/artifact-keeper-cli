@@ -231,7 +231,7 @@ pub async fn chunked_upload(
     sha_spinner.finish_and_clear();
 
     // Step 2: Check for existing session to resume
-    let http = reqwest::Client::new();
+    let http = super::client::raw_http_client()?;
     let (session_id, server_chunk_size, chunks_completed) =
         match try_resume(&http, base_url, auth_header, file_path, &file_sha256).await? {
             Some((sid, cs, cc)) => {

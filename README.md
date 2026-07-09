@@ -173,6 +173,25 @@ ak instance use prod
 ak repo list --instance staging
 ```
 
+## Custom CA Certificates
+
+For instances behind a private or enterprise Certificate Authority (internal
+registries, corporate TLS-inspection proxies), point the CLI at a PEM file
+containing the CA certificate — or a bundle with multiple certificates:
+
+```bash
+# Per invocation
+ak repo list --ca-cert /etc/ssl/corp-root-ca.pem
+
+# Or via environment variable (e.g. in CI)
+export AK_CA_CERT=/etc/ssl/corp-root-ca.pem
+ak artifact push my-repo ./build/output.tar.gz
+```
+
+The certificate(s) are **added** to the default trust store; TLS verification
+always remains enabled. There is intentionally no option to disable
+certificate verification — use `--ca-cert` to trust your private CA instead.
+
 ## Shell Completions
 
 ```bash
@@ -209,6 +228,7 @@ See the [CI/CD Integration Guide](https://artifactkeeper.com/docs/guides/ci-cd/)
 | `AK_INSTANCE` | Override default instance |
 | `AK_TOKEN` | API token (alternative to keychain) |
 | `AK_NO_INPUT` | Disable interactive prompts |
+| `AK_CA_CERT` | Path to a PEM file with additional root CA certificate(s) to trust (same as `--ca-cert`) |
 | `AK_COLOR` | Color mode (`auto`, `always`, `never`) |
 | `AK_CONFIG_DIR` | Override config directory |
 | `NO_COLOR` | Standard no-color flag |
