@@ -134,14 +134,29 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Start backend
         run: |
+          # The backend hard-fails at startup ("JWT_SECRET is unsuitable:
+          # ... known placeholder value") on weak/placeholder signing
+          # secrets in EVERY environment. The old literal
+          # "e2e-test-secret-key-not-for-production" trips that check (it
+          # embeds the weak substrings "test-secret" / "secret-key"), so
+          # the backend never booted and "Wait for backend" timed out.
+          # Generate a strong, random secret per run instead. Use base64
+          # (not hex): the backend also rejects "low entropy" secrets with
+          # fewer than 16 DISTINCT characters, and a hex string draws from
+          # only 16 symbols so a random one occasionally lands at 14-15
+          # distinct and is rejected (flaky). base64 draws from 64 symbols,
+          # so `openssl rand -base64 48` reliably clears the check — and it
+          # is exactly what the backend's error message recommends.
+          JWT_SECRET="$(openssl rand -base64 48)"
           docker run -d --name e2e-backend \
             --network ${{ job.services.postgres.network }} \
             -e DATABASE_URL="postgresql://registry:registry@postgres:5432/artifact_registry_test" \
             -e MEILI_URL="http://meilisearch:7700" \
             -e ADMIN_PASSWORD="TestRunner!2026secure" \
-            -e JWT_SECRET="e2e-test-secret-key-not-for-production" \
+            -e JWT_SECRET="${JWT_SECRET}" \
+            -e RATE_LIMIT_ENABLED="false" \
             -p 8081:8080 \
-            ghcr.io/artifact-keeper/artifact-keeper-backend:latest
+            ghcr.io/artifact-keeper/artifact-keeper-backend:1.4.0
       - name: Wait for backend
         run: |
           for i in $(seq 1 60); do
