@@ -373,6 +373,14 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::builds::BuildsCommand,
     },
+    /// Manage service accounts and their tokens
+    #[command(
+        after_help = "Examples:\n  ak service-account list\n  ak service-account show <id>\n  ak service-account create ci-bot --description \"CI robot\"\n  ak service-account delete <id>\n  ak service-account token list <id>\n  ak service-account token create <id> deploy --scope read --scope write\n  ak service-account token revoke <id> <token-id>\n  ak service-account preview-selector --selector '{\"formats\":[\"npm\"]}'"
+    )]
+    ServiceAccount {
+        #[command(subcommand)]
+        command: commands::service_account::ServiceAccountCommand,
+    },
 }
 
 impl Cli {
@@ -451,6 +459,7 @@ impl Cli {
             Command::AgeGate { command } => command.execute(&global).await,
             Command::RepoToken { command } => command.execute(&global).await,
             Command::Builds { command } => command.execute(&global).await,
+            Command::ServiceAccount { command } => command.execute(&global).await,
         }
     }
 }
@@ -2334,5 +2343,33 @@ mod tests {
     #[test]
     fn parse_totp_enable_missing_code() {
         assert!(parse(&["ak", "totp", "enable"]).is_err());
+    }
+
+    #[test]
+    fn parse_service_account_list() {
+        let cli = parse(&["ak", "service-account", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::ServiceAccount { .. }));
+    }
+
+    #[test]
+    fn parse_service_account_create() {
+        let cli = parse(&["ak", "service-account", "create", "ci-bot"]).unwrap();
+        assert!(matches!(cli.command, Command::ServiceAccount { .. }));
+    }
+
+    #[test]
+    fn parse_service_account_token_create() {
+        let cli = parse(&[
+            "ak",
+            "service-account",
+            "token",
+            "create",
+            "acc1",
+            "deploy",
+            "--scope",
+            "read",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::ServiceAccount { .. }));
     }
 }
