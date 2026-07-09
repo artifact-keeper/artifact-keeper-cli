@@ -415,6 +415,21 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::monitoring::MonitoringCommand,
     },
+    /// Discover packages and browse repository trees
+    #[command(
+        after_help = "Examples:\n  ak packages list\n  ak packages list --repo npm-local --pkg-format npm\n  ak packages show <package-id>\n  ak packages versions <package-id>\n  ak packages tree npm-local --path org/pkg\n  ak packages tree npm-local --path org/pkg/1.0/pkg.tgz --content"
+    )]
+    Packages {
+        #[command(subcommand)]
+        command: commands::packages::PackagesCommand,
+    },
+
+    /// Inspect instance configuration and health
+    #[command(after_help = "Examples:\n  ak system config\n  ak system health\n  ak system info")]
+    System {
+        #[command(subcommand)]
+        command: commands::system::SystemCommand,
+    },
 }
 
 impl Cli {
@@ -498,6 +513,8 @@ impl Cli {
             Command::Quarantine { command } => command.execute(&global).await,
             Command::Curation { command } => command.execute(&global).await,
             Command::Monitoring { command } => command.execute(&global).await,
+            Command::Packages { command } => command.execute(&global).await,
+            Command::System { command } => command.execute(&global).await,
         }
     }
 }
@@ -2443,5 +2460,88 @@ mod tests {
         ])
         .unwrap();
         assert!(matches!(cli.command, Command::ServiceAccount { .. }));
+    }
+
+    // ---- Packages command parsing ----
+
+    #[test]
+    fn parse_packages_list() {
+        let cli = parse(&["ak", "packages", "list"]).unwrap();
+        assert!(matches!(cli.command, Command::Packages { .. }));
+    }
+
+    #[test]
+    fn parse_packages_list_with_filters() {
+        let cli = parse(&[
+            "ak",
+            "packages",
+            "list",
+            "--repo",
+            "npm-local",
+            "--pkg-format",
+            "npm",
+            "--search",
+            "left-pad",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Packages { .. }));
+    }
+
+    #[test]
+    fn parse_packages_show() {
+        let cli = parse(&["ak", "packages", "show", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Packages { .. }));
+    }
+
+    #[test]
+    fn parse_packages_versions() {
+        let cli = parse(&["ak", "packages", "versions", "some-id"]).unwrap();
+        assert!(matches!(cli.command, Command::Packages { .. }));
+    }
+
+    #[test]
+    fn parse_packages_tree() {
+        let cli = parse(&["ak", "packages", "tree", "npm-local", "--path", "org/pkg"]).unwrap();
+        assert!(matches!(cli.command, Command::Packages { .. }));
+    }
+
+    #[test]
+    fn parse_packages_tree_content() {
+        let cli = parse(&[
+            "ak",
+            "packages",
+            "tree",
+            "npm-local",
+            "--path",
+            "org/pkg/1.0/pkg.tgz",
+            "--content",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Packages { .. }));
+    }
+
+    #[test]
+    fn parse_packages_tree_content_requires_path() {
+        assert!(parse(&["ak", "packages", "tree", "npm-local", "--content"]).is_err());
+    }
+
+    // ---- System command parsing ----
+
+    #[test]
+    fn parse_system_config() {
+        let cli = parse(&["ak", "system", "config"]).unwrap();
+        assert!(matches!(cli.command, Command::System { .. }));
+    }
+
+    #[test]
+    fn parse_system_health() {
+        let cli = parse(&["ak", "system", "health"]).unwrap();
+        assert!(matches!(cli.command, Command::System { .. }));
+    }
+
+    #[test]
+    fn parse_system_info_alias() {
+        let cli = parse(&["ak", "system", "info"]).unwrap();
+        assert!(matches!(cli.command, Command::System { .. }));
     }
 }
