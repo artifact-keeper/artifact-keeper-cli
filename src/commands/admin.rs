@@ -45,6 +45,12 @@ pub enum AdminCommand {
         command: PluginsCommand,
     },
 
+    /// Manage format handlers (core and WASM)
+    Formats {
+        #[command(subcommand)]
+        command: FormatHandlerCommand,
+    },
+
     /// Trigger search index rebuild
     Reindex,
 
@@ -337,6 +343,56 @@ pub enum PluginsCommand {
         /// Skip confirmation prompt
         #[arg(long)]
         yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum FormatHandlerCommand {
+    /// List format handlers
+    List {
+        /// Filter by handler type (Core or Wasm)
+        #[arg(long)]
+        r#type: Option<String>,
+
+        /// Filter by enabled state
+        #[arg(long)]
+        enabled: Option<bool>,
+    },
+
+    /// Show a format handler by key
+    Show {
+        /// Format handler key (e.g. maven, npm, docker)
+        name: String,
+    },
+
+    /// Enable a format handler
+    Enable {
+        /// Format handler key
+        name: String,
+    },
+
+    /// Disable a format handler
+    Disable {
+        /// Format handler key
+        name: String,
+    },
+
+    /// Test a format handler against sample content
+    Test {
+        /// Format handler key
+        name: String,
+
+        /// Path to a sample file whose contents are tested (base64-encoded)
+        #[arg(long)]
+        sample: Option<String>,
+
+        /// Raw string content to test (alternative to --sample)
+        #[arg(long, conflicts_with = "sample")]
+        content: Option<String>,
+
+        /// Path to simulate for the artifact (defaults to the sample file name)
+        #[arg(long)]
+        path: Option<String>,
     },
 }
 
@@ -759,6 +815,33 @@ impl AdminCommand {
                     install_plugin(&url, r#ref.as_deref(), global).await
                 }
                 PluginsCommand::Remove { id, yes } => remove_plugin(&id, yes, global).await,
+            },
+            Self::Formats { command } => match command {
+                FormatHandlerCommand::List { r#type, enabled } => {
+                    list_format_handlers(r#type.as_deref(), enabled, global).await
+                }
+                FormatHandlerCommand::Show { name } => show_format_handler(&name, global).await,
+                FormatHandlerCommand::Enable { name } => {
+                    set_format_handler_enabled(&name, true, global).await
+                }
+                FormatHandlerCommand::Disable { name } => {
+                    set_format_handler_enabled(&name, false, global).await
+                }
+                FormatHandlerCommand::Test {
+                    name,
+                    sample,
+                    content,
+                    path,
+                } => {
+                    test_format_handler(
+                        &name,
+                        sample.as_deref(),
+                        content.as_deref(),
+                        path.as_deref(),
+                        global,
+                    )
+                    .await
+                }
             },
             Self::Reindex => trigger_reindex(global).await,
             Self::Stats => show_stats(global).await,
@@ -1531,6 +1614,323 @@ async fn remove_plugin(plugin_id: &str, skip_confirm: bool, global: &GlobalArgs)
         &format!("Plugin {plugin_id} removed."),
         global,
     );
+
+    Ok(())
+}
+
+/// Build a JSON representation of a format handler for structured output.
+fn format_handler_json(h: &artifact_keeper_sdk::types::FormatHandlerResponse) -> serde_json::Value {
+    serde_json::json!({
+        "id": h.id.to_string(),
+        "format_key": h.format_key,
+        "handler_type": h.handler_type.to_string(),
+        "display_name": h.display_name,
+        "description": h.description,
+        "extensions": h.extensions,
+        "is_enabled": h.is_enabled,
+        "priority": h.priority,
+        "plugin_id": h.plugin_id.map(|p| p.to_string()),
+        "repository_count": h.repository_count,
+        "capabilities": h.capabilities,
+        "created_at": h.created_at.to_rfc3339(),
+        "updated_at": h.updated_at.to_rfc3339(),
+    })
+}
+
+/// Render a single format handler as a key/value detail block.
+fn format_handler_detail_table(h: &artifact_keeper_sdk::types::FormatHandlerResponse) -> String {
+    let description = h.description.as_deref().unwrap_or("-");
+    let extensions = if h.extensions.is_empty() {
+        "-".to_string()
+    } else {
+        h.extensions.join(", ")
+    };
+    let plugin_id = h
+        .plugin_id
+        .map(|p| p.to_string())
+        .unwrap_or_else(|| "-".to_string());
+    let repos = h
+        .repository_count
+        .map(|c| c.to_string())
+        .unwrap_or_else(|| "-".to_string());
+    format!(
+        "ID:            {}\n\
+         Key:           {}\n\
+         Display Name:  {}\n\
+         Type:          {}\n\
+         Description:   {}\n\
+         Extensions:    {}\n\
+         Enabled:       {}\n\
+         Priority:      {}\n\
+         Plugin ID:     {}\n\
+         Repositories:  {}\n\
+         Created:       {}\n\
+         Updated:       {}",
+        h.id,
+        h.format_key,
+        h.display_name,
+        h.handler_type,
+        description,
+        extensions,
+        if h.is_enabled { "yes" } else { "no" },
+        h.priority,
+        plugin_id,
+        repos,
+        h.created_at.to_rfc3339(),
+        h.updated_at.to_rfc3339(),
+    )
+}
+
+async fn list_format_handlers(
+    handler_type: Option<&str>,
+    enabled: Option<bool>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching format handlers...");
+
+    let mut req = client.list_format_handlers();
+    if let Some(t) = handler_type {
+        req = req.type_(t);
+    }
+    if let Some(e) = enabled {
+        req = req.enabled(e);
+    }
+
+    let resp = req
+        .send()
+        .await
+        .map_err(|e| sdk_err("list format handlers", e))?;
+    let handlers = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if handlers.is_empty() {
+        eprintln!("No format handlers found.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for h in &handlers {
+            println!("{}", h.format_key);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = handlers.iter().map(format_handler_json).collect();
+
+    let table_str = {
+        let mut table = new_table(vec![
+            "KEY",
+            "TYPE",
+            "DISPLAY NAME",
+            "ENABLED",
+            "PRIORITY",
+            "EXTENSIONS",
+            "REPOS",
+        ]);
+
+        for h in &handlers {
+            let handler_type = h.handler_type.to_string();
+            let enabled = if h.is_enabled { "yes" } else { "no" };
+            let priority = h.priority.to_string();
+            let extensions = if h.extensions.is_empty() {
+                "-".to_string()
+            } else {
+                h.extensions.join(", ")
+            };
+            let repos = h
+                .repository_count
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "-".to_string());
+            table.add_row(vec![
+                h.format_key.as_str(),
+                handler_type.as_str(),
+                h.display_name.as_str(),
+                enabled,
+                priority.as_str(),
+                extensions.as_str(),
+                repos.as_str(),
+            ]);
+        }
+
+        table.to_string()
+    };
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+
+    Ok(())
+}
+
+async fn show_format_handler(format_key: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching format handler...");
+
+    let resp = client
+        .get_format_handler()
+        .format_key(format_key)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get format handler", e))?;
+    let handler = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", handler.format_key);
+        return Ok(());
+    }
+
+    let info = format_handler_json(&handler);
+    let table_str = format_handler_detail_table(&handler);
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn set_format_handler_enabled(
+    format_key: &str,
+    enable: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let (verb, gerund) = if enable {
+        ("enable", "Enabling")
+    } else {
+        ("disable", "Disabling")
+    };
+
+    let spinner = output::spinner(&format!("{gerund} format handler..."));
+
+    let resp = if enable {
+        client
+            .enable_format_handler()
+            .format_key(format_key)
+            .send()
+            .await
+    } else {
+        client
+            .disable_format_handler()
+            .format_key(format_key)
+            .send()
+            .await
+    };
+
+    let handler = resp
+        .map_err(|e| sdk_err(&format!("{verb} format handler"), e))?
+        .into_inner();
+    spinner.finish_and_clear();
+
+    let state = if handler.is_enabled {
+        "enabled"
+    } else {
+        "disabled"
+    };
+    emit_mutation(
+        &format_handler_json(&handler),
+        &handler.format_key,
+        &format!("Format handler '{}' {}.", handler.format_key, state),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn test_format_handler(
+    format_key: &str,
+    sample: Option<&str>,
+    content: Option<&str>,
+    path: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    use base64::Engine;
+
+    let client = client_for(global)?;
+
+    // Prefer --sample (a file whose bytes are base64-encoded); fall back to
+    // --content (raw string). One of the two is required.
+    let (body_content, is_base64, default_path) = if let Some(sample_path) = sample {
+        let bytes = std::fs::read(sample_path).map_err(|e| {
+            crate::error::AkError::ConfigError(format!(
+                "Failed to read sample file '{sample_path}': {e}"
+            ))
+        })?;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        let name = std::path::Path::new(sample_path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(sample_path)
+            .to_string();
+        (encoded, true, name)
+    } else if let Some(raw) = content {
+        (raw.to_string(), false, "test-artifact".to_string())
+    } else {
+        return Err(crate::error::AkError::ConfigError(
+            "Provide either --sample <file> or --content <string> to test".to_string(),
+        )
+        .into());
+    };
+
+    let sim_path = path.map(|p| p.to_string()).unwrap_or(default_path);
+
+    let body = artifact_keeper_sdk::types::TestFormatRequest {
+        base64: Some(is_base64),
+        content: body_content,
+        path: sim_path,
+    };
+
+    let spinner = output::spinner("Testing format handler...");
+
+    let resp = client
+        .test_format_handler()
+        .format_key(format_key)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("test format handler", e))?;
+    let result = resp.into_inner();
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "valid": result.valid,
+        "parse_error": result.parse_error,
+        "validation_error": result.validation_error,
+        "metadata": result.metadata.as_ref().map(|m| serde_json::json!({
+            "path": m.path,
+            "content_type": m.content_type,
+            "size_bytes": m.size_bytes,
+            "version": m.version,
+        })),
+    });
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", if result.valid { "valid" } else { "invalid" });
+        return Ok(());
+    }
+
+    let mut lines = vec![format!(
+        "Valid:            {}",
+        if result.valid { "yes" } else { "no" }
+    )];
+    if let Some(ref e) = result.validation_error {
+        lines.push(format!("Validation Error: {e}"));
+    }
+    if let Some(ref e) = result.parse_error {
+        lines.push(format!("Parse Error:      {e}"));
+    }
+    if let Some(ref m) = result.metadata {
+        lines.push(format!("Path:             {}", m.path));
+        lines.push(format!("Content Type:     {}", m.content_type));
+        lines.push(format!("Size:             {}", format_bytes(m.size_bytes)));
+        if let Some(ref v) = m.version {
+            lines.push(format!("Version:          {v}"));
+        }
+    }
+    let table_str = lines.join("\n");
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
 
     Ok(())
 }
@@ -4246,6 +4646,205 @@ mod tests {
         } else {
             panic!("Expected PluginsCommand::Remove");
         }
+    }
+
+    // ---- Format handler subcommand parsing ----
+
+    #[test]
+    fn parse_formats_list() {
+        let cli = parse(&["test", "formats", "list"]);
+        if let AdminCommand::Formats {
+            command: FormatHandlerCommand::List { r#type, enabled },
+        } = cli.command
+        {
+            assert!(r#type.is_none());
+            assert!(enabled.is_none());
+        } else {
+            panic!("Expected FormatHandlerCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_formats_list_with_filters() {
+        let cli = parse(&[
+            "test",
+            "formats",
+            "list",
+            "--type",
+            "Wasm",
+            "--enabled",
+            "true",
+        ]);
+        if let AdminCommand::Formats {
+            command: FormatHandlerCommand::List { r#type, enabled },
+        } = cli.command
+        {
+            assert_eq!(r#type.as_deref(), Some("Wasm"));
+            assert_eq!(enabled, Some(true));
+        } else {
+            panic!("Expected FormatHandlerCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_formats_show() {
+        let cli = parse(&["test", "formats", "show", "maven"]);
+        if let AdminCommand::Formats {
+            command: FormatHandlerCommand::Show { name },
+        } = cli.command
+        {
+            assert_eq!(name, "maven");
+        } else {
+            panic!("Expected FormatHandlerCommand::Show");
+        }
+    }
+
+    #[test]
+    fn parse_formats_show_missing_name_fails() {
+        assert!(try_parse(&["test", "formats", "show"]).is_err());
+    }
+
+    #[test]
+    fn parse_formats_enable() {
+        let cli = parse(&["test", "formats", "enable", "npm"]);
+        if let AdminCommand::Formats {
+            command: FormatHandlerCommand::Enable { name },
+        } = cli.command
+        {
+            assert_eq!(name, "npm");
+        } else {
+            panic!("Expected FormatHandlerCommand::Enable");
+        }
+    }
+
+    #[test]
+    fn parse_formats_disable() {
+        let cli = parse(&["test", "formats", "disable", "npm"]);
+        if let AdminCommand::Formats {
+            command: FormatHandlerCommand::Disable { name },
+        } = cli.command
+        {
+            assert_eq!(name, "npm");
+        } else {
+            panic!("Expected FormatHandlerCommand::Disable");
+        }
+    }
+
+    #[test]
+    fn parse_formats_test_with_sample() {
+        let cli = parse(&[
+            "test",
+            "formats",
+            "test",
+            "maven",
+            "--sample",
+            "/tmp/pom.xml",
+            "--path",
+            "com/example/app/1.0/app-1.0.pom",
+        ]);
+        if let AdminCommand::Formats {
+            command:
+                FormatHandlerCommand::Test {
+                    name,
+                    sample,
+                    content,
+                    path,
+                },
+        } = cli.command
+        {
+            assert_eq!(name, "maven");
+            assert_eq!(sample.as_deref(), Some("/tmp/pom.xml"));
+            assert!(content.is_none());
+            assert_eq!(path.as_deref(), Some("com/example/app/1.0/app-1.0.pom"));
+        } else {
+            panic!("Expected FormatHandlerCommand::Test");
+        }
+    }
+
+    #[test]
+    fn parse_formats_test_with_content() {
+        let cli = parse(&[
+            "test",
+            "formats",
+            "test",
+            "npm",
+            "--content",
+            "{\"name\":\"x\"}",
+        ]);
+        if let AdminCommand::Formats {
+            command:
+                FormatHandlerCommand::Test {
+                    name,
+                    sample,
+                    content,
+                    path,
+                },
+        } = cli.command
+        {
+            assert_eq!(name, "npm");
+            assert!(sample.is_none());
+            assert_eq!(content.as_deref(), Some("{\"name\":\"x\"}"));
+            assert!(path.is_none());
+        } else {
+            panic!("Expected FormatHandlerCommand::Test");
+        }
+    }
+
+    #[test]
+    fn parse_formats_test_sample_and_content_conflict() {
+        assert!(
+            try_parse(&[
+                "test",
+                "formats",
+                "test",
+                "maven",
+                "--sample",
+                "/tmp/pom.xml",
+                "--content",
+                "raw",
+            ])
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn parse_formats_test_missing_name_fails() {
+        assert!(try_parse(&["test", "formats", "test"]).is_err());
+    }
+
+    #[test]
+    fn format_handler_json_shape() {
+        use artifact_keeper_sdk::types::{FormatHandlerResponse, FormatHandlerType};
+
+        let handler = FormatHandlerResponse {
+            capabilities: None,
+            created_at: "2026-01-01T00:00:00Z".parse().unwrap(),
+            description: Some("Maven repositories".to_string()),
+            display_name: "Maven".to_string(),
+            extensions: vec!["jar".to_string(), "pom".to_string()],
+            format_key: "maven".to_string(),
+            handler_type: FormatHandlerType::Core,
+            id: uuid::Uuid::nil(),
+            is_enabled: true,
+            plugin_id: None,
+            priority: 10,
+            repository_count: Some(3),
+            updated_at: "2026-01-02T00:00:00Z".parse().unwrap(),
+        };
+
+        let json = format_handler_json(&handler);
+        assert_eq!(json["format_key"], "maven");
+        assert_eq!(json["handler_type"], "Core");
+        assert_eq!(json["is_enabled"], true);
+        assert_eq!(json["priority"], 10);
+        assert_eq!(json["repository_count"], 3);
+        assert_eq!(json["extensions"][0], "jar");
+
+        let table = format_handler_detail_table(&handler);
+        assert!(table.contains("Key:           maven"));
+        assert!(table.contains("Type:          Core"));
+        assert!(table.contains("Enabled:       yes"));
+        assert!(table.contains("Extensions:    jar, pom"));
     }
 
     #[test]
