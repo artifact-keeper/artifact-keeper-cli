@@ -365,6 +365,14 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::repo_token::RepoTokenCommand,
     },
+    /// Track and inspect CI build records
+    #[command(
+        after_help = "Examples:\n  ak builds list\n  ak builds list --status success\n  ak builds show <build-id>\n  ak builds diff <build-a> <build-b>\n  ak builds create nightly --number 42 --vcs-branch main\n  ak builds update <build-id> --status success\n  ak builds add-artifacts <build-id> --artifact app.jar:com/example/app.jar:<sha256>:1024"
+    )]
+    Builds {
+        #[command(subcommand)]
+        command: commands::builds::BuildsCommand,
+    },
 }
 
 impl Cli {
@@ -442,6 +450,7 @@ impl Cli {
             Command::ManPages { dir } => commands::completion::generate_man_pages(&dir),
             Command::AgeGate { command } => command.execute(&global).await,
             Command::RepoToken { command } => command.execute(&global).await,
+            Command::Builds { command } => command.execute(&global).await,
         }
     }
 }
