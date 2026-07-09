@@ -228,6 +228,92 @@ pub enum UsersCommand {
         /// User ID
         id: String,
     },
+
+    /// Show a single user by ID
+    Show {
+        /// User ID
+        id: String,
+    },
+
+    /// Force a user to change their password on next login
+    ForcePasswordChange {
+        /// User ID
+        id: String,
+    },
+
+    /// List the roles assigned to a user
+    Roles {
+        /// User ID
+        id: String,
+    },
+
+    /// Assign or revoke a user's roles
+    Role {
+        #[command(subcommand)]
+        command: RoleCommand,
+    },
+
+    /// Manage a user's API tokens (admin)
+    Tokens {
+        #[command(subcommand)]
+        command: UserTokenCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum RoleCommand {
+    /// Assign a role to a user
+    Assign {
+        /// User ID
+        user: String,
+
+        /// Role ID
+        role: String,
+    },
+
+    /// Revoke a role from a user
+    Revoke {
+        /// User ID
+        user: String,
+
+        /// Role ID
+        role: String,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum UserTokenCommand {
+    /// List a user's API tokens
+    List {
+        /// User ID
+        user: String,
+    },
+
+    /// Create an API token for a user
+    Create {
+        /// User ID
+        user: String,
+
+        /// Token name
+        name: String,
+
+        /// Comma-separated scopes (e.g. read,write)
+        #[arg(long)]
+        scopes: Option<String>,
+
+        /// Number of days until the token expires
+        #[arg(long)]
+        expires_in_days: Option<i64>,
+    },
+
+    /// Revoke a user's API token
+    Revoke {
+        /// User ID
+        user: String,
+
+        /// Token ID
+        token_id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -628,6 +714,30 @@ impl AdminCommand {
                 }
                 UsersCommand::Delete { id, yes } => delete_user(&id, yes, global).await,
                 UsersCommand::ResetPassword { id } => reset_password(&id, global).await,
+                UsersCommand::Show { id } => show_user(&id, global).await,
+                UsersCommand::ForcePasswordChange { id } => {
+                    force_password_change(&id, global).await
+                }
+                UsersCommand::Roles { id } => list_user_roles(&id, global).await,
+                UsersCommand::Role { command } => match command {
+                    RoleCommand::Assign { user, role } => assign_role(&user, &role, global).await,
+                    RoleCommand::Revoke { user, role } => revoke_role(&user, &role, global).await,
+                },
+                UsersCommand::Tokens { command } => match command {
+                    UserTokenCommand::List { user } => list_user_tokens(&user, global).await,
+                    UserTokenCommand::Create {
+                        user,
+                        name,
+                        scopes,
+                        expires_in_days,
+                    } => {
+                        create_user_token(&user, &name, scopes.as_deref(), expires_in_days, global)
+                            .await
+                    }
+                    UserTokenCommand::Revoke { user, token_id } => {
+                        revoke_user_token(&user, &token_id, global).await
+                    }
+                },
             },
             Self::Plugins { command } => match command {
                 PluginsCommand::List => list_plugins(global).await,
@@ -1433,6 +1543,362 @@ async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
     eprintln!("Password reset for user {user_id}.");
     eprintln!("Temporary password: {}", resp.temporary_password);
     eprintln!("(User will be prompted to change on first login.)");
+
+    Ok(())
+}
+
+fn user_detail_json(u: &artifact_keeper_sdk::types::AdminUserResponse) -> serde_json::Value {
+    serde_json::json!({
+        "id": u.id.to_string(),
+        "username": u.username,
+        "email": u.email,
+        "display_name": u.display_name,
+        "is_admin": u.is_admin,
+        "is_active": u.is_active,
+        "auth_provider": u.auth_provider,
+        "must_change_password": u.must_change_password,
+        "created_at": u.created_at.to_rfc3339(),
+        "last_login_at": u.last_login_at.map(|t| t.to_rfc3339()),
+    })
+}
+
+async fn show_user(user_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(user_id, "user")?;
+
+    let spinner = output::spinner("Fetching user...");
+    let user = client
+        .get_user()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get user", e))?;
+    let user = user.into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", user.id);
+        return Ok(());
+    }
+
+    let info = user_detail_json(&user);
+
+    let display = user.display_name.as_deref().unwrap_or("-");
+    let last_login = user
+        .last_login_at
+        .map(|t| t.to_rfc3339())
+        .unwrap_or_else(|| "never".to_string());
+    let table_str = format!(
+        "ID:                    {}\n\
+         Username:              {}\n\
+         Email:                 {}\n\
+         Display Name:          {}\n\
+         Admin:                 {}\n\
+         Active:                {}\n\
+         Auth Provider:         {}\n\
+         Must Change Password:  {}\n\
+         Last Login:            {}",
+        user.id,
+        user.username,
+        user.email,
+        display,
+        if user.is_admin { "yes" } else { "no" },
+        if user.is_active { "yes" } else { "no" },
+        user.auth_provider,
+        if user.must_change_password {
+            "yes"
+        } else {
+            "no"
+        },
+        last_login,
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn force_password_change(user_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(user_id, "user")?;
+
+    let spinner = output::spinner("Forcing password change...");
+    let resp = client
+        .force_password_change()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("force password change", e))?;
+    spinner.finish_and_clear();
+
+    emit_mutation(
+        &serde_json::json!({ "id": user_id, "status": "force_password_change" }),
+        user_id,
+        &resp.message,
+        global,
+    );
+
+    Ok(())
+}
+
+async fn list_user_roles(user_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(user_id, "user")?;
+
+    let spinner = output::spinner("Fetching user roles...");
+    let resp = client
+        .get_user_roles()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get user roles", e))?;
+    let roles = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if roles.items.is_empty() {
+        eprintln!("No roles assigned.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for r in &roles.items {
+            println!("{}", r.id);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = roles
+        .items
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "id": r.id.to_string(),
+                "name": r.name,
+                "description": r.description,
+                "permissions": r.permissions,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = new_table(vec!["ID", "NAME", "DESCRIPTION", "PERMISSIONS"]);
+        for r in &roles.items {
+            let id_short = short_id(&r.id);
+            let desc = r.description.as_deref().unwrap_or("-");
+            let perms = if r.permissions.is_empty() {
+                "-".to_string()
+            } else {
+                r.permissions.join(", ")
+            };
+            table.add_row(vec![&id_short, &r.name, desc, &perms]);
+        }
+        table.to_string()
+    };
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+
+    Ok(())
+}
+
+async fn assign_role(user_id: &str, role_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(user_id, "user")?;
+    let role = parse_uuid(role_id, "role")?;
+
+    let spinner = output::spinner("Assigning role...");
+    let body = artifact_keeper_sdk::types::AssignRoleRequest { role_id: role };
+    client
+        .assign_role()
+        .id(id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("assign role", e))?;
+    spinner.finish_and_clear();
+
+    emit_mutation(
+        &serde_json::json!({ "user_id": user_id, "role_id": role_id, "status": "assigned" }),
+        user_id,
+        &format!("Role {role_id} assigned to user {user_id}."),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn revoke_role(user_id: &str, role_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(user_id, "user")?;
+    let role = parse_uuid(role_id, "role")?;
+
+    let spinner = output::spinner("Revoking role...");
+    client
+        .revoke_role()
+        .id(id)
+        .role_id(role)
+        .send()
+        .await
+        .map_err(|e| sdk_err("revoke role", e))?;
+    spinner.finish_and_clear();
+
+    emit_mutation(
+        &serde_json::json!({ "user_id": user_id, "role_id": role_id, "status": "revoked" }),
+        user_id,
+        &format!("Role {role_id} revoked from user {user_id}."),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn list_user_tokens(user_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(user_id, "user")?;
+
+    let spinner = output::spinner("Fetching user tokens...");
+    let resp = client
+        .list_user_tokens()
+        .id(id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("list user tokens", e))?;
+    let list = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if list.items.is_empty() {
+        eprintln!("No API tokens found.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for t in &list.items {
+            println!("{}", t.id);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = list
+        .items
+        .iter()
+        .map(|t| {
+            serde_json::json!({
+                "id": t.id.to_string(),
+                "name": t.name,
+                "token_prefix": t.token_prefix,
+                "scopes": t.scopes,
+                "created_at": t.created_at.to_rfc3339(),
+                "expires_at": t.expires_at.map(|e| e.to_rfc3339()),
+                "last_used_at": t.last_used_at.map(|l| l.to_rfc3339()),
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = new_table(vec!["ID", "NAME", "SCOPES", "CREATED", "EXPIRES"]);
+        for t in &list.items {
+            let id_short = short_id(&t.id);
+            let scopes = if t.scopes.is_empty() {
+                "-".to_string()
+            } else {
+                t.scopes.join(", ")
+            };
+            let created = t.created_at.format("%Y-%m-%d").to_string();
+            let expires = t
+                .expires_at
+                .map(|e| e.format("%Y-%m-%d").to_string())
+                .unwrap_or_else(|| "never".to_string());
+            table.add_row(vec![&id_short, &t.name, &scopes, &created, &expires]);
+        }
+        table.to_string()
+    };
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+
+    Ok(())
+}
+
+async fn create_user_token(
+    user_id: &str,
+    name: &str,
+    scopes: Option<&str>,
+    expires_in_days: Option<i64>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(user_id, "user")?;
+
+    let scope_list: Vec<String> = scopes
+        .map(|s| s.split(',').map(|v| v.trim().to_string()).collect())
+        .unwrap_or_default();
+
+    let body = artifact_keeper_sdk::types::CreateApiTokenRequest {
+        name: name.to_string(),
+        scopes: scope_list,
+        expires_in_days,
+    };
+
+    let spinner = output::spinner("Creating API token...");
+    let resp = client
+        .create_user_api_token()
+        .id(id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("create user token", e))?;
+    let created = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", created.token);
+        return Ok(());
+    }
+
+    let info = serde_json::json!({
+        "id": created.id.to_string(),
+        "name": created.name,
+        "token": created.token,
+    });
+    let table_str = format!(
+        "Token created successfully.\n\n\
+         ID:    {}\n\
+         Name:  {}\n\
+         Token: {}\n\n\
+         Save this token now. It will not be shown again.",
+        created.id, created.name, created.token,
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn revoke_user_token(user_id: &str, token_id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let id = parse_uuid(user_id, "user")?;
+    let tid = parse_uuid(token_id, "token")?;
+
+    let spinner = output::spinner("Revoking API token...");
+    client
+        .revoke_user_api_token()
+        .id(id)
+        .token_id(tid)
+        .send()
+        .await
+        .map_err(|e| sdk_err("revoke user token", e))?;
+    spinner.finish_and_clear();
+
+    emit_mutation(
+        &serde_json::json!({ "id": token_id, "status": "revoked" }),
+        token_id,
+        &format!("Token {token_id} revoked."),
+        global,
+    );
 
     Ok(())
 }
@@ -3454,6 +3920,153 @@ mod tests {
         assert!(try_parse(&["test", "users", "reset-password"]).is_err());
     }
 
+    #[test]
+    fn parse_users_show() {
+        let cli = parse(&["test", "users", "show", "user-id"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::Show { id },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+        } else {
+            panic!("Expected UsersCommand::Show");
+        }
+    }
+
+    #[test]
+    fn parse_users_force_password_change() {
+        let cli = parse(&["test", "users", "force-password-change", "user-id"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::ForcePasswordChange { id },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+        } else {
+            panic!("Expected UsersCommand::ForcePasswordChange");
+        }
+    }
+
+    #[test]
+    fn parse_users_roles() {
+        let cli = parse(&["test", "users", "roles", "user-id"]);
+        if let AdminCommand::Users {
+            command: UsersCommand::Roles { id },
+        } = cli.command
+        {
+            assert_eq!(id, "user-id");
+        } else {
+            panic!("Expected UsersCommand::Roles");
+        }
+    }
+
+    #[test]
+    fn parse_users_role_assign() {
+        let cli = parse(&["test", "users", "role", "assign", "user-id", "role-id"]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Role {
+                    command: RoleCommand::Assign { user, role },
+                },
+        } = cli.command
+        {
+            assert_eq!(user, "user-id");
+            assert_eq!(role, "role-id");
+        } else {
+            panic!("Expected RoleCommand::Assign");
+        }
+    }
+
+    #[test]
+    fn parse_users_role_revoke() {
+        let cli = parse(&["test", "users", "role", "revoke", "user-id", "role-id"]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Role {
+                    command: RoleCommand::Revoke { user, role },
+                },
+        } = cli.command
+        {
+            assert_eq!(user, "user-id");
+            assert_eq!(role, "role-id");
+        } else {
+            panic!("Expected RoleCommand::Revoke");
+        }
+    }
+
+    #[test]
+    fn parse_users_role_assign_missing_role_fails() {
+        assert!(try_parse(&["test", "users", "role", "assign", "user-id"]).is_err());
+    }
+
+    #[test]
+    fn parse_users_tokens_list() {
+        let cli = parse(&["test", "users", "tokens", "list", "user-id"]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Tokens {
+                    command: UserTokenCommand::List { user },
+                },
+        } = cli.command
+        {
+            assert_eq!(user, "user-id");
+        } else {
+            panic!("Expected UserTokenCommand::List");
+        }
+    }
+
+    #[test]
+    fn parse_users_tokens_create() {
+        let cli = parse(&[
+            "test",
+            "users",
+            "tokens",
+            "create",
+            "user-id",
+            "ci-token",
+            "--scopes",
+            "read,write",
+            "--expires-in-days",
+            "30",
+        ]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Tokens {
+                    command:
+                        UserTokenCommand::Create {
+                            user,
+                            name,
+                            scopes,
+                            expires_in_days,
+                        },
+                },
+        } = cli.command
+        {
+            assert_eq!(user, "user-id");
+            assert_eq!(name, "ci-token");
+            assert_eq!(scopes.as_deref(), Some("read,write"));
+            assert_eq!(expires_in_days, Some(30));
+        } else {
+            panic!("Expected UserTokenCommand::Create");
+        }
+    }
+
+    #[test]
+    fn parse_users_tokens_revoke() {
+        let cli = parse(&["test", "users", "tokens", "revoke", "user-id", "token-id"]);
+        if let AdminCommand::Users {
+            command:
+                UsersCommand::Tokens {
+                    command: UserTokenCommand::Revoke { user, token_id },
+                },
+        } = cli.command
+        {
+            assert_eq!(user, "user-id");
+            assert_eq!(token_id, "token-id");
+        } else {
+            panic!("Expected UserTokenCommand::Revoke");
+        }
+    }
+
     // ---- Plugins subcommand parsing ----
 
     #[test]
@@ -4221,6 +4834,198 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = reset_password("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_user() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/users/00000000-0000-0000-0000-000000000001"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "username": "bob",
+                "email": "bob@example.com",
+                "display_name": "Bob",
+                "is_admin": false,
+                "is_active": true,
+                "auth_provider": "local",
+                "must_change_password": false,
+                "created_at": "2026-01-01T00:00:00Z",
+                "last_login_at": null
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_user("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_force_password_change() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/users/.+/force-password-change"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "message": "User will be prompted to change password on next login."
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = force_password_change("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_user_roles() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/users/.+/roles"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000002",
+                    "name": "admin",
+                    "description": "Administrator",
+                    "permissions": ["users:read", "users:write"]
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_user_roles("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_assign_role() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/users/.+/roles"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = assign_role(
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_revoke_role() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/users/.+/roles/.+"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = revoke_role(
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_user_tokens() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/users/.+/tokens"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000003",
+                    "name": "ci-token",
+                    "token_prefix": "ak_",
+                    "scopes": ["read"],
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "expires_at": null,
+                    "last_used_at": null
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = list_user_tokens("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_user_token() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path_regex("/api/v1/users/.+/tokens"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000003",
+                "name": "ci-token",
+                "token": "ak_secret789"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = create_user_token(
+            "00000000-0000-0000-0000-000000000001",
+            "ci-token",
+            Some("read"),
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_revoke_user_token() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path_regex("/api/v1/users/.+/tokens/.+"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = revoke_user_token(
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000003",
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
