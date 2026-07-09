@@ -9,7 +9,9 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation, new_table, parse_uuid, resolve_secret, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -126,8 +128,14 @@ pub enum SsoUpdateCommand {
         #[arg(long)]
         bind_dn: Option<String>,
 
+        /// New bind password (omit to keep the existing one)
         #[arg(long)]
         bind_password: Option<String>,
+
+        /// Read the new bind password from stdin (avoids exposing it on the
+        /// command line)
+        #[arg(long)]
+        bind_password_stdin: bool,
 
         #[arg(long)]
         group_base_dn: Option<String>,
@@ -164,8 +172,14 @@ pub enum SsoUpdateCommand {
         #[arg(long)]
         client_id: Option<String>,
 
+        /// New client secret (omit to keep the existing one)
         #[arg(long)]
         client_secret: Option<String>,
+
+        /// Read the new client secret from stdin (avoids exposing it on the
+        /// command line)
+        #[arg(long)]
+        client_secret_stdin: bool,
 
         /// Auto-provision users on first login (true/false)
         #[arg(long)]
@@ -255,8 +269,14 @@ pub enum SsoCreateCommand {
         #[arg(long)]
         bind_dn: Option<String>,
 
-        #[arg(long)]
+        /// Bind password (omit to enter interactively, or pipe it to stdin)
+        #[arg(long, env = "AK_LDAP_BIND_PASSWORD", hide_env_values = true)]
         bind_password: Option<String>,
+
+        /// Read the bind password from stdin (avoids exposing it on the
+        /// command line)
+        #[arg(long)]
+        bind_password_stdin: bool,
 
         #[arg(long)]
         use_starttls: bool,
@@ -273,9 +293,14 @@ pub enum SsoCreateCommand {
         #[arg(long)]
         client_id: String,
 
-        /// Client secret (omit to enter interactively)
-        #[arg(long)]
+        /// Client secret (omit to enter interactively, or pipe it to stdin)
+        #[arg(long, env = "AK_SSO_CLIENT_SECRET", hide_env_values = true)]
         client_secret: Option<String>,
+
+        /// Read the client secret from stdin (avoids exposing it on the
+        /// command line)
+        #[arg(long)]
+        client_secret_stdin: bool,
 
         #[arg(long)]
         auto_create_users: bool,
@@ -312,8 +337,19 @@ impl SsoCommand {
                     user_base_dn,
                     bind_dn,
                     bind_password,
+                    bind_password_stdin,
                     use_starttls,
                 } => {
+                    // Resolve the bind password off the command line; only
+                    // prompt when a bind DN was given (anonymous binds need
+                    // no password).
+                    let bind_password = resolve_secret(
+                        bind_password,
+                        bind_password_stdin,
+                        "--bind-password",
+                        bind_dn.as_ref().map(|_| "LDAP bind password"),
+                        global.no_input,
+                    )?;
                     create_ldap(
                         &name,
                         &server_url,
@@ -330,8 +366,18 @@ impl SsoCommand {
                     issuer_url,
                     client_id,
                     client_secret,
+                    client_secret_stdin,
                     auto_create_users,
                 } => {
+                    // Resolve the client secret off the command line: stdin /
+                    // env var / no-echo prompt on a TTY.
+                    let client_secret = resolve_secret(
+                        client_secret,
+                        client_secret_stdin,
+                        "--client-secret",
+                        Some("OIDC client secret"),
+                        global.no_input,
+                    )?;
                     create_oidc(
                         &name,
                         &issuer_url,
@@ -386,6 +432,7 @@ impl SsoUpdateCommand {
                 groups_attribute,
                 bind_dn,
                 bind_password,
+                bind_password_stdin,
                 group_base_dn,
                 group_filter,
                 admin_group_dn,
@@ -393,6 +440,15 @@ impl SsoUpdateCommand {
                 priority,
                 is_enabled,
             } => {
+                // No prompt fallback on update: an omitted password means
+                // "keep the existing one".
+                let bind_password = resolve_secret(
+                    bind_password,
+                    bind_password_stdin,
+                    "--bind-password",
+                    None,
+                    global.no_input,
+                )?;
                 let body = UpdateLdapConfigRequest {
                     name,
                     server_url,
@@ -419,6 +475,7 @@ impl SsoUpdateCommand {
                 issuer_url,
                 client_id,
                 client_secret,
+                client_secret_stdin,
                 auto_create_users,
                 scope,
                 allow_legacy_rsa_keys,
@@ -426,6 +483,15 @@ impl SsoUpdateCommand {
                 pkce_enabled,
                 is_enabled,
             } => {
+                // No prompt fallback on update: an omitted secret means
+                // "keep the existing one".
+                let client_secret = resolve_secret(
+                    client_secret,
+                    client_secret_stdin,
+                    "--client-secret",
+                    None,
+                    global.no_input,
+                )?;
                 let body = UpdateOidcConfigRequest {
                     name,
                     issuer_url,
@@ -581,18 +647,9 @@ async fn create_ldap(
     use_starttls: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    // If bind_dn is provided without bind_password, prompt interactively
-    let bind_password = match (bind_dn, bind_password) {
-        (Some(_), None) if !global.no_input => {
-            let pw = dialoguer::Password::new()
-                .with_prompt("LDAP bind password")
-                .interact()
-                .map_err(|e| AkError::ConfigError(format!("Failed to read password: {e}")))?;
-            Some(pw)
-        }
-        (_, Some(pw)) => Some(pw.to_string()),
-        _ => None,
-    };
+    // Secret resolution (prompt/stdin/env) happens at the dispatch layer via
+    // `resolve_secret`; by the time we get here the password is final.
+    let bind_password = bind_password.map(|s| s.to_string());
 
     let client = client_for(global)?;
     let spinner = output::spinner("Creating LDAP provider...");
@@ -643,22 +700,15 @@ async fn create_oidc(
     auto_create_users: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client_secret = match client_secret {
-        Some(s) => s,
-        None => {
-            if global.no_input {
-                return Err(AkError::ConfigError(
-                    "OIDC client secret is required. Provide --client-secret or remove --no-input."
-                        .to_string(),
-                )
-                .into());
-            }
-            dialoguer::Password::new()
-                .with_prompt("OIDC client secret")
-                .interact()
-                .map_err(|e| AkError::ConfigError(format!("Failed to read secret: {e}")))?
-        }
-    };
+    // Secret resolution (prompt/stdin/env) happens at the dispatch layer via
+    // `resolve_secret`; here the secret only needs to be present.
+    let client_secret = client_secret.ok_or_else(|| {
+        AkError::ConfigError(
+            "OIDC client secret is required. Provide --client-secret, pipe it to \
+             --client-secret-stdin, or set AK_SSO_CLIENT_SECRET."
+                .to_string(),
+        )
+    })?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Creating OIDC provider...");
@@ -1411,6 +1461,7 @@ mod tests {
                     user_base_dn,
                     bind_dn,
                     bind_password,
+                    bind_password_stdin,
                     use_starttls,
                 },
         } = cli.command
@@ -1420,7 +1471,39 @@ mod tests {
             assert_eq!(user_base_dn, "ou=users,dc=corp");
             assert!(bind_dn.is_none());
             assert!(bind_password.is_none());
+            assert!(!bind_password_stdin);
             assert!(!use_starttls);
+        } else {
+            panic!("Expected Create Ldap");
+        }
+    }
+
+    #[test]
+    fn parse_create_ldap_bind_password_stdin() {
+        let cli = parse(&[
+            "test",
+            "create",
+            "ldap",
+            "corp-ldap",
+            "--server-url",
+            "ldaps://ldap.corp.com",
+            "--user-base-dn",
+            "ou=users,dc=corp",
+            "--bind-dn",
+            "cn=admin,dc=corp",
+            "--bind-password-stdin",
+        ]);
+        if let SsoCommand::Create {
+            command:
+                SsoCreateCommand::Ldap {
+                    bind_password,
+                    bind_password_stdin,
+                    ..
+                },
+        } = cli.command
+        {
+            assert!(bind_password.is_none());
+            assert!(bind_password_stdin);
         } else {
             panic!("Expected Create Ldap");
         }
@@ -1484,6 +1567,7 @@ mod tests {
                     issuer_url,
                     client_id,
                     client_secret,
+                    client_secret_stdin,
                     auto_create_users,
                 },
         } = cli.command
@@ -1492,9 +1576,91 @@ mod tests {
             assert_eq!(issuer_url, "https://company.okta.com");
             assert_eq!(client_id, "abc123");
             assert_eq!(client_secret.unwrap(), "secret456");
+            assert!(!client_secret_stdin);
             assert!(!auto_create_users);
         } else {
             panic!("Expected Create Oidc");
+        }
+    }
+
+    #[test]
+    fn parse_create_oidc_client_secret_stdin() {
+        let cli = parse(&[
+            "test",
+            "create",
+            "oidc",
+            "okta-sso",
+            "--issuer-url",
+            "https://company.okta.com",
+            "--client-id",
+            "abc123",
+            "--client-secret-stdin",
+        ]);
+        if let SsoCommand::Create {
+            command:
+                SsoCreateCommand::Oidc {
+                    client_secret,
+                    client_secret_stdin,
+                    ..
+                },
+        } = cli.command
+        {
+            assert!(client_secret.is_none());
+            assert!(client_secret_stdin);
+        } else {
+            panic!("Expected Create Oidc");
+        }
+    }
+
+    #[test]
+    fn parse_update_oidc_client_secret_stdin() {
+        let cli = parse(&[
+            "test",
+            "update",
+            "oidc",
+            "00000000-0000-0000-0000-000000000001",
+            "--client-secret-stdin",
+        ]);
+        if let SsoCommand::Update { command } = cli.command {
+            if let SsoUpdateCommand::Oidc {
+                client_secret,
+                client_secret_stdin,
+                ..
+            } = *command
+            {
+                assert!(client_secret.is_none());
+                assert!(client_secret_stdin);
+            } else {
+                panic!("Expected Update Oidc");
+            }
+        } else {
+            panic!("Expected Update");
+        }
+    }
+
+    #[test]
+    fn parse_update_ldap_bind_password_stdin() {
+        let cli = parse(&[
+            "test",
+            "update",
+            "ldap",
+            "00000000-0000-0000-0000-000000000001",
+            "--bind-password-stdin",
+        ]);
+        if let SsoCommand::Update { command } = cli.command {
+            if let SsoUpdateCommand::Ldap {
+                bind_password,
+                bind_password_stdin,
+                ..
+            } = *command
+            {
+                assert!(bind_password.is_none());
+                assert!(bind_password_stdin);
+            } else {
+                panic!("Expected Update Ldap");
+            }
+        } else {
+            panic!("Expected Update");
         }
     }
 

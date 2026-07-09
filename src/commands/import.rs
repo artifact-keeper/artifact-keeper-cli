@@ -21,7 +21,7 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::{client_for, resolve_base_url_and_auth};
-use super::helpers::{new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{new_table, parse_uuid, resolve_secret, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -70,13 +70,23 @@ pub enum SourceCommand {
         #[arg(long)]
         username: Option<String>,
 
-        /// Password for basic auth
-        #[arg(long)]
+        /// Password for basic auth (omit to be prompted, or pipe it to stdin)
+        #[arg(long, env = "AK_IMPORT_PASSWORD", hide_env_values = true)]
         password: Option<String>,
 
-        /// API token / access token
+        /// Read the basic-auth password from stdin (avoids exposing it on the
+        /// command line)
         #[arg(long)]
+        password_stdin: bool,
+
+        /// API token / access token (omit to be prompted, or pipe it to stdin)
+        #[arg(long, env = "AK_IMPORT_TOKEN", hide_env_values = true)]
         token: Option<String>,
+
+        /// Read the API token from stdin (avoids exposing it on the command
+        /// line)
+        #[arg(long)]
+        token_stdin: bool,
     },
 
     /// Show a specific source connection
@@ -260,8 +270,26 @@ impl SourceCommand {
                 source_type,
                 username,
                 password,
+                password_stdin,
                 token,
+                token_stdin,
             } => {
+                // Resolve secrets off the command line: prompt on a TTY (or
+                // read piped stdin) for the credential matching the auth type.
+                let password = resolve_secret(
+                    password,
+                    password_stdin,
+                    "--password",
+                    (auth_type == "basic_auth").then_some("Source password (leave empty for none)"),
+                    global.no_input,
+                )?;
+                let token = resolve_secret(
+                    token,
+                    token_stdin,
+                    "--token",
+                    (auth_type == "api_token").then_some("Source API token (leave empty for none)"),
+                    global.no_input,
+                )?;
                 source_add(
                     &name,
                     &url,
@@ -1320,6 +1348,64 @@ mod tests {
                 assert_eq!(url, "https://artifactory.corp");
                 assert_eq!(source_type.as_deref(), Some("artifactory"));
                 assert_eq!(username.as_deref(), Some("admin"));
+            }
+            _ => panic!("expected Source Add"),
+        }
+    }
+
+    #[test]
+    fn parses_source_add_password_stdin() {
+        let cli = TestCli::parse_from([
+            "ak",
+            "source",
+            "add",
+            "legacy",
+            "https://artifactory.corp",
+            "--username",
+            "admin",
+            "--password-stdin",
+        ]);
+        match cli.command {
+            ImportCommand::Source(SourceCommand::Add {
+                password,
+                password_stdin,
+                token,
+                token_stdin,
+                ..
+            }) => {
+                assert!(password.is_none());
+                assert!(password_stdin);
+                assert!(token.is_none());
+                assert!(!token_stdin);
+            }
+            _ => panic!("expected Source Add"),
+        }
+    }
+
+    #[test]
+    fn parses_source_add_token_stdin() {
+        let cli = TestCli::parse_from([
+            "ak",
+            "source",
+            "add",
+            "legacy",
+            "https://nexus.corp",
+            "--auth-type",
+            "api_token",
+            "--token-stdin",
+        ]);
+        match cli.command {
+            ImportCommand::Source(SourceCommand::Add {
+                auth_type,
+                token,
+                token_stdin,
+                password_stdin,
+                ..
+            }) => {
+                assert_eq!(auth_type, "api_token");
+                assert!(token.is_none());
+                assert!(token_stdin);
+                assert!(!password_stdin);
             }
             _ => panic!("expected Source Add"),
         }

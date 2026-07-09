@@ -8,7 +8,8 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, resolve_secret,
+    sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -45,9 +46,14 @@ pub enum WebhookCommand {
         #[arg(long, value_delimiter = ',', required = true)]
         events: Vec<String>,
 
-        /// Webhook signing secret
-        #[arg(long)]
+        /// Webhook signing secret (omit to be prompted, or pipe it to stdin)
+        #[arg(long, env = "AK_WEBHOOK_SECRET", hide_env_values = true)]
         secret: Option<String>,
+
+        /// Read the signing secret from stdin (avoids exposing it on the
+        /// command line)
+        #[arg(long)]
+        secret_stdin: bool,
 
         /// Scope webhook to a specific repository
         #[arg(long)]
@@ -122,8 +128,18 @@ impl WebhookCommand {
                 url,
                 events,
                 secret,
+                secret_stdin,
                 repo,
             } => {
+                // Resolve the signing secret off the command line: prompt on
+                // a TTY, or read piped stdin. Empty input keeps it unset.
+                let secret = resolve_secret(
+                    secret,
+                    secret_stdin,
+                    "--secret",
+                    Some("Webhook signing secret (leave empty for none)"),
+                    global.no_input,
+                )?;
                 create_webhook(
                     &name,
                     &url,
@@ -771,6 +787,7 @@ mod tests {
             url,
             events,
             secret,
+            secret_stdin,
             repo,
         } = cli.command
         {
@@ -778,7 +795,33 @@ mod tests {
             assert_eq!(url, "https://ci.example.com/hook");
             assert_eq!(events, vec!["artifact.pushed"]);
             assert!(secret.is_none());
+            assert!(!secret_stdin);
             assert!(repo.is_none());
+        } else {
+            panic!("Expected Create");
+        }
+    }
+
+    #[test]
+    fn parse_create_secret_stdin() {
+        let cli = parse(&[
+            "test",
+            "create",
+            "deploy-hook",
+            "--url",
+            "https://ci.example.com/hook",
+            "--events",
+            "artifact.pushed",
+            "--secret-stdin",
+        ]);
+        if let WebhookCommand::Create {
+            secret,
+            secret_stdin,
+            ..
+        } = cli.command
+        {
+            assert!(secret.is_none());
+            assert!(secret_stdin);
         } else {
             panic!("Expected Create");
         }
@@ -825,6 +868,7 @@ mod tests {
             url,
             events,
             secret,
+            secret_stdin,
             repo,
         } = cli.command
         {
@@ -832,6 +876,7 @@ mod tests {
             assert_eq!(url, "https://ci.example.com/hook");
             assert_eq!(events.len(), 2);
             assert_eq!(secret.unwrap(), "my-secret");
+            assert!(!secret_stdin);
             assert!(repo.is_some());
         } else {
             panic!("Expected Create with full args");

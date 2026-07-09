@@ -4,7 +4,7 @@ use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 
 use super::client::{authenticated_client, build_client, client_for};
-use super::helpers::{parse_uuid, sdk_err};
+use super::helpers::{parse_uuid, resolve_secret, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::config::credentials::{
     StoredCredential, delete_credential, get_credential, store_credential,
@@ -82,8 +82,13 @@ pub enum AuthCommand {
         provider_id: String,
 
         /// The OIDC JWT to exchange (falls back to the AK_CI_JWT env var)
-        #[arg(long, env = "AK_CI_JWT")]
+        #[arg(long, env = "AK_CI_JWT", hide_env_values = true)]
         jwt: Option<String>,
+
+        /// Read the OIDC JWT from stdin (avoids exposing it on the command
+        /// line)
+        #[arg(long)]
+        jwt_stdin: bool,
     },
 
     /// Show whether initial setup (password change) is required
@@ -132,7 +137,15 @@ impl AuthCommand {
                 resource_path,
                 purpose,
             } => download_ticket(&resource_path, &purpose, global).await,
-            Self::CiExchange { provider_id, jwt } => {
+            Self::CiExchange {
+                provider_id,
+                jwt,
+                jwt_stdin,
+            } => {
+                // Resolve the JWT off the command line: --jwt-stdin / piped
+                // stdin / AK_CI_JWT / no-echo prompt on a TTY.
+                let jwt =
+                    resolve_secret(jwt, jwt_stdin, "--jwt", Some("OIDC JWT"), global.no_input)?;
                 ci_exchange(&provider_id, jwt.as_deref(), global).await
             }
             Self::SetupStatus => setup_status(global).await,
@@ -435,7 +448,10 @@ async fn download_ticket(resource_path: &str, purpose: &str, global: &GlobalArgs
 async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let provider = parse_uuid(provider_id, "provider")?;
     let jwt = jwt.ok_or_else(|| {
-        AkError::ConfigError("No OIDC JWT provided. Pass --jwt <token> or set AK_CI_JWT.".into())
+        AkError::ConfigError(
+            "No OIDC JWT provided. Pipe it to --jwt-stdin, set AK_CI_JWT, or pass --jwt <token>."
+                .into(),
+        )
     })?;
 
     let config = AppConfig::load()?;
@@ -933,9 +949,30 @@ mod tests {
             "--jwt",
             "ey.jwt.here",
         ]) {
-            AuthCommand::CiExchange { provider_id, jwt } => {
+            AuthCommand::CiExchange {
+                provider_id,
+                jwt,
+                jwt_stdin,
+            } => {
                 assert_eq!(provider_id, "00000000-0000-0000-0000-000000000000");
                 assert_eq!(jwt.as_deref(), Some("ey.jwt.here"));
+                assert!(!jwt_stdin);
+            }
+            _ => panic!("expected CiExchange"),
+        }
+    }
+
+    #[test]
+    fn parse_ci_exchange_jwt_stdin() {
+        match parse_auth(&[
+            "auth",
+            "ci-exchange",
+            "--provider-id",
+            "00000000-0000-0000-0000-000000000000",
+            "--jwt-stdin",
+        ]) {
+            AuthCommand::CiExchange { jwt_stdin, .. } => {
+                assert!(jwt_stdin);
             }
             _ => panic!("expected CiExchange"),
         }

@@ -55,6 +55,111 @@ pub fn parse_optional_uuid(id: Option<&str>, label: &str) -> Result<Option<uuid:
     id.map(|v| parse_uuid(v, label)).transpose()
 }
 
+/// True when the given long option (e.g. `--password`) appears on the
+/// command line itself, as opposed to being filled from an env var default.
+fn flag_on_argv(flag: &str) -> bool {
+    std::env::args().skip(1).any(|arg| {
+        arg == flag
+            || arg
+                .strip_prefix(flag)
+                .is_some_and(|rest| rest.starts_with('='))
+    })
+}
+
+/// Return `None` for an empty secret so "just press Enter" and empty piped
+/// input both mean "no secret".
+fn non_empty(secret: String) -> Option<String> {
+    if secret.is_empty() {
+        None
+    } else {
+        Some(secret)
+    }
+}
+
+/// Read a secret from a reader (stdin), trimming trailing newlines.
+fn read_secret<R: std::io::Read>(reader: &mut R) -> Result<String> {
+    let mut buf = String::new();
+    reader
+        .read_to_string(&mut buf)
+        .map_err(|e| AkError::ConfigError(format!("Failed to read secret from stdin: {e}")))?;
+    Ok(buf.trim_end_matches(['\r', '\n']).to_string())
+}
+
+/// Resolve a secret-valued option without requiring it on the command line.
+///
+/// Sources, in order of precedence:
+/// 1. `from_stdin` (`--<flag>-stdin` was passed): read the secret from stdin.
+/// 2. An explicit value (`--<flag> <value>` on argv, or its env-var default).
+///    When the value was visibly passed on argv, a soft warning is printed to
+///    stderr since command-line values leak into shell history and process
+///    listings.
+/// 3. If `prompt` is `Some` and stdin is not a TTY (piped/redirected input),
+///    read the secret from stdin.
+/// 4. If `prompt` is `Some`, stdin is a TTY, and `--no-input` was not given,
+///    prompt interactively with no echo. Empty input means "no secret".
+/// 5. Otherwise resolve to `None`.
+///
+/// Pass `prompt: None` for inputs that must never fall back to prompting or
+/// implicit stdin reads (e.g. update commands where an omitted secret means
+/// "keep the existing one").
+pub fn resolve_secret(
+    value: Option<String>,
+    from_stdin: bool,
+    flag: &str,
+    prompt: Option<&str>,
+    no_input: bool,
+) -> Result<Option<String>> {
+    if value.is_some() && flag_on_argv(flag) {
+        eprintln!(
+            "warning: passing {flag} on the command line exposes the secret to shell history \
+             and process listings; prefer {flag}-stdin, the corresponding environment \
+             variable, or the interactive prompt"
+        );
+    }
+    let stdin_is_tty = std::io::IsTerminal::is_terminal(&std::io::stdin());
+    resolve_secret_from(value, from_stdin, prompt, no_input, stdin_is_tty, || {
+        std::io::stdin().lock()
+    })
+}
+
+/// Testable core of [`resolve_secret`]; see its docs for the precedence rules.
+///
+/// `reader` is only invoked on the branches that actually read stdin — it must
+/// NOT be acquired eagerly, because the interactive prompt also reads from
+/// stdin and a held `StdinLock` would deadlock it.
+fn resolve_secret_from<R: std::io::Read>(
+    value: Option<String>,
+    from_stdin: bool,
+    prompt: Option<&str>,
+    no_input: bool,
+    stdin_is_tty: bool,
+    reader: impl FnOnce() -> R,
+) -> Result<Option<String>> {
+    if from_stdin {
+        return read_secret(&mut reader()).map(non_empty);
+    }
+    if value.is_some() {
+        return Ok(value);
+    }
+    let Some(prompt) = prompt else {
+        return Ok(None);
+    };
+    if !stdin_is_tty {
+        // Piped/redirected input: take the secret from stdin so it never has
+        // to appear on the command line.
+        return read_secret(&mut reader()).map(non_empty);
+    }
+    if no_input {
+        return Ok(None);
+    }
+    let entered = dialoguer::Password::new()
+        .with_prompt(prompt)
+        .allow_empty_password(true)
+        .interact()
+        .into_diagnostic()?;
+    Ok(non_empty(entered))
+}
+
 /// Prompt the user to confirm a destructive action. Returns `true` if the
 /// action should proceed, `false` if cancelled.
 pub fn confirm_action(prompt: &str, skip_confirm: bool, no_input: bool) -> Result<bool> {
@@ -227,5 +332,102 @@ mod tests {
         assert!(s.contains("A"));
         assert!(s.contains("B"));
         assert!(s.contains("C"));
+    }
+
+    // ---- resolve_secret_from ----
+
+    fn cursor(s: &str) -> std::io::Cursor<Vec<u8>> {
+        std::io::Cursor::new(s.as_bytes().to_vec())
+    }
+
+    #[test]
+    fn secret_from_stdin_flag_reads_and_trims() {
+        let mut input = cursor("s3cr3t\n");
+        let got =
+            resolve_secret_from(None, true, Some("Secret"), false, true, || &mut input).unwrap();
+        assert_eq!(got.as_deref(), Some("s3cr3t"));
+    }
+
+    #[test]
+    fn secret_from_stdin_flag_trims_crlf() {
+        let mut input = cursor("s3cr3t\r\n");
+        let got =
+            resolve_secret_from(None, true, Some("Secret"), false, true, || &mut input).unwrap();
+        assert_eq!(got.as_deref(), Some("s3cr3t"));
+    }
+
+    #[test]
+    fn secret_from_stdin_flag_wins_over_value() {
+        let mut input = cursor("from-stdin\n");
+        let got = resolve_secret_from(
+            Some("from-flag".into()),
+            true,
+            Some("Secret"),
+            false,
+            true,
+            || &mut input,
+        )
+        .unwrap();
+        assert_eq!(got.as_deref(), Some("from-stdin"));
+    }
+
+    #[test]
+    fn secret_from_stdin_flag_empty_means_none() {
+        let mut input = cursor("\n");
+        let got =
+            resolve_secret_from(None, true, Some("Secret"), false, true, || &mut input).unwrap();
+        assert_eq!(got, None);
+    }
+
+    #[test]
+    fn secret_explicit_value_used_verbatim() {
+        let mut input = cursor("ignored");
+        let got = resolve_secret_from(
+            Some("from-flag".into()),
+            false,
+            Some("Secret"),
+            true,
+            false,
+            || &mut input,
+        )
+        .unwrap();
+        assert_eq!(got.as_deref(), Some("from-flag"));
+        // Nothing was consumed from stdin.
+        assert_eq!(input.position(), 0);
+    }
+
+    #[test]
+    fn secret_piped_stdin_read_when_omitted() {
+        let mut input = cursor("piped-secret\n");
+        let got =
+            resolve_secret_from(None, false, Some("Secret"), false, false, || &mut input).unwrap();
+        assert_eq!(got.as_deref(), Some("piped-secret"));
+    }
+
+    #[test]
+    fn secret_piped_stdin_empty_means_none() {
+        let mut input = cursor("");
+        let got =
+            resolve_secret_from(None, false, Some("Secret"), true, false, || &mut input).unwrap();
+        assert_eq!(got, None);
+    }
+
+    #[test]
+    fn secret_no_input_on_tty_means_none() {
+        let mut input = cursor("should-not-be-read");
+        let got =
+            resolve_secret_from(None, false, Some("Secret"), true, true, || &mut input).unwrap();
+        assert_eq!(got, None);
+        assert_eq!(input.position(), 0);
+    }
+
+    #[test]
+    fn secret_without_prompt_never_reads_stdin() {
+        // prompt: None = update-style flows; omitted secret stays omitted even
+        // when stdin is piped.
+        let mut input = cursor("should-not-be-read");
+        let got = resolve_secret_from(None, false, None, false, false, || &mut input).unwrap();
+        assert_eq!(got, None);
+        assert_eq!(input.position(), 0);
     }
 }
