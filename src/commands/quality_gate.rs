@@ -99,6 +99,71 @@ pub enum QualityGateCommand {
         #[arg(long)]
         repo: Option<String>,
     },
+
+    /// List quality checks (optionally filtered by artifact or repository)
+    Checks {
+        /// Filter by artifact ID
+        #[arg(long)]
+        artifact: Option<String>,
+
+        /// Filter by repository ID
+        #[arg(long)]
+        repo: Option<String>,
+    },
+
+    /// Show a single quality check result
+    CheckShow {
+        /// Check result ID
+        id: String,
+    },
+
+    /// Trigger quality checks for an artifact or repository
+    CheckTrigger {
+        /// Artifact ID to check
+        #[arg(long)]
+        artifact: Option<String>,
+
+        /// Repository ID to check
+        #[arg(long)]
+        repo: Option<String>,
+    },
+
+    /// List issues found by a quality check
+    CheckIssues {
+        /// Check result ID
+        id: String,
+    },
+
+    /// Show the aggregate health dashboard across all repositories
+    HealthDashboard,
+
+    /// Show health for a single artifact
+    ArtifactHealth {
+        /// Artifact ID
+        artifact: String,
+    },
+
+    /// Show health for a repository
+    RepoHealth {
+        /// Repository key
+        key: String,
+    },
+
+    /// Suppress a quality issue
+    Suppress {
+        /// Issue ID
+        id: String,
+
+        /// Reason for suppression
+        #[arg(long)]
+        reason: String,
+    },
+
+    /// Remove suppression from a quality issue
+    Unsuppress {
+        /// Issue ID
+        id: String,
+    },
 }
 
 impl QualityGateCommand {
@@ -152,6 +217,19 @@ impl QualityGateCommand {
             Self::Check { artifact, repo } => {
                 check_artifact(&artifact, repo.as_deref(), global).await
             }
+            Self::Checks { artifact, repo } => {
+                list_checks(artifact.as_deref(), repo.as_deref(), global).await
+            }
+            Self::CheckShow { id } => show_check(&id, global).await,
+            Self::CheckTrigger { artifact, repo } => {
+                trigger_checks(artifact.as_deref(), repo.as_deref(), global).await
+            }
+            Self::CheckIssues { id } => list_check_issues(&id, global).await,
+            Self::HealthDashboard => health_dashboard(global).await,
+            Self::ArtifactHealth { artifact } => artifact_health(&artifact, global).await,
+            Self::RepoHealth { key } => repo_health(&key, global).await,
+            Self::Suppress { id, reason } => suppress_issue(&id, &reason, global).await,
+            Self::Unsuppress { id } => unsuppress_issue(&id, global).await,
         }
     }
 }
@@ -615,6 +693,568 @@ async fn check_artifact(
     if !result.passed {
         std::process::exit(1);
     }
+
+    Ok(())
+}
+
+// ---- quality checks ----
+
+async fn list_checks(
+    artifact: Option<&str>,
+    repo: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let artifact_id = parse_optional_uuid(artifact, "artifact")?;
+    let repository_id = parse_optional_uuid(repo, "repository")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching quality checks...");
+
+    let mut req = client.list_checks();
+    if let Some(a) = artifact_id {
+        req = req.artifact_id(a);
+    }
+    if let Some(r) = repository_id {
+        req = req.repository_id(r);
+    }
+
+    let checks = req
+        .send()
+        .await
+        .map_err(|e| sdk_err("list quality checks", e))?;
+
+    let checks = checks.into_inner();
+    spinner.finish_and_clear();
+
+    if checks.is_empty() {
+        eprintln!("No quality checks found.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for c in &checks {
+            println!("{}", c.id);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = checks
+        .iter()
+        .map(|c| {
+            serde_json::json!({
+                "id": c.id.to_string(),
+                "artifact_id": c.artifact_id.to_string(),
+                "check_type": c.check_type,
+                "status": c.status,
+                "score": c.score,
+                "issues_count": c.issues_count,
+                "passed": c.passed,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = new_table(vec![
+            "ID", "ARTIFACT", "TYPE", "STATUS", "SCORE", "ISSUES", "PASSED",
+        ]);
+        for c in &checks {
+            let id_short = short_id(&c.id);
+            let art_short = short_id(&c.artifact_id);
+            let score = c
+                .score
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| "-".to_string());
+            let passed = match c.passed {
+                Some(true) => "yes",
+                Some(false) => "no",
+                None => "-",
+            };
+            let issues = c.issues_count.to_string();
+            table.add_row(vec![
+                &id_short,
+                &art_short,
+                &c.check_type,
+                &c.status,
+                &score,
+                &issues,
+                passed,
+            ]);
+        }
+        table.to_string()
+    };
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+
+    Ok(())
+}
+
+async fn show_check(id: &str, global: &GlobalArgs) -> Result<()> {
+    let check_id = parse_uuid(id, "check")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching quality check...");
+
+    let check = client
+        .get_check()
+        .id(check_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get quality check", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "id": check.id.to_string(),
+        "artifact_id": check.artifact_id.to_string(),
+        "repository_id": check.repository_id.to_string(),
+        "check_type": check.check_type,
+        "checker_version": check.checker_version,
+        "status": check.status,
+        "passed": check.passed,
+        "score": check.score,
+        "issues_count": check.issues_count,
+        "critical_count": check.critical_count,
+        "high_count": check.high_count,
+        "medium_count": check.medium_count,
+        "low_count": check.low_count,
+        "info_count": check.info_count,
+        "error_message": check.error_message,
+        "started_at": check.started_at.map(|t| t.to_rfc3339()),
+        "completed_at": check.completed_at.map(|t| t.to_rfc3339()),
+        "created_at": check.created_at.to_rfc3339(),
+    });
+
+    let table_str = format!(
+        "ID:              {}\n\
+         Artifact:        {}\n\
+         Repository:      {}\n\
+         Type:            {}\n\
+         Checker Version: {}\n\
+         Status:          {}\n\
+         Passed:          {}\n\
+         Score:           {}\n\
+         Issues:          {} (crit {}, high {}, med {}, low {}, info {})\n\
+         Error:           {}",
+        check.id,
+        check.artifact_id,
+        check.repository_id,
+        check.check_type,
+        check.checker_version.as_deref().unwrap_or("-"),
+        check.status,
+        match check.passed {
+            Some(true) => "yes",
+            Some(false) => "no",
+            None => "-",
+        },
+        check
+            .score
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "-".to_string()),
+        check.issues_count,
+        check.critical_count,
+        check.high_count,
+        check.medium_count,
+        check.low_count,
+        check.info_count,
+        check.error_message.as_deref().unwrap_or("-"),
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn trigger_checks(
+    artifact: Option<&str>,
+    repo: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let artifact_id = parse_optional_uuid(artifact, "artifact")?;
+    let repository_id = parse_optional_uuid(repo, "repository")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Triggering quality checks...");
+
+    let body = artifact_keeper_sdk::types::TriggerChecksRequest {
+        artifact_id,
+        repository_id,
+    };
+
+    let result = client
+        .trigger_checks()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("trigger quality checks", e))?;
+
+    spinner.finish_and_clear();
+
+    emit_mutation(
+        &*result,
+        &result.artifacts_queued.to_string(),
+        &format!(
+            "{} ({} artifact(s) queued).",
+            result.message, result.artifacts_queued
+        ),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn list_check_issues(id: &str, global: &GlobalArgs) -> Result<()> {
+    let check_id = parse_uuid(id, "check")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching check issues...");
+
+    let issues = client
+        .list_check_issues()
+        .id(check_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("list check issues", e))?;
+
+    let issues = issues.into_inner();
+    spinner.finish_and_clear();
+
+    if issues.is_empty() {
+        eprintln!("No issues found for this check.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for i in &issues {
+            println!("{}", i.id);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = issues
+        .iter()
+        .map(|i| {
+            serde_json::json!({
+                "id": i.id.to_string(),
+                "severity": i.severity,
+                "category": i.category,
+                "title": i.title,
+                "location": i.location,
+                "is_suppressed": i.is_suppressed,
+            })
+        })
+        .collect();
+
+    let table_str = {
+        let mut table = new_table(vec!["ID", "SEVERITY", "CATEGORY", "TITLE", "SUPPRESSED"]);
+        for i in &issues {
+            let id_short = short_id(&i.id);
+            let suppressed = if i.is_suppressed { "yes" } else { "no" };
+            table.add_row(vec![
+                &id_short,
+                &i.severity,
+                &i.category,
+                &i.title,
+                suppressed,
+            ]);
+        }
+        table.to_string()
+    };
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+
+    Ok(())
+}
+
+// ---- health dashboards ----
+
+async fn health_dashboard(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching health dashboard...");
+
+    let dash = client
+        .get_health_dashboard()
+        .send()
+        .await
+        .map_err(|e| sdk_err("get health dashboard", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "total_repositories": dash.total_repositories,
+        "total_artifacts_evaluated": dash.total_artifacts_evaluated,
+        "avg_health_score": dash.avg_health_score,
+        "repos_grade_a": dash.repos_grade_a,
+        "repos_grade_b": dash.repos_grade_b,
+        "repos_grade_c": dash.repos_grade_c,
+        "repos_grade_d": dash.repos_grade_d,
+        "repos_grade_f": dash.repos_grade_f,
+        "repositories": dash.repositories.iter().map(|r| {
+            serde_json::json!({
+                "repository_id": r.repository_id.to_string(),
+                "repository_key": r.repository_key,
+                "health_score": r.health_score,
+                "health_grade": r.health_grade,
+                "artifacts_evaluated": r.artifacts_evaluated,
+                "artifacts_passing": r.artifacts_passing,
+                "artifacts_failing": r.artifacts_failing,
+            })
+        }).collect::<Vec<_>>(),
+    });
+
+    let table_str = {
+        let mut out = format!(
+            "Repositories:        {}\n\
+             Artifacts Evaluated: {}\n\
+             Avg Health Score:    {}\n\
+             Grades:              A {} / B {} / C {} / D {} / F {}\n",
+            dash.total_repositories,
+            dash.total_artifacts_evaluated,
+            dash.avg_health_score,
+            dash.repos_grade_a,
+            dash.repos_grade_b,
+            dash.repos_grade_c,
+            dash.repos_grade_d,
+            dash.repos_grade_f,
+        );
+
+        if !dash.repositories.is_empty() {
+            let mut table = new_table(vec![
+                "REPOSITORY",
+                "GRADE",
+                "SCORE",
+                "EVALUATED",
+                "PASSING",
+                "FAILING",
+            ]);
+            for r in &dash.repositories {
+                table.add_row(vec![
+                    r.repository_key.clone(),
+                    r.health_grade.clone(),
+                    r.health_score.to_string(),
+                    r.artifacts_evaluated.to_string(),
+                    r.artifacts_passing.to_string(),
+                    r.artifacts_failing.to_string(),
+                ]);
+            }
+            out.push_str(&table.to_string());
+        }
+
+        out
+    };
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn artifact_health(artifact: &str, global: &GlobalArgs) -> Result<()> {
+    let artifact_id = parse_uuid(artifact, "artifact")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching artifact health...");
+
+    let health = client
+        .get_artifact_health()
+        .artifact_id(artifact_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get artifact health", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "artifact_id": health.artifact_id.to_string(),
+        "health_score": health.health_score,
+        "health_grade": health.health_grade,
+        "security_score": health.security_score,
+        "quality_score": health.quality_score,
+        "license_score": health.license_score,
+        "metadata_score": health.metadata_score,
+        "total_issues": health.total_issues,
+        "critical_issues": health.critical_issues,
+        "checks_total": health.checks_total,
+        "checks_passed": health.checks_passed,
+        "last_checked_at": health.last_checked_at.map(|t| t.to_rfc3339()),
+        "checks": health.checks.iter().map(|c| {
+            serde_json::json!({
+                "check_type": c.check_type,
+                "status": c.status,
+                "passed": c.passed,
+                "score": c.score,
+                "issues_count": c.issues_count,
+            })
+        }).collect::<Vec<_>>(),
+    });
+
+    let table_str = {
+        let opt_score =
+            |v: Option<i32>| v.map(|s| s.to_string()).unwrap_or_else(|| "-".to_string());
+        let mut out = format!(
+            "Artifact:       {}\n\
+             Health Score:   {} (grade {})\n\
+             Security Score: {}\n\
+             Quality Score:  {}\n\
+             License Score:  {}\n\
+             Metadata Score: {}\n\
+             Issues:         {} ({} critical)\n\
+             Checks:         {}/{} passed\n",
+            health.artifact_id,
+            health.health_score,
+            health.health_grade,
+            opt_score(health.security_score),
+            opt_score(health.quality_score),
+            opt_score(health.license_score),
+            opt_score(health.metadata_score),
+            health.total_issues,
+            health.critical_issues,
+            health.checks_passed,
+            health.checks_total,
+        );
+
+        if !health.checks.is_empty() {
+            let mut table = new_table(vec!["TYPE", "STATUS", "PASSED", "SCORE", "ISSUES"]);
+            for c in &health.checks {
+                let passed = match c.passed {
+                    Some(true) => "yes",
+                    Some(false) => "no",
+                    None => "-",
+                };
+                table.add_row(vec![
+                    c.check_type.clone(),
+                    c.status.clone(),
+                    passed.to_string(),
+                    c.score
+                        .map(|s| s.to_string())
+                        .unwrap_or_else(|| "-".to_string()),
+                    c.issues_count.to_string(),
+                ]);
+            }
+            out.push_str(&table.to_string());
+        }
+
+        out
+    };
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn repo_health(key: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching repository health...");
+
+    let health = client
+        .get_repo_health()
+        .key(key)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get repository health", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = serde_json::json!({
+        "repository_id": health.repository_id.to_string(),
+        "repository_key": health.repository_key,
+        "health_score": health.health_score,
+        "health_grade": health.health_grade,
+        "avg_security_score": health.avg_security_score,
+        "avg_quality_score": health.avg_quality_score,
+        "avg_license_score": health.avg_license_score,
+        "avg_metadata_score": health.avg_metadata_score,
+        "artifacts_evaluated": health.artifacts_evaluated,
+        "artifacts_passing": health.artifacts_passing,
+        "artifacts_failing": health.artifacts_failing,
+        "last_evaluated_at": health.last_evaluated_at.map(|t| t.to_rfc3339()),
+    });
+
+    let opt_score = |v: Option<i32>| v.map(|s| s.to_string()).unwrap_or_else(|| "-".to_string());
+    let table_str = format!(
+        "Repository:          {}\n\
+         Health Score:        {} (grade {})\n\
+         Avg Security Score:  {}\n\
+         Avg Quality Score:   {}\n\
+         Avg License Score:   {}\n\
+         Avg Metadata Score:  {}\n\
+         Artifacts Evaluated: {}\n\
+         Artifacts Passing:   {}\n\
+         Artifacts Failing:   {}",
+        health.repository_key,
+        health.health_score,
+        health.health_grade,
+        opt_score(health.avg_security_score),
+        opt_score(health.avg_quality_score),
+        opt_score(health.avg_license_score),
+        opt_score(health.avg_metadata_score),
+        health.artifacts_evaluated,
+        health.artifacts_passing,
+        health.artifacts_failing,
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+// ---- issue suppression ----
+
+async fn suppress_issue(id: &str, reason: &str, global: &GlobalArgs) -> Result<()> {
+    let issue_id = parse_uuid(id, "issue")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Suppressing issue...");
+
+    let body = artifact_keeper_sdk::types::SuppressIssueRequest {
+        reason: reason.to_string(),
+    };
+
+    let issue = client
+        .suppress_issue()
+        .id(issue_id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("suppress issue", e))?;
+
+    spinner.finish_and_clear();
+
+    emit_mutation(
+        &*issue,
+        &issue.id.to_string(),
+        &format!("Issue '{}' suppressed.", issue.title),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn unsuppress_issue(id: &str, global: &GlobalArgs) -> Result<()> {
+    let issue_id = parse_uuid(id, "issue")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Removing issue suppression...");
+
+    let issue = client
+        .unsuppress_issue()
+        .id(issue_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("unsuppress issue", e))?;
+
+    spinner.finish_and_clear();
+
+    emit_mutation(
+        &*issue,
+        &issue.id.to_string(),
+        &format!("Suppression removed from issue '{}'.", issue.title),
+        global,
+    );
 
     Ok(())
 }
@@ -1212,5 +1852,378 @@ mod tests {
         let items = vec![gate_json()];
         let table = format_gate_table(&items);
         insta::assert_snapshot!("gate_list_table", table);
+    }
+
+    // ---- parsing: checks / health / suppression ----
+
+    #[test]
+    fn parse_checks_minimal() {
+        let cli = parse(&["test", "checks"]);
+        match cli.command {
+            QualityGateCommand::Checks { artifact, repo } => {
+                assert!(artifact.is_none());
+                assert!(repo.is_none());
+            }
+            _ => panic!("expected Checks"),
+        }
+    }
+
+    #[test]
+    fn parse_checks_with_filters() {
+        let cli = parse(&["test", "checks", "--artifact", "a-id", "--repo", "r-id"]);
+        match cli.command {
+            QualityGateCommand::Checks { artifact, repo } => {
+                assert_eq!(artifact.as_deref(), Some("a-id"));
+                assert_eq!(repo.as_deref(), Some("r-id"));
+            }
+            _ => panic!("expected Checks"),
+        }
+    }
+
+    #[test]
+    fn parse_check_show() {
+        let cli = parse(&["test", "check-show", "check-id"]);
+        match cli.command {
+            QualityGateCommand::CheckShow { id } => assert_eq!(id, "check-id"),
+            _ => panic!("expected CheckShow"),
+        }
+    }
+
+    #[test]
+    fn parse_check_trigger() {
+        let cli = parse(&["test", "check-trigger", "--artifact", "a-id"]);
+        match cli.command {
+            QualityGateCommand::CheckTrigger { artifact, repo } => {
+                assert_eq!(artifact.as_deref(), Some("a-id"));
+                assert!(repo.is_none());
+            }
+            _ => panic!("expected CheckTrigger"),
+        }
+    }
+
+    #[test]
+    fn parse_check_issues() {
+        let cli = parse(&["test", "check-issues", "check-id"]);
+        match cli.command {
+            QualityGateCommand::CheckIssues { id } => assert_eq!(id, "check-id"),
+            _ => panic!("expected CheckIssues"),
+        }
+    }
+
+    #[test]
+    fn parse_health_dashboard() {
+        let cli = parse(&["test", "health-dashboard"]);
+        assert!(matches!(cli.command, QualityGateCommand::HealthDashboard));
+    }
+
+    #[test]
+    fn parse_artifact_health() {
+        let cli = parse(&["test", "artifact-health", "a-id"]);
+        match cli.command {
+            QualityGateCommand::ArtifactHealth { artifact } => assert_eq!(artifact, "a-id"),
+            _ => panic!("expected ArtifactHealth"),
+        }
+    }
+
+    #[test]
+    fn parse_repo_health() {
+        let cli = parse(&["test", "repo-health", "my-repo"]);
+        match cli.command {
+            QualityGateCommand::RepoHealth { key } => assert_eq!(key, "my-repo"),
+            _ => panic!("expected RepoHealth"),
+        }
+    }
+
+    #[test]
+    fn parse_suppress() {
+        let cli = parse(&["test", "suppress", "issue-id", "--reason", "false positive"]);
+        match cli.command {
+            QualityGateCommand::Suppress { id, reason } => {
+                assert_eq!(id, "issue-id");
+                assert_eq!(reason, "false positive");
+            }
+            _ => panic!("expected Suppress"),
+        }
+    }
+
+    #[test]
+    fn parse_suppress_missing_reason() {
+        let result = try_parse(&["test", "suppress", "issue-id"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_unsuppress() {
+        let cli = parse(&["test", "unsuppress", "issue-id"]);
+        match cli.command {
+            QualityGateCommand::Unsuppress { id } => assert_eq!(id, "issue-id"),
+            _ => panic!("expected Unsuppress"),
+        }
+    }
+
+    // ---- wiremock handler tests: checks / health / suppression ----
+
+    fn check_json() -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "artifact_id": NIL_UUID,
+            "repository_id": NIL_UUID,
+            "check_type": "vulnerability",
+            "checker_version": "1.0.0",
+            "status": "completed",
+            "passed": true,
+            "score": 92,
+            "issues_count": 3,
+            "critical_count": 0,
+            "high_count": 1,
+            "medium_count": 2,
+            "low_count": 0,
+            "info_count": 0,
+            "details": null,
+            "error_message": null,
+            "started_at": "2026-01-15T12:00:00Z",
+            "completed_at": "2026-01-15T12:01:00Z",
+            "created_at": "2026-01-15T12:00:00Z",
+            "updated_at": "2026-01-15T12:01:00Z"
+        })
+    }
+
+    fn issue_json() -> serde_json::Value {
+        json!({
+            "id": NIL_UUID,
+            "artifact_id": NIL_UUID,
+            "check_result_id": NIL_UUID,
+            "severity": "high",
+            "category": "vulnerability",
+            "title": "CVE-2026-0001",
+            "description": "Example vulnerability",
+            "location": "package.json",
+            "is_suppressed": false,
+            "suppressed_at": null,
+            "suppressed_by": null,
+            "suppressed_reason": null,
+            "created_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    fn repo_health_json() -> serde_json::Value {
+        json!({
+            "repository_id": NIL_UUID,
+            "repository_key": "my-repo",
+            "health_score": 85,
+            "health_grade": "B",
+            "avg_security_score": 88,
+            "avg_quality_score": 82,
+            "avg_license_score": null,
+            "avg_metadata_score": 90,
+            "artifacts_evaluated": 10,
+            "artifacts_passing": 8,
+            "artifacts_failing": 2,
+            "last_evaluated_at": "2026-01-15T12:00:00Z"
+        })
+    }
+
+    #[tokio::test]
+    async fn handler_list_checks_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/quality/checks"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_checks(None, None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_checks_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/quality/checks"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([check_json()])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_checks(None, None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_check() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/quality/checks/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(check_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = show_check(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_trigger_checks() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/quality/checks/trigger"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "artifacts_queued": 4,
+                "message": "queued"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = trigger_checks(None, None, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_check_issues() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/quality/checks/{NIL_UUID}/issues")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([issue_json()])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_check_issues(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_health_dashboard() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/quality/health/dashboard"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "total_repositories": 1,
+                "total_artifacts_evaluated": 10,
+                "avg_health_score": 85,
+                "repos_grade_a": 0,
+                "repos_grade_b": 1,
+                "repos_grade_c": 0,
+                "repos_grade_d": 0,
+                "repos_grade_f": 0,
+                "repositories": [repo_health_json()]
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = health_dashboard(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_artifact_health() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/quality/health/artifacts/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "artifact_id": NIL_UUID,
+                "health_score": 90,
+                "health_grade": "A",
+                "security_score": 95,
+                "quality_score": 88,
+                "license_score": null,
+                "metadata_score": 92,
+                "total_issues": 2,
+                "critical_issues": 0,
+                "checks_total": 3,
+                "checks_passed": 3,
+                "last_checked_at": "2026-01-15T12:00:00Z",
+                "checks": [{
+                    "check_type": "vulnerability",
+                    "completed_at": "2026-01-15T12:01:00Z",
+                    "issues_count": 2,
+                    "passed": true,
+                    "score": 95,
+                    "status": "completed"
+                }]
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = artifact_health(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_repo_health() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/quality/health/repositories/my-repo"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(repo_health_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = repo_health("my-repo", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_suppress_issue() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/quality/issues/{NIL_UUID}/suppress")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(issue_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = suppress_issue(NIL_UUID, "false positive", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_unsuppress_issue() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/quality/issues/{NIL_UUID}/suppress")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(issue_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = unsuppress_issue(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
     }
 }
