@@ -12,6 +12,7 @@ use crate::config::credentials::{
 use crate::config::{AppConfig, InstanceConfig};
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
+use crate::transport;
 
 #[derive(Subcommand)]
 pub enum AuthCommand {
@@ -175,6 +176,9 @@ async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Resul
     // Interactive: let user choose how to authenticate
     eprintln!("Logging in to '{}' ({})\n", instance_name, instance.url);
 
+    // Surface the cleartext risk before the user types anything.
+    transport::warn_if_insecure(&instance_name, &instance);
+
     let methods = &[
         "Login with username and password",
         "Paste an authentication token",
@@ -224,6 +228,17 @@ async fn login_with_token(instance_name: &str, instance: &InstanceConfig) -> Res
 }
 
 async fn login_with_password(instance_name: &str, instance: &InstanceConfig) -> Result<()> {
+    // A password sent over plaintext HTTP to a non-loopback host is readable
+    // by any on-path observer. Refuse unless the user explicitly opted in
+    // (`ak instance add --insecure-http` or AK_ALLOW_INSECURE_HTTP=1).
+    // Loopback (localhost/127.0.0.1/::1) is exempt: plain HTTP is the normal
+    // local development setup.
+    if transport::classify_url(&instance.url) == transport::TransportSecurity::HttpRemote
+        && !transport::insecure_http_allowed(instance)
+    {
+        return Err(AkError::InsecureTransport(instance.url.clone()).into());
+    }
+
     let username: String = dialoguer::Input::new()
         .with_prompt("Username")
         .interact_text()

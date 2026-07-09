@@ -7,6 +7,7 @@ use crate::cli::GlobalArgs;
 use crate::config::credentials::{StoredCredential, get_credential};
 use crate::config::{AppConfig, InstanceConfig};
 use crate::error::AkError;
+use crate::transport;
 
 /// Build an authenticated SDK client for the resolved instance.
 ///
@@ -24,6 +25,10 @@ pub fn build_client(
             &owned_cred
         }
     };
+
+    // Sending a bearer token over plaintext HTTP to a non-loopback host
+    // exposes it to on-path observers; warn unless the user opted in.
+    transport::warn_if_insecure(instance_name, instance);
 
     let auth_value = format!("Bearer {}", cred.access_token);
     let mut headers = HeaderMap::new();
@@ -74,6 +79,7 @@ pub fn client_for(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
 pub fn resolve_base_url_and_auth(global: &GlobalArgs) -> Result<(String, String)> {
     let config = AppConfig::load()?;
     let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    transport::warn_if_insecure(name, instance);
     let cred = get_credential(name)?;
     let auth_header = format!("Bearer {}", cred.access_token);
     Ok((instance.url.clone(), auth_header))
@@ -113,6 +119,7 @@ mod tests {
         let instance = InstanceConfig {
             url: "https://example.com".to_string(),
             api_version: "v1".to_string(),
+            allow_insecure_http: false,
         };
         let cred = StoredCredential {
             access_token: "test-token-abc123".to_string(),
@@ -128,6 +135,7 @@ mod tests {
         let instance = InstanceConfig {
             url: "https://example.com".to_string(),
             api_version: "v1".to_string(),
+            allow_insecure_http: false,
         };
         let cred = StoredCredential {
             access_token: String::new(),
@@ -151,6 +159,7 @@ mod tests {
             let instance = InstanceConfig {
                 url: url.to_string(),
                 api_version: "v1".to_string(),
+                allow_insecure_http: false,
             };
             let cred = StoredCredential {
                 access_token: "token".to_string(),

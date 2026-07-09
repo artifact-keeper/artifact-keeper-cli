@@ -327,6 +327,7 @@ mod tests {
             InstanceConfig {
                 url: "https://prod.example.com".into(),
                 api_version: "v1".into(),
+                allow_insecure_http: false,
             },
         );
         cfg.save().unwrap();

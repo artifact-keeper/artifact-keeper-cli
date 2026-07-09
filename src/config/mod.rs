@@ -32,6 +32,10 @@ pub struct InstanceConfig {
     pub url: String,
     #[serde(default = "default_api_version")]
     pub api_version: String,
+    /// User has explicitly acknowledged that this instance uses plaintext
+    /// HTTP to a non-loopback host (`ak instance add --insecure-http`).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub allow_insecure_http: bool,
 }
 
 fn default_format() -> String {
@@ -158,6 +162,7 @@ mod tests {
             InstanceConfig {
                 url: "https://prod.example.com".into(),
                 api_version: "v1".into(),
+                allow_insecure_http: false,
             },
         );
 
@@ -198,6 +203,7 @@ url = "https://test.com"
             InstanceConfig {
                 url: "https://prod.example.com".into(),
                 api_version: "v1".into(),
+                allow_insecure_http: false,
             },
         );
 
@@ -215,6 +221,7 @@ url = "https://test.com"
             InstanceConfig {
                 url: "https://staging.example.com".into(),
                 api_version: "v1".into(),
+                allow_insecure_http: false,
             },
         );
 
@@ -231,6 +238,7 @@ url = "https://test.com"
             InstanceConfig {
                 url: "https://staging.example.com".into(),
                 api_version: "v1".into(),
+                allow_insecure_http: false,
             },
         );
         config.instances.insert(
@@ -238,6 +246,7 @@ url = "https://test.com"
             InstanceConfig {
                 url: "https://prod.example.com".into(),
                 api_version: "v1".into(),
+                allow_insecure_http: false,
             },
         );
 
@@ -313,6 +322,7 @@ url = "https://test.com"
                 InstanceConfig {
                     url: "https://test.example.com".into(),
                     api_version: "v2".into(),
+                    allow_insecure_http: false,
                 },
             );
             config.save().unwrap();
@@ -364,6 +374,7 @@ url = "https://test.com"
                     InstanceConfig {
                         url: format!("https://{name}.example.com"),
                         api_version: "v1".into(),
+                        allow_insecure_http: false,
                     },
                 );
             }
