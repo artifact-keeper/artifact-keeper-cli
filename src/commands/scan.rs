@@ -1097,7 +1097,7 @@ async fn delete_policy(policy_id: &str, yes: bool, global: &GlobalArgs) -> Resul
     emit_mutation(
         &serde_json::json!({ "id": policy_id, "status": "deleted" }),
         policy_id,
-        &format!("Policy {} deleted.", &policy_id),
+        &format!("Policy {} deleted.", policy_id),
         global,
     );
 
