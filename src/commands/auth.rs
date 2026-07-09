@@ -277,16 +277,16 @@ async fn logout(instance: Option<&str>, global: &GlobalArgs) -> Result<()> {
     // Best-effort server-side session invalidation. Never block a local logout
     // on it — if the token is already invalid or the server is unreachable we
     // still want to clear the local credential.
-    if let Ok(cred) = get_credential(&instance_name) {
-        if let Ok(client) = build_client(&instance_name, instance_cfg, Some(&cred)) {
-            let body = artifact_keeper_sdk::types::RefreshTokenRequest {
-                refresh_token: cred.refresh_token.clone(),
-            };
-            if let Err(e) = client.logout().body(body).send().await {
-                eprintln!(
-                    "Warning: server-side logout failed ({e}); clearing local credentials anyway."
-                );
-            }
+    if let Ok(cred) = get_credential(&instance_name)
+        && let Ok(client) = build_client(&instance_name, instance_cfg, Some(&cred))
+    {
+        let body = artifact_keeper_sdk::types::RefreshTokenRequest {
+            refresh_token: cred.refresh_token.clone(),
+        };
+        if let Err(e) = client.logout().body(body).send().await {
+            eprintln!(
+                "Warning: server-side logout failed ({e}); clearing local credentials anyway."
+            );
         }
     }
 

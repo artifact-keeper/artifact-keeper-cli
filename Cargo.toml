@@ -11,7 +11,7 @@ repository = "https://github.com/artifact-keeper/artifact-keeper-cli"
 homepage = "https://artifactkeeper.com"
 keywords = ["artifact", "registry", "cli", "package-manager"]
 categories = ["command-line-utilities", "development-tools"]
-rust-version = "1.86.0"
+rust-version = "1.88.0"
 
 [[bin]]
 name = "ak"

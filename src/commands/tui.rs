@@ -298,11 +298,11 @@ impl App {
 
     /// Get a cached credential, loading from keychain/file only once per instance.
     fn cached_credential(&mut self, instance_name: &str) -> Option<&StoredCredential> {
-        if !self.credential_cache.contains_key(instance_name) {
-            if let Ok(cred) = get_credential(instance_name) {
-                self.credential_cache
-                    .insert(instance_name.to_string(), cred);
-            }
+        if !self.credential_cache.contains_key(instance_name)
+            && let Ok(cred) = get_credential(instance_name)
+        {
+            self.credential_cache
+                .insert(instance_name.to_string(), cred);
         }
         self.credential_cache.get(instance_name)
     }
@@ -1765,33 +1765,33 @@ fn draw_replication_panel(f: &mut Frame, app: &mut App, area: Rect) {
     }
 
     // Show selected peer detail below policies
-    if let Some(idx) = app.replication.peer_list_state.selected() {
-        if let Some(peer) = app.replication.peers.get(idx) {
-            lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled("Selected Peer", bold_style())));
-            lines.push(detail_line("  Name:     ", &peer.name));
-            lines.push(detail_line("  Endpoint: ", &peer.endpoint_url));
-            lines.push(detail_line("  Status:   ", &peer.status));
+    if let Some(idx) = app.replication.peer_list_state.selected()
+        && let Some(peer) = app.replication.peers.get(idx)
+    {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled("Selected Peer", bold_style())));
+        lines.push(detail_line("  Name:     ", &peer.name));
+        lines.push(detail_line("  Endpoint: ", &peer.endpoint_url));
+        lines.push(detail_line("  Status:   ", &peer.status));
 
-            if let Some(ref region) = peer.region {
-                lines.push(detail_line("  Region:   ", region));
-            }
-            if peer.cache_size_bytes > 0 {
-                lines.push(detail_line(
-                    "  Cache:    ",
-                    &format!(
-                        "{} / {}",
-                        format_bytes(peer.cache_used_bytes),
-                        format_bytes(peer.cache_size_bytes)
-                    ),
-                ));
-            }
-            if let Some(ref ts) = peer.last_sync_at {
-                lines.push(detail_line(
-                    "  Last sync: ",
-                    &ts.format("%Y-%m-%d %H:%M").to_string(),
-                ));
-            }
+        if let Some(ref region) = peer.region {
+            lines.push(detail_line("  Region:   ", region));
+        }
+        if peer.cache_size_bytes > 0 {
+            lines.push(detail_line(
+                "  Cache:    ",
+                &format!(
+                    "{} / {}",
+                    format_bytes(peer.cache_used_bytes),
+                    format_bytes(peer.cache_size_bytes)
+                ),
+            ));
+        }
+        if let Some(ref ts) = peer.last_sync_at {
+            lines.push(detail_line(
+                "  Last sync: ",
+                &ts.format("%Y-%m-%d %H:%M").to_string(),
+            ));
         }
     }
 
@@ -1908,34 +1908,34 @@ fn draw_analytics_panel(f: &mut Frame, app: &mut App, area: Rect) {
     }
 
     // Show selected storage entry detail
-    if let Some(idx) = app.analytics.storage_list_state.selected() {
-        if let Some(entry) = app.analytics.storage.get(idx) {
-            lines.push(Line::from(""));
-            lines.push(Line::from(Span::styled(
-                "Selected Repository",
-                bold_style(),
-            )));
-            lines.push(detail_line("  Name:       ", &entry.repository_name));
-            lines.push(detail_line("  Key:        ", &entry.repository_key));
-            lines.push(detail_line("  Format:     ", &entry.format));
+    if let Some(idx) = app.analytics.storage_list_state.selected()
+        && let Some(entry) = app.analytics.storage.get(idx)
+    {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "Selected Repository",
+            bold_style(),
+        )));
+        lines.push(detail_line("  Name:       ", &entry.repository_name));
+        lines.push(detail_line("  Key:        ", &entry.repository_key));
+        lines.push(detail_line("  Format:     ", &entry.format));
+        lines.push(detail_line(
+            "  Storage:    ",
+            &format_bytes(entry.storage_bytes),
+        ));
+        lines.push(detail_line(
+            "  Artifacts:  ",
+            &entry.artifact_count.to_string(),
+        ));
+        lines.push(detail_line(
+            "  Downloads:  ",
+            &entry.download_count.to_string(),
+        ));
+        if let Some(ref ts) = entry.last_upload_at {
             lines.push(detail_line(
-                "  Storage:    ",
-                &format_bytes(entry.storage_bytes),
+                "  Last Upload: ",
+                &ts.format("%Y-%m-%d %H:%M").to_string(),
             ));
-            lines.push(detail_line(
-                "  Artifacts:  ",
-                &entry.artifact_count.to_string(),
-            ));
-            lines.push(detail_line(
-                "  Downloads:  ",
-                &entry.download_count.to_string(),
-            ));
-            if let Some(ref ts) = entry.last_upload_at {
-                lines.push(detail_line(
-                    "  Last Upload: ",
-                    &ts.format("%Y-%m-%d %H:%M").to_string(),
-                ));
-            }
         }
     }
 

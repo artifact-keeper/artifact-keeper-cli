@@ -171,10 +171,10 @@ fn detect_ecosystems(dir: &Path) -> Vec<&'static str> {
             continue;
         }
         if eco.marker.contains('*') {
-            if let Ok(matches) = glob::glob(&dir.join(eco.marker).to_string_lossy()) {
-                if matches.into_iter().any(|m| m.is_ok()) {
-                    found.push(eco.name);
-                }
+            if let Ok(matches) = glob::glob(&dir.join(eco.marker).to_string_lossy())
+                && matches.into_iter().any(|m| m.is_ok())
+            {
+                found.push(eco.name);
             }
         } else if dir.join(eco.marker).exists() {
             found.push(eco.name);

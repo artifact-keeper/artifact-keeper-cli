@@ -20,7 +20,7 @@ brew install artifact-keeper/tap/ak
 
 ### Cargo (from source)
 
-Requires Rust 1.86+:
+Requires Rust 1.88+:
 
 ```bash
 cargo install artifact-keeper-cli
