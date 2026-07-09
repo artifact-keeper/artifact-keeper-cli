@@ -82,6 +82,16 @@ pub enum WebhookCommand {
         id: String,
     },
 
+    /// Rotate a webhook's signing secret
+    ///
+    /// Generates a new signing secret and returns it once. The previous
+    /// secret stays valid for a short window so consumers can roll over
+    /// without dropping deliveries.
+    RotateSecret {
+        /// Webhook ID
+        id: String,
+    },
+
     /// List deliveries for a webhook
     Deliveries {
         /// Webhook ID
@@ -128,6 +138,7 @@ impl WebhookCommand {
             Self::Test { id } => test_webhook(&id, global).await,
             Self::Enable { id } => enable_webhook(&id, global).await,
             Self::Disable { id } => disable_webhook(&id, global).await,
+            Self::RotateSecret { id } => rotate_webhook_secret(&id, global).await,
             Self::Deliveries { id, status } => {
                 list_deliveries(&id, status.as_deref(), global).await
             }
@@ -352,6 +363,52 @@ async fn disable_webhook(id: &str, global: &GlobalArgs) -> Result<()> {
         &format!("Webhook {id} disabled."),
         global,
     );
+
+    Ok(())
+}
+
+async fn rotate_webhook_secret(id: &str, global: &GlobalArgs) -> Result<()> {
+    let webhook_id = parse_uuid(id, "webhook")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Rotating webhook secret...");
+
+    let resp = client
+        .rotate_webhook_secret()
+        .id(webhook_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("rotate webhook secret", e))?;
+
+    let resp = resp.into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", resp.secret);
+        return Ok(());
+    }
+
+    let info = serde_json::json!({
+        "id": resp.id.to_string(),
+        "secret": resp.secret,
+        "secret_digest": resp.secret_digest,
+        "previous_secret_expires_at": resp.previous_secret_expires_at.to_rfc3339(),
+    });
+
+    let table_str = format!(
+        "Webhook secret rotated. Store the new secret now — it is shown only once.\n\n\
+         Webhook:              {}\n\
+         New Secret:           {}\n\
+         Secret Digest:        {}\n\
+         Previous Secret Until: {}",
+        resp.id,
+        resp.secret,
+        resp.secret_digest,
+        resp.previous_secret_expires_at
+            .format("%Y-%m-%d %H:%M:%S UTC"),
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
 
     Ok(())
 }
@@ -879,6 +936,22 @@ mod tests {
     #[test]
     fn parse_disable_missing_id() {
         let result = try_parse(&["test", "disable"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_rotate_secret() {
+        let cli = parse(&["test", "rotate-secret", "webhook-id"]);
+        if let WebhookCommand::RotateSecret { id } = cli.command {
+            assert_eq!(id, "webhook-id");
+        } else {
+            panic!("Expected RotateSecret");
+        }
+    }
+
+    #[test]
+    fn parse_rotate_secret_missing_id() {
+        let result = try_parse(&["test", "rotate-secret"]);
         assert!(result.is_err());
     }
 
@@ -1471,6 +1544,50 @@ mod tests {
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = enable_webhook(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_rotate_webhook_secret() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/webhooks/{NIL_UUID}/rotate-secret")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "secret": "rotated-dummy-secret-value",
+                "secret_digest": "sha256:abcd",
+                "previous_secret_expires_at": "2026-01-16T12:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = rotate_webhook_secret(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_rotate_webhook_secret_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/webhooks/{NIL_UUID}/rotate-secret")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": NIL_UUID,
+                "secret": "rotated-dummy-secret-value",
+                "secret_digest": "sha256:abcd",
+                "previous_secret_expires_at": "2026-01-16T12:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = rotate_webhook_secret(NIL_UUID, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

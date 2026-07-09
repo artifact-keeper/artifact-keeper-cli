@@ -1,4 +1,4 @@
-use artifact_keeper_sdk::types::{DashboardResponse, PolicyResponse, ScoreResponse};
+use artifact_keeper_sdk::types::{DashboardResponse, PolicyResponse, ScanResponse, ScoreResponse};
 use artifact_keeper_sdk::{ClientRepositoriesExt, ClientSecurityExt};
 use clap::Subcommand;
 use console::style;
@@ -52,6 +52,24 @@ pub enum ScanCommand {
 
         /// Results per page
         #[arg(long, default_value = "50")]
+        per_page: i64,
+    },
+
+    /// List scans for a specific artifact (by global artifact ID)
+    Artifact {
+        /// Artifact ID
+        artifact_id: String,
+
+        /// Filter by scan status
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Page number
+        #[arg(long, default_value = "1")]
+        page: i64,
+
+        /// Results per page
+        #[arg(long, default_value = "20")]
         per_page: i64,
     },
 
@@ -231,6 +249,12 @@ impl ScanCommand {
                 page,
                 per_page,
             } => show_findings(&id, severity.as_deref(), page, per_page, global).await,
+            Self::Artifact {
+                artifact_id,
+                status,
+                page,
+                per_page,
+            } => list_artifact_scans(&artifact_id, status.as_deref(), page, per_page, global).await,
             Self::Dashboard => show_dashboard(global).await,
             Self::Scores => show_scores(global).await,
             Self::Config { command } => match command {
@@ -410,8 +434,73 @@ async fn list_scans(
         return Ok(());
     }
 
-    let entries: Vec<_> = resp
-        .items
+    let (entries, table_str) = format_scans_table(&resp.items);
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+
+    eprintln!("{} scans total.", resp.total);
+
+    Ok(())
+}
+
+async fn list_artifact_scans(
+    artifact_id: &str,
+    status: Option<&str>,
+    page: i64,
+    per_page: i64,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let aid = parse_uuid(artifact_id, "artifact")?;
+
+    let spinner = crate::output::spinner("Fetching artifact scans...");
+
+    let mut req = client
+        .list_artifact_scans()
+        .artifact_id(aid)
+        .page(page)
+        .per_page(per_page);
+    if let Some(s) = status {
+        req = req.status(s);
+    }
+
+    let resp = req
+        .send()
+        .await
+        .map_err(|e| sdk_err("list artifact scans", e))?;
+
+    spinner.finish_and_clear();
+
+    if resp.items.is_empty() {
+        eprintln!("No scans found for artifact.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for scan in &resp.items {
+            println!("{}", scan.id);
+        }
+        return Ok(());
+    }
+
+    let (entries, table_str) = format_scans_table(&resp.items);
+
+    println!(
+        "{}",
+        output::render(&entries, &global.format, Some(table_str))
+    );
+
+    eprintln!("{} scans total.", resp.total);
+
+    Ok(())
+}
+
+/// Build the JSON entries and rendered table for a list of scans.
+fn format_scans_table(items: &[ScanResponse]) -> (Vec<Value>, String) {
+    let entries: Vec<_> = items
         .iter()
         .map(|s| {
             serde_json::json!({
@@ -429,40 +518,29 @@ async fn list_scans(
         })
         .collect();
 
-    let table_str = {
-        let mut table = new_table(vec![
-            "ID", "STATUS", "TYPE", "FINDINGS", "C", "H", "M", "L", "ARTIFACT", "CREATED",
+    let mut table = new_table(vec![
+        "ID", "STATUS", "TYPE", "FINDINGS", "C", "H", "M", "L", "ARTIFACT", "CREATED",
+    ]);
+
+    for s in items {
+        let id_short = short_id(&s.id);
+        let artifact = s.artifact_name.as_deref().unwrap_or("-");
+        let created = s.created_at.format("%Y-%m-%d %H:%M").to_string();
+        table.add_row(vec![
+            &id_short,
+            &s.status,
+            &s.scan_type,
+            &s.findings_count.to_string(),
+            &format_severity_count(s.critical_count, "CRITICAL"),
+            &format_severity_count(s.high_count, "HIGH"),
+            &format_severity_count(s.medium_count, "MEDIUM"),
+            &format_severity_count(s.low_count, "LOW"),
+            artifact,
+            &created,
         ]);
+    }
 
-        for s in &resp.items {
-            let id_short = short_id(&s.id);
-            let artifact = s.artifact_name.as_deref().unwrap_or("-");
-            let created = s.created_at.format("%Y-%m-%d %H:%M").to_string();
-            table.add_row(vec![
-                &id_short,
-                &s.status,
-                &s.scan_type,
-                &s.findings_count.to_string(),
-                &format_severity_count(s.critical_count, "CRITICAL"),
-                &format_severity_count(s.high_count, "HIGH"),
-                &format_severity_count(s.medium_count, "MEDIUM"),
-                &format_severity_count(s.low_count, "LOW"),
-                artifact,
-                &created,
-            ]);
-        }
-
-        table.to_string()
-    };
-
-    println!(
-        "{}",
-        output::render(&entries, &global.format, Some(table_str))
-    );
-
-    eprintln!("{} scans total.", resp.total);
-
-    Ok(())
+    (entries, table.to_string())
 }
 
 async fn show_findings(
@@ -1469,6 +1547,51 @@ mod tests {
     }
 
     #[test]
+    fn parse_scan_artifact_defaults() {
+        let cli = parse_scan(&["test", "artifact", "art-uuid-123"]);
+        if let ScanCommand::Artifact {
+            artifact_id,
+            status,
+            page,
+            per_page,
+        } = cli.command
+        {
+            assert_eq!(artifact_id, "art-uuid-123");
+            assert!(status.is_none());
+            assert_eq!(page, 1);
+            assert_eq!(per_page, 20);
+        } else {
+            panic!("Expected Artifact");
+        }
+    }
+
+    #[test]
+    fn parse_scan_artifact_with_status() {
+        let cli = parse_scan(&[
+            "test",
+            "artifact",
+            "art-uuid-123",
+            "--status",
+            "completed",
+            "--page",
+            "2",
+        ]);
+        if let ScanCommand::Artifact {
+            artifact_id,
+            status,
+            page,
+            ..
+        } = cli.command
+        {
+            assert_eq!(artifact_id, "art-uuid-123");
+            assert_eq!(status.as_deref(), Some("completed"));
+            assert_eq!(page, 2);
+        } else {
+            panic!("Expected Artifact");
+        }
+    }
+
+    #[test]
     fn parse_list_with_options() {
         let cli = parse_scan(&[
             "test",
@@ -2255,6 +2378,70 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = list_scans(Some("my-repo"), 1, 20, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_artifact_scans_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/security/artifacts/.+/scans"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": [],
+                "total": 0_i64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result =
+            list_artifact_scans("00000000-0000-0000-0000-000000000099", None, 1, 20, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_artifact_scans_with_data() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path_regex("/api/v1/security/artifacts/.+/scans"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "items": [{
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "artifact_id": "00000000-0000-0000-0000-000000000099",
+                    "repository_id": "00000000-0000-0000-0000-000000000002",
+                    "status": "completed",
+                    "scan_type": "trivy",
+                    "findings_count": 3,
+                    "critical_count": 1,
+                    "high_count": 1,
+                    "medium_count": 1,
+                    "low_count": 0,
+                    "info_count": 0,
+                    "is_reused": false,
+                    "artifact_name": "pkg.jar",
+                    "artifact_version": "1.0",
+                    "created_at": "2026-01-15T10:00:00Z"
+                }],
+                "total": 1_i64
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = list_artifact_scans(
+            "00000000-0000-0000-0000-000000000099",
+            Some("completed"),
+            1,
+            20,
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

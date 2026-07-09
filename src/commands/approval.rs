@@ -28,6 +28,28 @@ pub enum ApprovalCommand {
         per_page: i32,
     },
 
+    /// Request approval to promote an artifact between repositories
+    Request {
+        /// Artifact ID to promote
+        artifact_id: String,
+
+        /// Source repository key
+        #[arg(long)]
+        source: String,
+
+        /// Target repository key
+        #[arg(long)]
+        target: String,
+
+        /// Notes for the approver
+        #[arg(long)]
+        notes: Option<String>,
+
+        /// Skip the promotion policy check
+        #[arg(long)]
+        skip_policy_check: bool,
+    },
+
     /// Show approval details
     Show {
         /// Approval ID
@@ -64,6 +86,23 @@ impl ApprovalCommand {
                 page,
                 per_page,
             } => list_approvals(status.as_deref(), repo.as_deref(), page, per_page, global).await,
+            Self::Request {
+                artifact_id,
+                source,
+                target,
+                notes,
+                skip_policy_check,
+            } => {
+                request_approval(
+                    &artifact_id,
+                    &source,
+                    &target,
+                    notes.as_deref(),
+                    skip_policy_check,
+                    global,
+                )
+                .await
+            }
             Self::Show { id } => show_approval(&id, global).await,
             Self::Approve { id, comment } => {
                 review_promotion(&id, comment.as_deref(), true, global).await
@@ -165,6 +204,62 @@ async fn list_approvals(
             resp.pagination.page, resp.pagination.total_pages, resp.pagination.total
         );
     }
+
+    Ok(())
+}
+
+async fn request_approval(
+    artifact_id: &str,
+    source: &str,
+    target: &str,
+    notes: Option<&str>,
+    skip_policy_check: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let aid = parse_uuid(artifact_id, "artifact")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Requesting approval...");
+
+    let body = artifact_keeper_sdk::types::ApprovalRequest {
+        artifact_id: aid,
+        source_repository: source.to_string(),
+        target_repository: target.to_string(),
+        notes: notes.map(|s| s.to_string()),
+        skip_policy_check: skip_policy_check.then_some(true),
+    };
+
+    let approval = client
+        .request_approval()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("request approval", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", approval.id);
+        return Ok(());
+    }
+
+    let info = serde_json::json!({
+        "id": approval.id.to_string(),
+        "artifact_id": approval.artifact_id.to_string(),
+        "source_repository": approval.source_repository,
+        "target_repository": approval.target_repository,
+        "status": approval.status,
+        "requested_by": approval.requested_by.to_string(),
+        "requested_at": approval.requested_at.to_rfc3339(),
+        "reviewed_by": approval.reviewed_by.map(|u| u.to_string()),
+        "reviewed_at": approval.reviewed_at.map(|t| t.to_rfc3339()),
+        "notes": approval.notes,
+        "review_notes": approval.review_notes,
+    });
+
+    let table_str = format_approval_detail(&info);
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
 
     Ok(())
 }
@@ -433,6 +528,46 @@ mod tests {
     #[test]
     fn parse_show_missing_id() {
         let result = try_parse(&["test", "show"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: request ----
+
+    #[test]
+    fn parse_request() {
+        let cli = parse(&[
+            "test",
+            "request",
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            "--source",
+            "maven-staging",
+            "--target",
+            "maven-releases",
+            "--notes",
+            "ready for prod",
+            "--skip-policy-check",
+        ]);
+        match cli.command {
+            ApprovalCommand::Request {
+                artifact_id,
+                source,
+                target,
+                notes,
+                skip_policy_check,
+            } => {
+                assert_eq!(artifact_id, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+                assert_eq!(source, "maven-staging");
+                assert_eq!(target, "maven-releases");
+                assert_eq!(notes.as_deref(), Some("ready for prod"));
+                assert!(skip_policy_check);
+            }
+            _ => panic!("expected Request"),
+        }
+    }
+
+    #[test]
+    fn parse_request_missing_target() {
+        let result = try_parse(&["test", "request", "some-id", "--source", "staging"]);
         assert!(result.is_err());
     }
 
@@ -732,6 +867,56 @@ mod tests {
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = show_approval(NIL_UUID, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_request_approval() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/approval/request"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(approval_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = request_approval(
+            NIL_UUID,
+            "maven-staging",
+            "maven-releases",
+            Some("ready for prod"),
+            false,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_request_approval_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/approval/request"))
+            .respond_with(ResponseTemplate::new(201).set_body_json(approval_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = request_approval(
+            NIL_UUID,
+            "maven-staging",
+            "maven-releases",
+            None,
+            true,
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
