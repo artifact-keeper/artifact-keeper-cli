@@ -61,6 +61,40 @@ pub enum LifecycleCommand {
         cron_schedule: Option<String>,
     },
 
+    /// Update a lifecycle policy (only provided fields are changed)
+    Update {
+        /// Policy ID
+        id: String,
+
+        /// New policy name
+        #[arg(long)]
+        name: Option<String>,
+
+        /// Enable the policy
+        #[arg(long, conflicts_with = "disabled")]
+        enabled: bool,
+
+        /// Disable the policy
+        #[arg(long, conflicts_with = "enabled")]
+        disabled: bool,
+
+        /// New priority (higher priority policies run first)
+        #[arg(long)]
+        priority: Option<i32>,
+
+        /// New description
+        #[arg(long)]
+        description: Option<String>,
+
+        /// New policy configuration as a JSON object (see `create` for shape)
+        #[arg(long)]
+        config: Option<String>,
+
+        /// New cron schedule for automatic execution (e.g. "0 2 * * *")
+        #[arg(long)]
+        cron_schedule: Option<String>,
+    },
+
     /// Delete a lifecycle policy
     Delete {
         /// Policy ID
@@ -70,6 +104,9 @@ pub enum LifecycleCommand {
         #[arg(long)]
         yes: bool,
     },
+
+    /// Execute all enabled policies now
+    ExecuteAll,
 
     /// Preview what a policy would affect (dry-run)
     Preview {
@@ -110,7 +147,31 @@ impl LifecycleCommand {
                 )
                 .await
             }
+            Self::Update {
+                id,
+                name,
+                enabled,
+                disabled,
+                priority,
+                description,
+                config,
+                cron_schedule,
+            } => {
+                update_policy(
+                    &id,
+                    name.as_deref(),
+                    enabled,
+                    disabled,
+                    priority,
+                    description.as_deref(),
+                    config.as_deref(),
+                    cron_schedule.as_deref(),
+                    global,
+                )
+                .await
+            }
             Self::Delete { id, yes } => delete_policy(&id, yes, global).await,
+            Self::ExecuteAll => execute_all_policies(global).await,
             Self::Preview { id } => preview_policy(&id, global).await,
             Self::Execute { id } => execute_policy(&id, global).await,
         }
@@ -373,6 +434,159 @@ async fn create_policy(
         &format!("Lifecycle policy '{pname}' created (ID: {id})."),
         global,
     );
+
+    Ok(())
+}
+
+// The lifecycle PATCH endpoint (`/api/v1/admin/lifecycle/:id`) is documented in
+// the OpenAPI spec as taking `UpdatePolicyRequest`, but that schema is a
+// quality-gate shape whose fields (is_enabled, max_artifact_age_days, ...) are
+// ignored by this endpoint. The endpoint actually accepts the lifecycle-policy
+// fields (name/enabled/priority/description/config/cron_schedule), so — as with
+// `create_policy` — build the request body directly rather than via the SDK.
+#[allow(clippy::too_many_arguments)]
+async fn update_policy(
+    id: &str,
+    name: Option<&str>,
+    enabled: bool,
+    disabled: bool,
+    priority: Option<i32>,
+    description: Option<&str>,
+    config: Option<&str>,
+    cron_schedule: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    parse_uuid(id, "policy")?;
+
+    let mut body = serde_json::Map::new();
+    if let Some(n) = name {
+        body.insert("name".to_string(), serde_json::Value::from(n));
+    }
+    // `--enabled` / `--disabled` are mutually exclusive (enforced by clap); only
+    // send the field when one was explicitly given.
+    if enabled {
+        body.insert("enabled".to_string(), serde_json::Value::from(true));
+    } else if disabled {
+        body.insert("enabled".to_string(), serde_json::Value::from(false));
+    }
+    if let Some(p) = priority {
+        body.insert("priority".to_string(), serde_json::Value::from(p));
+    }
+    if let Some(d) = description {
+        body.insert("description".to_string(), serde_json::Value::from(d));
+    }
+    if let Some(c) = config {
+        let config_json: serde_json::Value = serde_json::from_str(c)
+            .map_err(|e| AkError::ConfigError(format!("--config must be a JSON object: {e}")))?;
+        if !config_json.is_object() {
+            return Err(AkError::ConfigError("--config must be a JSON object".into()).into());
+        }
+        body.insert("config".to_string(), config_json);
+    }
+    if let Some(cs) = cron_schedule {
+        body.insert("cron_schedule".to_string(), serde_json::Value::from(cs));
+    }
+
+    if body.is_empty() {
+        return Err(AkError::ConfigError(
+            "No fields to update; provide at least one of --name/--enabled/--disabled/--priority/--description/--config/--cron-schedule".into(),
+        )
+        .into());
+    }
+
+    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
+    let spinner = output::spinner("Updating lifecycle policy...");
+
+    let http = reqwest::Client::new();
+    let resp = http
+        .patch(format!(
+            "{}/api/v1/admin/lifecycle/{id}",
+            base_url.trim_end_matches('/')
+        ))
+        .header(reqwest::header::AUTHORIZATION, auth_header)
+        .json(&serde_json::Value::Object(body))
+        .send()
+        .await
+        .map_err(|e| sdk_err("update lifecycle policy", e))?;
+
+    let status = resp.status();
+    let text = resp
+        .text()
+        .await
+        .map_err(|e| sdk_err("update lifecycle policy", e))?;
+
+    spinner.finish_and_clear();
+
+    if !status.is_success() {
+        let msg = serde_json::from_str::<serde_json::Value>(&text)
+            .ok()
+            .and_then(|v| {
+                v.get("message")
+                    .and_then(|m| m.as_str())
+                    .map(str::to_string)
+            })
+            .unwrap_or(text);
+        return Err(AkError::ServerError(format!(
+            "update lifecycle policy failed (HTTP {}): {msg}",
+            status.as_u16()
+        ))
+        .into());
+    }
+
+    let policy: serde_json::Value =
+        serde_json::from_str(&text).map_err(|e| sdk_err("parse lifecycle policy response", e))?;
+    let pname = policy["name"].as_str().unwrap_or("");
+
+    emit_mutation(
+        &policy,
+        id,
+        &format!("Lifecycle policy '{pname}' updated (ID: {id})."),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn execute_all_policies(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Executing all policies...");
+
+    let results = client
+        .execute_all_policies()
+        .send()
+        .await
+        .map_err(|e| sdk_err("execute all policies", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    if results.is_empty() {
+        eprintln!("No policies were executed.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Table) {
+        eprintln!("Executed {} policy/policies:", results.len());
+        for result in &results {
+            print_execution_result(result, "Execution", global);
+        }
+    } else {
+        let entries: Vec<_> = results
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "policy_id": r.policy_id.to_string(),
+                    "policy_name": r.policy_name,
+                    "dry_run": r.dry_run,
+                    "artifacts_matched": r.artifacts_matched,
+                    "artifacts_removed": r.artifacts_removed,
+                    "bytes_freed": r.bytes_freed,
+                    "errors": r.errors,
+                })
+            })
+            .collect();
+        println!("{}", output::render(&entries, &global.format, None));
+    }
 
     Ok(())
 }
@@ -712,6 +926,96 @@ mod tests {
             "max_age_days",
         ]);
         assert!(result.is_err());
+    }
+
+    // ---- parsing: update ----
+
+    #[test]
+    fn parse_update_name_only() {
+        let cli = parse(&["test", "update", "policy-id", "--name", "renamed"]);
+        match cli.command {
+            LifecycleCommand::Update {
+                id,
+                name,
+                enabled,
+                disabled,
+                priority,
+                description,
+                config,
+                cron_schedule,
+            } => {
+                assert_eq!(id, "policy-id");
+                assert_eq!(name.as_deref(), Some("renamed"));
+                assert!(!enabled);
+                assert!(!disabled);
+                assert!(priority.is_none());
+                assert!(description.is_none());
+                assert!(config.is_none());
+                assert!(cron_schedule.is_none());
+            }
+            _ => panic!("expected Update"),
+        }
+    }
+
+    #[test]
+    fn parse_update_all_fields() {
+        let cli = parse(&[
+            "test",
+            "update",
+            "policy-id",
+            "--name",
+            "renamed",
+            "--disabled",
+            "--priority",
+            "9",
+            "--description",
+            "desc",
+            "--config",
+            "{\"days\": 60}",
+            "--cron-schedule",
+            "0 2 * * *",
+        ]);
+        match cli.command {
+            LifecycleCommand::Update {
+                name,
+                enabled,
+                disabled,
+                priority,
+                description,
+                config,
+                cron_schedule,
+                ..
+            } => {
+                assert_eq!(name.as_deref(), Some("renamed"));
+                assert!(!enabled);
+                assert!(disabled);
+                assert_eq!(priority, Some(9));
+                assert_eq!(description.as_deref(), Some("desc"));
+                assert_eq!(config.as_deref(), Some("{\"days\": 60}"));
+                assert_eq!(cron_schedule.as_deref(), Some("0 2 * * *"));
+            }
+            _ => panic!("expected Update"),
+        }
+    }
+
+    #[test]
+    fn parse_update_enabled_disabled_conflict() {
+        let result = try_parse(&["test", "update", "policy-id", "--enabled", "--disabled"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_update_missing_id() {
+        let result = try_parse(&["test", "update"]);
+        assert!(result.is_err());
+    }
+
+    // ---- parsing: execute-all ----
+
+    #[test]
+    fn parse_execute_all() {
+        let cli = parse(&["test", "execute-all"]);
+        assert!(matches!(cli.command, LifecycleCommand::ExecuteAll));
     }
 
     // ---- parsing: delete ----
@@ -1113,6 +1417,98 @@ mod tests {
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = delete_policy(NIL_UUID, true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_policy_quiet() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PATCH"))
+            .and(path(format!("/api/v1/admin/lifecycle/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(lifecycle_policy_json()))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_policy(
+            NIL_UUID,
+            Some("renamed"),
+            false,
+            true,
+            Some(5),
+            None,
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok(), "update failed: {:?}", result.err());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_update_policy_no_fields() {
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_policy(
+            NIL_UUID, None, false, false, None, None, None, None, &global,
+        )
+        .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn handler_update_policy_invalid_config() {
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = update_policy(
+            NIL_UUID,
+            None,
+            false,
+            false,
+            None,
+            None,
+            Some("not-json"),
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn handler_execute_all_policies() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/lifecycle/execute-all"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(json!([execution_result_json()])),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = execute_all_policies(&global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_execute_all_policies_empty() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/lifecycle/execute-all"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Table);
+        let result = execute_all_policies(&global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

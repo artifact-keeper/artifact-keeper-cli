@@ -393,6 +393,20 @@ pub enum TelemetryCommand {
         /// Crash report IDs (comma-separated)
         ids: String,
     },
+    /// Show a single crash report
+    Crash {
+        /// Crash report ID
+        id: String,
+    },
+    /// Delete a crash report
+    DeleteCrash {
+        /// Crash report ID
+        id: String,
+
+        /// Skip confirmation prompt
+        #[arg(long)]
+        yes: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -775,6 +789,8 @@ impl AdminCommand {
                     per_page,
                 } => list_crashes(pending, page, per_page, global).await,
                 TelemetryCommand::Submit { ids } => submit_crashes(&ids, global).await,
+                TelemetryCommand::Crash { id } => get_crash(&id, global).await,
+                TelemetryCommand::DeleteCrash { id, yes } => delete_crash(&id, yes, global).await,
             },
             Self::CiOidc { command } => match command {
                 CiOidcCommand::List => list_ci_oidc_providers(global).await,
@@ -2257,6 +2273,85 @@ fn crash_report_json(c: &artifact_keeper_sdk::types::CrashReport) -> serde_json:
         "created_at": c.created_at.to_rfc3339(),
         "last_seen_at": c.last_seen_at.to_rfc3339(),
     })
+}
+
+async fn get_crash(id: &str, global: &GlobalArgs) -> Result<()> {
+    let crash_id = parse_uuid(id, "crash report")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching crash report...");
+
+    let crash = client
+        .get_crash()
+        .id(crash_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get crash report", e))?;
+
+    spinner.finish_and_clear();
+
+    let info = crash_report_json(&crash);
+
+    let table_str = format!(
+        "ID:             {}\n\
+         Severity:       {}\n\
+         Error Type:     {}\n\
+         Error Message:  {}\n\
+         Component:      {}\n\
+         App Version:    {}\n\
+         Occurrences:    {}\n\
+         Submitted:      {}\n\
+         Created:        {}\n\
+         First Seen:     {}\n\
+         Last Seen:      {}",
+        crash.id,
+        crash.severity,
+        crash.error_type,
+        crash.error_message,
+        crash.component,
+        crash.app_version,
+        crash.occurrence_count,
+        if crash.submitted { "yes" } else { "no" },
+        crash.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+        crash.first_seen_at.format("%Y-%m-%d %H:%M:%S UTC"),
+        crash.last_seen_at.format("%Y-%m-%d %H:%M:%S UTC"),
+    );
+
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+
+    Ok(())
+}
+
+async fn delete_crash(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
+    let crash_id = parse_uuid(id, "crash report")?;
+
+    if !confirm_action(
+        &format!("Delete crash report {id}?"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Deleting crash report...");
+
+    client
+        .delete_crash()
+        .id(crash_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("delete crash report", e))?;
+
+    spinner.finish_and_clear();
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "deleted" }),
+        id,
+        &format!("Crash report {id} deleted."),
+        global,
+    );
+
+    Ok(())
 }
 
 fn format_telemetry_settings(s: &artifact_keeper_sdk::types::TelemetrySettings) -> String {
@@ -4354,6 +4449,54 @@ mod tests {
         assert!(try_parse(&["test", "telemetry"]).is_err());
     }
 
+    #[test]
+    fn parse_telemetry_crash() {
+        let cli = parse(&[
+            "test",
+            "telemetry",
+            "crash",
+            "00000000-0000-0000-0000-000000000001",
+        ]);
+        if let AdminCommand::Telemetry {
+            command: TelemetryCommand::Crash { id },
+        } = cli.command
+        {
+            assert_eq!(id, "00000000-0000-0000-0000-000000000001");
+        } else {
+            panic!("Expected TelemetryCommand::Crash");
+        }
+    }
+
+    #[test]
+    fn parse_telemetry_crash_missing_id_fails() {
+        assert!(try_parse(&["test", "telemetry", "crash"]).is_err());
+    }
+
+    #[test]
+    fn parse_telemetry_delete_crash() {
+        let cli = parse(&[
+            "test",
+            "telemetry",
+            "delete-crash",
+            "00000000-0000-0000-0000-000000000001",
+            "--yes",
+        ]);
+        if let AdminCommand::Telemetry {
+            command: TelemetryCommand::DeleteCrash { id, yes },
+        } = cli.command
+        {
+            assert_eq!(id, "00000000-0000-0000-0000-000000000001");
+            assert!(yes);
+        } else {
+            panic!("Expected TelemetryCommand::DeleteCrash");
+        }
+    }
+
+    #[test]
+    fn parse_telemetry_delete_crash_missing_id_fails() {
+        assert!(try_parse(&["test", "telemetry", "delete-crash"]).is_err());
+    }
+
     // ---- Missing subcommand fails ----
 
     #[test]
@@ -5907,6 +6050,72 @@ mod tests {
         } else {
             panic!("Expected ProxyCommand::Post");
         }
+    }
+
+    #[tokio::test]
+    async fn handler_get_crash() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(
+                "/api/v1/admin/telemetry/crashes/00000000-0000-0000-0000-000000000001",
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": "00000000-0000-0000-0000-000000000001",
+                "severity": "critical",
+                "error_type": "panic",
+                "error_message": "index out of bounds",
+                "error_signature": "abc123",
+                "component": "storage",
+                "app_version": "1.0.0",
+                "occurrence_count": 5,
+                "submitted": false,
+                "context": {},
+                "created_at": "2026-01-15T10:00:00Z",
+                "first_seen_at": "2026-01-15T10:00:00Z",
+                "last_seen_at": "2026-01-15T12:00:00Z"
+            })))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = get_crash("00000000-0000-0000-0000-000000000001", &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_get_crash_invalid_id() {
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = get_crash("not-a-uuid", &global).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn handler_delete_crash() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("DELETE"))
+            .and(path(
+                "/api/v1/admin/telemetry/crashes/00000000-0000-0000-0000-000000000001",
+            ))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = delete_crash("00000000-0000-0000-0000-000000000001", true, &global).await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_delete_crash_invalid_id() {
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = delete_crash("not-a-uuid", true, &global).await;
+        assert!(result.is_err());
     }
 
     // ---- insta snapshot tests ----

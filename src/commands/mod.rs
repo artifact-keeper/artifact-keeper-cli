@@ -12,6 +12,7 @@ pub mod config;
 pub mod curation;
 pub mod doctor;
 pub mod dt;
+pub mod email_subscriptions;
 pub mod group;
 pub mod helpers;
 pub mod import;
