@@ -208,7 +208,7 @@ async fn push(
     no_chunked: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
+    let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
     let chunk_size = super::chunked_upload::parse_size(chunk_size_str)?;
     let threshold = super::chunked_upload::chunked_threshold()?;
 
@@ -261,8 +261,6 @@ async fn push(
 
         if use_chunked {
             // Chunked upload for large files
-            let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
-
             let result = super::chunked_upload::chunked_upload(
                 &base_url,
                 &auth_header,
@@ -287,7 +285,7 @@ async fn push(
                 );
             }
         } else {
-            // Single PUT for small files (existing behavior)
+            // Single PUT for small files
             let pb = indicatif::ProgressBar::new(file_size);
             pb.set_style(
                 indicatif::ProgressStyle::with_template(
@@ -309,14 +307,8 @@ async fn push(
             });
             let body = reqwest::Body::wrap_stream(stream);
 
-            let resp = client
-                .upload_artifact()
-                .key(repo)
-                .path(&artifact_path)
-                .body(body)
-                .send()
-                .await
-                .map_err(|e| AkError::ServerError(format!("Upload failed: {e}")))?;
+            let resp =
+                single_put_upload(&base_url, &auth_header, repo, &artifact_path, body).await?;
 
             pb.finish_with_message(format!("Uploaded {file_name}"));
 
@@ -339,6 +331,56 @@ async fn push(
     }
 
     Ok(())
+}
+
+/// Response from the single-PUT upload endpoint (the subset of the API's
+/// `ArtifactResponse` that `push` actually uses).
+#[derive(Debug, serde::Deserialize)]
+struct SinglePutUploadResponse {
+    path: String,
+    size_bytes: i64,
+}
+
+/// Upload a small file via a single `PUT` using a raw HTTP request.
+///
+/// The backend responds `201 Created` on this endpoint, but the generated
+/// SDK method (`upload_artifact`) only accepts `200`, so every successful
+/// small-file push was reported as an error even though the artifact was
+/// created (#91, #98). Mirroring `chunked_upload`, this accepts any 2xx
+/// success status and surfaces genuine HTTP errors with status and body.
+async fn single_put_upload(
+    base_url: &str,
+    auth_header: &str,
+    repo: &str,
+    artifact_path: &str,
+    body: reqwest::Body,
+) -> Result<SinglePutUploadResponse> {
+    let mut url = reqwest::Url::parse(base_url)
+        .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
+    url.path_segments_mut()
+        .map_err(|_| AkError::ConfigError(format!("Invalid instance URL: {base_url}")))?
+        .pop_if_empty()
+        .extend(["api", "v1", "repositories", repo, "artifacts"])
+        .extend(artifact_path.split('/'));
+
+    let resp = reqwest::Client::new()
+        .put(url)
+        .header(reqwest::header::AUTHORIZATION, auth_header)
+        .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Upload failed: {e}")))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(AkError::ServerError(format!("Upload failed ({status}): {text}")).into());
+    }
+
+    resp.json::<SinglePutUploadResponse>()
+        .await
+        .map_err(|e| AkError::ServerError(format!("Invalid upload response: {e}")).into())
 }
 
 async fn pull(
@@ -2020,5 +2062,158 @@ mod tests {
         ];
         let table = format_search_results_table(&items);
         insta::assert_snapshot!("artifact_search_table", table);
+    }
+
+    // ---- push (single-PUT small-file path) ----
+
+    fn upload_response_json(path: &str, size_bytes: i64) -> serde_json::Value {
+        json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "repository_key": "my-repo",
+            "path": path,
+            "name": path,
+            "version": null,
+            "size_bytes": size_bytes,
+            "checksum_sha256": "abc123",
+            "content_type": "application/octet-stream",
+            "download_count": 0_i64,
+            "created_at": "2026-01-15T12:00:00Z",
+            "metadata": null,
+            "analyzable": true
+        })
+    }
+
+    /// The backend returns `201 Created` on the single-PUT upload path;
+    /// a successful small-file push must not be treated as an error (#91).
+    #[tokio::test]
+    async fn handler_push_small_file_accepts_201() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path("/api/v1/repositories/my-repo/artifacts/small.bin"))
+            .respond_with(
+                ResponseTemplate::new(201).set_body_json(upload_response_json("small.bin", 9)),
+            )
+            .mount(&server)
+            .await;
+
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("small.bin");
+        std::fs::write(&file, b"test data").unwrap();
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = push(
+            "my-repo",
+            &[file.to_string_lossy().into_owned()],
+            None,
+            "8MB",
+            false,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok(), "201 Created must be a success: {result:?}");
+        crate::test_utils::teardown_env();
+    }
+
+    /// A plain `200 OK` (what the OpenAPI spec declares) must keep working.
+    #[tokio::test]
+    async fn handler_push_small_file_accepts_200() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path("/api/v1/repositories/my-repo/artifacts/small.bin"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(upload_response_json("small.bin", 9)),
+            )
+            .mount(&server)
+            .await;
+
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("small.bin");
+        std::fs::write(&file, b"test data").unwrap();
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = push(
+            "my-repo",
+            &[file.to_string_lossy().into_owned()],
+            None,
+            "8MB",
+            false,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    /// A target path with subdirectories must hit the nested artifact route.
+    #[tokio::test]
+    async fn handler_push_small_file_nested_target_path() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path(
+                "/api/v1/repositories/my-repo/artifacts/nested/dir/small.bin",
+            ))
+            .respond_with(
+                ResponseTemplate::new(201)
+                    .set_body_json(upload_response_json("nested/dir/small.bin", 9)),
+            )
+            .mount(&server)
+            .await;
+
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("small.bin");
+        std::fs::write(&file, b"test data").unwrap();
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = push(
+            "my-repo",
+            &[file.to_string_lossy().into_owned()],
+            Some("nested/dir/"),
+            "8MB",
+            false,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    /// Genuine HTTP failures (e.g. unknown repository) must still error.
+    #[tokio::test]
+    async fn handler_push_small_file_404_is_error() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("PUT"))
+            .and(path_regex("^/api/v1/repositories/.+/artifacts/.+$"))
+            .respond_with(
+                ResponseTemplate::new(404).set_body_json(json!({"error": "repository not found"})),
+            )
+            .mount(&server)
+            .await;
+
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("small.bin");
+        std::fs::write(&file, b"test data").unwrap();
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = push(
+            "no-such-repo",
+            &[file.to_string_lossy().into_owned()],
+            None,
+            "8MB",
+            false,
+            &global,
+        )
+        .await;
+        assert!(result.is_err(), "404 must remain an error");
+        let msg = format!("{:?}", result.unwrap_err());
+        assert!(msg.contains("404"), "error should carry the status: {msg}");
+        crate::test_utils::teardown_env();
     }
 }

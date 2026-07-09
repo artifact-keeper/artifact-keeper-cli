@@ -313,8 +313,16 @@ async fn show_account(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+/// Response from service-account creation (the subset of the API's
+/// `ServiceAccountResponse` that `create` actually uses).
+#[derive(Debug, serde::Deserialize)]
+struct CreateAccountResponse {
+    id: String,
+    username: String,
+}
+
 async fn create_account(name: &str, description: Option<&str>, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
+    let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
     let spinner = output::spinner("Creating service account...");
 
     let body = artifact_keeper_sdk::types::CreateServiceAccountRequest {
@@ -322,12 +330,46 @@ async fn create_account(name: &str, description: Option<&str>, global: &GlobalAr
         description: description.map(|s| s.to_string()),
     };
 
-    let sa = client
-        .create_service_account()
-        .body(body)
+    // Raw request instead of the generated SDK method: the backend responds
+    // `200 OK` here, but the generated client (`create_service_account`) only
+    // accepts `201`, so every successful create was reported as an error even
+    // though the account was created (#98). Accept any 2xx success status.
+    let result = reqwest::Client::new()
+        .post(format!("{base_url}/api/v1/service-accounts"))
+        .header(reqwest::header::AUTHORIZATION, &auth_header)
+        .json(&body)
         .send()
-        .await
-        .map_err(|e| sdk_err("create service account", e))?;
+        .await;
+
+    let resp = match result {
+        Ok(r) => r,
+        Err(e) => {
+            spinner.finish_and_clear();
+            return Err(
+                AkError::NetworkError(format!("Create service account failed: {e}")).into(),
+            );
+        }
+    };
+
+    if !resp.status().is_success() {
+        spinner.finish_and_clear();
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(AkError::ServerError(format!(
+            "Create service account failed ({status}): {text}"
+        ))
+        .into());
+    }
+
+    let sa: CreateAccountResponse = match resp.json().await {
+        Ok(v) => v,
+        Err(e) => {
+            spinner.finish_and_clear();
+            return Err(
+                AkError::ServerError(format!("Invalid service account response: {e}")).into(),
+            );
+        }
+    };
 
     spinner.finish_and_clear();
 
@@ -989,6 +1031,46 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         assert!(create_account("ci", Some("robot"), &global).await.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    /// The backend returns `200 OK` on create; a successful create must not
+    /// be treated as an error even though the spec declares `201` (#98).
+    #[tokio::test]
+    async fn handler_create_accepts_200() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/service-accounts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(sa_json(SA_ID, "svc-ci")))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        assert!(create_account("ci", Some("robot"), &global).await.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    /// Genuine HTTP failures must still error with the status attached.
+    #[tokio::test]
+    async fn handler_create_403_is_error() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/service-accounts"))
+            .respond_with(
+                ResponseTemplate::new(403).set_body_json(json!({"error": "admin required"})),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = create_account("ci", None, &global).await;
+        assert!(result.is_err());
+        let msg = format!("{:?}", result.unwrap_err());
+        assert!(msg.contains("403"), "error should carry the status: {msg}");
         crate::test_utils::teardown_env();
     }
 
