@@ -1091,51 +1091,6 @@ async fn cross_instance_copy(
     Ok(())
 }
 
-/// Format a list of artifact entries as a table string.
-fn format_artifacts_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["PATH", "VERSION", "SIZE", "DOWNLOADS", "CREATED"]);
-
-    for a in items {
-        table.add_row(vec![
-            a["path"].as_str().unwrap_or("-"),
-            a["version"].as_str().unwrap_or("-"),
-            a["size"].as_str().unwrap_or("-"),
-            &a["downloads"]
-                .as_i64()
-                .map(|n| n.to_string())
-                .unwrap_or_else(|| "-".into()),
-            a["created_at"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
-/// Format search results as a table string.
-fn format_search_results_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["NAME", "REPOSITORY", "FORMAT", "VERSION", "SIZE"]);
-
-    for item in items {
-        table.add_row(vec![
-            item["name"].as_str().unwrap_or("-"),
-            item["repository"].as_str().unwrap_or("-"),
-            item["format"].as_str().unwrap_or("-"),
-            item["version"].as_str().unwrap_or("-"),
-            item["size"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1669,135 +1624,6 @@ mod tests {
         assert!(try_parse(&["test", "unknown"]).is_err());
     }
 
-    // ---- Format function tests ----
-
-    #[test]
-    fn format_artifacts_table_renders() {
-        let items = vec![json!({
-            "path": "org/example/lib/1.0.0/lib-1.0.0.jar",
-            "version": "1.0.0",
-            "size": "2.5 MB",
-            "downloads": 150,
-            "created_at": "2026-01-15",
-        })];
-        let table = format_artifacts_table(&items);
-        assert!(table.contains("org/example/lib/1.0.0/lib-1.0.0.jar"));
-        assert!(table.contains("1.0.0"));
-        assert!(table.contains("2.5 MB"));
-        assert!(table.contains("150"));
-        assert!(table.contains("2026-01-15"));
-    }
-
-    #[test]
-    fn format_artifacts_table_empty() {
-        let items: Vec<serde_json::Value> = vec![];
-        let table = format_artifacts_table(&items);
-        assert!(table.contains("PATH"));
-        assert!(table.contains("VERSION"));
-        assert!(table.contains("SIZE"));
-        assert!(table.contains("DOWNLOADS"));
-    }
-
-    #[test]
-    fn format_artifacts_table_missing_version() {
-        let items = vec![json!({
-            "path": "my-file.tar.gz",
-            "size": "10.0 KB",
-            "downloads": 5,
-            "created_at": "2026-02-01",
-        })];
-        let table = format_artifacts_table(&items);
-        assert!(table.contains("my-file.tar.gz"));
-        assert!(table.contains("-")); // missing version
-    }
-
-    #[test]
-    fn format_artifacts_table_multiple_rows() {
-        let items = vec![
-            json!({
-                "path": "pkg-a/1.0/a.jar",
-                "version": "1.0",
-                "size": "1.0 MB",
-                "downloads": 100,
-                "created_at": "2026-01-01",
-            }),
-            json!({
-                "path": "pkg-b/2.0/b.whl",
-                "version": "2.0",
-                "size": "500.0 KB",
-                "downloads": 50,
-                "created_at": "2026-01-02",
-            }),
-        ];
-        let table = format_artifacts_table(&items);
-        assert!(table.contains("pkg-a/1.0/a.jar"));
-        assert!(table.contains("pkg-b/2.0/b.whl"));
-        assert!(table.contains("100"));
-        assert!(table.contains("50"));
-    }
-
-    #[test]
-    fn format_search_results_table_renders() {
-        let items = vec![json!({
-            "name": "log4j-core",
-            "repository": "maven-central",
-            "format": "maven",
-            "version": "2.17.1",
-            "size": "1.8 MB",
-        })];
-        let table = format_search_results_table(&items);
-        assert!(table.contains("log4j-core"));
-        assert!(table.contains("maven-central"));
-        assert!(table.contains("maven"));
-        assert!(table.contains("2.17.1"));
-        assert!(table.contains("1.8 MB"));
-    }
-
-    #[test]
-    fn format_search_results_table_empty() {
-        let items: Vec<serde_json::Value> = vec![];
-        let table = format_search_results_table(&items);
-        assert!(table.contains("NAME"));
-        assert!(table.contains("REPOSITORY"));
-        assert!(table.contains("FORMAT"));
-    }
-
-    #[test]
-    fn format_search_results_table_missing_optional_fields() {
-        let items = vec![json!({
-            "name": "my-package",
-            "repository": "local-repo",
-        })];
-        let table = format_search_results_table(&items);
-        assert!(table.contains("my-package"));
-        assert!(table.contains("local-repo"));
-    }
-
-    #[test]
-    fn format_search_results_multiple() {
-        let items = vec![
-            json!({
-                "name": "express",
-                "repository": "npm-repo",
-                "format": "npm",
-                "version": "4.18.2",
-                "size": "200.0 KB",
-            }),
-            json!({
-                "name": "flask",
-                "repository": "pypi-repo",
-                "format": "pypi",
-                "version": "3.0.0",
-                "size": "100.0 KB",
-            }),
-        ];
-        let table = format_search_results_table(&items);
-        assert!(table.contains("express"));
-        assert!(table.contains("flask"));
-        assert!(table.contains("npm"));
-        assert!(table.contains("pypi"));
-    }
-
     // ========================================================================
     // Wiremock-based handler tests
     // ========================================================================
@@ -2117,28 +1943,6 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_artifact_list_table() {
-        let items = vec![
-            json!({
-                "path": "org/example/lib/1.0.0/lib-1.0.0.jar",
-                "version": "1.0.0",
-                "size": "2.5 MB",
-                "downloads": 150,
-                "created_at": "2026-01-15",
-            }),
-            json!({
-                "path": "com/mycompany/app/2.0.0/app-2.0.0.war",
-                "version": "2.0.0",
-                "size": "45.3 MB",
-                "downloads": 25,
-                "created_at": "2026-02-01",
-            }),
-        ];
-        let table = format_artifacts_table(&items);
-        insta::assert_snapshot!("artifact_list_table", table);
-    }
-
-    #[test]
     fn snapshot_search_results_json() {
         let items = vec![json!({
             "name": "log4j-core",
@@ -2150,28 +1954,6 @@ mod tests {
         let output = crate::output::render(&items, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("artifact_search_json", parsed);
-    }
-
-    #[test]
-    fn snapshot_search_results_table() {
-        let items = vec![
-            json!({
-                "name": "log4j-core",
-                "repository": "maven-central",
-                "format": "maven",
-                "version": "2.17.1",
-                "size": "1.8 MB",
-            }),
-            json!({
-                "name": "express",
-                "repository": "npm-local",
-                "format": "npm",
-                "version": "4.18.2",
-                "size": "200.0 KB",
-            }),
-        ];
-        let table = format_search_results_table(&items);
-        insta::assert_snapshot!("artifact_search_table", table);
     }
 
     // ---- push (single-PUT small-file path) ----

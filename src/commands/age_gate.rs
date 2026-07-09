@@ -374,34 +374,6 @@ fn format_config_detail(item: &serde_json::Value) -> String {
     )
 }
 
-fn format_review_table(items: &[serde_json::Value]) -> String {
-    let mut table = new_table(vec![
-        "ID",
-        "REPOSITORY",
-        "PACKAGE",
-        "VERSION",
-        "STATUS",
-        "REQ",
-        "REQUESTED",
-    ]);
-
-    for r in items {
-        let id = r["id"].as_str().unwrap_or("-");
-        let id_short = if id.len() >= 8 { &id[..8] } else { id };
-        table.add_row(vec![
-            id_short,
-            r["repository_key"].as_str().unwrap_or("-"),
-            r["package_name"].as_str().unwrap_or("-"),
-            r["package_version"].as_str().unwrap_or("-"),
-            r["status"].as_str().unwrap_or("-"),
-            &r["request_count"].as_i64().unwrap_or(0).to_string(),
-            r["requested_at"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
 fn format_review_detail(item: &serde_json::Value) -> String {
     format!(
         "ID:                {}\n\
@@ -684,53 +656,6 @@ mod tests {
     }
 
     #[test]
-    fn format_review_table_renders() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "repository_key": "npm-proxy",
-            "package_name": "left-pad",
-            "package_version": "1.3.0",
-            "status": "pending",
-            "request_count": 5,
-            "requested_at": "2026-07-01 12:00",
-        })];
-        let table = format_review_table(&items);
-        assert!(table.contains("00000000"));
-        assert!(table.contains("npm-proxy"));
-        assert!(table.contains("left-pad"));
-        assert!(table.contains("pending"));
-    }
-
-    #[test]
-    fn format_review_table_multiple_rows() {
-        let items = vec![
-            json!({
-                "id": "00000000-0000-0000-0000-000000000001",
-                "repository_key": "npm-proxy",
-                "package_name": "left-pad",
-                "package_version": "1.3.0",
-                "status": "pending",
-                "request_count": 5,
-                "requested_at": "2026-07-01",
-            }),
-            json!({
-                "id": "11111111-1111-1111-1111-111111111111",
-                "repository_key": "pypi-proxy",
-                "package_name": "requests",
-                "package_version": "2.32.0",
-                "status": "approved",
-                "request_count": 2,
-                "requested_at": "2026-07-02",
-            }),
-        ];
-        let table = format_review_table(&items);
-        assert!(table.contains("left-pad"));
-        assert!(table.contains("requests"));
-        assert!(table.contains("pending"));
-        assert!(table.contains("approved"));
-    }
-
-    #[test]
     fn format_review_detail_renders() {
         let item = json!({
             "id": "00000000-0000-0000-0000-000000000001",
@@ -948,12 +873,5 @@ mod tests {
         let output = crate::output::render(&items, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("age_gate_reviews_json", parsed);
-    }
-
-    #[test]
-    fn snapshot_age_gate_reviews_table() {
-        let items = vec![review_json()];
-        let table = format_review_table(&items);
-        insta::assert_snapshot!("age_gate_reviews_table", table);
     }
 }

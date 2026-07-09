@@ -1470,33 +1470,6 @@ async fn cat_content(
     Ok(())
 }
 
-/// Format a list of repository entries as a table string.
-fn format_repos_table(items: &[serde_json::Value]) -> String {
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec!["KEY", "NAME", "FORMAT", "TYPE", "PUBLIC", "STORAGE"]);
-
-    for r in items {
-        let public = if r["public"].as_bool().unwrap_or(false) {
-            "yes"
-        } else {
-            "no"
-        };
-        table.add_row(vec![
-            r["key"].as_str().unwrap_or("-"),
-            r["name"].as_str().unwrap_or("-"),
-            r["format"].as_str().unwrap_or("-"),
-            r["type"].as_str().unwrap_or("-"),
-            public,
-            r["storage_used"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2041,97 +2014,6 @@ mod tests {
     }
 
     // ---- Format function tests ----
-
-    #[test]
-    fn format_repos_table_renders() {
-        let items = vec![json!({
-            "key": "my-npm-repo",
-            "name": "My NPM Repo",
-            "format": "npm",
-            "type": "local",
-            "public": true,
-            "storage_used": "1.5 GB",
-        })];
-        let table = format_repos_table(&items);
-        assert!(table.contains("my-npm-repo"));
-        assert!(table.contains("My NPM Repo"));
-        assert!(table.contains("npm"));
-        assert!(table.contains("local"));
-        assert!(table.contains("yes"));
-        assert!(table.contains("1.5 GB"));
-    }
-
-    #[test]
-    fn format_repos_table_private_repo() {
-        let items = vec![json!({
-            "key": "internal-maven",
-            "name": "Internal Maven",
-            "format": "maven",
-            "type": "local",
-            "public": false,
-            "storage_used": "500.0 MB",
-        })];
-        let table = format_repos_table(&items);
-        assert!(table.contains("internal-maven"));
-        assert!(table.contains("no"));
-    }
-
-    #[test]
-    fn format_repos_table_empty() {
-        let items: Vec<serde_json::Value> = vec![];
-        let table = format_repos_table(&items);
-        assert!(table.contains("KEY"));
-        assert!(table.contains("FORMAT"));
-        assert!(table.contains("TYPE"));
-    }
-
-    #[test]
-    fn format_repos_table_multiple_rows() {
-        let items = vec![
-            json!({
-                "key": "npm-repo",
-                "name": "NPM",
-                "format": "npm",
-                "type": "local",
-                "public": true,
-                "storage_used": "1.0 GB",
-            }),
-            json!({
-                "key": "pypi-repo",
-                "name": "PyPI",
-                "format": "pypi",
-                "type": "remote",
-                "public": false,
-                "storage_used": "500.0 MB",
-            }),
-            json!({
-                "key": "docker-repo",
-                "name": "Docker",
-                "format": "docker",
-                "type": "virtual",
-                "public": true,
-                "storage_used": "10.0 GB",
-            }),
-        ];
-        let table = format_repos_table(&items);
-        assert!(table.contains("npm-repo"));
-        assert!(table.contains("pypi-repo"));
-        assert!(table.contains("docker-repo"));
-        assert!(table.contains("npm"));
-        assert!(table.contains("pypi"));
-        assert!(table.contains("docker"));
-    }
-
-    #[test]
-    fn format_repos_table_missing_fields_use_dash() {
-        let items = vec![json!({
-            "key": "test-repo",
-        })];
-        let table = format_repos_table(&items);
-        assert!(table.contains("test-repo"));
-        // Missing fields should render as "-"
-        assert!(table.contains("-"));
-    }
 
     // ---- wiremock handler tests ----
 
@@ -2706,30 +2588,6 @@ mod tests {
         let output = crate::output::render(&items, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("repo_list_json", parsed);
-    }
-
-    #[test]
-    fn snapshot_repo_list_table() {
-        let items = vec![
-            json!({
-                "key": "npm-local",
-                "name": "NPM Local",
-                "format": "npm",
-                "type": "local",
-                "public": true,
-                "storage_used": "1.5 GB",
-            }),
-            json!({
-                "key": "maven-central",
-                "name": "Maven Central",
-                "format": "maven",
-                "type": "remote",
-                "public": false,
-                "storage_used": "500.0 MB",
-            }),
-        ];
-        let table = format_repos_table(&items);
-        insta::assert_snapshot!("repo_list_table", table);
     }
 
     #[test]

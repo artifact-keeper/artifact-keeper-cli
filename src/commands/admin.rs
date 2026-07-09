@@ -3262,93 +3262,6 @@ fn format_crashes_table(items: &[artifact_keeper_sdk::types::CrashReport]) -> St
     table.to_string()
 }
 
-/// Format a list of backup entries as a table string.
-fn format_backups_table(items: &[serde_json::Value]) -> String {
-    let mut table = new_table(vec!["ID", "STATUS", "TYPE", "ARTIFACTS", "SIZE", "CREATED"]);
-
-    for b in items {
-        let id = b["id"].as_str().unwrap_or("-");
-        let id_short = if id.len() >= 8 { &id[..8] } else { id };
-        table.add_row(vec![
-            id_short,
-            b["status"].as_str().unwrap_or("-"),
-            b["type"].as_str().unwrap_or("-"),
-            &b["artifacts"]
-                .as_i64()
-                .map(|n| n.to_string())
-                .unwrap_or_else(|| "-".into()),
-            b["size"].as_str().unwrap_or("-"),
-            b["created_at"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
-/// Format a list of user entries as a table string.
-fn format_users_table(items: &[serde_json::Value]) -> String {
-    let mut table = new_table(vec![
-        "ID",
-        "USERNAME",
-        "EMAIL",
-        "DISPLAY NAME",
-        "ADMIN",
-        "ACTIVE",
-        "AUTH",
-    ]);
-
-    for u in items {
-        let id = u["id"].as_str().unwrap_or("-");
-        let id_short = if id.len() >= 8 { &id[..8] } else { id };
-        let admin = if u["is_admin"].as_bool().unwrap_or(false) {
-            "yes"
-        } else {
-            "no"
-        };
-        let active = if u["is_active"].as_bool().unwrap_or(false) {
-            "yes"
-        } else {
-            "no"
-        };
-        table.add_row(vec![
-            id_short,
-            u["username"].as_str().unwrap_or("-"),
-            u["email"].as_str().unwrap_or("-"),
-            u["display_name"].as_str().unwrap_or("-"),
-            admin,
-            active,
-            u["auth_provider"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
-/// Format a list of plugin entries as a table string.
-fn format_plugins_table(items: &[serde_json::Value]) -> String {
-    let mut table = new_table(vec![
-        "NAME",
-        "VERSION",
-        "TYPE",
-        "STATUS",
-        "AUTHOR",
-        "INSTALLED",
-    ]);
-
-    for p in items {
-        table.add_row(vec![
-            p["display_name"].as_str().unwrap_or("-"),
-            p["version"].as_str().unwrap_or("-"),
-            p["type"].as_str().unwrap_or("-"),
-            p["status"].as_str().unwrap_or("-"),
-            p["author"].as_str().unwrap_or("-"),
-            p["installed_at"].as_str().unwrap_or("-"),
-        ]);
-    }
-
-    table.to_string()
-}
-
 /// Format a plugin configuration map as a KEY/VALUE table string.
 fn format_plugin_config(config: &serde_json::Map<String, serde_json::Value>) -> String {
     if config.is_empty() {
@@ -3382,26 +3295,6 @@ fn format_plugin_events(events: &[serde_json::Value]) -> String {
         table.add_row(vec![event_type, status, message, ts]);
     }
     table.to_string()
-}
-
-/// Format system metrics as a human-readable string.
-fn format_metrics_display(info: &serde_json::Value) -> String {
-    format!(
-        "Artifacts:      {}\n\
-         Downloads:      {}\n\
-         Repositories:   {}\n\
-         Storage:        {}\n\
-         Users:          {}\n\
-         Active Peers:   {}\n\
-         Pending Syncs:  {}",
-        info["total_artifacts"].as_i64().unwrap_or(0),
-        info["total_downloads"].as_i64().unwrap_or(0),
-        info["total_repositories"].as_i64().unwrap_or(0),
-        info["total_storage"].as_str().unwrap_or("0 B"),
-        info["total_users"].as_i64().unwrap_or(0),
-        info["active_peers"].as_i64().unwrap_or(0),
-        info["pending_sync_tasks"].as_i64().unwrap_or(0),
-    )
 }
 
 // ---- Backup detail operations ----
@@ -5816,144 +5709,6 @@ mod tests {
     // ---- Format function tests ----
 
     #[test]
-    fn format_backups_table_renders() {
-        let items = vec![json!({
-            "id": "12345678-abcd-1234-abcd-123456789012",
-            "status": "completed",
-            "type": "full",
-            "artifacts": 42,
-            "size": "1.5 GB",
-            "created_at": "2026-01-15T10:30:00Z",
-        })];
-        let table = format_backups_table(&items);
-        assert!(table.contains("12345678"));
-        assert!(table.contains("completed"));
-        assert!(table.contains("full"));
-        assert!(table.contains("42"));
-        assert!(table.contains("1.5 GB"));
-    }
-
-    #[test]
-    fn format_backups_table_empty() {
-        let items: Vec<serde_json::Value> = vec![];
-        let table = format_backups_table(&items);
-        // Should still contain headers
-        assert!(table.contains("ID"));
-        assert!(table.contains("STATUS"));
-    }
-
-    #[test]
-    fn format_backups_table_multiple_rows() {
-        let items = vec![
-            json!({
-                "id": "aaaa1111-bbbb-2222-cccc-333344445555",
-                "status": "completed",
-                "type": "full",
-                "artifacts": 10,
-                "size": "500.0 MB",
-                "created_at": "2026-01-01",
-            }),
-            json!({
-                "id": "bbbb2222-cccc-3333-dddd-444455556666",
-                "status": "in_progress",
-                "type": "incremental",
-                "artifacts": 5,
-                "size": "200.0 MB",
-                "created_at": "2026-01-02",
-            }),
-        ];
-        let table = format_backups_table(&items);
-        assert!(table.contains("aaaa1111"));
-        assert!(table.contains("bbbb2222"));
-        assert!(table.contains("completed"));
-        assert!(table.contains("in_progress"));
-    }
-
-    #[test]
-    fn format_users_table_renders() {
-        let items = vec![json!({
-            "id": "12345678-abcd-1234-abcd-123456789012",
-            "username": "alice",
-            "email": "alice@example.com",
-            "display_name": "Alice Smith",
-            "is_admin": true,
-            "is_active": true,
-            "auth_provider": "local",
-        })];
-        let table = format_users_table(&items);
-        assert!(table.contains("12345678"));
-        assert!(table.contains("alice"));
-        assert!(table.contains("alice@example.com"));
-        assert!(table.contains("Alice Smith"));
-        assert!(table.contains("yes"));
-        assert!(table.contains("local"));
-    }
-
-    #[test]
-    fn format_users_table_non_admin_inactive() {
-        let items = vec![json!({
-            "id": "12345678-0000-0000-0000-000000000000",
-            "username": "bob",
-            "email": "bob@example.com",
-            "is_admin": false,
-            "is_active": false,
-            "auth_provider": "ldap",
-        })];
-        let table = format_users_table(&items);
-        assert!(table.contains("bob"));
-        // Should contain "no" for both admin and active
-        let no_count = table.matches("no").count();
-        assert!(no_count >= 2);
-    }
-
-    #[test]
-    fn format_users_table_empty() {
-        let items: Vec<serde_json::Value> = vec![];
-        let table = format_users_table(&items);
-        assert!(table.contains("USERNAME"));
-        assert!(table.contains("EMAIL"));
-    }
-
-    #[test]
-    fn format_plugins_table_renders() {
-        let items = vec![json!({
-            "display_name": "Unity Format",
-            "version": "1.0.0",
-            "type": "format",
-            "status": "active",
-            "author": "AK Team",
-            "installed_at": "2026-01-15",
-        })];
-        let table = format_plugins_table(&items);
-        assert!(table.contains("Unity Format"));
-        assert!(table.contains("1.0.0"));
-        assert!(table.contains("format"));
-        assert!(table.contains("active"));
-        assert!(table.contains("AK Team"));
-    }
-
-    #[test]
-    fn format_plugins_table_missing_author() {
-        let items = vec![json!({
-            "display_name": "Custom Plugin",
-            "version": "0.1.0",
-            "type": "format",
-            "status": "active",
-        })];
-        let table = format_plugins_table(&items);
-        assert!(table.contains("Custom Plugin"));
-        assert!(table.contains("0.1.0"));
-    }
-
-    #[test]
-    fn format_plugins_table_empty() {
-        let items: Vec<serde_json::Value> = vec![];
-        let table = format_plugins_table(&items);
-        assert!(table.contains("NAME"));
-        assert!(table.contains("VERSION"));
-    }
-
-    #[test]
     fn format_plugin_config_renders() {
         let mut config = serde_json::Map::new();
         config.insert("api_key".to_string(), json!("secret"));
@@ -5994,48 +5749,6 @@ mod tests {
         assert!(table.contains("installed"));
         assert!(table.contains("reloaded"));
         assert!(table.contains("hot reload"));
-    }
-
-    #[test]
-    fn format_metrics_display_renders() {
-        let info = json!({
-            "total_artifacts": 1500,
-            "total_downloads": 50000,
-            "total_repositories": 25,
-            "total_storage": "12.5 GB",
-            "total_users": 100,
-            "active_peers": 3,
-            "pending_sync_tasks": 0,
-        });
-        let display = format_metrics_display(&info);
-        assert!(display.contains("1500"));
-        assert!(display.contains("50000"));
-        assert!(display.contains("25"));
-        assert!(display.contains("12.5 GB"));
-        assert!(display.contains("100"));
-        assert!(display.contains("Artifacts:"));
-        assert!(display.contains("Downloads:"));
-        assert!(display.contains("Repositories:"));
-        assert!(display.contains("Storage:"));
-        assert!(display.contains("Users:"));
-        assert!(display.contains("Active Peers:"));
-        assert!(display.contains("Pending Syncs:"));
-    }
-
-    #[test]
-    fn format_metrics_display_zeros() {
-        let info = json!({
-            "total_artifacts": 0,
-            "total_downloads": 0,
-            "total_repositories": 0,
-            "total_storage": "0 B",
-            "total_users": 0,
-            "active_peers": 0,
-            "pending_sync_tasks": 0,
-        });
-        let display = format_metrics_display(&info);
-        assert!(display.contains("Artifacts:      0"));
-        assert!(display.contains("Downloads:      0"));
     }
 
     // ========================================================================
@@ -7727,21 +7440,5 @@ mod tests {
         let output = crate::output::render(&data, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("admin_user_list_json", parsed);
-    }
-
-    #[test]
-    fn snapshot_admin_user_list_table() {
-        let items = vec![json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "username": "alice",
-            "email": "alice@example.com",
-            "display_name": "Alice Smith",
-            "is_admin": true,
-            "is_active": true,
-            "created_at": "2026-01-01T00:00:00Z",
-            "last_login_at": "2026-01-20T10:30:00Z"
-        })];
-        let table = format_users_table(&items);
-        insta::assert_snapshot!("admin_user_list_table", table);
     }
 }
