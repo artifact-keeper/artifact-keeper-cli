@@ -298,21 +298,7 @@ async fn list_packages(
         return Ok(());
     }
 
-    let entries: Vec<_> = packages
-        .iter()
-        .map(|p| {
-            serde_json::json!({
-                "id": p.id.to_string(),
-                "name": p.name,
-                "version": p.version,
-                "format": p.format,
-                "repository_key": p.repository_key,
-                "size_bytes": p.size_bytes,
-                "download_count": p.download_count,
-                "created_at": p.created_at.to_rfc3339(),
-            })
-        })
-        .collect();
+    let entries: Vec<_> = packages.iter().map(package_json).collect();
 
     let table_str = format_packages_table(&entries);
     println!(
@@ -384,7 +370,7 @@ async fn package_decision(id: &str, approve: bool, global: &GlobalArgs) -> Resul
     }
     eprintln!(
         "Package {verb}: {} {} ({}).",
-        package.name, package.version, package.id
+        package.package_name, package.version, package.id
     );
 
     Ok(())
@@ -774,18 +760,24 @@ fn emit_stream_result(body: &str, requested: usize, approve: bool, global: &Glob
 // JSON projections
 // ---------------------------------------------------------------------------
 
-fn package_json(p: &artifact_keeper_sdk::types::PackageResponse) -> serde_json::Value {
+fn package_json(p: &artifact_keeper_sdk::types::CurationPackageResponse) -> serde_json::Value {
     serde_json::json!({
         "id": p.id.to_string(),
-        "name": p.name,
+        "package_name": p.package_name,
         "version": p.version,
         "format": p.format,
-        "repository_key": p.repository_key,
-        "description": p.description,
-        "size_bytes": p.size_bytes,
-        "download_count": p.download_count,
-        "created_at": p.created_at.to_rfc3339(),
-        "updated_at": p.updated_at.to_rfc3339(),
+        "status": p.status,
+        "architecture": p.architecture,
+        "release": p.release,
+        "staging_repo_id": p.staging_repo_id.to_string(),
+        "remote_repo_id": p.remote_repo_id.to_string(),
+        "upstream_path": p.upstream_path,
+        "checksum_sha256": p.checksum_sha256,
+        "rule_id": p.rule_id.map(|u| u.to_string()),
+        "evaluated_at": p.evaluated_at,
+        "evaluated_by": p.evaluated_by.map(|u| u.to_string()),
+        "evaluation_reason": p.evaluation_reason,
+        "first_seen_at": p.first_seen_at,
         "metadata": p.metadata,
     })
 }
@@ -818,22 +810,20 @@ fn short8(s: &str) -> &str {
 fn format_packages_table(items: &[serde_json::Value]) -> String {
     let mut table = new_table(vec![
         "ID",
-        "NAME",
+        "PACKAGE",
         "VERSION",
         "FORMAT",
-        "REPOSITORY",
-        "SIZE",
-        "DOWNLOADS",
+        "STATUS",
+        "STAGING REPO",
     ]);
     for p in items {
         table.add_row(vec![
             short8(p["id"].as_str().unwrap_or("-")),
-            p["name"].as_str().unwrap_or("-"),
+            p["package_name"].as_str().unwrap_or("-"),
             p["version"].as_str().unwrap_or("-"),
             p["format"].as_str().unwrap_or("-"),
-            p["repository_key"].as_str().unwrap_or("-"),
-            &p["size_bytes"].as_i64().unwrap_or(0).to_string(),
-            &p["download_count"].as_i64().unwrap_or(0).to_string(),
+            p["status"].as_str().unwrap_or("-"),
+            short8(p["staging_repo_id"].as_str().unwrap_or("-")),
         ]);
     }
     table.to_string()
@@ -841,26 +831,32 @@ fn format_packages_table(items: &[serde_json::Value]) -> String {
 
 fn format_package_detail(item: &serde_json::Value) -> String {
     format!(
-        "ID:             {}\n\
-         Name:           {}\n\
-         Version:        {}\n\
-         Format:         {}\n\
-         Repository:     {}\n\
-         Description:    {}\n\
-         Size (bytes):   {}\n\
-         Downloads:      {}\n\
-         Created At:     {}\n\
-         Updated At:     {}",
+        "ID:                {}\n\
+         Package:           {}\n\
+         Version:           {}\n\
+         Format:            {}\n\
+         Status:            {}\n\
+         Architecture:      {}\n\
+         Release:           {}\n\
+         Staging Repo:      {}\n\
+         Remote Repo:       {}\n\
+         Upstream Path:     {}\n\
+         Evaluation Reason: {}\n\
+         Evaluated At:      {}\n\
+         First Seen At:     {}",
         item["id"].as_str().unwrap_or("-"),
-        item["name"].as_str().unwrap_or("-"),
+        item["package_name"].as_str().unwrap_or("-"),
         item["version"].as_str().unwrap_or("-"),
         item["format"].as_str().unwrap_or("-"),
-        item["repository_key"].as_str().unwrap_or("-"),
-        item["description"].as_str().unwrap_or("-"),
-        item["size_bytes"].as_i64().unwrap_or(0),
-        item["download_count"].as_i64().unwrap_or(0),
-        item["created_at"].as_str().unwrap_or("-"),
-        item["updated_at"].as_str().unwrap_or("-"),
+        item["status"].as_str().unwrap_or("-"),
+        item["architecture"].as_str().unwrap_or("-"),
+        item["release"].as_str().unwrap_or("-"),
+        item["staging_repo_id"].as_str().unwrap_or("-"),
+        item["remote_repo_id"].as_str().unwrap_or("-"),
+        item["upstream_path"].as_str().unwrap_or("-"),
+        item["evaluation_reason"].as_str().unwrap_or("-"),
+        item["evaluated_at"].as_str().unwrap_or("-"),
+        item["first_seen_at"].as_str().unwrap_or("-"),
     )
 }
 
@@ -1192,15 +1188,21 @@ mod tests {
     fn package_sample() -> serde_json::Value {
         json!({
             "id": "00000000-0000-0000-0000-000000000001",
-            "name": "left-pad",
+            "package_name": "left-pad",
             "version": "1.3.0",
             "format": "npm",
-            "repository_key": "npm-staging",
-            "description": "pads strings",
-            "size_bytes": 1024,
-            "download_count": 7,
-            "created_at": "2026-07-01T12:00:00Z",
-            "updated_at": "2026-07-02T12:00:00Z",
+            "status": "pending",
+            "architecture": null,
+            "release": null,
+            "staging_repo_id": "00000000-0000-0000-0000-000000000002",
+            "remote_repo_id": "00000000-0000-0000-0000-000000000003",
+            "upstream_path": "npm/left-pad/-/left-pad-1.3.0.tgz",
+            "checksum_sha256": null,
+            "rule_id": null,
+            "evaluated_at": null,
+            "evaluated_by": null,
+            "evaluation_reason": null,
+            "first_seen_at": "2026-07-01T12:00:00Z",
             "metadata": {},
         })
     }
@@ -1235,7 +1237,7 @@ mod tests {
         let detail = format_package_detail(&package_sample());
         assert!(detail.contains("left-pad"));
         assert!(detail.contains("1.3.0"));
-        assert!(detail.contains("Downloads:"));
+        assert!(detail.contains("Status:"));
     }
 
     #[test]
@@ -1280,15 +1282,21 @@ mod tests {
     fn package_body() -> serde_json::Value {
         json!({
             "id": NIL_UUID,
-            "name": "left-pad",
+            "package_name": "left-pad",
             "version": "1.3.0",
             "format": "npm",
-            "repository_key": "npm-staging",
-            "description": null,
-            "size_bytes": 1024,
-            "download_count": 7,
-            "created_at": "2026-07-01T12:00:00Z",
-            "updated_at": "2026-07-02T12:00:00Z",
+            "status": "pending",
+            "architecture": null,
+            "release": null,
+            "staging_repo_id": "00000000-0000-0000-0000-000000000002",
+            "remote_repo_id": "00000000-0000-0000-0000-000000000003",
+            "upstream_path": "npm/left-pad/-/left-pad-1.3.0.tgz",
+            "checksum_sha256": null,
+            "rule_id": null,
+            "evaluated_at": null,
+            "evaluated_by": null,
+            "evaluation_reason": null,
+            "first_seen_at": "2026-07-01T12:00:00Z",
             "metadata": {}
         })
     }
