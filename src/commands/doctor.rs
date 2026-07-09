@@ -370,9 +370,56 @@ fn check_docker_config(home: &std::path::Path, instance_urls: &[&str], diag: &mu
 // CLI info
 // ---------------------------------------------------------------------------
 
+/// Proxy-related environment variables honored by the HTTP client (reqwest).
+const PROXY_ENV_VARS: &[&str] = &[
+    "HTTPS_PROXY",
+    "https_proxy",
+    "HTTP_PROXY",
+    "http_proxy",
+    "ALL_PROXY",
+    "all_proxy",
+    "NO_PROXY",
+    "no_proxy",
+];
+
+/// Redact the userinfo part of a proxy URL (e.g. `http://user:pass@host`)
+/// so credentials embedded in proxy settings are not echoed to the terminal.
+fn redact_proxy_value(value: &str) -> String {
+    if let Some(at) = value.rfind('@') {
+        let scheme_end = value.find("://").map(|i| i + 3).unwrap_or(0);
+        if at > scheme_end {
+            return format!("{}***@{}", &value[..scheme_end], &value[at + 1..]);
+        }
+    }
+    value.to_string()
+}
+
+/// Surface any active proxy configuration so users can tell when CLI traffic
+/// is being routed through an intermediary.
+fn check_proxy_env(diag: &mut DiagResult) {
+    let mut found = false;
+    for var in PROXY_ENV_VARS {
+        if let Ok(value) = std::env::var(var) {
+            if value.is_empty() {
+                continue;
+            }
+            found = true;
+            diag.skip(&format!(
+                "Proxy: {var}={} (requests are routed through this proxy)",
+                redact_proxy_value(&value)
+            ));
+        }
+    }
+    if !found {
+        diag.skip("No proxy environment variables set");
+    }
+}
+
 fn check_cli(diag: &mut DiagResult) {
     let version = env!("CARGO_PKG_VERSION");
     diag.pass(&format!("CLI version: {version}"));
+
+    check_proxy_env(diag);
 
     match crate::config::config_dir() {
         Ok(dir) => {
@@ -570,6 +617,40 @@ mod tests {
         // base64url("not json") = bm90IGpzb24
         let token = "header.bm90IGpzb24.signature";
         assert_eq!(decode_jwt_expiry(token), None);
+    }
+
+    // ---- redact_proxy_value ----
+
+    #[test]
+    fn redact_proxy_plain_url_unchanged() {
+        assert_eq!(
+            redact_proxy_value("http://proxy.corp:3128"),
+            "http://proxy.corp:3128"
+        );
+    }
+
+    #[test]
+    fn redact_proxy_credentials_hidden() {
+        assert_eq!(
+            redact_proxy_value("http://user:secret@proxy.corp:3128"),
+            "http://***@proxy.corp:3128"
+        );
+    }
+
+    #[test]
+    fn redact_proxy_no_scheme_with_credentials() {
+        assert_eq!(
+            redact_proxy_value("user:secret@proxy.corp:3128"),
+            "***@proxy.corp:3128"
+        );
+    }
+
+    #[test]
+    fn redact_proxy_no_proxy_list_unchanged() {
+        assert_eq!(
+            redact_proxy_value("localhost,127.0.0.1,.internal"),
+            "localhost,127.0.0.1,.internal"
+        );
     }
 
     // ---- print_summary ----
