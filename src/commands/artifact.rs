@@ -355,6 +355,12 @@ struct SinglePutUploadResponse {
 /// small-file push was reported as an error even though the artifact was
 /// created (#91, #98). Mirroring `chunked_upload`, this accepts any 2xx
 /// success status and surfaces genuine HTTP errors with status and body.
+///
+/// TODO(#98): the regenerated SDK now declares `201` for this endpoint, and the
+/// deployed rig already returns `201` (verified 2026-07-09), so the status
+/// reason is resolved; this raw path is retained for streaming-body upload,
+/// which the generated builder does not support. Revisit if the SDK gains a
+/// streaming body.
 async fn single_put_upload(
     base_url: &str,
     auth_header: &str,

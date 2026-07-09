@@ -444,6 +444,10 @@ async fn create_policy(
 // ignored by this endpoint. The endpoint actually accepts the lifecycle-policy
 // fields (name/enabled/priority/description/config/cron_schedule), so — as with
 // `create_policy` — build the request body directly rather than via the SDK.
+// TODO(#98): the backend spec-fidelity fix renames the PATCH body schema to
+// `UpdateLifecyclePolicyRequest` with the correct lifecycle fields; once that is
+// deployed in a release, this raw request can move to the strict SDK method.
+// Verified 2026-07-09: kept because the deployed rig predates that fix.
 #[allow(clippy::too_many_arguments)]
 async fn update_policy(
     id: &str,

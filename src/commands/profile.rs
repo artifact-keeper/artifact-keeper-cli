@@ -2,7 +2,7 @@ use artifact_keeper_sdk::ClientAuthExt;
 use artifact_keeper_sdk::ClientUsersExt;
 use artifact_keeper_sdk::types::{
     AdminUserResponse, ApiTokenCreatedResponse, ApiTokenResponse, ChangePasswordRequest,
-    CreateApiTokenRequest, UpdateUserRequest, UserResponse,
+    CreateUserApiTokenRequest, UpdateUserRequest, UserResponse,
 };
 use clap::Subcommand;
 use miette::Result;
@@ -276,7 +276,7 @@ async fn create_token(
         .map(|s| s.split(',').map(|v| v.trim().to_string()).collect())
         .unwrap_or_default();
 
-    let body = CreateApiTokenRequest {
+    let body = CreateUserApiTokenRequest {
         name: name.to_string(),
         scopes: scope_list,
         expires_in_days,

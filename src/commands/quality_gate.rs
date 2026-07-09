@@ -714,16 +714,19 @@ async fn list_checks(
     if let Some(a) = artifact_id {
         req = req.artifact_id(a);
     }
-    if let Some(r) = repository_id {
-        req = req.repository_id(r);
-    }
 
     let checks = req
         .send()
         .await
         .map_err(|e| sdk_err("list quality checks", e))?;
 
-    let checks = checks.into_inner();
+    // The `repository_id` query parameter was dropped from the API (the
+    // backend ignored it); apply the `--repository` filter client-side so
+    // the documented behavior is preserved.
+    let mut checks = checks.into_inner();
+    if let Some(r) = repository_id {
+        checks.retain(|c| c.repository_id == r);
+    }
     spinner.finish_and_clear();
 
     if checks.is_empty() {
@@ -2035,7 +2038,8 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_checks(None, None, &global).await;
+        // artifact_id is now a required query parameter.
+        let result = list_checks(Some(NIL_UUID), None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2052,7 +2056,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_checks(None, None, &global).await;
+        let result = list_checks(Some(NIL_UUID), None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

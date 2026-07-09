@@ -149,6 +149,9 @@ async fn subscribe(
     // NOTE: the SDK's `create_subscription` only accepts an HTTP 201 response,
     // but the live backend returns 200 for this endpoint (spec drift). Build the
     // request directly so any 2xx is treated as success.
+    // TODO(#98): drop this workaround for the strict `create_subscription` SDK
+    // method once the backend spec-fidelity fix (201) is deployed in a release.
+    // Verified 2026-07-09: the deployed rig still returns 200 here.
     let body = serde_json::json!({
         "event_types": events,
         "recipients": recipients,

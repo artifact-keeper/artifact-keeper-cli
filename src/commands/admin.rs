@@ -2716,7 +2716,7 @@ async fn create_user_token(
         .map(|s| s.split(',').map(|v| v.trim().to_string()).collect())
         .unwrap_or_default();
 
-    let body = artifact_keeper_sdk::types::CreateApiTokenRequest {
+    let body = artifact_keeper_sdk::types::CreateUserApiTokenRequest {
         name: name.to_string(),
         scopes: scope_list,
         expires_in_days,
@@ -2784,25 +2784,30 @@ async fn revoke_user_token(user_id: &str, token_id: &str, global: &GlobalArgs) -
 
 async fn trigger_reindex(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let spinner = output::spinner("Triggering search reindex...");
+    let spinner = output::spinner("Triggering reindex...");
 
     let resp = client
         .trigger_reindex()
         .send()
         .await
-        .map_err(|e| sdk_err("trigger reindex", e))?;
+        .map_err(|e| sdk_err("trigger reindex", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         let info = serde_json::json!({
             "message": resp.message,
-            "status": resp.status,
+            "repositories_indexed": resp.repositories_indexed,
+            "artifacts_indexed": resp.artifacts_indexed,
         });
         println!("{}", output::render(&info, &global.format, None));
     } else {
         eprintln!("{}", resp.message);
-        eprintln!("Status: {}", resp.status);
+        eprintln!(
+            "Repositories indexed: {} | Artifacts indexed: {}",
+            resp.repositories_indexed, resp.artifacts_indexed
+        );
     }
 
     Ok(())
@@ -6965,7 +6970,8 @@ mod tests {
             .and(path("/api/v1/admin/reindex"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "message": "Reindex completed",
-                "status": "completed"
+                "repositories_indexed": 3,
+                "artifacts_indexed": 42
             })))
             .mount(&server)
             .await;
