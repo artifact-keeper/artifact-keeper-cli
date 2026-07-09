@@ -1,0 +1,8 @@
+---
+source: src/commands/quarantine.rs
+expression: parsed
+---
+artifact_id: 00000000-0000-0000-0000-000000000000
+is_blocked: true
+quarantine_status: quarantined
+quarantine_until: "2026-07-10T12:00:00Z"
