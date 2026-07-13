@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-13
+
 ### Added
 
+- `ak age-gate` command group (`get`, `set`, `reviews`, `review`, `approve`, `reject`) for remote-proxy publish-age cooldown (#95)
 - `ak group update <id> <name> [--description]` to rename/redescribe a group
 - `ak permission show <id>` and `ak permission update <id>` for reading and replacing permission rules
 - `ak label repo set <key> <labels...>` to replace all labels on a repository in one call
@@ -25,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Regenerated the bundled SDK from the OpenAPI **v1.4.0** spec (#92, #78) — adds age-gate, CI-OIDC, repository-tokens, quarantine, and user self-service operations; SDK version tracks the API at `1.4.0`
 - Bumped MSRV from 1.86.0 to 1.88.0 (required by `time` 0.3.47)
 
 ## [1.0.0] - 2026-02-23
