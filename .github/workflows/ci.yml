@@ -173,7 +173,7 @@ jobs:
             -e JWT_SECRET="${JWT_SECRET}" \
             -e RATE_LIMIT_ENABLED="false" \
             -p 8081:8080 \
-            ghcr.io/artifact-keeper/artifact-keeper-backend:1.4.0
+            ghcr.io/artifact-keeper/artifact-keeper-backend:1.6.0
       - name: Wait for backend
         run: |
           for i in $(seq 1 60); do
