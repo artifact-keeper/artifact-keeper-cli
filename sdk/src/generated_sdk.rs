@@ -34,6 +34,129 @@ pub mod types {
             }
         }
     }
+    #[doc = "One principal that can read an affected artifact but has not downloaded it."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"One principal that can read an affected artifact but has not downloaded it.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"reason\","]
+    #[doc = "    \"user_id\","]
+    #[doc = "    \"username\","]
+    #[doc = "    \"via\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"reason\": {"]
+    #[doc = "      \"description\": \"Always `has-access` for this endpoint (accessible minus downloaded).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"user_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"username\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"via\": {"]
+    #[doc = "      \"description\": \"How access is granted: `admin` (global), `permission` (fine-grained\\ndirect **or** group grant, repo or owning project), or `role`\\n(role_assignment only). Direct and group grants both surface as\\n`permission` because they share one read fragment.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AccessibleUser {
+        #[doc = "Always `has-access` for this endpoint (accessible minus downloaded)."]
+        pub reason: ::std::string::String,
+        pub user_id: ::uuid::Uuid,
+        pub username: ::std::string::String,
+        #[doc = "How access is granted: `admin` (global), `permission` (fine-grained\ndirect **or** group grant, repo or owning project), or `role`\n(role_assignment only). Direct and group grants both surface as\n`permission` because they share one read fragment."]
+        pub via: ::std::string::String,
+    }
+    impl AccessibleUser {
+        pub fn builder() -> builder::AccessibleUser {
+            Default::default()
+        }
+    }
+    #[doc = "Full accessible-but-not-downloaded report for a CVE or artifact, scoped to\none restricted repository."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Full accessible-but-not-downloaded report for a CVE or artifact, scoped to\\none restricted repository.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"accessible_not_downloaded\","]
+    #[doc = "    \"exposure\","]
+    #[doc = "    \"page\","]
+    #[doc = "    \"per_page\","]
+    #[doc = "    \"repository\","]
+    #[doc = "    \"target\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"accessible_not_downloaded\": {"]
+    #[doc = "      \"description\": \"The page of accessible-but-not-downloaded principals. Empty when\\n`exposure != \\\"enumerable\\\"`.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/AccessibleUser\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"exposure\": {"]
+    #[doc = "      \"description\": \"`enumerable` | `everyone` | `effectively-everyone`.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"per_page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"repository\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/RepoExposure\""]
+    #[doc = "    },"]
+    #[doc = "    \"target\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/BlastRadiusTargetInfo\""]
+    #[doc = "    },"]
+    #[doc = "    \"total\": {"]
+    #[doc = "      \"description\": \"Total accessible-not-downloaded principals (the pagination total).\\n`null` for `public` repos (never enumerated).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AccessibleUsersResponse {
+        #[doc = "The page of accessible-but-not-downloaded principals. Empty when\n`exposure != \"enumerable\"`."]
+        pub accessible_not_downloaded: ::std::vec::Vec<AccessibleUser>,
+        #[doc = "`enumerable` | `everyone` | `effectively-everyone`."]
+        pub exposure: ::std::string::String,
+        pub page: i32,
+        pub per_page: i32,
+        pub repository: RepoExposure,
+        pub target: BlastRadiusTargetInfo,
+        #[doc = "Total accessible-not-downloaded principals (the pagination total).\n`null` for `public` repos (never enumerated)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub total: ::std::option::Option<i64>,
+    }
+    impl AccessibleUsersResponse {
+        pub fn builder() -> builder::AccessibleUsersResponse {
+            Default::default()
+        }
+    }
     #[doc = "`AcknowledgeRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -217,6 +340,51 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`AddProjectMemberRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"actions\","]
+    #[doc = "    \"principal_id\","]
+    #[doc = "    \"principal_type\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"actions\": {"]
+    #[doc = "      \"description\": \"Actions granted on every repository in the project (e.g. [\\\"read\\\"],\\n[\\\"read\\\", \\\"write\\\"]).\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"principal_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"principal_type\": {"]
+    #[doc = "      \"description\": \"\\\"user\\\" or \\\"group\\\".\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AddProjectMemberRequest {
+        #[doc = "Actions granted on every repository in the project (e.g. [\"read\"],\n[\"read\", \"write\"])."]
+        pub actions: ::std::vec::Vec<::std::string::String>,
+        pub principal_id: ::uuid::Uuid,
+        #[doc = "\"user\" or \"group\"."]
+        pub principal_type: ::std::string::String,
+    }
+    impl AddProjectMemberRequest {
+        pub fn builder() -> builder::AddProjectMemberRequest {
+            Default::default()
+        }
+    }
     #[doc = "`AddVirtualMemberRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -371,6 +539,52 @@ pub mod types {
     }
     impl AdvancedSearchResponse {
         pub fn builder() -> builder::AdvancedSearchResponse {
+            Default::default()
+        }
+    }
+    #[doc = "One repository containing an affected artifact, with its access exposure."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"One repository containing an affected artifact, with its access exposure.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"access_scope\","]
+    #[doc = "    \"is_public\","]
+    #[doc = "    \"repository_id\","]
+    #[doc = "    \"repository_key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"access_scope\": {"]
+    #[doc = "      \"description\": \"`public` | `restricted_acl` | `restricted_roles` — see\\n[`classify_access_scope`].\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"is_public\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AffectedRepo {
+        #[doc = "`public` | `restricted_acl` | `restricted_roles` — see\n[`classify_access_scope`]."]
+        pub access_scope: ::std::string::String,
+        pub is_public: bool,
+        pub repository_id: ::uuid::Uuid,
+        pub repository_key: ::std::string::String,
+    }
+    impl AffectedRepo {
+        pub fn builder() -> builder::AffectedRepo {
             Default::default()
         }
     }
@@ -1584,11 +1798,26 @@ pub mod types {
     #[doc = "    \"repository_key\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
+    #[doc = "    \"revision\": {"]
+    #[doc = "      \"description\": \"Server-assigned revision number for repositories with first-class\\nversioning enabled (#2367). `None` for non-versioned repositories and\\nfor coordinates with no recorded history.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
     #[doc = "    \"size_bytes\": {"]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
     #[doc = "    \"version\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"version_label\": {"]
+    #[doc = "      \"description\": \"Optional human tag recorded for this revision (from the\\n`X-Artifact-Version` upload header). Only populated alongside\\n`revision`.\","]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
@@ -1619,9 +1848,15 @@ pub mod types {
         pub name: ::std::string::String,
         pub path: ::std::string::String,
         pub repository_key: ::std::string::String,
+        #[doc = "Server-assigned revision number for repositories with first-class\nversioning enabled (#2367). `None` for non-versioned repositories and\nfor coordinates with no recorded history."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub revision: ::std::option::Option<i32>,
         pub size_bytes: i64,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub version: ::std::option::Option<::std::string::String>,
+        #[doc = "Optional human tag recorded for this revision (from the\n`X-Artifact-Version` upload header). Only populated alongside\n`revision`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub version_label: ::std::option::Option<::std::string::String>,
     }
     impl ArtifactResponse {
         pub fn builder() -> builder::ArtifactResponse {
@@ -1677,6 +1912,157 @@ pub mod types {
     }
     impl ArtifactStatsResponse {
         pub fn builder() -> builder::ArtifactStatsResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Version history for one artifact coordinate, newest first (#2367)."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Version history for one artifact coordinate, newest first (#2367).\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\","]
+    #[doc = "    \"path\","]
+    #[doc = "    \"repository_key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/ArtifactVersionResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"path\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ArtifactVersionListResponse {
+        pub items: ::std::vec::Vec<ArtifactVersionResponse>,
+        pub path: ::std::string::String,
+        pub repository_key: ::std::string::String,
+    }
+    impl ArtifactVersionListResponse {
+        pub fn builder() -> builder::ArtifactVersionListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`?version=` selector accepted by the artifact metadata/download routes on\nversioning-enabled repositories (#2367). A numeric value selects by\nserver-assigned revision, `latest` (or omitting the parameter) selects the\nHEAD, and any other string selects by human `version_label`. Ignored on\nrepositories without versioning enabled."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"`?version=` selector accepted by the artifact metadata/download routes on\\nversioning-enabled repositories (#2367). A numeric value selects by\\nserver-assigned revision, `latest` (or omitting the parameter) selects the\\nHEAD, and any other string selects by human `version_label`. Ignored on\\nrepositories without versioning enabled.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"version\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ArtifactVersionQuery {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub version: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for ArtifactVersionQuery {
+        fn default() -> Self {
+            Self {
+                version: Default::default(),
+            }
+        }
+    }
+    impl ArtifactVersionQuery {
+        pub fn builder() -> builder::ArtifactVersionQuery {
+            Default::default()
+        }
+    }
+    #[doc = "One immutable stored revision of a versioned artifact (#2367)."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"One immutable stored revision of a versioned artifact (#2367).\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"checksum_sha256\","]
+    #[doc = "    \"content_type\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"revision\","]
+    #[doc = "    \"size_bytes\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"checksum_sha256\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"content_type\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"revision\": {"]
+    #[doc = "      \"description\": \"Server-assigned auto-increment revision (1-based).\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"size_bytes\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"uploaded_by\": {"]
+    #[doc = "      \"description\": \"Id of the user that uploaded this revision (#2397). Always serialized\\n(`null` when unknown, e.g. anonymous uploads) so the versions UI can\\nrely on the key being present.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"version_label\": {"]
+    #[doc = "      \"description\": \"Optional human tag supplied via `X-Artifact-Version` at upload time.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ArtifactVersionResponse {
+        pub checksum_sha256: ::std::string::String,
+        pub content_type: ::std::string::String,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Server-assigned auto-increment revision (1-based)."]
+        pub revision: i32,
+        pub size_bytes: i64,
+        #[doc = "Id of the user that uploaded this revision (#2397). Always serialized\n(`null` when unknown, e.g. anonymous uploads) so the versions UI can\nrely on the key being present."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub uploaded_by: ::std::option::Option<::uuid::Uuid>,
+        #[doc = "Optional human tag supplied via `X-Artifact-Version` at upload time."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub version_label: ::std::option::Option<::std::string::String>,
+    }
+    impl ArtifactVersionResponse {
+        pub fn builder() -> builder::ArtifactVersionResponse {
             Default::default()
         }
     }
@@ -1860,6 +2246,148 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "A single audit-log row in a query response."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"A single audit-log row in a query response.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"action\","]
+    #[doc = "    \"correlation_id\","]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"resource_type\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"action\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"actor_username\": {"]
+    #[doc = "      \"description\": \"Username of the acting user, embedded server-side (#2392). `null` for\\nsystem/non-user actors and for actors that have since been deleted.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"correlation_id\": {"]
+    #[doc = "      \"description\": \"Request correlation ID (#2414): a string — caller-supplied values and\\nW3C trace IDs are not UUIDs.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"details\": {},"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"ip_address\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"resource_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"resource_type\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"user_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AuditLogItem {
+        pub action: ::std::string::String,
+        #[doc = "Username of the acting user, embedded server-side (#2392). `null` for\nsystem/non-user actors and for actors that have since been deleted."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub actor_username: ::std::option::Option<::std::string::String>,
+        #[doc = "Request correlation ID (#2414): a string — caller-supplied values and\nW3C trace IDs are not UUIDs."]
+        pub correlation_id: ::std::string::String,
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub details: ::std::option::Option<::serde_json::Value>,
+        pub id: ::uuid::Uuid,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub ip_address: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub resource_id: ::std::option::Option<::uuid::Uuid>,
+        pub resource_type: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub user_id: ::std::option::Option<::uuid::Uuid>,
+    }
+    impl AuditLogItem {
+        pub fn builder() -> builder::AuditLogItem {
+            Default::default()
+        }
+    }
+    #[doc = "Paginated audit-log query response."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Paginated audit-log query response.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\","]
+    #[doc = "    \"page\","]
+    #[doc = "    \"per_page\","]
+    #[doc = "    \"total\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/AuditLogItem\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"per_page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"total\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct AuditLogListResponse {
+        pub items: ::std::vec::Vec<AuditLogItem>,
+        pub page: i32,
+        pub per_page: i32,
+        pub total: i64,
+    }
+    impl AuditLogListResponse {
+        pub fn builder() -> builder::AuditLogListResponse {
+            Default::default()
+        }
+    }
     #[doc = "Authentication provider availability."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -2037,6 +2565,266 @@ pub mod types {
     }
     impl BackupResponse {
         pub fn builder() -> builder::BackupResponse {
+            Default::default()
+        }
+    }
+    #[doc = "One downloader (or the anonymous bucket) of an affected artifact."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"One downloader (or the anonymous bucket) of an affected artifact.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"distinct_ip_count\","]
+    #[doc = "    \"download_count\","]
+    #[doc = "    \"first_download\","]
+    #[doc = "    \"ip_addresses\","]
+    #[doc = "    \"last_download\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"distinct_ip_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"download_count\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"first_download\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"ip_addresses\": {"]
+    #[doc = "      \"description\": \"Sample of distinct client IPs (bounded; counts stay exact).\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"last_download\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"user_id\": {"]
+    #[doc = "      \"description\": \"`None` groups all anonymous downloads.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"username\": {"]
+    #[doc = "      \"description\": \"Username when the download was authenticated and the user still\\nexists; `None` for the anonymous bucket (or a deleted user).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct BlastDownloader {
+        pub distinct_ip_count: i64,
+        pub download_count: i64,
+        pub first_download: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Sample of distinct client IPs (bounded; counts stay exact)."]
+        pub ip_addresses: ::std::vec::Vec<::std::string::String>,
+        pub last_download: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "`None` groups all anonymous downloads."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub user_id: ::std::option::Option<::uuid::Uuid>,
+        #[doc = "Username when the download was authenticated and the user still\nexists; `None` for the anonymous bucket (or a deleted user)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub username: ::std::option::Option<::std::string::String>,
+    }
+    impl BlastDownloader {
+        pub fn builder() -> builder::BlastDownloader {
+            Default::default()
+        }
+    }
+    #[doc = "Full blast-radius report for a CVE or artifact."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Full blast-radius report for a CVE or artifact.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"affected_repos\","]
+    #[doc = "    \"downloaders\","]
+    #[doc = "    \"page\","]
+    #[doc = "    \"per_page\","]
+    #[doc = "    \"summary\","]
+    #[doc = "    \"target\","]
+    #[doc = "    \"total_downloaders\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"affected_repos\": {"]
+    #[doc = "      \"description\": \"Every repository containing an affected artifact (downloaded or not),\\nbounded to [`MAX_AFFECTED_REPOS`] entries.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/AffectedRepo\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"downloaders\": {"]
+    #[doc = "      \"description\": \"Paginated distinct downloaders, most recent first.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/BlastDownloader\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"per_page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"summary\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/BlastRadiusSummary\""]
+    #[doc = "    },"]
+    #[doc = "    \"target\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/BlastRadiusTargetInfo\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_downloaders\": {"]
+    #[doc = "      \"description\": \"Total distinct downloader principals (the anonymous bucket counts as\\none) — the pagination total for `downloaders`.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct BlastRadiusResponse {
+        #[doc = "Every repository containing an affected artifact (downloaded or not),\nbounded to [`MAX_AFFECTED_REPOS`] entries."]
+        pub affected_repos: ::std::vec::Vec<AffectedRepo>,
+        #[doc = "Paginated distinct downloaders, most recent first."]
+        pub downloaders: ::std::vec::Vec<BlastDownloader>,
+        pub page: i32,
+        pub per_page: i32,
+        pub summary: BlastRadiusSummary,
+        pub target: BlastRadiusTargetInfo,
+        #[doc = "Total distinct downloader principals (the anonymous bucket counts as\none) — the pagination total for `downloaders`."]
+        pub total_downloaders: i64,
+    }
+    impl BlastRadiusResponse {
+        pub fn builder() -> builder::BlastRadiusResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Aggregate exposure counts, scoped to the requested download window."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Aggregate exposure counts, scoped to the requested download window.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"affected_artifact_count\","]
+    #[doc = "    \"affected_repo_count\","]
+    #[doc = "    \"anonymous_download_present\","]
+    #[doc = "    \"distinct_ip_count\","]
+    #[doc = "    \"downloader_user_count\","]
+    #[doc = "    \"total_download_count\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"affected_artifact_count\": {"]
+    #[doc = "      \"description\": \"Affected artifacts with at least one download in the window.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"affected_repo_count\": {"]
+    #[doc = "      \"description\": \"Repositories holding those downloaded artifacts.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"anonymous_download_present\": {"]
+    #[doc = "      \"description\": \"Whether any download in the window was anonymous.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"distinct_ip_count\": {"]
+    #[doc = "      \"description\": \"Distinct client IPs across all downloads in the window.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"downloader_user_count\": {"]
+    #[doc = "      \"description\": \"Distinct **authenticated** users who downloaded an affected artifact.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_download_count\": {"]
+    #[doc = "      \"description\": \"Total download events of affected artifacts in the window.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct BlastRadiusSummary {
+        #[doc = "Affected artifacts with at least one download in the window."]
+        pub affected_artifact_count: i64,
+        #[doc = "Repositories holding those downloaded artifacts."]
+        pub affected_repo_count: i64,
+        #[doc = "Whether any download in the window was anonymous."]
+        pub anonymous_download_present: bool,
+        #[doc = "Distinct client IPs across all downloads in the window."]
+        pub distinct_ip_count: i64,
+        #[doc = "Distinct **authenticated** users who downloaded an affected artifact."]
+        pub downloader_user_count: i64,
+        #[doc = "Total download events of affected artifacts in the window."]
+        pub total_download_count: i64,
+    }
+    impl BlastRadiusSummary {
+        pub fn builder() -> builder::BlastRadiusSummary {
+            Default::default()
+        }
+    }
+    #[doc = "Echo of what the blast radius was computed for."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Echo of what the blast radius was computed for.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"kind\","]
+    #[doc = "    \"value\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"kind\": {"]
+    #[doc = "      \"description\": \"`cve` or `artifact`.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"value\": {"]
+    #[doc = "      \"description\": \"The CVE id or artifact id.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct BlastRadiusTargetInfo {
+        #[doc = "`cve` or `artifact`."]
+        pub kind: ::std::string::String,
+        #[doc = "The CVE id or artifact id."]
+        pub value: ::std::string::String,
+    }
+    impl BlastRadiusTargetInfo {
+        pub fn builder() -> builder::BlastRadiusTargetInfo {
             Default::default()
         }
     }
@@ -5655,6 +6443,57 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`CreateProjectRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"key\","]
+    #[doc = "    \"name\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"quota_bytes\": {"]
+    #[doc = "      \"description\": \"P1: stored only, NOT enforced (quota enforcement is P3).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct CreateProjectRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        pub key: ::std::string::String,
+        pub name: ::std::string::String,
+        #[doc = "P1: stored only, NOT enforced (quota enforcement is P3)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quota_bytes: ::std::option::Option<i64>,
+    }
+    impl CreateProjectRequest {
+        pub fn builder() -> builder::CreateProjectRequest {
+            Default::default()
+        }
+    }
     #[doc = "Request to create an access token scoped to a repository."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -5783,6 +6622,44 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"apt_description\": {"]
+    #[doc = "      \"description\": \"Custom Description field for Debian/APT Release files.\\nStored in `repository_config` under `apt_description`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_label\": {"]
+    #[doc = "      \"description\": \"Custom Label field for Debian/APT Release files.\\nStored in `repository_config` under `apt_label`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_origin\": {"]
+    #[doc = "      \"description\": \"Custom Origin field for Debian/APT Release files.\\nStored in `repository_config` under `apt_origin`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_release_version\": {"]
+    #[doc = "      \"description\": \"Custom Version field for Debian/APT Release files.\\nStored in `repository_config` under `apt_release_version`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"custom_user_agent\": {"]
+    #[doc = "      \"description\": \"Custom User-Agent sent on outbound HTTP requests to the upstream for\\nthis repository. Only valid for remote repositories. Max 256 characters.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"debian\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/DebianRepositoryConfig\""]
+    #[doc = "    },"]
     #[doc = "    \"description\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
@@ -5828,6 +6705,41 @@ pub mod types {
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
+    #[doc = "    \"npm_allow_unscoped\": {"]
+    #[doc = "      \"description\": \"Whether unscoped npm package names may resolve through this npm Remote\\nrepository (#2424). Stored under `npm_allow_unscoped`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"npm_allowed_name_patterns\": {"]
+    #[doc = "      \"description\": \"Allowed npm full-name glob patterns (`*`/`?`) for this npm Remote\\nrepository (#2424). Additive to `npm_allowed_scopes`; stored under\\n`npm_allowed_name_patterns`. A name is allowed if its scope is allowed\\nOR any glob matches (e.g. `@acme/*`, `internal-*`).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"npm_allowed_scopes\": {"]
+    #[doc = "      \"description\": \"Allowed npm `@scope` literals for this npm Remote repository (#2424).\\nOnly meaningful for npm-format Remote repositories; validated and stored\\nin `repository_config` under `npm_allowed_scopes`. Omit to leave the\\nrepository unrestricted by scope.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"project_id\": {"]
+    #[doc = "      \"description\": \"Optional project to assign this repository to (#2472). Grants on the\\nproject (permissions with `target_type = 'project'`) are inherited by\\nthe repository. Omit to leave the repository unassigned.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
     #[doc = "    \"promotion_only\": {"]
     #[doc = "      \"description\": \"When true, direct user uploads to this repository are rejected:\\nartifacts must arrive via the promotion path. Admin-only to set.\\nDefaults to false (no behavior change for existing repositories).\","]
     #[doc = "      \"type\": ["]
@@ -5859,6 +6771,13 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"trusted_gpg_key\": {"]
+    #[doc = "      \"description\": \"ASCII-armored OpenPGP *public* key trusted to sign this RPM curation\\nremote's `repodata/repomd.xml` (#2568, RPM curation Phase 3). When set,\\nthe curation sync fetches `repomd.xml.asc` and verifies the detached\\nsignature before ingesting upstream metadata (#2567 reads this column).\\nMust be a PUBLIC key block; a private-key block is rejected. Write-only:\\nthe response exposes only the boolean `has_trusted_gpg_key`, never the\\nkey material.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"upstream_auth_type\": {"]
     #[doc = "      \"description\": \"Upstream auth type: \\\"basic\\\" or \\\"bearer\\\". Only valid for remote repos.\","]
     #[doc = "      \"type\": ["]
@@ -5885,6 +6804,13 @@ pub mod types {
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"versioning_enabled\": {"]
+    #[doc = "      \"description\": \"Opt this repository into first-class artifact versioning (#2367):\\nuploads to Generic/Mlmodel repos append immutable revisions instead\\nof overwriting. Defaults to false (current behavior preserved).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -5895,6 +6821,23 @@ pub mod types {
         #[doc = "Alias for `is_public`. When set to true, anonymous users can download\nartifacts from this repository without authentication. Useful for remote\n(pull-through cache) repositories that proxy public upstream registries.\nIf both `is_public` and `allow_anonymous_access` are provided,\n`allow_anonymous_access` takes precedence."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub allow_anonymous_access: ::std::option::Option<bool>,
+        #[doc = "Custom Description field for Debian/APT Release files.\nStored in `repository_config` under `apt_description`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_description: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom Label field for Debian/APT Release files.\nStored in `repository_config` under `apt_label`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_label: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom Origin field for Debian/APT Release files.\nStored in `repository_config` under `apt_origin`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_origin: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom Version field for Debian/APT Release files.\nStored in `repository_config` under `apt_release_version`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_release_version: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom User-Agent sent on outbound HTTP requests to the upstream for\nthis repository. Only valid for remote repositories. Max 256 characters."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub custom_user_agent: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub debian: ::std::option::Option<DebianRepositoryConfig>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
         pub format: ::std::string::String,
@@ -5911,6 +6854,19 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub member_repos: ::std::option::Option<::std::vec::Vec<CreateVirtualMemberInput>>,
         pub name: ::std::string::String,
+        #[doc = "Whether unscoped npm package names may resolve through this npm Remote\nrepository (#2424). Stored under `npm_allow_unscoped`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub npm_allow_unscoped: ::std::option::Option<bool>,
+        #[doc = "Allowed npm full-name glob patterns (`*`/`?`) for this npm Remote\nrepository (#2424). Additive to `npm_allowed_scopes`; stored under\n`npm_allowed_name_patterns`. A name is allowed if its scope is allowed\nOR any glob matches (e.g. `@acme/*`, `internal-*`)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub npm_allowed_name_patterns:
+            ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[doc = "Allowed npm `@scope` literals for this npm Remote repository (#2424).\nOnly meaningful for npm-format Remote repositories; validated and stored\nin `repository_config` under `npm_allowed_scopes`. Omit to leave the\nrepository unrestricted by scope."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub npm_allowed_scopes: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[doc = "Optional project to assign this repository to (#2472). Grants on the\nproject (permissions with `target_type = 'project'`) are inherited by\nthe repository. Omit to leave the repository unassigned."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub project_id: ::std::option::Option<::uuid::Uuid>,
         #[doc = "When true, direct user uploads to this repository are rejected:\nartifacts must arrive via the promotion path. Admin-only to set.\nDefaults to false (no behavior change for existing repositories)."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub promotion_only: ::std::option::Option<bool>,
@@ -5923,6 +6879,9 @@ pub mod types {
         #[doc = "Override the default storage backend for this repository.\nWhen omitted, the server's configured default is used.\nNon-admin users may only use the default backend."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub storage_backend: ::std::option::Option<::std::string::String>,
+        #[doc = "ASCII-armored OpenPGP *public* key trusted to sign this RPM curation\nremote's `repodata/repomd.xml` (#2568, RPM curation Phase 3). When set,\nthe curation sync fetches `repomd.xml.asc` and verifies the detached\nsignature before ingesting upstream metadata (#2567 reads this column).\nMust be a PUBLIC key block; a private-key block is rejected. Write-only:\nthe response exposes only the boolean `has_trusted_gpg_key`, never the\nkey material."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub trusted_gpg_key: ::std::option::Option<::std::string::String>,
         #[doc = "Upstream auth type: \"basic\" or \"bearer\". Only valid for remote repos."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub upstream_auth_type: ::std::option::Option<::std::string::String>,
@@ -5934,6 +6893,9 @@ pub mod types {
         #[doc = "Username for basic auth."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub upstream_username: ::std::option::Option<::std::string::String>,
+        #[doc = "Opt this repository into first-class artifact versioning (#2367):\nuploads to Generic/Mlmodel repos append immutable revisions instead\nof overwriting. Defaults to false (current behavior preserved)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub versioning_enabled: ::std::option::Option<bool>,
     }
     impl CreateRepositoryRequest {
         pub fn builder() -> builder::CreateRepositoryRequest {
@@ -6078,6 +7040,13 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"map_groups_to_groups\": {"]
+    #[doc = "      \"description\": \"Opt-in flag (see migration 157, #2333): when true, SAML assertion\\ngroup values are reflected as Artifact Keeper group memberships.\\nDefaults to false.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
@@ -6136,6 +7105,9 @@ pub mod types {
         pub entity_id: ::std::string::String,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub is_enabled: ::std::option::Option<bool>,
+        #[doc = "Opt-in flag (see migration 157, #2333): when true, SAML assertion\ngroup values are reflected as Artifact Keeper group memberships.\nDefaults to false."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub map_groups_to_groups: ::std::option::Option<bool>,
         pub name: ::std::string::String,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name_id_format: ::std::option::Option<::std::string::String>,
@@ -7839,6 +8811,403 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Partial-update patch for [`DebianRepositoryConfig`]. Fields left absent are\npreserved; provided fields (including an explicit empty list) replace the\nstored value. Applied on top of the currently stored config, or on top of\nthe default when none exists yet."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Partial-update patch for [`DebianRepositoryConfig`]. Fields left absent are\\npreserved; provided fields (including an explicit empty list) replace the\\nstored value. Applied on top of the currently stored config, or on top of\\nthe default when none exists yet.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"architectures\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"components\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"distribution_paths\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"flat_repository\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"include_source_packages\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"metadata_strategy\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/DebianMetadataStrategy\""]
+    #[doc = "    },"]
+    #[doc = "    \"package_fetch_strategy\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/DebianPackageFetchStrategy\""]
+    #[doc = "    },"]
+    #[doc = "    \"package_queries\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"upstream_gpg_key_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"verify_upstream_metadata\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct DebianConfigPatch {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub architectures: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub components: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub distribution_paths: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub flat_repository: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub include_source_packages: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub metadata_strategy: ::std::option::Option<DebianMetadataStrategy>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub package_fetch_strategy: ::std::option::Option<DebianPackageFetchStrategy>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub package_queries: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub upstream_gpg_key_id: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub verify_upstream_metadata: ::std::option::Option<bool>,
+    }
+    impl ::std::default::Default for DebianConfigPatch {
+        fn default() -> Self {
+            Self {
+                architectures: Default::default(),
+                components: Default::default(),
+                distribution_paths: Default::default(),
+                flat_repository: Default::default(),
+                include_source_packages: Default::default(),
+                metadata_strategy: Default::default(),
+                package_fetch_strategy: Default::default(),
+                package_queries: Default::default(),
+                upstream_gpg_key_id: Default::default(),
+                verify_upstream_metadata: Default::default(),
+            }
+        }
+    }
+    impl DebianConfigPatch {
+        pub fn builder() -> builder::DebianConfigPatch {
+            Default::default()
+        }
+    }
+    #[doc = "How metadata (`Packages`/`Release`) is produced for a Debian remote.\n\nOnly [`DebianMetadataStrategy::UpstreamPassthrough`] is implemented in\n1.6.0; the other variants are reserved for P3 (filtered generation) / P4\n(local re-signing) and are rejected with 422 until then. The enum lands now\nso those phases can flip it on without a schema/config-shape change."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"How metadata (`Packages`/`Release`) is produced for a Debian remote.\\n\\nOnly [`DebianMetadataStrategy::UpstreamPassthrough`] is implemented in\\n1.6.0; the other variants are reserved for P3 (filtered generation) / P4\\n(local re-signing) and are rejected with 422 until then. The enum lands now\\nso those phases can flip it on without a schema/config-shape change.\","]
+    #[doc = "  \"type\": \"string\","]
+    #[doc = "  \"enum\": ["]
+    #[doc = "    \"upstream_passthrough\","]
+    #[doc = "    \"filter_and_generate\","]
+    #[doc = "    \"filter_generate_and_sign\","]
+    #[doc = "    \"hosted_generate\""]
+    #[doc = "  ]"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    )]
+    pub enum DebianMetadataStrategy {
+        #[serde(rename = "upstream_passthrough")]
+        UpstreamPassthrough,
+        #[serde(rename = "filter_and_generate")]
+        FilterAndGenerate,
+        #[serde(rename = "filter_generate_and_sign")]
+        FilterGenerateAndSign,
+        #[serde(rename = "hosted_generate")]
+        HostedGenerate,
+    }
+    impl ::std::fmt::Display for DebianMetadataStrategy {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            match *self {
+                Self::UpstreamPassthrough => f.write_str("upstream_passthrough"),
+                Self::FilterAndGenerate => f.write_str("filter_and_generate"),
+                Self::FilterGenerateAndSign => f.write_str("filter_generate_and_sign"),
+                Self::HostedGenerate => f.write_str("hosted_generate"),
+            }
+        }
+    }
+    impl ::std::str::FromStr for DebianMetadataStrategy {
+        type Err = self::error::ConversionError;
+        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            match value {
+                "upstream_passthrough" => Ok(Self::UpstreamPassthrough),
+                "filter_and_generate" => Ok(Self::FilterAndGenerate),
+                "filter_generate_and_sign" => Ok(Self::FilterGenerateAndSign),
+                "hosted_generate" => Ok(Self::HostedGenerate),
+                _ => Err("invalid value".into()),
+            }
+        }
+    }
+    impl ::std::convert::TryFrom<&str> for DebianMetadataStrategy {
+        type Error = self::error::ConversionError;
+        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<&::std::string::String> for DebianMetadataStrategy {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<::std::string::String> for DebianMetadataStrategy {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    #[doc = "How package bodies are fetched for a Debian remote.\n\nOnly [`DebianPackageFetchStrategy::UpstreamPassthrough`] is implemented in\n1.6.0."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"How package bodies are fetched for a Debian remote.\\n\\nOnly [`DebianPackageFetchStrategy::UpstreamPassthrough`] is implemented in\\n1.6.0.\","]
+    #[doc = "  \"type\": \"string\","]
+    #[doc = "  \"enum\": ["]
+    #[doc = "    \"upstream_passthrough\","]
+    #[doc = "    \"eager\""]
+    #[doc = "  ]"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    )]
+    pub enum DebianPackageFetchStrategy {
+        #[serde(rename = "upstream_passthrough")]
+        UpstreamPassthrough,
+        #[serde(rename = "eager")]
+        Eager,
+    }
+    impl ::std::fmt::Display for DebianPackageFetchStrategy {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            match *self {
+                Self::UpstreamPassthrough => f.write_str("upstream_passthrough"),
+                Self::Eager => f.write_str("eager"),
+            }
+        }
+    }
+    impl ::std::str::FromStr for DebianPackageFetchStrategy {
+        type Err = self::error::ConversionError;
+        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            match value {
+                "upstream_passthrough" => Ok(Self::UpstreamPassthrough),
+                "eager" => Ok(Self::Eager),
+                _ => Err("invalid value".into()),
+            }
+        }
+    }
+    impl ::std::convert::TryFrom<&str> for DebianPackageFetchStrategy {
+        type Error = self::error::ConversionError;
+        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<&::std::string::String> for DebianPackageFetchStrategy {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<::std::string::String> for DebianPackageFetchStrategy {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    #[doc = "P2 Debian remote proxy filter config (dist/component/arch allowlists).\n\nSemantics for each allowlist: an empty list OR a list containing `\"*\"`\nselects everything (today's full-proxy behaviour); otherwise only exact\nmatches are selected. Architecture-independent (`all`) packages are always\npermitted regardless of the `architectures` allowlist."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"P2 Debian remote proxy filter config (dist/component/arch allowlists).\\n\\nSemantics for each allowlist: an empty list OR a list containing `\\\"*\\\"`\\nselects everything (today's full-proxy behaviour); otherwise only exact\\nmatches are selected. Architecture-independent (`all`) packages are always\\npermitted regardless of the `architectures` allowlist.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"architectures\": {"]
+    #[doc = "      \"description\": \"Architectures (e.g. `amd64`, `arm64`) to proxy. Empty/`[\\\"*\\\"]` = all.\\n`all` (arch-independent) is always permitted.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"components\": {"]
+    #[doc = "      \"description\": \"Components (e.g. `main`, `contrib`, `non-free`) to proxy. Empty/`[\\\"*\\\"]` = all.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"distribution_paths\": {"]
+    #[doc = "      \"description\": \"Distributions (a.k.a. suites/codenames, e.g. `bookworm`) to proxy.\\nEmpty or `[\\\"*\\\"]` = all.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"flat_repository\": {"]
+    #[doc = "      \"description\": \"Flat (non-`dists/`) repository layout flag. Accepted but does NOT weaken\\nP1's flat/redirect abuse posture in passthrough.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"include_source_packages\": {"]
+    #[doc = "      \"description\": \"Whether source packages (`Sources`, `.dsc`) are included. Advisory in\\npassthrough (upstream metadata is unchanged); honored under P3.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"metadata_strategy\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/DebianMetadataStrategy\""]
+    #[doc = "    },"]
+    #[doc = "    \"package_fetch_strategy\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/DebianPackageFetchStrategy\""]
+    #[doc = "    },"]
+    #[doc = "    \"package_queries\": {"]
+    #[doc = "      \"description\": \"Package-name-level queries. NOT honored in passthrough (that needs P3);\\na non-empty value here with `upstream_passthrough` is rejected with 422\\nrather than silently advertising content the proxy would then block.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"upstream_gpg_key_id\": {"]
+    #[doc = "      \"description\": \"Upstream GPG key id used to verify upstream metadata (reserved for P4).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"verify_upstream_metadata\": {"]
+    #[doc = "      \"description\": \"Whether to verify the upstream signed `Release` before serving. In P2 the\\nP1 integrity gate already enforces index/Release consistency; this flag\\nis reserved for P4 trust-anchor verification.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct DebianRepositoryConfig {
+        #[doc = "Architectures (e.g. `amd64`, `arm64`) to proxy. Empty/`[\"*\"]` = all.\n`all` (arch-independent) is always permitted."]
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub architectures: ::std::vec::Vec<::std::string::String>,
+        #[doc = "Components (e.g. `main`, `contrib`, `non-free`) to proxy. Empty/`[\"*\"]` = all."]
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub components: ::std::vec::Vec<::std::string::String>,
+        #[doc = "Distributions (a.k.a. suites/codenames, e.g. `bookworm`) to proxy.\nEmpty or `[\"*\"]` = all."]
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub distribution_paths: ::std::vec::Vec<::std::string::String>,
+        #[doc = "Flat (non-`dists/`) repository layout flag. Accepted but does NOT weaken\nP1's flat/redirect abuse posture in passthrough."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub flat_repository: ::std::option::Option<bool>,
+        #[doc = "Whether source packages (`Sources`, `.dsc`) are included. Advisory in\npassthrough (upstream metadata is unchanged); honored under P3."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub include_source_packages: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub metadata_strategy: ::std::option::Option<DebianMetadataStrategy>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub package_fetch_strategy: ::std::option::Option<DebianPackageFetchStrategy>,
+        #[doc = "Package-name-level queries. NOT honored in passthrough (that needs P3);\na non-empty value here with `upstream_passthrough` is rejected with 422\nrather than silently advertising content the proxy would then block."]
+        #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+        pub package_queries: ::std::vec::Vec<::std::string::String>,
+        #[doc = "Upstream GPG key id used to verify upstream metadata (reserved for P4)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub upstream_gpg_key_id: ::std::option::Option<::std::string::String>,
+        #[doc = "Whether to verify the upstream signed `Release` before serving. In P2 the\nP1 integrity gate already enforces index/Release consistency; this flag\nis reserved for P4 trust-anchor verification."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub verify_upstream_metadata: ::std::option::Option<bool>,
+    }
+    impl ::std::default::Default for DebianRepositoryConfig {
+        fn default() -> Self {
+            Self {
+                architectures: Default::default(),
+                components: Default::default(),
+                distribution_paths: Default::default(),
+                flat_repository: Default::default(),
+                include_source_packages: Default::default(),
+                metadata_strategy: Default::default(),
+                package_fetch_strategy: Default::default(),
+                package_queries: Default::default(),
+                upstream_gpg_key_id: Default::default(),
+                verify_upstream_metadata: Default::default(),
+            }
+        }
+    }
+    impl DebianRepositoryConfig {
+        pub fn builder() -> builder::DebianRepositoryConfig {
+            Default::default()
+        }
+    }
     #[doc = "`DeliveryListResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -8110,6 +9479,128 @@ pub mod types {
     }
     impl DockerTagResponse {
         pub fn builder() -> builder::DockerTagResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`DownloadListResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"downloads\","]
+    #[doc = "    \"page\","]
+    #[doc = "    \"per_page\","]
+    #[doc = "    \"total\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"downloads\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/DownloadRecord\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"per_page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"total\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct DownloadListResponse {
+        pub downloads: ::std::vec::Vec<DownloadRecord>,
+        pub page: i32,
+        pub per_page: i32,
+        pub total: i64,
+    }
+    impl DownloadListResponse {
+        pub fn builder() -> builder::DownloadListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "One attributed download event."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"One attributed download event.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"downloaded_at\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"downloaded_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"ip_address\": {"]
+    #[doc = "      \"description\": \"Resolved client IP; NULL for legacy rows and unresolvable clients.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"user_agent\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"user_id\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"username\": {"]
+    #[doc = "      \"description\": \"Username of the downloader, when the download was authenticated and\\nthe user still exists.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct DownloadRecord {
+        pub artifact_id: ::uuid::Uuid,
+        pub downloaded_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Resolved client IP; NULL for legacy rows and unresolvable clients."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub ip_address: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub user_agent: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub user_id: ::std::option::Option<::uuid::Uuid>,
+        #[doc = "Username of the downloader, when the download was authenticated and\nthe user still exists."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub username: ::std::option::Option<::std::string::String>,
+    }
+    impl DownloadRecord {
+        pub fn builder() -> builder::DownloadRecord {
             Default::default()
         }
     }
@@ -12276,6 +13767,112 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Query parameters for the download-telemetry listing (#2365)."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Query parameters for the download-telemetry listing (#2365).\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"description\": \"Filter to downloads of one artifact.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"from\": {"]
+    #[doc = "      \"description\": \"Inclusive lower bound on `downloaded_at` (RFC 3339).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"ip\": {"]
+    #[doc = "      \"description\": \"Filter to downloads from one client IP (exact match).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"page\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"per_page\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"to\": {"]
+    #[doc = "      \"description\": \"Inclusive upper bound on `downloaded_at` (RFC 3339).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"user_id\": {"]
+    #[doc = "      \"description\": \"Filter to downloads by one user.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ListDownloadsQuery {
+        #[doc = "Filter to downloads of one artifact."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub artifact_id: ::std::option::Option<::uuid::Uuid>,
+        #[doc = "Inclusive lower bound on `downloaded_at` (RFC 3339)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub from: ::std::option::Option<::std::string::String>,
+        #[doc = "Filter to downloads from one client IP (exact match)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub ip: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub page: ::std::option::Option<i32>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub per_page: ::std::option::Option<i32>,
+        #[doc = "Inclusive upper bound on `downloaded_at` (RFC 3339)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub to: ::std::option::Option<::std::string::String>,
+        #[doc = "Filter to downloads by one user."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub user_id: ::std::option::Option<::uuid::Uuid>,
+    }
+    impl ::std::default::Default for ListDownloadsQuery {
+        fn default() -> Self {
+            Self {
+                artifact_id: Default::default(),
+                from: Default::default(),
+                ip: Default::default(),
+                page: Default::default(),
+                per_page: Default::default(),
+                to: Default::default(),
+                user_id: Default::default(),
+            }
+        }
+    }
+    impl ListDownloadsQuery {
+        pub fn builder() -> builder::ListDownloadsQuery {
+            Default::default()
+        }
+    }
     #[doc = "`ListFormatsQuery`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -12438,6 +14035,14 @@ pub mod types {
     #[doc = "      \"format\": \"int32\","]
     #[doc = "      \"minimum\": 0.0"]
     #[doc = "    },"]
+    #[doc = "    \"project\": {"]
+    #[doc = "      \"description\": \"Filter the listing to repositories assigned to this project (#2472).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
     #[doc = "    \"q\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
@@ -12462,6 +14067,9 @@ pub mod types {
         pub page: ::std::option::Option<i32>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub per_page: ::std::option::Option<i32>,
+        #[doc = "Filter the listing to repositories assigned to this project (#2472)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub project: ::std::option::Option<::uuid::Uuid>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub q: ::std::option::Option<::std::string::String>,
         #[serde(
@@ -12477,6 +14085,7 @@ pub mod types {
                 format: Default::default(),
                 page: Default::default(),
                 per_page: Default::default(),
+                project: Default::default(),
                 q: Default::default(),
                 type_: Default::default(),
             }
@@ -13715,13 +15324,60 @@ pub mod types {
             Default::default()
         }
     }
-    #[doc = "Read-only OCI blob storage footprint report (issue #1408).\n\nThis is a **reporting-only** view. It performs no deletion and takes no\nlocks. It surfaces how much storage the tracked `oci_blobs` rows\naccount for so operators can see the magnitude of un-reclaimed blob\nlayers before any garbage-collection mechanism is enabled.\n\nIt deliberately does NOT attempt to classify which blobs are\n\"reclaimable orphans\": that requires a manifest -> blob reference table\nthat does not yet exist in the schema, and any per-`(repository_id,\ndigest)` orphan heuristic would mis-handle the cross-repo dedup case\n(multiple `oci_blobs` rows, one physical object) and report in-use\nblobs as reclaimable. The numbers here are exact aggregates only."]
+    #[doc = "`NpmScopePolicyResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
     #[doc = r""]
     #[doc = r" ```json"]
     #[doc = "{"]
-    #[doc = "  \"description\": \"Read-only OCI blob storage footprint report (issue #1408).\\n\\nThis is a **reporting-only** view. It performs no deletion and takes no\\nlocks. It surfaces how much storage the tracked `oci_blobs` rows\\naccount for so operators can see the magnitude of un-reclaimed blob\\nlayers before any garbage-collection mechanism is enabled.\\n\\nIt deliberately does NOT attempt to classify which blobs are\\n\\\"reclaimable orphans\\\": that requires a manifest -> blob reference table\\nthat does not yet exist in the schema, and any per-`(repository_id,\\ndigest)` orphan heuristic would mis-handle the cross-repo dedup case\\n(multiple `oci_blobs` rows, one physical object) and report in-use\\nblobs as reclaimable. The numbers here are exact aggregates only.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"active\","]
+    #[doc = "    \"allow_unscoped\","]
+    #[doc = "    \"allowed_scopes\","]
+    #[doc = "    \"repository_key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"active\": {"]
+    #[doc = "      \"description\": \"Whether the stored policy actually restricts anything. `false` means\\nvirtual resolution treats this repository as unrestricted.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"allow_unscoped\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"allowed_scopes\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct NpmScopePolicyResponse {
+        #[doc = "Whether the stored policy actually restricts anything. `false` means\nvirtual resolution treats this repository as unrestricted."]
+        pub active: bool,
+        pub allow_unscoped: bool,
+        pub allowed_scopes: ::std::vec::Vec<::std::string::String>,
+        pub repository_key: ::std::string::String,
+    }
+    impl NpmScopePolicyResponse {
+        pub fn builder() -> builder::NpmScopePolicyResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Read-only OCI blob storage footprint report (issue #1408).\n\nThis is a **reporting-only** view. It performs no deletion and takes no\nlocks. It surfaces how much storage the tracked `oci_blobs` rows\naccount for so operators can see the magnitude of un-reclaimed blob\nlayers before any garbage-collection mechanism is enabled.\n\nIt deliberately does NOT attempt to classify which blobs are\n\"reclaimable orphans\": that is the blob GC's job (mark-and-sweep over\n`manifest_blob_refs`, per [`BLOB_PROTECTED_BY_REFS_SQL`]). A naive\nper-`(repository_id, digest)` orphan heuristic would mis-handle shared\nbackends (anything other than `filesystem`), where all referencing\nrepos share ONE physical object per digest per backend, and report\nin-use blobs as reclaimable; on `filesystem` each repository keeps an\nindependent copy under its own `storage_path`. The numbers here are\nexact aggregates only."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Read-only OCI blob storage footprint report (issue #1408).\\n\\nThis is a **reporting-only** view. It performs no deletion and takes no\\nlocks. It surfaces how much storage the tracked `oci_blobs` rows\\naccount for so operators can see the magnitude of un-reclaimed blob\\nlayers before any garbage-collection mechanism is enabled.\\n\\nIt deliberately does NOT attempt to classify which blobs are\\n\\\"reclaimable orphans\\\": that is the blob GC's job (mark-and-sweep over\\n`manifest_blob_refs`, per [`BLOB_PROTECTED_BY_REFS_SQL`]). A naive\\nper-`(repository_id, digest)` orphan heuristic would mis-handle shared\\nbackends (anything other than `filesystem`), where all referencing\\nrepos share ONE physical object per digest per backend, and report\\nin-use blobs as reclaimable; on `filesystem` each repository keeps an\\nindependent copy under its own `storage_path`. The numbers here are\\nexact aggregates only.\","]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
     #[doc = "    \"aged_distinct_digests\","]
@@ -13735,17 +15391,17 @@ pub mod types {
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"aged_distinct_digests\": {"]
-    #[doc = "      \"description\": \"Distinct digests older than `grace_hours` (eligible to be *considered*\\nby a future GC sweep once a reference table exists). Reporting only.\","]
+    #[doc = "      \"description\": \"Distinct digests with at least one physical copy older than\\n`grace_hours` (eligible to be *considered* by a future GC sweep once\\na reference table exists). Reporting only.\","]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
     #[doc = "    \"aged_physical_bytes\": {"]
-    #[doc = "      \"description\": \"Physical bytes (distinct-digest) older than `grace_hours`.\","]
+    #[doc = "      \"description\": \"Physical bytes (same physical-object grouping as `physical_bytes`)\\nolder than `grace_hours`.\","]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
     #[doc = "    \"distinct_digests\": {"]
-    #[doc = "      \"description\": \"Number of distinct blob digests (content-addressed identities). When\\nthis is smaller than `total_blob_rows`, the difference is cross-repo\\ndeduplication: rows that share one physical storage object.\","]
+    #[doc = "      \"description\": \"Number of distinct blob digests (content-addressed identities). When\\nthis is smaller than `total_blob_rows`, the difference is cross-repo\\nsharing of a content identity (one physical object shared by all\\nreferencing repos on shared backends; an independent copy per\\nrepository on `filesystem`).\","]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
@@ -13767,7 +15423,7 @@ pub mod types {
     #[doc = "      }"]
     #[doc = "    },"]
     #[doc = "    \"physical_bytes\": {"]
-    #[doc = "      \"description\": \"Sum of `size_bytes` counting each distinct digest exactly once. This\\napproximates the physical bytes occupied in the storage backend.\","]
+    #[doc = "      \"description\": \"Sum of `size_bytes` counting each distinct **physical storage\\nobject** exactly once, per the ownership model of\\n[`BLOB_PROTECTED_BY_REFS_SQL`]: on shared backends (anything other\\nthan `filesystem`) a digest is one object per backend; on\\n`filesystem` each repository stores its own copy under its\\n`storage_path`, so the same digest in two filesystem repositories\\ncounts twice.\","]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
@@ -13782,11 +15438,11 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct OciBlobFootprintReport {
-        #[doc = "Distinct digests older than `grace_hours` (eligible to be *considered*\nby a future GC sweep once a reference table exists). Reporting only."]
+        #[doc = "Distinct digests with at least one physical copy older than\n`grace_hours` (eligible to be *considered* by a future GC sweep once\na reference table exists). Reporting only."]
         pub aged_distinct_digests: i64,
-        #[doc = "Physical bytes (distinct-digest) older than `grace_hours`."]
+        #[doc = "Physical bytes (same physical-object grouping as `physical_bytes`)\nolder than `grace_hours`."]
         pub aged_physical_bytes: i64,
-        #[doc = "Number of distinct blob digests (content-addressed identities). When\nthis is smaller than `total_blob_rows`, the difference is cross-repo\ndeduplication: rows that share one physical storage object."]
+        #[doc = "Number of distinct blob digests (content-addressed identities). When\nthis is smaller than `total_blob_rows`, the difference is cross-repo\nsharing of a content identity (one physical object shared by all\nreferencing repos on shared backends; an independent copy per\nrepository on `filesystem`)."]
         pub distinct_digests: i64,
         #[doc = "Grace window (hours) applied to the `aged_*` figures below."]
         pub grace_hours: i64,
@@ -13794,7 +15450,7 @@ pub mod types {
         pub logical_bytes: i64,
         #[doc = "Per-repository logical footprint, largest `logical_bytes` first."]
         pub per_repository: ::std::vec::Vec<OciBlobRepoFootprint>,
-        #[doc = "Sum of `size_bytes` counting each distinct digest exactly once. This\napproximates the physical bytes occupied in the storage backend."]
+        #[doc = "Sum of `size_bytes` counting each distinct **physical storage\nobject** exactly once, per the ownership model of\n[`BLOB_PROTECTED_BY_REFS_SQL`]: on shared backends (anything other\nthan `filesystem`) a digest is one object per backend; on\n`filesystem` each repository stores its own copy under its\n`storage_path`, so the same digest in two filesystem repositories\ncounts twice."]
         pub physical_bytes: i64,
         #[doc = "Total number of `oci_blobs` rows across all repositories."]
         pub total_blob_rows: i64,
@@ -13824,7 +15480,7 @@ pub mod types {
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
     #[doc = "    \"logical_bytes\": {"]
-    #[doc = "      \"description\": \"Sum of `oci_blobs.size_bytes` for this repository's rows. Because OCI\\nblob storage is content-addressed and deduplicated across repos, the\\nsame physical bytes can be counted under more than one repository\\nhere; see [`OciBlobFootprintReport::physical_bytes`] for the\\ndedup-aware total.\","]
+    #[doc = "      \"description\": \"Sum of `oci_blobs.size_bytes` for this repository's rows. On shared\\nbackends (anything other than `filesystem`) blobs are deduplicated\\nacross repos — one physical object per digest per backend — so the\\nsame physical bytes can be counted under more than one repository\\nhere. On `filesystem` each repository stores its own independent\\ncopy under its `storage_path`, so its rows are that repo's real\\nbytes. See [`OciBlobFootprintReport::physical_bytes`] for the\\ndedup-aware total.\","]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
     #[doc = "    },"]
@@ -13841,7 +15497,7 @@ pub mod types {
     pub struct OciBlobRepoFootprint {
         #[doc = "Number of `oci_blobs` rows attributed to this repository."]
         pub blob_rows: i64,
-        #[doc = "Sum of `oci_blobs.size_bytes` for this repository's rows. Because OCI\nblob storage is content-addressed and deduplicated across repos, the\nsame physical bytes can be counted under more than one repository\nhere; see [`OciBlobFootprintReport::physical_bytes`] for the\ndedup-aware total."]
+        #[doc = "Sum of `oci_blobs.size_bytes` for this repository's rows. On shared\nbackends (anything other than `filesystem`) blobs are deduplicated\nacross repos — one physical object per digest per backend — so the\nsame physical bytes can be counted under more than one repository\nhere. On `filesystem` each repository stores its own independent\ncopy under its `storage_path`, so its rows are that repo's real\nbytes. See [`OciBlobFootprintReport::physical_bytes`] for the\ndedup-aware total."]
         pub logical_bytes: i64,
         #[doc = "Repository id owning these `oci_blobs` rows."]
         pub repository_id: ::uuid::Uuid,
@@ -14201,6 +15857,79 @@ pub mod types {
     }
     impl PackageRow {
         pub fn builder() -> builder::PackageRow {
+            Default::default()
+        }
+    }
+    #[doc = "`PackageSearchQuery`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"arch\": {"]
+    #[doc = "      \"description\": \"Exact architecture filter (e.g. `x86_64`, `noarch`).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"limit\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"offset\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"q\": {"]
+    #[doc = "      \"description\": \"Case-insensitive substring match on the package name.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"status\": {"]
+    #[doc = "      \"description\": \"Curation status filter (e.g. `approved`, `pending`, `blocked`, `review`).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct PackageSearchQuery {
+        #[doc = "Exact architecture filter (e.g. `x86_64`, `noarch`)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub arch: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub limit: ::std::option::Option<i64>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub offset: ::std::option::Option<i64>,
+        #[doc = "Case-insensitive substring match on the package name."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub q: ::std::option::Option<::std::string::String>,
+        #[doc = "Curation status filter (e.g. `approved`, `pending`, `blocked`, `review`)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub status: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for PackageSearchQuery {
+        fn default() -> Self {
+            Self {
+                arch: Default::default(),
+                limit: Default::default(),
+                offset: Default::default(),
+                q: Default::default(),
+                status: Default::default(),
+            }
+        }
+    }
+    impl PackageSearchQuery {
+        pub fn builder() -> builder::PackageSearchQuery {
             Default::default()
         }
     }
@@ -16094,6 +17823,180 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Project entity."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Project entity.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"created_at\","]
+    #[doc = "    \"id\","]
+    #[doc = "    \"key\","]
+    #[doc = "    \"name\","]
+    #[doc = "    \"updated_at\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"created_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"key\": {"]
+    #[doc = "      \"description\": \"Unique, URL-safe project key (e.g. \\\"payments\\\").\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"quota_bytes\": {"]
+    #[doc = "      \"description\": \"Storage quota in bytes. P1: stored only, NOT enforced (quotas = P3).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"updated_at\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct Project {
+        pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        pub id: ::uuid::Uuid,
+        #[doc = "Unique, URL-safe project key (e.g. \"payments\")."]
+        pub key: ::std::string::String,
+        pub name: ::std::string::String,
+        #[doc = "Storage quota in bytes. P1: stored only, NOT enforced (quotas = P3)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quota_bytes: ::std::option::Option<i64>,
+        pub updated_at: ::chrono::DateTime<::chrono::offset::Utc>,
+    }
+    impl Project {
+        pub fn builder() -> builder::Project {
+            Default::default()
+        }
+    }
+    #[doc = "`ProjectListResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/Project\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ProjectListResponse {
+        pub items: ::std::vec::Vec<Project>,
+    }
+    impl ProjectListResponse {
+        pub fn builder() -> builder::ProjectListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "`ProjectMemberListResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/ProjectMemberRow\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ProjectMemberListResponse {
+        pub items: ::std::vec::Vec<ProjectMemberRow>,
+    }
+    impl ProjectMemberListResponse {
+        pub fn builder() -> builder::ProjectMemberListResponse {
+            Default::default()
+        }
+    }
+    #[doc = "One membership grant on a project: a `permissions` row with\n`target_type = 'project'`."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"One membership grant on a project: a `permissions` row with\\n`target_type = 'project'`.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"actions\","]
+    #[doc = "    \"principal_id\","]
+    #[doc = "    \"principal_type\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"actions\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"principal_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"principal_type\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ProjectMemberRow {
+        pub actions: ::std::vec::Vec<::std::string::String>,
+        pub principal_id: ::uuid::Uuid,
+        pub principal_type: ::std::string::String,
+    }
+    impl ProjectMemberRow {
+        pub fn builder() -> builder::ProjectMemberRow {
+            Default::default()
+        }
+    }
     #[doc = "`PromoteArtifactRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -16667,6 +18570,57 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "Paginated admin quality-check list response (#2419)."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Paginated admin quality-check list response (#2419).\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"items\","]
+    #[doc = "    \"page\","]
+    #[doc = "    \"per_page\","]
+    #[doc = "    \"total\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"items\": {"]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"$ref\": \"#/components/schemas/CheckResponse\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"per_page\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"total\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct QualityCheckListResponse {
+        pub items: ::std::vec::Vec<CheckResponse>,
+        pub page: i32,
+        pub per_page: i32,
+        pub total: i64,
+    }
+    impl QualityCheckListResponse {
+        pub fn builder() -> builder::QualityCheckListResponse {
+            Default::default()
+        }
+    }
     #[doc = "`QuarantineActionResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -17236,6 +19190,80 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`RemoveProjectMemberRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"principal_id\","]
+    #[doc = "    \"principal_type\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"principal_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"principal_type\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RemoveProjectMemberRequest {
+        pub principal_id: ::uuid::Uuid,
+        pub principal_type: ::std::string::String,
+    }
+    impl RemoveProjectMemberRequest {
+        pub fn builder() -> builder::RemoveProjectMemberRequest {
+            Default::default()
+        }
+    }
+    #[doc = "Repository exposure descriptor echoed in the response."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Repository exposure descriptor echoed in the response.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"access_scope\","]
+    #[doc = "    \"repository_id\","]
+    #[doc = "    \"repository_key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"access_scope\": {"]
+    #[doc = "      \"description\": \"`public` | `restricted_acl` | `restricted_roles` — see\\n[`classify_access_scope`].\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RepoExposure {
+        #[doc = "`public` | `restricted_acl` | `restricted_roles` — see\n[`classify_access_scope`]."]
+        pub access_scope: ::std::string::String,
+        pub repository_id: ::uuid::Uuid,
+        pub repository_key: ::std::string::String,
+    }
+    impl RepoExposure {
+        pub fn builder() -> builder::RepoExposure {
+            Default::default()
+        }
+    }
     #[doc = "`RepoHealthResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -17684,6 +19712,7 @@ pub mod types {
     #[doc = "    \"allow_anonymous_access\","]
     #[doc = "    \"created_at\","]
     #[doc = "    \"format\","]
+    #[doc = "    \"has_trusted_gpg_key\","]
     #[doc = "    \"id\","]
     #[doc = "    \"is_public\","]
     #[doc = "    \"key\","]
@@ -17692,16 +19721,55 @@ pub mod types {
     #[doc = "    \"repo_type\","]
     #[doc = "    \"storage_used_bytes\","]
     #[doc = "    \"updated_at\","]
-    #[doc = "    \"upstream_auth_configured\""]
+    #[doc = "    \"upstream_auth_configured\","]
+    #[doc = "    \"versioning_enabled\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"allow_anonymous_access\": {"]
     #[doc = "      \"description\": \"Whether anonymous (unauthenticated) downloads are allowed. This is\\nalways equal to `is_public` and provided as a convenience alias so\\nthe semantics are clear for remote (pull-through cache) repositories.\","]
     #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
+    #[doc = "    \"apt_description\": {"]
+    #[doc = "      \"description\": \"Custom Description field for Debian/APT Release files. Omitted from the\\nRelease file when `None` or empty.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_label\": {"]
+    #[doc = "      \"description\": \"Custom Label field for Debian/APT Release files (default: \\\"artifact-keeper\\\").\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_origin\": {"]
+    #[doc = "      \"description\": \"Custom Origin field for Debian/APT Release files (default: \\\"artifact-keeper\\\").\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_release_version\": {"]
+    #[doc = "      \"description\": \"Custom Version field for Debian/APT Release files. Omitted from the\\nRelease file when `None` or empty.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"created_at\": {"]
     #[doc = "      \"type\": \"string\","]
     #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"custom_user_agent\": {"]
+    #[doc = "      \"description\": \"Custom User-Agent used for outbound HTTP requests to the upstream,\\nread back from `repository_config`. `None` when unset.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"debian\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/DebianRepositoryConfig\""]
     #[doc = "    },"]
     #[doc = "    \"description\": {"]
     #[doc = "      \"type\": ["]
@@ -17711,6 +19779,10 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"format\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"has_trusted_gpg_key\": {"]
+    #[doc = "      \"description\": \"Whether a trusted upstream OpenPGP public key is configured for RPM\\ncuration signature verification (#2568). The key material itself is\\nnever returned; this boolean is the only exposure. `false` for repos\\nwith no key set. Populated by the single-repo handlers (create / get /\\nupdate) and the listing; `repo_to_response` alone defaults it to `false`\\n(it is db-less and cannot read the column).\","]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
     #[doc = "    \"id\": {"]
     #[doc = "      \"type\": \"string\","]
@@ -17724,6 +19796,41 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"npm_allow_unscoped\": {"]
+    #[doc = "      \"description\": \"Whether unscoped npm names may resolve through this npm Remote\\nrepository (#2424). Omitted when unset.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"npm_allowed_name_patterns\": {"]
+    #[doc = "      \"description\": \"Allowed npm full-name glob patterns (#2424), read back from\\n`repository_config`. Omitted for non-npm repositories or when unset.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"npm_allowed_scopes\": {"]
+    #[doc = "      \"description\": \"Allowed npm `@scope` literals (#2424), read back from\\n`repository_config`. Omitted for non-npm repositories or when unset.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"project_id\": {"]
+    #[doc = "      \"description\": \"Project this repository is assigned to (#2472), if any.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
     #[doc = "    },"]
     #[doc = "    \"promotion_only\": {"]
     #[doc = "      \"description\": \"When true, direct user uploads are rejected; artifacts must be promoted.\","]
@@ -17776,6 +19883,10 @@ pub mod types {
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"versioning_enabled\": {"]
+    #[doc = "      \"description\": \"When true, uploads to this Generic/Mlmodel repository append immutable\\nrevisions instead of overwriting the prior content (#2367).\","]
+    #[doc = "      \"type\": \"boolean\""]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -17785,14 +19896,46 @@ pub mod types {
     pub struct RepositoryResponse {
         #[doc = "Whether anonymous (unauthenticated) downloads are allowed. This is\nalways equal to `is_public` and provided as a convenience alias so\nthe semantics are clear for remote (pull-through cache) repositories."]
         pub allow_anonymous_access: bool,
+        #[doc = "Custom Description field for Debian/APT Release files. Omitted from the\nRelease file when `None` or empty."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_description: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom Label field for Debian/APT Release files (default: \"artifact-keeper\")."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_label: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom Origin field for Debian/APT Release files (default: \"artifact-keeper\")."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_origin: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom Version field for Debian/APT Release files. Omitted from the\nRelease file when `None` or empty."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_release_version: ::std::option::Option<::std::string::String>,
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "Custom User-Agent used for outbound HTTP requests to the upstream,\nread back from `repository_config`. `None` when unset."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub custom_user_agent: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub debian: ::std::option::Option<DebianRepositoryConfig>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
         pub format: ::std::string::String,
+        #[doc = "Whether a trusted upstream OpenPGP public key is configured for RPM\ncuration signature verification (#2568). The key material itself is\nnever returned; this boolean is the only exposure. `false` for repos\nwith no key set. Populated by the single-repo handlers (create / get /\nupdate) and the listing; `repo_to_response` alone defaults it to `false`\n(it is db-less and cannot read the column)."]
+        pub has_trusted_gpg_key: bool,
         pub id: ::uuid::Uuid,
         pub is_public: bool,
         pub key: ::std::string::String,
         pub name: ::std::string::String,
+        #[doc = "Whether unscoped npm names may resolve through this npm Remote\nrepository (#2424). Omitted when unset."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub npm_allow_unscoped: ::std::option::Option<bool>,
+        #[doc = "Allowed npm full-name glob patterns (#2424), read back from\n`repository_config`. Omitted for non-npm repositories or when unset."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub npm_allowed_name_patterns:
+            ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[doc = "Allowed npm `@scope` literals (#2424), read back from\n`repository_config`. Omitted for non-npm repositories or when unset."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub npm_allowed_scopes: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[doc = "Project this repository is assigned to (#2472), if any."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub project_id: ::std::option::Option<::uuid::Uuid>,
         #[doc = "When true, direct user uploads are rejected; artifacts must be promoted."]
         pub promotion_only: bool,
         #[doc = "Configured quarantine hold duration in minutes, read back from\n`repository_config` (#1770 B). `None` when unset."]
@@ -17811,6 +19954,8 @@ pub mod types {
         pub upstream_auth_type: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub upstream_url: ::std::option::Option<::std::string::String>,
+        #[doc = "When true, uploads to this Generic/Mlmodel repository append immutable\nrevisions instead of overwriting the prior content (#2367)."]
+        pub versioning_enabled: bool,
     }
     impl RepositoryResponse {
         pub fn builder() -> builder::RepositoryResponse {
@@ -18025,6 +20170,123 @@ pub mod types {
     }
     impl RepositoryStorageBreakdown {
         pub fn builder() -> builder::RepositoryStorageBreakdown {
+            Default::default()
+        }
+    }
+    #[doc = "Deduplicated storage-accounting response for a single repository (#2056).\n\nAll figures are read from the materialized `repository_storage_stats` cache\n(refreshed on a schedule + post-GC), so this endpoint is an O(1) primary-key\nlookup and never runs the heavy cross-repo aggregation. `computed_at` is the\nfreshness marker; it is `null` until the first refresh has run.\n\nQuota is unaffected: these numbers are accounting/visibility only and do NOT\nchange how the repository's storage quota is enforced (#2056 §7)."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Deduplicated storage-accounting response for a single repository (#2056).\\n\\nAll figures are read from the materialized `repository_storage_stats` cache\\n(refreshed on a schedule + post-GC), so this endpoint is an O(1) primary-key\\nlookup and never runs the heavy cross-repo aggregation. `computed_at` is the\\nfreshness marker; it is `null` until the first refresh has run.\\n\\nQuota is unaffected: these numbers are accounting/visibility only and do NOT\\nchange how the repository's storage quota is enforced (#2056 §7).\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"blob_count\","]
+    #[doc = "    \"dedup_scope\","]
+    #[doc = "    \"logical_bytes\","]
+    #[doc = "    \"repository_key\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"blob_count\": {"]
+    #[doc = "      \"description\": \"Distinct physical objects (dedup keys) this repository references.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"computed_at\": {"]
+    #[doc = "      \"description\": \"When these figures were last recomputed. `null` before the first refresh.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"dedup_ratio\": {"]
+    #[doc = "      \"description\": \"logical_bytes / physical_bytes (1.0 when nothing is stored). Restricted\\non cloud backends — see [`physical_bytes`](Self::physical_bytes).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"number\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"double\""]
+    #[doc = "    },"]
+    #[doc = "    \"dedup_scope\": {"]
+    #[doc = "      \"description\": \"`per_repo` (filesystem) or `instance` (cloud) — the backend semantics at\\ncompute time.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"instance_unique_bytes\": {"]
+    #[doc = "      \"description\": \"The instance-wide globally-distinct footprint (true disk usage). On\\ncloud backends the sum of per-repo `physical_bytes` OVER-counts shared\\nobjects, so this is the authoritative instance total.\\n\\n**Admin-only:** this is a whole-instance aggregate that spans every\\ntenant, so it is only populated for admin callers. It is omitted from the\\nresponse entirely for repo-authorized non-admins and anonymous callers,\\nwho see only this repository's own figures (#2559 review).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"logical_bytes\": {"]
+    #[doc = "      \"description\": \"Sum over every reference (per-row). Now includes OCI layer bytes, which\\nwere previously omitted from all storage accounting.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"physical_bytes\": {"]
+    #[doc = "      \"description\": \"Deduplicated physical footprint within the dedup scope.\\n\\n**Restricted on cloud (instance-scope) backends:** on a shared-storage\\nbackend `physical_bytes`, `unique_bytes`, `shared_bytes` and\\n`dedup_ratio` are all cross-tenant-derivable — `shared_bytes =\\nphysical_bytes - unique_bytes` reveals whether this repo's blobs are also\\nstored by another tenant (a per-blob cross-tenant existence oracle,\\n#2560). The whole derivable set is therefore populated only for admins on\\ninstance-scope backends, and omitted for repo-authorized non-admins /\\nanonymous callers. On `per_repo` (filesystem) backends there is no\\ncross-tenant sharing (`shared_bytes == 0` by construction), so all\\nfigures are always present.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"repository_key\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"shared_bytes\": {"]
+    #[doc = "      \"description\": \"physical_bytes - unique_bytes. Always 0 on filesystem backends (a shared\\ndigest in two repos is two files). Restricted on cloud backends — see\\n[`physical_bytes`](Self::physical_bytes).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"unique_bytes\": {"]
+    #[doc = "      \"description\": \"Physical bytes of objects referenced only by this repository.\\nRestricted on cloud backends — see [`physical_bytes`].\\n\\n[`physical_bytes`]: Self::physical_bytes\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct RepositoryStorageStatsResponse {
+        #[doc = "Distinct physical objects (dedup keys) this repository references."]
+        pub blob_count: i64,
+        #[doc = "When these figures were last recomputed. `null` before the first refresh."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub computed_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+        #[doc = "logical_bytes / physical_bytes (1.0 when nothing is stored). Restricted\non cloud backends — see [`physical_bytes`](Self::physical_bytes)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub dedup_ratio: ::std::option::Option<f64>,
+        #[doc = "`per_repo` (filesystem) or `instance` (cloud) — the backend semantics at\ncompute time."]
+        pub dedup_scope: ::std::string::String,
+        #[doc = "The instance-wide globally-distinct footprint (true disk usage). On\ncloud backends the sum of per-repo `physical_bytes` OVER-counts shared\nobjects, so this is the authoritative instance total.\n\n**Admin-only:** this is a whole-instance aggregate that spans every\ntenant, so it is only populated for admin callers. It is omitted from the\nresponse entirely for repo-authorized non-admins and anonymous callers,\nwho see only this repository's own figures (#2559 review)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub instance_unique_bytes: ::std::option::Option<i64>,
+        #[doc = "Sum over every reference (per-row). Now includes OCI layer bytes, which\nwere previously omitted from all storage accounting."]
+        pub logical_bytes: i64,
+        #[doc = "Deduplicated physical footprint within the dedup scope.\n\n**Restricted on cloud (instance-scope) backends:** on a shared-storage\nbackend `physical_bytes`, `unique_bytes`, `shared_bytes` and\n`dedup_ratio` are all cross-tenant-derivable — `shared_bytes =\nphysical_bytes - unique_bytes` reveals whether this repo's blobs are also\nstored by another tenant (a per-blob cross-tenant existence oracle,\n#2560). The whole derivable set is therefore populated only for admins on\ninstance-scope backends, and omitted for repo-authorized non-admins /\nanonymous callers. On `per_repo` (filesystem) backends there is no\ncross-tenant sharing (`shared_bytes == 0` by construction), so all\nfigures are always present."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub physical_bytes: ::std::option::Option<i64>,
+        pub repository_key: ::std::string::String,
+        #[doc = "physical_bytes - unique_bytes. Always 0 on filesystem backends (a shared\ndigest in two repos is two files). Restricted on cloud backends — see\n[`physical_bytes`](Self::physical_bytes)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub shared_bytes: ::std::option::Option<i64>,
+        #[doc = "Physical bytes of objects referenced only by this repository.\nRestricted on cloud backends — see [`physical_bytes`].\n\n[`physical_bytes`]: Self::physical_bytes"]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub unique_bytes: ::std::option::Option<i64>,
+    }
+    impl RepositoryStorageStatsResponse {
+        pub fn builder() -> builder::RepositoryStorageStatsResponse {
             Default::default()
         }
     }
@@ -18802,6 +21064,7 @@ pub mod types {
     #[doc = "    \"has_certificate\","]
     #[doc = "    \"id\","]
     #[doc = "    \"is_enabled\","]
+    #[doc = "    \"map_groups_to_groups\","]
     #[doc = "    \"name\","]
     #[doc = "    \"name_id_format\","]
     #[doc = "    \"require_signed_assertions\","]
@@ -18836,6 +21099,10 @@ pub mod types {
     #[doc = "      \"format\": \"uuid\""]
     #[doc = "    },"]
     #[doc = "    \"is_enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"map_groups_to_groups\": {"]
+    #[doc = "      \"description\": \"Opt-in flag (see migration 157, #2333): when true, SAML assertion\\ngroup values are reflected as Artifact Keeper group memberships,\\nmirroring the OIDC flag from #1094. Defaults to false.\","]
     #[doc = "      \"type\": \"boolean\""]
     #[doc = "    },"]
     #[doc = "    \"name\": {"]
@@ -18884,6 +21151,8 @@ pub mod types {
         pub has_certificate: bool,
         pub id: ::uuid::Uuid,
         pub is_enabled: bool,
+        #[doc = "Opt-in flag (see migration 157, #2333): when true, SAML assertion\ngroup values are reflected as Artifact Keeper group memberships,\nmirroring the OIDC flag from #1094. Defaults to false."]
+        pub map_groups_to_groups: bool,
         pub name: ::std::string::String,
         pub name_id_format: ::std::string::String,
         pub require_signed_assertions: bool,
@@ -19216,6 +21485,24 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"collapsed_not_applicable_count\": {"]
+    #[doc = "      \"description\": \"#2471: number of `not_applicable` scanner rows folded into this row.\\n`Some(n)` marks a synthetic *summary* row that collapses `n` redundant\\n\\\"this scanner does not apply\\\" results (e.g. the image-family scanners\\n`filesystem`/`incus`/`openscap` all declining on a Docker image) into a\\nsingle muted \\\"not applicable to this artifact\\\" indication, so the UI\\nstops rendering N rows that read as N failures. `None` for every real\\n(non-collapsed) scan row. Omitted from the wire when `None`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int32\""]
+    #[doc = "    },"]
+    #[doc = "    \"collapsed_scan_types\": {"]
+    #[doc = "      \"description\": \"#2471: the individual `scan_type` values folded into a summary row,\\nsorted and de-duplicated (e.g. `[\\\"filesystem\\\",\\\"incus\\\",\\\"openscap\\\"]`).\\nPresent only on a synthetic summary row (alongside\\n`collapsed_not_applicable_count`); `None` / omitted otherwise.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
     #[doc = "    \"completed_at\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
@@ -19307,6 +21594,12 @@ pub mod types {
         pub artifact_name: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub artifact_version: ::std::option::Option<::std::string::String>,
+        #[doc = "#2471: number of `not_applicable` scanner rows folded into this row.\n`Some(n)` marks a synthetic *summary* row that collapses `n` redundant\n\"this scanner does not apply\" results (e.g. the image-family scanners\n`filesystem`/`incus`/`openscap` all declining on a Docker image) into a\nsingle muted \"not applicable to this artifact\" indication, so the UI\nstops rendering N rows that read as N failures. `None` for every real\n(non-collapsed) scan row. Omitted from the wire when `None`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub collapsed_not_applicable_count: ::std::option::Option<i32>,
+        #[doc = "#2471: the individual `scan_type` values folded into a summary row,\nsorted and de-duplicated (e.g. `[\"filesystem\",\"incus\",\"openscap\"]`).\nPresent only on a synthetic summary row (alongside\n`collapsed_not_applicable_count`); `None` / omitted otherwise."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub collapsed_scan_types: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub completed_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
@@ -20056,6 +22349,45 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`SetNpmScopePolicyRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"allowed_scopes\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"allow_unscoped\": {"]
+    #[doc = "      \"description\": \"Whether unscoped package names may be resolved through this\\nrepository. Defaults to `false` when an allow-list is submitted.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"allowed_scopes\": {"]
+    #[doc = "      \"description\": \"npm scopes (each starting with `@`) that may be resolved through this\\nrepository. An empty list places no scope restriction.\","]
+    #[doc = "      \"type\": \"array\","]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SetNpmScopePolicyRequest {
+        #[doc = "Whether unscoped package names may be resolved through this\nrepository. Defaults to `false` when an allow-list is submitted."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub allow_unscoped: ::std::option::Option<bool>,
+        #[doc = "npm scopes (each starting with `@`) that may be resolved through this\nrepository. An empty list places no scope restriction."]
+        pub allowed_scopes: ::std::vec::Vec<::std::string::String>,
+    }
+    impl SetNpmScopePolicyRequest {
+        pub fn builder() -> builder::SetNpmScopePolicyRequest {
+            Default::default()
+        }
+    }
     #[doc = "`SetPeerLabelsRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -20182,6 +22514,55 @@ pub mod types {
     }
     impl SetupStatusResponse {
         pub fn builder() -> builder::SetupStatusResponse {
+            Default::default()
+        }
+    }
+    #[doc = "Response from a deliberate per-artifact signing action (#2535)."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"Response from a deliberate per-artifact signing action (#2535).\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"algorithm\","]
+    #[doc = "    \"artifact_id\","]
+    #[doc = "    \"key_id\","]
+    #[doc = "    \"signature_sha256\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"algorithm\": {"]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"artifact_id\": {"]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"key_id\": {"]
+    #[doc = "      \"description\": \"The active signing key that produced the attestation.\","]
+    #[doc = "      \"type\": \"string\","]
+    #[doc = "      \"format\": \"uuid\""]
+    #[doc = "    },"]
+    #[doc = "    \"signature_sha256\": {"]
+    #[doc = "      \"description\": \"SHA-256 of the produced signature blob (the blob itself is not persisted).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SignArtifactResponse {
+        pub algorithm: ::std::string::String,
+        pub artifact_id: ::uuid::Uuid,
+        #[doc = "The active signing key that produced the attestation."]
+        pub key_id: ::uuid::Uuid,
+        #[doc = "SHA-256 of the produced signature blob (the blob itself is not persisted)."]
+        pub signature_sha256: ::std::string::String,
+    }
+    impl SignArtifactResponse {
+        pub fn builder() -> builder::SignArtifactResponse {
             Default::default()
         }
     }
@@ -21411,6 +23792,49 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`SyncTriggerResponse`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"repository\","]
+    #[doc = "    \"succeeded\","]
+    #[doc = "    \"triggered\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"repository\": {"]
+    #[doc = "      \"description\": \"The repository key the sync was triggered for.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"succeeded\": {"]
+    #[doc = "      \"description\": \"Whether the sync pass completed without error. A false value with\\n`triggered = true` means the pass ran but an upstream fetch/verify step\\nfailed for the repo (details are in the server logs, not this response).\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"triggered\": {"]
+    #[doc = "      \"description\": \"Always true when the trigger was accepted and a sync pass ran.\","]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct SyncTriggerResponse {
+        #[doc = "The repository key the sync was triggered for."]
+        pub repository: ::std::string::String,
+        #[doc = "Whether the sync pass completed without error. A false value with\n`triggered = true` means the pass ran but an upstream fetch/verify step\nfailed for the repo (details are in the server logs, not this response)."]
+        pub succeeded: bool,
+        #[doc = "Always true when the trigger was accepted and a sync pass ran."]
+        pub triggered: bool,
+    }
+    impl SyncTriggerResponse {
+        pub fn builder() -> builder::SyncTriggerResponse {
+            Default::default()
+        }
+    }
     #[doc = "Runtime configuration values.\n\nThis response intentionally omits all secrets, credentials, and internal\nconnection strings.\n\nDisclosure is tiered (see `get_system_config`):\n\n* **Public-safe fields** are always present — they only describe UI/client\n  affordances a caller needs *before* authenticating (upload limit, demo\n  mode, whether guest access and which login providers are available).\n* **Security-posture fields** (`scanners`, `search_engine`,\n  `storage_backend`, `permissions`, `plugin_signing`) describe the\n  instance's defensive configuration. They are returned **only to\n  authenticated admins** and are omitted for anonymous / non-admin callers,\n  so the deployment's security posture cannot be fingerprinted by an\n  unauthenticated attacker."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -21540,6 +23964,10 @@ pub mod types {
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int32\""]
     #[doc = "    },"]
+    #[doc = "    \"environment\": {"]
+    #[doc = "      \"description\": \"Read-only deployment environment name, sourced from the `ENVIRONMENT`\\nconfig value. Defaulted on deserialization so it is not required in the\\nupdate-settings request body.\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
     #[doc = "    \"max_upload_size_bytes\": {"]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
@@ -21564,6 +23992,9 @@ pub mod types {
         pub audit_retention_days: i32,
         pub backup_retention_count: i32,
         pub edge_stale_threshold_minutes: i32,
+        #[doc = "Read-only deployment environment name, sourced from the `ENVIRONMENT`\nconfig value. Defaulted on deserialization so it is not required in the\nupdate-settings request body."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub environment: ::std::option::Option<::std::string::String>,
         pub max_upload_size_bytes: i64,
         pub retention_days: i32,
         pub storage_backend: ::std::string::String,
@@ -23691,6 +26122,60 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`UpdateProjectRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"description\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"name\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"quota_bytes\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct UpdateProjectRequest {
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub description: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub name: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quota_bytes: ::std::option::Option<i64>,
+    }
+    impl ::std::default::Default for UpdateProjectRequest {
+        fn default() -> Self {
+            Self {
+                description: Default::default(),
+                name: Default::default(),
+                quota_bytes: Default::default(),
+            }
+        }
+    }
+    impl UpdateProjectRequest {
+        pub fn builder() -> builder::UpdateProjectRequest {
+            Default::default()
+        }
+    }
     #[doc = "`UpdateRepositoryRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -23705,6 +26190,44 @@ pub mod types {
     #[doc = "        \"boolean\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_description\": {"]
+    #[doc = "      \"description\": \"Custom Description field for Debian/APT Release files. Pass an empty\\nstring to remove (omits the field entirely from the Release file).\\nStored in `repository_config` under `apt_description`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_label\": {"]
+    #[doc = "      \"description\": \"Custom Label field for Debian/APT Release files. Pass an empty string\\nto reset to the default (\\\"artifact-keeper\\\").\\nStored in `repository_config` under `apt_label`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_origin\": {"]
+    #[doc = "      \"description\": \"Custom Origin field for Debian/APT Release files. Pass an empty string\\nto reset to the default (\\\"artifact-keeper\\\").\\nStored in `repository_config` under `apt_origin`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"apt_release_version\": {"]
+    #[doc = "      \"description\": \"Custom Version field for Debian/APT Release files. Pass an empty\\nstring to remove (omits the field entirely from the Release file).\\nStored in `repository_config` under `apt_release_version`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"custom_user_agent\": {"]
+    #[doc = "      \"description\": \"Update the custom User-Agent for outbound HTTP requests to the upstream.\\nOnly valid for remote repositories. Pass an empty string to remove.\\nMax 256 characters. Stored in `repository_config` under `custom_user_agent`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"debian\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/DebianConfigPatch\""]
     #[doc = "    },"]
     #[doc = "    \"description\": {"]
     #[doc = "      \"type\": ["]
@@ -23736,6 +26259,41 @@ pub mod types {
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"npm_allow_unscoped\": {"]
+    #[doc = "      \"description\": \"Update whether unscoped npm package names may resolve through this npm\\nRemote repository (#2424). Stored under `npm_allow_unscoped`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"npm_allowed_name_patterns\": {"]
+    #[doc = "      \"description\": \"Update the allowed npm full-name glob patterns for this npm Remote\\nrepository (#2424). When provided, replaces the stored\\n`npm_allowed_name_patterns` list.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"npm_allowed_scopes\": {"]
+    #[doc = "      \"description\": \"Update the allowed npm `@scope` literals for this npm Remote repository\\n(#2424). When provided, replaces the stored `npm_allowed_scopes` list.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"array\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"items\": {"]
+    #[doc = "        \"type\": \"string\""]
+    #[doc = "      }"]
+    #[doc = "    },"]
+    #[doc = "    \"project_id\": {"]
+    #[doc = "      \"description\": \"Assign this repository to a project (#2472). P1 is set-only: omitting\\nthe field leaves the assignment unchanged (unassignment ships with the\\nproject-admin surface in P2).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"uuid\""]
     #[doc = "    },"]
     #[doc = "    \"promotion_only\": {"]
     #[doc = "      \"description\": \"When provided, enables/disables the `promotion_only` policy for this\\nrepository (admin-only). When omitted, the flag is left unchanged.\","]
@@ -23779,6 +26337,20 @@ pub mod types {
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
     #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"trusted_gpg_key\": {"]
+    #[doc = "      \"description\": \"Update the trusted upstream OpenPGP public key for RPM curation (#2568).\\nThree-way semantics via `Option<Option<String>>`: omit the field to\\nleave the stored key unchanged; send `null` to clear it (revert to\\n\\\"unverified upstream\\\"); send an ASCII-armored PUBLIC key block to set\\nit. A private-key block or malformed armor is rejected (400). The\\nresponse never echoes the key — only `has_trusted_gpg_key`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"versioning_enabled\": {"]
+    #[doc = "      \"description\": \"When provided, enables/disables first-class artifact versioning for\\nthis Generic/Mlmodel repository (#2367). When omitted, unchanged.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -23789,6 +26361,23 @@ pub mod types {
         #[doc = "Alias for `is_public`. When set to true, anonymous users can download\nartifacts without authentication. Useful for remote (pull-through cache)\nrepositories that proxy public upstream registries. Write operations\n(upload, delete) still require authentication regardless of this setting.\nIf both `is_public` and `allow_anonymous_access` are provided,\n`allow_anonymous_access` takes precedence."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub allow_anonymous_access: ::std::option::Option<bool>,
+        #[doc = "Custom Description field for Debian/APT Release files. Pass an empty\nstring to remove (omits the field entirely from the Release file).\nStored in `repository_config` under `apt_description`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_description: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom Label field for Debian/APT Release files. Pass an empty string\nto reset to the default (\"artifact-keeper\").\nStored in `repository_config` under `apt_label`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_label: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom Origin field for Debian/APT Release files. Pass an empty string\nto reset to the default (\"artifact-keeper\").\nStored in `repository_config` under `apt_origin`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_origin: ::std::option::Option<::std::string::String>,
+        #[doc = "Custom Version field for Debian/APT Release files. Pass an empty\nstring to remove (omits the field entirely from the Release file).\nStored in `repository_config` under `apt_release_version`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub apt_release_version: ::std::option::Option<::std::string::String>,
+        #[doc = "Update the custom User-Agent for outbound HTTP requests to the upstream.\nOnly valid for remote repositories. Pass an empty string to remove.\nMax 256 characters. Stored in `repository_config` under `custom_user_agent`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub custom_user_agent: ::std::option::Option<::std::string::String>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub debian: ::std::option::Option<DebianConfigPatch>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
         #[doc = "Update the Cargo index upstream URL (stored in `repository_config`).\nWhen provided, upserts the `index_upstream_url` key for this repository."]
@@ -23800,6 +26389,19 @@ pub mod types {
         pub key: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name: ::std::option::Option<::std::string::String>,
+        #[doc = "Update whether unscoped npm package names may resolve through this npm\nRemote repository (#2424). Stored under `npm_allow_unscoped`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub npm_allow_unscoped: ::std::option::Option<bool>,
+        #[doc = "Update the allowed npm full-name glob patterns for this npm Remote\nrepository (#2424). When provided, replaces the stored\n`npm_allowed_name_patterns` list."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub npm_allowed_name_patterns:
+            ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[doc = "Update the allowed npm `@scope` literals for this npm Remote repository\n(#2424). When provided, replaces the stored `npm_allowed_scopes` list."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub npm_allowed_scopes: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+        #[doc = "Assign this repository to a project (#2472). P1 is set-only: omitting\nthe field leaves the assignment unchanged (unassignment ships with the\nproject-admin surface in P2)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub project_id: ::std::option::Option<::uuid::Uuid>,
         #[doc = "When provided, enables/disables the `promotion_only` policy for this\nrepository (admin-only). When omitted, the flag is left unchanged."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub promotion_only: ::std::option::Option<bool>,
@@ -23817,22 +26419,40 @@ pub mod types {
         #[doc = "Link this staging repository to a release (local) repository.\nPromotions from this staging repo will default to the linked release repo,\nand promotions to any other repo will be rejected.\nPass an empty string to remove the link.\nStored in `repository_config` under `release_repository_id`."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub release_repository_key: ::std::option::Option<::std::string::String>,
+        #[doc = "Update the trusted upstream OpenPGP public key for RPM curation (#2568).\nThree-way semantics via `Option<Option<String>>`: omit the field to\nleave the stored key unchanged; send `null` to clear it (revert to\n\"unverified upstream\"); send an ASCII-armored PUBLIC key block to set\nit. A private-key block or malformed armor is rejected (400). The\nresponse never echoes the key — only `has_trusted_gpg_key`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub trusted_gpg_key: ::std::option::Option<::std::string::String>,
+        #[doc = "When provided, enables/disables first-class artifact versioning for\nthis Generic/Mlmodel repository (#2367). When omitted, unchanged."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub versioning_enabled: ::std::option::Option<bool>,
     }
     impl ::std::default::Default for UpdateRepositoryRequest {
         fn default() -> Self {
             Self {
                 allow_anonymous_access: Default::default(),
+                apt_description: Default::default(),
+                apt_label: Default::default(),
+                apt_origin: Default::default(),
+                apt_release_version: Default::default(),
+                custom_user_agent: Default::default(),
+                debian: Default::default(),
                 description: Default::default(),
                 index_upstream_url: Default::default(),
                 is_public: Default::default(),
                 key: Default::default(),
                 name: Default::default(),
+                npm_allow_unscoped: Default::default(),
+                npm_allowed_name_patterns: Default::default(),
+                npm_allowed_scopes: Default::default(),
+                project_id: Default::default(),
                 promotion_only: Default::default(),
                 pypi_upstream_index_path: Default::default(),
                 quarantine_duration_minutes: Default::default(),
                 quarantine_enabled: Default::default(),
                 quota_bytes: Default::default(),
                 release_repository_key: Default::default(),
+                trusted_gpg_key: Default::default(),
+                versioning_enabled: Default::default(),
             }
         }
     }
@@ -23992,6 +26612,12 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"map_groups_to_groups\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
@@ -24058,6 +26684,8 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub is_enabled: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub map_groups_to_groups: ::std::option::Option<bool>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub name_id_format: ::std::option::Option<::std::string::String>,
@@ -24082,6 +26710,7 @@ pub mod types {
                 certificate: Default::default(),
                 entity_id: Default::default(),
                 is_enabled: Default::default(),
+                map_groups_to_groups: Default::default(),
                 name: Default::default(),
                 name_id_format: Default::default(),
                 require_signed_assertions: Default::default(),
@@ -25281,6 +27910,217 @@ pub mod types {
     #[doc = r" Types for composing complex structures."]
     pub mod builder {
         #[derive(Clone, Debug)]
+        pub struct AccessibleUser {
+            reason: ::std::result::Result<::std::string::String, ::std::string::String>,
+            user_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            username: ::std::result::Result<::std::string::String, ::std::string::String>,
+            via: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for AccessibleUser {
+            fn default() -> Self {
+                Self {
+                    reason: Err("no value supplied for reason".to_string()),
+                    user_id: Err("no value supplied for user_id".to_string()),
+                    username: Err("no value supplied for username".to_string()),
+                    via: Err("no value supplied for via".to_string()),
+                }
+            }
+        }
+        impl AccessibleUser {
+            pub fn reason<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.reason = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for reason: {e}"));
+                self
+            }
+            pub fn user_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.user_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for user_id: {e}"));
+                self
+            }
+            pub fn username<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.username = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for username: {e}"));
+                self
+            }
+            pub fn via<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.via = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for via: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AccessibleUser> for super::AccessibleUser {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AccessibleUser,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    reason: value.reason?,
+                    user_id: value.user_id?,
+                    username: value.username?,
+                    via: value.via?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AccessibleUser> for AccessibleUser {
+            fn from(value: super::AccessibleUser) -> Self {
+                Self {
+                    reason: Ok(value.reason),
+                    user_id: Ok(value.user_id),
+                    username: Ok(value.username),
+                    via: Ok(value.via),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct AccessibleUsersResponse {
+            accessible_not_downloaded: ::std::result::Result<
+                ::std::vec::Vec<super::AccessibleUser>,
+                ::std::string::String,
+            >,
+            exposure: ::std::result::Result<::std::string::String, ::std::string::String>,
+            page: ::std::result::Result<i32, ::std::string::String>,
+            per_page: ::std::result::Result<i32, ::std::string::String>,
+            repository: ::std::result::Result<super::RepoExposure, ::std::string::String>,
+            target: ::std::result::Result<super::BlastRadiusTargetInfo, ::std::string::String>,
+            total: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+        }
+        impl ::std::default::Default for AccessibleUsersResponse {
+            fn default() -> Self {
+                Self {
+                    accessible_not_downloaded: Err(
+                        "no value supplied for accessible_not_downloaded".to_string(),
+                    ),
+                    exposure: Err("no value supplied for exposure".to_string()),
+                    page: Err("no value supplied for page".to_string()),
+                    per_page: Err("no value supplied for per_page".to_string()),
+                    repository: Err("no value supplied for repository".to_string()),
+                    target: Err("no value supplied for target".to_string()),
+                    total: Ok(Default::default()),
+                }
+            }
+        }
+        impl AccessibleUsersResponse {
+            pub fn accessible_not_downloaded<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::AccessibleUser>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.accessible_not_downloaded = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for accessible_not_downloaded: {e}")
+                });
+                self
+            }
+            pub fn exposure<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.exposure = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for exposure: {e}"));
+                self
+            }
+            pub fn page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for page: {e}"));
+                self
+            }
+            pub fn per_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for per_page: {e}"));
+                self
+            }
+            pub fn repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::RepoExposure>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository: {e}"));
+                self
+            }
+            pub fn target<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::BlastRadiusTargetInfo>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.target = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for target: {e}"));
+                self
+            }
+            pub fn total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AccessibleUsersResponse> for super::AccessibleUsersResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AccessibleUsersResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    accessible_not_downloaded: value.accessible_not_downloaded?,
+                    exposure: value.exposure?,
+                    page: value.page?,
+                    per_page: value.per_page?,
+                    repository: value.repository?,
+                    target: value.target?,
+                    total: value.total?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AccessibleUsersResponse> for AccessibleUsersResponse {
+            fn from(value: super::AccessibleUsersResponse) -> Self {
+                Self {
+                    accessible_not_downloaded: Ok(value.accessible_not_downloaded),
+                    exposure: Ok(value.exposure),
+                    page: Ok(value.page),
+                    per_page: Ok(value.per_page),
+                    repository: Ok(value.repository),
+                    target: Ok(value.target),
+                    total: Ok(value.total),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct AcknowledgeRequest {
             reason: ::std::result::Result<::std::string::String, ::std::string::String>,
         }
@@ -25532,6 +28372,77 @@ pub mod types {
             fn from(value: super::AddPeerLabelRequest) -> Self {
                 Self {
                     value: Ok(value.value),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct AddProjectMemberRequest {
+            actions: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            principal_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            principal_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for AddProjectMemberRequest {
+            fn default() -> Self {
+                Self {
+                    actions: Err("no value supplied for actions".to_string()),
+                    principal_id: Err("no value supplied for principal_id".to_string()),
+                    principal_type: Err("no value supplied for principal_type".to_string()),
+                }
+            }
+        }
+        impl AddProjectMemberRequest {
+            pub fn actions<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.actions = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for actions: {e}"));
+                self
+            }
+            pub fn principal_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.principal_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for principal_id: {e}"));
+                self
+            }
+            pub fn principal_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.principal_type = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for principal_type: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AddProjectMemberRequest> for super::AddProjectMemberRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AddProjectMemberRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    actions: value.actions?,
+                    principal_id: value.principal_id?,
+                    principal_type: value.principal_type?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AddProjectMemberRequest> for AddProjectMemberRequest {
+            fn from(value: super::AddProjectMemberRequest) -> Self {
+                Self {
+                    actions: Ok(value.actions),
+                    principal_id: Ok(value.principal_id),
+                    principal_type: Ok(value.principal_type),
                 }
             }
         }
@@ -25836,6 +28747,88 @@ pub mod types {
                     facets: Ok(value.facets),
                     items: Ok(value.items),
                     pagination: Ok(value.pagination),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct AffectedRepo {
+            access_scope: ::std::result::Result<::std::string::String, ::std::string::String>,
+            is_public: ::std::result::Result<bool, ::std::string::String>,
+            repository_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for AffectedRepo {
+            fn default() -> Self {
+                Self {
+                    access_scope: Err("no value supplied for access_scope".to_string()),
+                    is_public: Err("no value supplied for is_public".to_string()),
+                    repository_id: Err("no value supplied for repository_id".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                }
+            }
+        }
+        impl AffectedRepo {
+            pub fn access_scope<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.access_scope = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for access_scope: {e}"));
+                self
+            }
+            pub fn is_public<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.is_public = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for is_public: {e}"));
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AffectedRepo> for super::AffectedRepo {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AffectedRepo,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    access_scope: value.access_scope?,
+                    is_public: value.is_public?,
+                    repository_id: value.repository_id?,
+                    repository_key: value.repository_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AffectedRepo> for AffectedRepo {
+            fn from(value: super::AffectedRepo) -> Self {
+                Self {
+                    access_scope: Ok(value.access_scope),
+                    is_public: Ok(value.is_public),
+                    repository_id: Ok(value.repository_id),
+                    repository_key: Ok(value.repository_key),
                 }
             }
         }
@@ -27912,8 +30905,13 @@ pub mod types {
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             path: ::std::result::Result<::std::string::String, ::std::string::String>,
             repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            revision: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             size_bytes: ::std::result::Result<i64, ::std::string::String>,
             version: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            version_label: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
@@ -27933,8 +30931,10 @@ pub mod types {
                     name: Err("no value supplied for name".to_string()),
                     path: Err("no value supplied for path".to_string()),
                     repository_key: Err("no value supplied for repository_key".to_string()),
+                    revision: Ok(Default::default()),
                     size_bytes: Err("no value supplied for size_bytes".to_string()),
                     version: Ok(Default::default()),
+                    version_label: Ok(Default::default()),
                 }
             }
         }
@@ -28067,6 +31067,16 @@ pub mod types {
                 });
                 self
             }
+            pub fn revision<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.revision = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for revision: {e}"));
+                self
+            }
             pub fn size_bytes<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<i64>,
@@ -28085,6 +31095,16 @@ pub mod types {
                 self.version = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for version: {e}"));
+                self
+            }
+            pub fn version_label<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.version_label = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for version_label: {e}"));
                 self
             }
         }
@@ -28106,8 +31126,10 @@ pub mod types {
                     name: value.name?,
                     path: value.path?,
                     repository_key: value.repository_key?,
+                    revision: value.revision?,
                     size_bytes: value.size_bytes?,
                     version: value.version?,
+                    version_label: value.version_label?,
                 })
             }
         }
@@ -28126,8 +31148,10 @@ pub mod types {
                     name: Ok(value.name),
                     path: Ok(value.path),
                     repository_key: Ok(value.repository_key),
+                    revision: Ok(value.revision),
                     size_bytes: Ok(value.size_bytes),
                     version: Ok(value.version),
+                    version_label: Ok(value.version_label),
                 }
             }
         }
@@ -28220,6 +31244,251 @@ pub mod types {
                     download_count: Ok(value.download_count),
                     first_downloaded: Ok(value.first_downloaded),
                     last_downloaded: Ok(value.last_downloaded),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ArtifactVersionListResponse {
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::ArtifactVersionResponse>,
+                ::std::string::String,
+            >,
+            path: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for ArtifactVersionListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    path: Err("no value supplied for path".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                }
+            }
+        }
+        impl ArtifactVersionListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::ArtifactVersionResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn path<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.path = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for path: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ArtifactVersionListResponse> for super::ArtifactVersionListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ArtifactVersionListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    path: value.path?,
+                    repository_key: value.repository_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ArtifactVersionListResponse> for ArtifactVersionListResponse {
+            fn from(value: super::ArtifactVersionListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    path: Ok(value.path),
+                    repository_key: Ok(value.repository_key),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ArtifactVersionQuery {
+            version: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ArtifactVersionQuery {
+            fn default() -> Self {
+                Self {
+                    version: Ok(Default::default()),
+                }
+            }
+        }
+        impl ArtifactVersionQuery {
+            pub fn version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.version = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for version: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ArtifactVersionQuery> for super::ArtifactVersionQuery {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ArtifactVersionQuery,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    version: value.version?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ArtifactVersionQuery> for ArtifactVersionQuery {
+            fn from(value: super::ArtifactVersionQuery) -> Self {
+                Self {
+                    version: Ok(value.version),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ArtifactVersionResponse {
+            checksum_sha256: ::std::result::Result<::std::string::String, ::std::string::String>,
+            content_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            revision: ::std::result::Result<i32, ::std::string::String>,
+            size_bytes: ::std::result::Result<i64, ::std::string::String>,
+            uploaded_by:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            version_label: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ArtifactVersionResponse {
+            fn default() -> Self {
+                Self {
+                    checksum_sha256: Err("no value supplied for checksum_sha256".to_string()),
+                    content_type: Err("no value supplied for content_type".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    revision: Err("no value supplied for revision".to_string()),
+                    size_bytes: Err("no value supplied for size_bytes".to_string()),
+                    uploaded_by: Ok(Default::default()),
+                    version_label: Ok(Default::default()),
+                }
+            }
+        }
+        impl ArtifactVersionResponse {
+            pub fn checksum_sha256<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.checksum_sha256 = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for checksum_sha256: {e}")
+                });
+                self
+            }
+            pub fn content_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.content_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for content_type: {e}"));
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn revision<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.revision = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for revision: {e}"));
+                self
+            }
+            pub fn size_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.size_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for size_bytes: {e}"));
+                self
+            }
+            pub fn uploaded_by<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.uploaded_by = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for uploaded_by: {e}"));
+                self
+            }
+            pub fn version_label<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.version_label = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for version_label: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ArtifactVersionResponse> for super::ArtifactVersionResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ArtifactVersionResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    checksum_sha256: value.checksum_sha256?,
+                    content_type: value.content_type?,
+                    created_at: value.created_at?,
+                    revision: value.revision?,
+                    size_bytes: value.size_bytes?,
+                    uploaded_by: value.uploaded_by?,
+                    version_label: value.version_label?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ArtifactVersionResponse> for ArtifactVersionResponse {
+            fn from(value: super::ArtifactVersionResponse) -> Self {
+                Self {
+                    checksum_sha256: Ok(value.checksum_sha256),
+                    content_type: Ok(value.content_type),
+                    created_at: Ok(value.created_at),
+                    revision: Ok(value.revision),
+                    size_bytes: Ok(value.size_bytes),
+                    uploaded_by: Ok(value.uploaded_by),
+                    version_label: Ok(value.version_label),
                 }
             }
         }
@@ -28562,6 +31831,269 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct AuditLogItem {
+            action: ::std::result::Result<::std::string::String, ::std::string::String>,
+            actor_username: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            correlation_id: ::std::result::Result<::std::string::String, ::std::string::String>,
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            details: ::std::result::Result<
+                ::std::option::Option<::serde_json::Value>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            ip_address: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            resource_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            resource_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+            user_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+        }
+        impl ::std::default::Default for AuditLogItem {
+            fn default() -> Self {
+                Self {
+                    action: Err("no value supplied for action".to_string()),
+                    actor_username: Ok(Default::default()),
+                    correlation_id: Err("no value supplied for correlation_id".to_string()),
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    details: Ok(Default::default()),
+                    id: Err("no value supplied for id".to_string()),
+                    ip_address: Ok(Default::default()),
+                    resource_id: Ok(Default::default()),
+                    resource_type: Err("no value supplied for resource_type".to_string()),
+                    user_id: Ok(Default::default()),
+                }
+            }
+        }
+        impl AuditLogItem {
+            pub fn action<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.action = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for action: {e}"));
+                self
+            }
+            pub fn actor_username<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.actor_username = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for actor_username: {e}")
+                });
+                self
+            }
+            pub fn correlation_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.correlation_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for correlation_id: {e}")
+                });
+                self
+            }
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn details<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::serde_json::Value>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.details = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for details: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn ip_address<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.ip_address = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for ip_address: {e}"));
+                self
+            }
+            pub fn resource_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.resource_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for resource_id: {e}"));
+                self
+            }
+            pub fn resource_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.resource_type = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for resource_type: {e}"));
+                self
+            }
+            pub fn user_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.user_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for user_id: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AuditLogItem> for super::AuditLogItem {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AuditLogItem,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    action: value.action?,
+                    actor_username: value.actor_username?,
+                    correlation_id: value.correlation_id?,
+                    created_at: value.created_at?,
+                    details: value.details?,
+                    id: value.id?,
+                    ip_address: value.ip_address?,
+                    resource_id: value.resource_id?,
+                    resource_type: value.resource_type?,
+                    user_id: value.user_id?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AuditLogItem> for AuditLogItem {
+            fn from(value: super::AuditLogItem) -> Self {
+                Self {
+                    action: Ok(value.action),
+                    actor_username: Ok(value.actor_username),
+                    correlation_id: Ok(value.correlation_id),
+                    created_at: Ok(value.created_at),
+                    details: Ok(value.details),
+                    id: Ok(value.id),
+                    ip_address: Ok(value.ip_address),
+                    resource_id: Ok(value.resource_id),
+                    resource_type: Ok(value.resource_type),
+                    user_id: Ok(value.user_id),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct AuditLogListResponse {
+            items:
+                ::std::result::Result<::std::vec::Vec<super::AuditLogItem>, ::std::string::String>,
+            page: ::std::result::Result<i32, ::std::string::String>,
+            per_page: ::std::result::Result<i32, ::std::string::String>,
+            total: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for AuditLogListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    page: Err("no value supplied for page".to_string()),
+                    per_page: Err("no value supplied for per_page".to_string()),
+                    total: Err("no value supplied for total".to_string()),
+                }
+            }
+        }
+        impl AuditLogListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::AuditLogItem>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for page: {e}"));
+                self
+            }
+            pub fn per_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for per_page: {e}"));
+                self
+            }
+            pub fn total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<AuditLogListResponse> for super::AuditLogListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: AuditLogListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    page: value.page?,
+                    per_page: value.per_page?,
+                    total: value.total?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::AuditLogListResponse> for AuditLogListResponse {
+            fn from(value: super::AuditLogListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    page: Ok(value.page),
+                    per_page: Ok(value.per_page),
+                    total: Ok(value.total),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct AuthConfig {
             ldap_enabled: ::std::result::Result<bool, ::std::string::String>,
             oidc_enabled: ::std::result::Result<bool, ::std::string::String>,
@@ -28883,6 +32415,445 @@ pub mod types {
                     status: Ok(value.status),
                     storage_path: Ok(value.storage_path),
                     type_: Ok(value.type_),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct BlastDownloader {
+            distinct_ip_count: ::std::result::Result<i64, ::std::string::String>,
+            download_count: ::std::result::Result<i64, ::std::string::String>,
+            first_download: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            ip_addresses: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            last_download: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            user_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            username: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for BlastDownloader {
+            fn default() -> Self {
+                Self {
+                    distinct_ip_count: Err("no value supplied for distinct_ip_count".to_string()),
+                    download_count: Err("no value supplied for download_count".to_string()),
+                    first_download: Err("no value supplied for first_download".to_string()),
+                    ip_addresses: Err("no value supplied for ip_addresses".to_string()),
+                    last_download: Err("no value supplied for last_download".to_string()),
+                    user_id: Ok(Default::default()),
+                    username: Ok(Default::default()),
+                }
+            }
+        }
+        impl BlastDownloader {
+            pub fn distinct_ip_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.distinct_ip_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for distinct_ip_count: {e}")
+                });
+                self
+            }
+            pub fn download_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.download_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for download_count: {e}")
+                });
+                self
+            }
+            pub fn first_download<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.first_download = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for first_download: {e}")
+                });
+                self
+            }
+            pub fn ip_addresses<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.ip_addresses = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for ip_addresses: {e}"));
+                self
+            }
+            pub fn last_download<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.last_download = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for last_download: {e}"));
+                self
+            }
+            pub fn user_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.user_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for user_id: {e}"));
+                self
+            }
+            pub fn username<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.username = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for username: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<BlastDownloader> for super::BlastDownloader {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: BlastDownloader,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    distinct_ip_count: value.distinct_ip_count?,
+                    download_count: value.download_count?,
+                    first_download: value.first_download?,
+                    ip_addresses: value.ip_addresses?,
+                    last_download: value.last_download?,
+                    user_id: value.user_id?,
+                    username: value.username?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::BlastDownloader> for BlastDownloader {
+            fn from(value: super::BlastDownloader) -> Self {
+                Self {
+                    distinct_ip_count: Ok(value.distinct_ip_count),
+                    download_count: Ok(value.download_count),
+                    first_download: Ok(value.first_download),
+                    ip_addresses: Ok(value.ip_addresses),
+                    last_download: Ok(value.last_download),
+                    user_id: Ok(value.user_id),
+                    username: Ok(value.username),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct BlastRadiusResponse {
+            affected_repos:
+                ::std::result::Result<::std::vec::Vec<super::AffectedRepo>, ::std::string::String>,
+            downloaders: ::std::result::Result<
+                ::std::vec::Vec<super::BlastDownloader>,
+                ::std::string::String,
+            >,
+            page: ::std::result::Result<i32, ::std::string::String>,
+            per_page: ::std::result::Result<i32, ::std::string::String>,
+            summary: ::std::result::Result<super::BlastRadiusSummary, ::std::string::String>,
+            target: ::std::result::Result<super::BlastRadiusTargetInfo, ::std::string::String>,
+            total_downloaders: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for BlastRadiusResponse {
+            fn default() -> Self {
+                Self {
+                    affected_repos: Err("no value supplied for affected_repos".to_string()),
+                    downloaders: Err("no value supplied for downloaders".to_string()),
+                    page: Err("no value supplied for page".to_string()),
+                    per_page: Err("no value supplied for per_page".to_string()),
+                    summary: Err("no value supplied for summary".to_string()),
+                    target: Err("no value supplied for target".to_string()),
+                    total_downloaders: Err("no value supplied for total_downloaders".to_string()),
+                }
+            }
+        }
+        impl BlastRadiusResponse {
+            pub fn affected_repos<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::AffectedRepo>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.affected_repos = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for affected_repos: {e}")
+                });
+                self
+            }
+            pub fn downloaders<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::BlastDownloader>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.downloaders = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for downloaders: {e}"));
+                self
+            }
+            pub fn page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for page: {e}"));
+                self
+            }
+            pub fn per_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for per_page: {e}"));
+                self
+            }
+            pub fn summary<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::BlastRadiusSummary>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.summary = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for summary: {e}"));
+                self
+            }
+            pub fn target<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::BlastRadiusTargetInfo>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.target = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for target: {e}"));
+                self
+            }
+            pub fn total_downloaders<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_downloaders = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for total_downloaders: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<BlastRadiusResponse> for super::BlastRadiusResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: BlastRadiusResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    affected_repos: value.affected_repos?,
+                    downloaders: value.downloaders?,
+                    page: value.page?,
+                    per_page: value.per_page?,
+                    summary: value.summary?,
+                    target: value.target?,
+                    total_downloaders: value.total_downloaders?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::BlastRadiusResponse> for BlastRadiusResponse {
+            fn from(value: super::BlastRadiusResponse) -> Self {
+                Self {
+                    affected_repos: Ok(value.affected_repos),
+                    downloaders: Ok(value.downloaders),
+                    page: Ok(value.page),
+                    per_page: Ok(value.per_page),
+                    summary: Ok(value.summary),
+                    target: Ok(value.target),
+                    total_downloaders: Ok(value.total_downloaders),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct BlastRadiusSummary {
+            affected_artifact_count: ::std::result::Result<i64, ::std::string::String>,
+            affected_repo_count: ::std::result::Result<i64, ::std::string::String>,
+            anonymous_download_present: ::std::result::Result<bool, ::std::string::String>,
+            distinct_ip_count: ::std::result::Result<i64, ::std::string::String>,
+            downloader_user_count: ::std::result::Result<i64, ::std::string::String>,
+            total_download_count: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for BlastRadiusSummary {
+            fn default() -> Self {
+                Self {
+                    affected_artifact_count: Err(
+                        "no value supplied for affected_artifact_count".to_string()
+                    ),
+                    affected_repo_count: Err(
+                        "no value supplied for affected_repo_count".to_string()
+                    ),
+                    anonymous_download_present: Err(
+                        "no value supplied for anonymous_download_present".to_string(),
+                    ),
+                    distinct_ip_count: Err("no value supplied for distinct_ip_count".to_string()),
+                    downloader_user_count: Err(
+                        "no value supplied for downloader_user_count".to_string()
+                    ),
+                    total_download_count: Err(
+                        "no value supplied for total_download_count".to_string()
+                    ),
+                }
+            }
+        }
+        impl BlastRadiusSummary {
+            pub fn affected_artifact_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.affected_artifact_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for affected_artifact_count: {e}")
+                });
+                self
+            }
+            pub fn affected_repo_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.affected_repo_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for affected_repo_count: {e}")
+                });
+                self
+            }
+            pub fn anonymous_download_present<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.anonymous_download_present = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for anonymous_download_present: {e}")
+                });
+                self
+            }
+            pub fn distinct_ip_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.distinct_ip_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for distinct_ip_count: {e}")
+                });
+                self
+            }
+            pub fn downloader_user_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.downloader_user_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for downloader_user_count: {e}")
+                });
+                self
+            }
+            pub fn total_download_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_download_count = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for total_download_count: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<BlastRadiusSummary> for super::BlastRadiusSummary {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: BlastRadiusSummary,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    affected_artifact_count: value.affected_artifact_count?,
+                    affected_repo_count: value.affected_repo_count?,
+                    anonymous_download_present: value.anonymous_download_present?,
+                    distinct_ip_count: value.distinct_ip_count?,
+                    downloader_user_count: value.downloader_user_count?,
+                    total_download_count: value.total_download_count?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::BlastRadiusSummary> for BlastRadiusSummary {
+            fn from(value: super::BlastRadiusSummary) -> Self {
+                Self {
+                    affected_artifact_count: Ok(value.affected_artifact_count),
+                    affected_repo_count: Ok(value.affected_repo_count),
+                    anonymous_download_present: Ok(value.anonymous_download_present),
+                    distinct_ip_count: Ok(value.distinct_ip_count),
+                    downloader_user_count: Ok(value.downloader_user_count),
+                    total_download_count: Ok(value.total_download_count),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct BlastRadiusTargetInfo {
+            kind: ::std::result::Result<::std::string::String, ::std::string::String>,
+            value: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for BlastRadiusTargetInfo {
+            fn default() -> Self {
+                Self {
+                    kind: Err("no value supplied for kind".to_string()),
+                    value: Err("no value supplied for value".to_string()),
+                }
+            }
+        }
+        impl BlastRadiusTargetInfo {
+            pub fn kind<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.kind = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for kind: {e}"));
+                self
+            }
+            pub fn value<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.value = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for value: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<BlastRadiusTargetInfo> for super::BlastRadiusTargetInfo {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: BlastRadiusTargetInfo,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    kind: value.kind?,
+                    value: value.value?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::BlastRadiusTargetInfo> for BlastRadiusTargetInfo {
+            fn from(value: super::BlastRadiusTargetInfo) -> Self {
+                Self {
+                    kind: Ok(value.kind),
+                    value: Ok(value.value),
                 }
             }
         }
@@ -35575,6 +39546,91 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct CreateProjectRequest {
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+        }
+        impl ::std::default::Default for CreateProjectRequest {
+            fn default() -> Self {
+                Self {
+                    description: Ok(Default::default()),
+                    key: Err("no value supplied for key".to_string()),
+                    name: Err("no value supplied for name".to_string()),
+                    quota_bytes: Ok(Default::default()),
+                }
+            }
+        }
+        impl CreateProjectRequest {
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.key = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for key: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn quota_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quota_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for quota_bytes: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<CreateProjectRequest> for super::CreateProjectRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: CreateProjectRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    description: value.description?,
+                    key: value.key?,
+                    name: value.name?,
+                    quota_bytes: value.quota_bytes?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::CreateProjectRequest> for CreateProjectRequest {
+            fn from(value: super::CreateProjectRequest) -> Self {
+                Self {
+                    description: Ok(value.description),
+                    key: Ok(value.key),
+                    name: Ok(value.name),
+                    quota_bytes: Ok(value.quota_bytes),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct CreateRepoTokenRequest {
             description: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
@@ -35749,6 +39805,30 @@ pub mod types {
         pub struct CreateRepositoryRequest {
             allow_anonymous_access:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            apt_description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            apt_label: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            apt_origin: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            apt_release_version: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            custom_user_agent: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            debian: ::std::result::Result<
+                ::std::option::Option<super::DebianRepositoryConfig>,
+                ::std::string::String,
+            >,
             description: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -35769,6 +39849,18 @@ pub mod types {
                 ::std::string::String,
             >,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            npm_allow_unscoped:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            npm_allowed_name_patterns: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            npm_allowed_scopes: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            project_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
             promotion_only:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             pypi_upstream_index_path: ::std::result::Result<
@@ -35778,6 +39870,10 @@ pub mod types {
             quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             repo_type: ::std::result::Result<::std::string::String, ::std::string::String>,
             storage_backend: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            trusted_gpg_key: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
@@ -35797,11 +39893,19 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            versioning_enabled:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for CreateRepositoryRequest {
             fn default() -> Self {
                 Self {
                     allow_anonymous_access: Ok(Default::default()),
+                    apt_description: Ok(Default::default()),
+                    apt_label: Ok(Default::default()),
+                    apt_origin: Ok(Default::default()),
+                    apt_release_version: Ok(Default::default()),
+                    custom_user_agent: Ok(Default::default()),
+                    debian: Ok(Default::default()),
                     description: Ok(Default::default()),
                     format: Err("no value supplied for format".to_string()),
                     format_key: Ok(Default::default()),
@@ -35810,15 +39914,21 @@ pub mod types {
                     key: Err("no value supplied for key".to_string()),
                     member_repos: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
+                    npm_allow_unscoped: Ok(Default::default()),
+                    npm_allowed_name_patterns: Ok(Default::default()),
+                    npm_allowed_scopes: Ok(Default::default()),
+                    project_id: Ok(Default::default()),
                     promotion_only: Ok(Default::default()),
                     pypi_upstream_index_path: Ok(Default::default()),
                     quota_bytes: Ok(Default::default()),
                     repo_type: Err("no value supplied for repo_type".to_string()),
                     storage_backend: Ok(Default::default()),
+                    trusted_gpg_key: Ok(Default::default()),
                     upstream_auth_type: Ok(Default::default()),
                     upstream_password: Ok(Default::default()),
                     upstream_url: Ok(Default::default()),
                     upstream_username: Ok(Default::default()),
+                    versioning_enabled: Ok(Default::default()),
                 }
             }
         }
@@ -35831,6 +39941,66 @@ pub mod types {
                 self.allow_anonymous_access = value.try_into().map_err(|e| {
                     format!("error converting supplied value for allow_anonymous_access: {e}")
                 });
+                self
+            }
+            pub fn apt_description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_description = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for apt_description: {e}")
+                });
+                self
+            }
+            pub fn apt_label<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_label = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for apt_label: {e}"));
+                self
+            }
+            pub fn apt_origin<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_origin = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for apt_origin: {e}"));
+                self
+            }
+            pub fn apt_release_version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_release_version = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for apt_release_version: {e}")
+                });
+                self
+            }
+            pub fn custom_user_agent<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.custom_user_agent = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for custom_user_agent: {e}")
+                });
+                self
+            }
+            pub fn debian<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::DebianRepositoryConfig>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.debian = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for debian: {e}"));
                 self
             }
             pub fn description<T>(mut self, value: T) -> Self
@@ -35915,6 +40085,50 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
                 self
             }
+            pub fn npm_allow_unscoped<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.npm_allow_unscoped = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for npm_allow_unscoped: {e}")
+                });
+                self
+            }
+            pub fn npm_allowed_name_patterns<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.npm_allowed_name_patterns = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for npm_allowed_name_patterns: {e}")
+                });
+                self
+            }
+            pub fn npm_allowed_scopes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.npm_allowed_scopes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for npm_allowed_scopes: {e}")
+                });
+                self
+            }
+            pub fn project_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.project_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for project_id: {e}"));
+                self
+            }
             pub fn promotion_only<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<bool>>,
@@ -35965,6 +40179,16 @@ pub mod types {
                 });
                 self
             }
+            pub fn trusted_gpg_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.trusted_gpg_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for trusted_gpg_key: {e}")
+                });
+                self
+            }
             pub fn upstream_auth_type<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
@@ -36005,6 +40229,16 @@ pub mod types {
                 });
                 self
             }
+            pub fn versioning_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.versioning_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for versioning_enabled: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<CreateRepositoryRequest> for super::CreateRepositoryRequest {
             type Error = super::error::ConversionError;
@@ -36013,6 +40247,12 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     allow_anonymous_access: value.allow_anonymous_access?,
+                    apt_description: value.apt_description?,
+                    apt_label: value.apt_label?,
+                    apt_origin: value.apt_origin?,
+                    apt_release_version: value.apt_release_version?,
+                    custom_user_agent: value.custom_user_agent?,
+                    debian: value.debian?,
                     description: value.description?,
                     format: value.format?,
                     format_key: value.format_key?,
@@ -36021,15 +40261,21 @@ pub mod types {
                     key: value.key?,
                     member_repos: value.member_repos?,
                     name: value.name?,
+                    npm_allow_unscoped: value.npm_allow_unscoped?,
+                    npm_allowed_name_patterns: value.npm_allowed_name_patterns?,
+                    npm_allowed_scopes: value.npm_allowed_scopes?,
+                    project_id: value.project_id?,
                     promotion_only: value.promotion_only?,
                     pypi_upstream_index_path: value.pypi_upstream_index_path?,
                     quota_bytes: value.quota_bytes?,
                     repo_type: value.repo_type?,
                     storage_backend: value.storage_backend?,
+                    trusted_gpg_key: value.trusted_gpg_key?,
                     upstream_auth_type: value.upstream_auth_type?,
                     upstream_password: value.upstream_password?,
                     upstream_url: value.upstream_url?,
                     upstream_username: value.upstream_username?,
+                    versioning_enabled: value.versioning_enabled?,
                 })
             }
         }
@@ -36037,6 +40283,12 @@ pub mod types {
             fn from(value: super::CreateRepositoryRequest) -> Self {
                 Self {
                     allow_anonymous_access: Ok(value.allow_anonymous_access),
+                    apt_description: Ok(value.apt_description),
+                    apt_label: Ok(value.apt_label),
+                    apt_origin: Ok(value.apt_origin),
+                    apt_release_version: Ok(value.apt_release_version),
+                    custom_user_agent: Ok(value.custom_user_agent),
+                    debian: Ok(value.debian),
                     description: Ok(value.description),
                     format: Ok(value.format),
                     format_key: Ok(value.format_key),
@@ -36045,15 +40297,21 @@ pub mod types {
                     key: Ok(value.key),
                     member_repos: Ok(value.member_repos),
                     name: Ok(value.name),
+                    npm_allow_unscoped: Ok(value.npm_allow_unscoped),
+                    npm_allowed_name_patterns: Ok(value.npm_allowed_name_patterns),
+                    npm_allowed_scopes: Ok(value.npm_allowed_scopes),
+                    project_id: Ok(value.project_id),
                     promotion_only: Ok(value.promotion_only),
                     pypi_upstream_index_path: Ok(value.pypi_upstream_index_path),
                     quota_bytes: Ok(value.quota_bytes),
                     repo_type: Ok(value.repo_type),
                     storage_backend: Ok(value.storage_backend),
+                    trusted_gpg_key: Ok(value.trusted_gpg_key),
                     upstream_auth_type: Ok(value.upstream_auth_type),
                     upstream_password: Ok(value.upstream_password),
                     upstream_url: Ok(value.upstream_url),
                     upstream_username: Ok(value.upstream_username),
+                    versioning_enabled: Ok(value.versioning_enabled),
                 }
             }
         }
@@ -36264,6 +40522,8 @@ pub mod types {
             certificate: ::std::result::Result<::std::string::String, ::std::string::String>,
             entity_id: ::std::result::Result<::std::string::String, ::std::string::String>,
             is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            map_groups_to_groups:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             name_id_format: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
@@ -36293,6 +40553,7 @@ pub mod types {
                     certificate: Err("no value supplied for certificate".to_string()),
                     entity_id: Err("no value supplied for entity_id".to_string()),
                     is_enabled: Ok(Default::default()),
+                    map_groups_to_groups: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
                     name_id_format: Ok(Default::default()),
                     require_signed_assertions: Ok(Default::default()),
@@ -36357,6 +40618,16 @@ pub mod types {
                 self.is_enabled = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn map_groups_to_groups<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.map_groups_to_groups = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for map_groups_to_groups: {e}")
+                });
                 self
             }
             pub fn name<T>(mut self, value: T) -> Self
@@ -36451,6 +40722,7 @@ pub mod types {
                     certificate: value.certificate?,
                     entity_id: value.entity_id?,
                     is_enabled: value.is_enabled?,
+                    map_groups_to_groups: value.map_groups_to_groups?,
                     name: value.name?,
                     name_id_format: value.name_id_format?,
                     require_signed_assertions: value.require_signed_assertions?,
@@ -36470,6 +40742,7 @@ pub mod types {
                     certificate: Ok(value.certificate),
                     entity_id: Ok(value.entity_id),
                     is_enabled: Ok(value.is_enabled),
+                    map_groups_to_groups: Ok(value.map_groups_to_groups),
                     name: Ok(value.name),
                     name_id_format: Ok(value.name_id_format),
                     require_signed_assertions: Ok(value.require_signed_assertions),
@@ -39544,6 +43817,398 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct DebianConfigPatch {
+            architectures: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            components: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            distribution_paths: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            flat_repository:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            include_source_packages:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            metadata_strategy: ::std::result::Result<
+                ::std::option::Option<super::DebianMetadataStrategy>,
+                ::std::string::String,
+            >,
+            package_fetch_strategy: ::std::result::Result<
+                ::std::option::Option<super::DebianPackageFetchStrategy>,
+                ::std::string::String,
+            >,
+            package_queries: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            upstream_gpg_key_id: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            verify_upstream_metadata:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+        }
+        impl ::std::default::Default for DebianConfigPatch {
+            fn default() -> Self {
+                Self {
+                    architectures: Ok(Default::default()),
+                    components: Ok(Default::default()),
+                    distribution_paths: Ok(Default::default()),
+                    flat_repository: Ok(Default::default()),
+                    include_source_packages: Ok(Default::default()),
+                    metadata_strategy: Ok(Default::default()),
+                    package_fetch_strategy: Ok(Default::default()),
+                    package_queries: Ok(Default::default()),
+                    upstream_gpg_key_id: Ok(Default::default()),
+                    verify_upstream_metadata: Ok(Default::default()),
+                }
+            }
+        }
+        impl DebianConfigPatch {
+            pub fn architectures<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.architectures = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for architectures: {e}"));
+                self
+            }
+            pub fn components<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.components = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for components: {e}"));
+                self
+            }
+            pub fn distribution_paths<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.distribution_paths = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for distribution_paths: {e}")
+                });
+                self
+            }
+            pub fn flat_repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.flat_repository = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for flat_repository: {e}")
+                });
+                self
+            }
+            pub fn include_source_packages<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.include_source_packages = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for include_source_packages: {e}")
+                });
+                self
+            }
+            pub fn metadata_strategy<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::DebianMetadataStrategy>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.metadata_strategy = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for metadata_strategy: {e}")
+                });
+                self
+            }
+            pub fn package_fetch_strategy<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<super::DebianPackageFetchStrategy>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_fetch_strategy = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for package_fetch_strategy: {e}")
+                });
+                self
+            }
+            pub fn package_queries<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_queries = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for package_queries: {e}")
+                });
+                self
+            }
+            pub fn upstream_gpg_key_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.upstream_gpg_key_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for upstream_gpg_key_id: {e}")
+                });
+                self
+            }
+            pub fn verify_upstream_metadata<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.verify_upstream_metadata = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for verify_upstream_metadata: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<DebianConfigPatch> for super::DebianConfigPatch {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: DebianConfigPatch,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    architectures: value.architectures?,
+                    components: value.components?,
+                    distribution_paths: value.distribution_paths?,
+                    flat_repository: value.flat_repository?,
+                    include_source_packages: value.include_source_packages?,
+                    metadata_strategy: value.metadata_strategy?,
+                    package_fetch_strategy: value.package_fetch_strategy?,
+                    package_queries: value.package_queries?,
+                    upstream_gpg_key_id: value.upstream_gpg_key_id?,
+                    verify_upstream_metadata: value.verify_upstream_metadata?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::DebianConfigPatch> for DebianConfigPatch {
+            fn from(value: super::DebianConfigPatch) -> Self {
+                Self {
+                    architectures: Ok(value.architectures),
+                    components: Ok(value.components),
+                    distribution_paths: Ok(value.distribution_paths),
+                    flat_repository: Ok(value.flat_repository),
+                    include_source_packages: Ok(value.include_source_packages),
+                    metadata_strategy: Ok(value.metadata_strategy),
+                    package_fetch_strategy: Ok(value.package_fetch_strategy),
+                    package_queries: Ok(value.package_queries),
+                    upstream_gpg_key_id: Ok(value.upstream_gpg_key_id),
+                    verify_upstream_metadata: Ok(value.verify_upstream_metadata),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct DebianRepositoryConfig {
+            architectures: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            components: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            distribution_paths: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            flat_repository:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            include_source_packages:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            metadata_strategy: ::std::result::Result<
+                ::std::option::Option<super::DebianMetadataStrategy>,
+                ::std::string::String,
+            >,
+            package_fetch_strategy: ::std::result::Result<
+                ::std::option::Option<super::DebianPackageFetchStrategy>,
+                ::std::string::String,
+            >,
+            package_queries: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            upstream_gpg_key_id: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            verify_upstream_metadata:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+        }
+        impl ::std::default::Default for DebianRepositoryConfig {
+            fn default() -> Self {
+                Self {
+                    architectures: Ok(Default::default()),
+                    components: Ok(Default::default()),
+                    distribution_paths: Ok(Default::default()),
+                    flat_repository: Ok(Default::default()),
+                    include_source_packages: Ok(Default::default()),
+                    metadata_strategy: Ok(Default::default()),
+                    package_fetch_strategy: Ok(Default::default()),
+                    package_queries: Ok(Default::default()),
+                    upstream_gpg_key_id: Ok(Default::default()),
+                    verify_upstream_metadata: Ok(Default::default()),
+                }
+            }
+        }
+        impl DebianRepositoryConfig {
+            pub fn architectures<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.architectures = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for architectures: {e}"));
+                self
+            }
+            pub fn components<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.components = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for components: {e}"));
+                self
+            }
+            pub fn distribution_paths<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.distribution_paths = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for distribution_paths: {e}")
+                });
+                self
+            }
+            pub fn flat_repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.flat_repository = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for flat_repository: {e}")
+                });
+                self
+            }
+            pub fn include_source_packages<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.include_source_packages = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for include_source_packages: {e}")
+                });
+                self
+            }
+            pub fn metadata_strategy<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::DebianMetadataStrategy>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.metadata_strategy = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for metadata_strategy: {e}")
+                });
+                self
+            }
+            pub fn package_fetch_strategy<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<super::DebianPackageFetchStrategy>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_fetch_strategy = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for package_fetch_strategy: {e}")
+                });
+                self
+            }
+            pub fn package_queries<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.package_queries = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for package_queries: {e}")
+                });
+                self
+            }
+            pub fn upstream_gpg_key_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.upstream_gpg_key_id = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for upstream_gpg_key_id: {e}")
+                });
+                self
+            }
+            pub fn verify_upstream_metadata<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.verify_upstream_metadata = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for verify_upstream_metadata: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<DebianRepositoryConfig> for super::DebianRepositoryConfig {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: DebianRepositoryConfig,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    architectures: value.architectures?,
+                    components: value.components?,
+                    distribution_paths: value.distribution_paths?,
+                    flat_repository: value.flat_repository?,
+                    include_source_packages: value.include_source_packages?,
+                    metadata_strategy: value.metadata_strategy?,
+                    package_fetch_strategy: value.package_fetch_strategy?,
+                    package_queries: value.package_queries?,
+                    upstream_gpg_key_id: value.upstream_gpg_key_id?,
+                    verify_upstream_metadata: value.verify_upstream_metadata?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::DebianRepositoryConfig> for DebianRepositoryConfig {
+            fn from(value: super::DebianRepositoryConfig) -> Self {
+                Self {
+                    architectures: Ok(value.architectures),
+                    components: Ok(value.components),
+                    distribution_paths: Ok(value.distribution_paths),
+                    flat_repository: Ok(value.flat_repository),
+                    include_source_packages: Ok(value.include_source_packages),
+                    metadata_strategy: Ok(value.metadata_strategy),
+                    package_fetch_strategy: Ok(value.package_fetch_strategy),
+                    package_queries: Ok(value.package_queries),
+                    upstream_gpg_key_id: Ok(value.upstream_gpg_key_id),
+                    verify_upstream_metadata: Ok(value.verify_upstream_metadata),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct DeliveryListResponse {
             items: ::std::result::Result<
                 ::std::vec::Vec<super::DeliveryResponse>,
@@ -40051,6 +44716,214 @@ pub mod types {
                     scan_status: Ok(value.scan_status),
                     tag: Ok(value.tag),
                     total_size_bytes: Ok(value.total_size_bytes),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct DownloadListResponse {
+            downloads: ::std::result::Result<
+                ::std::vec::Vec<super::DownloadRecord>,
+                ::std::string::String,
+            >,
+            page: ::std::result::Result<i32, ::std::string::String>,
+            per_page: ::std::result::Result<i32, ::std::string::String>,
+            total: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for DownloadListResponse {
+            fn default() -> Self {
+                Self {
+                    downloads: Err("no value supplied for downloads".to_string()),
+                    page: Err("no value supplied for page".to_string()),
+                    per_page: Err("no value supplied for per_page".to_string()),
+                    total: Err("no value supplied for total".to_string()),
+                }
+            }
+        }
+        impl DownloadListResponse {
+            pub fn downloads<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::DownloadRecord>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.downloads = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for downloads: {e}"));
+                self
+            }
+            pub fn page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for page: {e}"));
+                self
+            }
+            pub fn per_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for per_page: {e}"));
+                self
+            }
+            pub fn total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<DownloadListResponse> for super::DownloadListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: DownloadListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    downloads: value.downloads?,
+                    page: value.page?,
+                    per_page: value.per_page?,
+                    total: value.total?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::DownloadListResponse> for DownloadListResponse {
+            fn from(value: super::DownloadListResponse) -> Self {
+                Self {
+                    downloads: Ok(value.downloads),
+                    page: Ok(value.page),
+                    per_page: Ok(value.per_page),
+                    total: Ok(value.total),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct DownloadRecord {
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            downloaded_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            ip_address: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            user_agent: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            user_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            username: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for DownloadRecord {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    downloaded_at: Err("no value supplied for downloaded_at".to_string()),
+                    ip_address: Ok(Default::default()),
+                    user_agent: Ok(Default::default()),
+                    user_id: Ok(Default::default()),
+                    username: Ok(Default::default()),
+                }
+            }
+        }
+        impl DownloadRecord {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn downloaded_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.downloaded_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for downloaded_at: {e}"));
+                self
+            }
+            pub fn ip_address<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.ip_address = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for ip_address: {e}"));
+                self
+            }
+            pub fn user_agent<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.user_agent = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for user_agent: {e}"));
+                self
+            }
+            pub fn user_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.user_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for user_id: {e}"));
+                self
+            }
+            pub fn username<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.username = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for username: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<DownloadRecord> for super::DownloadRecord {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: DownloadRecord,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    downloaded_at: value.downloaded_at?,
+                    ip_address: value.ip_address?,
+                    user_agent: value.user_agent?,
+                    user_id: value.user_id?,
+                    username: value.username?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::DownloadRecord> for DownloadRecord {
+            fn from(value: super::DownloadRecord) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    downloaded_at: Ok(value.downloaded_at),
+                    ip_address: Ok(value.ip_address),
+                    user_agent: Ok(value.user_agent),
+                    user_id: Ok(value.user_id),
+                    username: Ok(value.username),
                 }
             }
         }
@@ -47340,6 +52213,141 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct ListDownloadsQuery {
+            artifact_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+            from: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            ip: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            per_page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            to: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            user_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
+        }
+        impl ::std::default::Default for ListDownloadsQuery {
+            fn default() -> Self {
+                Self {
+                    artifact_id: Ok(Default::default()),
+                    from: Ok(Default::default()),
+                    ip: Ok(Default::default()),
+                    page: Ok(Default::default()),
+                    per_page: Ok(Default::default()),
+                    to: Ok(Default::default()),
+                    user_id: Ok(Default::default()),
+                }
+            }
+        }
+        impl ListDownloadsQuery {
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn from<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.from = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for from: {e}"));
+                self
+            }
+            pub fn ip<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.ip = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for ip: {e}"));
+                self
+            }
+            pub fn page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for page: {e}"));
+                self
+            }
+            pub fn per_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for per_page: {e}"));
+                self
+            }
+            pub fn to<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.to = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for to: {e}"));
+                self
+            }
+            pub fn user_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.user_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for user_id: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ListDownloadsQuery> for super::ListDownloadsQuery {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ListDownloadsQuery,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    artifact_id: value.artifact_id?,
+                    from: value.from?,
+                    ip: value.ip?,
+                    page: value.page?,
+                    per_page: value.per_page?,
+                    to: value.to?,
+                    user_id: value.user_id?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ListDownloadsQuery> for ListDownloadsQuery {
+            fn from(value: super::ListDownloadsQuery) -> Self {
+                Self {
+                    artifact_id: Ok(value.artifact_id),
+                    from: Ok(value.from),
+                    ip: Ok(value.ip),
+                    page: Ok(value.page),
+                    per_page: Ok(value.per_page),
+                    to: Ok(value.to),
+                    user_id: Ok(value.user_id),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct ListFormatsQuery {
             enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             type_: ::std::result::Result<
@@ -47505,6 +52513,8 @@ pub mod types {
             >,
             page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
             per_page: ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            project:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
             q: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -47520,6 +52530,7 @@ pub mod types {
                     format: Ok(Default::default()),
                     page: Ok(Default::default()),
                     per_page: Ok(Default::default()),
+                    project: Ok(Default::default()),
                     q: Ok(Default::default()),
                     type_: Ok(Default::default()),
                 }
@@ -47556,6 +52567,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for per_page: {e}"));
                 self
             }
+            pub fn project<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.project = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for project: {e}"));
+                self
+            }
             pub fn q<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
@@ -47586,6 +52607,7 @@ pub mod types {
                     format: value.format?,
                     page: value.page?,
                     per_page: value.per_page?,
+                    project: value.project?,
                     q: value.q?,
                     type_: value.type_?,
                 })
@@ -47597,6 +52619,7 @@ pub mod types {
                     format: Ok(value.format),
                     page: Ok(value.page),
                     per_page: Ok(value.per_page),
+                    project: Ok(value.project),
                     q: Ok(value.q),
                     type_: Ok(value.type_),
                 }
@@ -49942,6 +54965,91 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct NpmScopePolicyResponse {
+            active: ::std::result::Result<bool, ::std::string::String>,
+            allow_unscoped: ::std::result::Result<bool, ::std::string::String>,
+            allowed_scopes: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for NpmScopePolicyResponse {
+            fn default() -> Self {
+                Self {
+                    active: Err("no value supplied for active".to_string()),
+                    allow_unscoped: Err("no value supplied for allow_unscoped".to_string()),
+                    allowed_scopes: Err("no value supplied for allowed_scopes".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                }
+            }
+        }
+        impl NpmScopePolicyResponse {
+            pub fn active<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.active = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for active: {e}"));
+                self
+            }
+            pub fn allow_unscoped<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allow_unscoped = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allow_unscoped: {e}")
+                });
+                self
+            }
+            pub fn allowed_scopes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allowed_scopes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allowed_scopes: {e}")
+                });
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<NpmScopePolicyResponse> for super::NpmScopePolicyResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: NpmScopePolicyResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    active: value.active?,
+                    allow_unscoped: value.allow_unscoped?,
+                    allowed_scopes: value.allowed_scopes?,
+                    repository_key: value.repository_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::NpmScopePolicyResponse> for NpmScopePolicyResponse {
+            fn from(value: super::NpmScopePolicyResponse) -> Self {
+                Self {
+                    active: Ok(value.active),
+                    allow_unscoped: Ok(value.allow_unscoped),
+                    allowed_scopes: Ok(value.allowed_scopes),
+                    repository_key: Ok(value.repository_key),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct OciBlobFootprintReport {
             aged_distinct_digests: ::std::result::Result<i64, ::std::string::String>,
             aged_physical_bytes: ::std::result::Result<i64, ::std::string::String>,
@@ -50921,6 +56029,111 @@ pub mod types {
                     size_bytes: Ok(value.size_bytes),
                     updated_at: Ok(value.updated_at),
                     version: Ok(value.version),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct PackageSearchQuery {
+            arch: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            limit: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            offset: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            q: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            status: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for PackageSearchQuery {
+            fn default() -> Self {
+                Self {
+                    arch: Ok(Default::default()),
+                    limit: Ok(Default::default()),
+                    offset: Ok(Default::default()),
+                    q: Ok(Default::default()),
+                    status: Ok(Default::default()),
+                }
+            }
+        }
+        impl PackageSearchQuery {
+            pub fn arch<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.arch = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for arch: {e}"));
+                self
+            }
+            pub fn limit<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.limit = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for limit: {e}"));
+                self
+            }
+            pub fn offset<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.offset = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for offset: {e}"));
+                self
+            }
+            pub fn q<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.q = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for q: {e}"));
+                self
+            }
+            pub fn status<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.status = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for status: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<PackageSearchQuery> for super::PackageSearchQuery {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: PackageSearchQuery,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    arch: value.arch?,
+                    limit: value.limit?,
+                    offset: value.offset?,
+                    q: value.q?,
+                    status: value.status?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::PackageSearchQuery> for PackageSearchQuery {
+            fn from(value: super::PackageSearchQuery) -> Self {
+                Self {
+                    arch: Ok(value.arch),
+                    limit: Ok(value.limit),
+                    offset: Ok(value.offset),
+                    q: Ok(value.q),
+                    status: Ok(value.status),
                 }
             }
         }
@@ -53973,6 +59186,293 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct Project {
+            created_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            updated_at: ::std::result::Result<
+                ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for Project {
+            fn default() -> Self {
+                Self {
+                    created_at: Err("no value supplied for created_at".to_string()),
+                    description: Ok(Default::default()),
+                    id: Err("no value supplied for id".to_string()),
+                    key: Err("no value supplied for key".to_string()),
+                    name: Err("no value supplied for name".to_string()),
+                    quota_bytes: Ok(Default::default()),
+                    updated_at: Err("no value supplied for updated_at".to_string()),
+                }
+            }
+        }
+        impl Project {
+            pub fn created_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.created_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for id: {e}"));
+                self
+            }
+            pub fn key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.key = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for key: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn quota_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quota_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for quota_bytes: {e}"));
+                self
+            }
+            pub fn updated_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.updated_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for updated_at: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<Project> for super::Project {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: Project,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    created_at: value.created_at?,
+                    description: value.description?,
+                    id: value.id?,
+                    key: value.key?,
+                    name: value.name?,
+                    quota_bytes: value.quota_bytes?,
+                    updated_at: value.updated_at?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::Project> for Project {
+            fn from(value: super::Project) -> Self {
+                Self {
+                    created_at: Ok(value.created_at),
+                    description: Ok(value.description),
+                    id: Ok(value.id),
+                    key: Ok(value.key),
+                    name: Ok(value.name),
+                    quota_bytes: Ok(value.quota_bytes),
+                    updated_at: Ok(value.updated_at),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ProjectListResponse {
+            items: ::std::result::Result<::std::vec::Vec<super::Project>, ::std::string::String>,
+        }
+        impl ::std::default::Default for ProjectListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                }
+            }
+        }
+        impl ProjectListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::Project>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ProjectListResponse> for super::ProjectListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ProjectListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ProjectListResponse> for ProjectListResponse {
+            fn from(value: super::ProjectListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ProjectMemberListResponse {
+            items: ::std::result::Result<
+                ::std::vec::Vec<super::ProjectMemberRow>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ProjectMemberListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                }
+            }
+        }
+        impl ProjectMemberListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::ProjectMemberRow>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ProjectMemberListResponse> for super::ProjectMemberListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ProjectMemberListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ProjectMemberListResponse> for ProjectMemberListResponse {
+            fn from(value: super::ProjectMemberListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct ProjectMemberRow {
+            actions: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+            principal_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            principal_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for ProjectMemberRow {
+            fn default() -> Self {
+                Self {
+                    actions: Err("no value supplied for actions".to_string()),
+                    principal_id: Err("no value supplied for principal_id".to_string()),
+                    principal_type: Err("no value supplied for principal_type".to_string()),
+                }
+            }
+        }
+        impl ProjectMemberRow {
+            pub fn actions<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.actions = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for actions: {e}"));
+                self
+            }
+            pub fn principal_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.principal_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for principal_id: {e}"));
+                self
+            }
+            pub fn principal_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.principal_type = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for principal_type: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ProjectMemberRow> for super::ProjectMemberRow {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ProjectMemberRow,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    actions: value.actions?,
+                    principal_id: value.principal_id?,
+                    principal_type: value.principal_type?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ProjectMemberRow> for ProjectMemberRow {
+            fn from(value: super::ProjectMemberRow) -> Self {
+                Self {
+                    actions: Ok(value.actions),
+                    principal_id: Ok(value.principal_id),
+                    principal_type: Ok(value.principal_type),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct PromoteArtifactRequest {
             notes: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
@@ -54971,6 +60471,89 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct QualityCheckListResponse {
+            items:
+                ::std::result::Result<::std::vec::Vec<super::CheckResponse>, ::std::string::String>,
+            page: ::std::result::Result<i32, ::std::string::String>,
+            per_page: ::std::result::Result<i32, ::std::string::String>,
+            total: ::std::result::Result<i64, ::std::string::String>,
+        }
+        impl ::std::default::Default for QualityCheckListResponse {
+            fn default() -> Self {
+                Self {
+                    items: Err("no value supplied for items".to_string()),
+                    page: Err("no value supplied for page".to_string()),
+                    per_page: Err("no value supplied for per_page".to_string()),
+                    total: Err("no value supplied for total".to_string()),
+                }
+            }
+        }
+        impl QualityCheckListResponse {
+            pub fn items<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<super::CheckResponse>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.items = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for items: {e}"));
+                self
+            }
+            pub fn page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for page: {e}"));
+                self
+            }
+            pub fn per_page<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.per_page = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for per_page: {e}"));
+                self
+            }
+            pub fn total<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for total: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<QualityCheckListResponse> for super::QualityCheckListResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: QualityCheckListResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    items: value.items?,
+                    page: value.page?,
+                    per_page: value.per_page?,
+                    total: value.total?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::QualityCheckListResponse> for QualityCheckListResponse {
+            fn from(value: super::QualityCheckListResponse) -> Self {
+                Self {
+                    items: Ok(value.items),
+                    page: Ok(value.page),
+                    per_page: Ok(value.per_page),
+                    total: Ok(value.total),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct QuarantineActionResponse {
             artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             message: ::std::result::Result<::std::string::String, ::std::string::String>,
@@ -55933,6 +61516,128 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct RemoveProjectMemberRequest {
+            principal_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            principal_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for RemoveProjectMemberRequest {
+            fn default() -> Self {
+                Self {
+                    principal_id: Err("no value supplied for principal_id".to_string()),
+                    principal_type: Err("no value supplied for principal_type".to_string()),
+                }
+            }
+        }
+        impl RemoveProjectMemberRequest {
+            pub fn principal_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.principal_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for principal_id: {e}"));
+                self
+            }
+            pub fn principal_type<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.principal_type = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for principal_type: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RemoveProjectMemberRequest> for super::RemoveProjectMemberRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RemoveProjectMemberRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    principal_id: value.principal_id?,
+                    principal_type: value.principal_type?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RemoveProjectMemberRequest> for RemoveProjectMemberRequest {
+            fn from(value: super::RemoveProjectMemberRequest) -> Self {
+                Self {
+                    principal_id: Ok(value.principal_id),
+                    principal_type: Ok(value.principal_type),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RepoExposure {
+            access_scope: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repository_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for RepoExposure {
+            fn default() -> Self {
+                Self {
+                    access_scope: Err("no value supplied for access_scope".to_string()),
+                    repository_id: Err("no value supplied for repository_id".to_string()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                }
+            }
+        }
+        impl RepoExposure {
+            pub fn access_scope<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.access_scope = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for access_scope: {e}"));
+                self
+            }
+            pub fn repository_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository_id: {e}"));
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RepoExposure> for super::RepoExposure {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RepoExposure,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    access_scope: value.access_scope?,
+                    repository_id: value.repository_id?,
+                    repository_key: value.repository_key?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RepoExposure> for RepoExposure {
+            fn from(value: super::RepoExposure) -> Self {
+                Self {
+                    access_scope: Ok(value.access_scope),
+                    repository_id: Ok(value.repository_id),
+                    repository_key: Ok(value.repository_key),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct RepoHealthResponse {
             artifacts_evaluated: ::std::result::Result<i32, ::std::string::String>,
             artifacts_failing: ::std::result::Result<i32, ::std::string::String>,
@@ -56723,8 +62428,32 @@ pub mod types {
         #[derive(Clone, Debug)]
         pub struct RepositoryResponse {
             allow_anonymous_access: ::std::result::Result<bool, ::std::string::String>,
+            apt_description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            apt_label: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            apt_origin: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            apt_release_version: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             created_at: ::std::result::Result<
                 ::chrono::DateTime<::chrono::offset::Utc>,
+                ::std::string::String,
+            >,
+            custom_user_agent: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            debian: ::std::result::Result<
+                ::std::option::Option<super::DebianRepositoryConfig>,
                 ::std::string::String,
             >,
             description: ::std::result::Result<
@@ -56732,10 +62461,23 @@ pub mod types {
                 ::std::string::String,
             >,
             format: ::std::result::Result<::std::string::String, ::std::string::String>,
+            has_trusted_gpg_key: ::std::result::Result<bool, ::std::string::String>,
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             is_public: ::std::result::Result<bool, ::std::string::String>,
             key: ::std::result::Result<::std::string::String, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            npm_allow_unscoped:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            npm_allowed_name_patterns: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            npm_allowed_scopes: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            project_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
             promotion_only: ::std::result::Result<bool, ::std::string::String>,
             quarantine_duration_minutes:
                 ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
@@ -56757,6 +62499,7 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            versioning_enabled: ::std::result::Result<bool, ::std::string::String>,
         }
         impl ::std::default::Default for RepositoryResponse {
             fn default() -> Self {
@@ -56764,13 +62507,26 @@ pub mod types {
                     allow_anonymous_access: Err(
                         "no value supplied for allow_anonymous_access".to_string()
                     ),
+                    apt_description: Ok(Default::default()),
+                    apt_label: Ok(Default::default()),
+                    apt_origin: Ok(Default::default()),
+                    apt_release_version: Ok(Default::default()),
                     created_at: Err("no value supplied for created_at".to_string()),
+                    custom_user_agent: Ok(Default::default()),
+                    debian: Ok(Default::default()),
                     description: Ok(Default::default()),
                     format: Err("no value supplied for format".to_string()),
+                    has_trusted_gpg_key: Err(
+                        "no value supplied for has_trusted_gpg_key".to_string()
+                    ),
                     id: Err("no value supplied for id".to_string()),
                     is_public: Err("no value supplied for is_public".to_string()),
                     key: Err("no value supplied for key".to_string()),
                     name: Err("no value supplied for name".to_string()),
+                    npm_allow_unscoped: Ok(Default::default()),
+                    npm_allowed_name_patterns: Ok(Default::default()),
+                    npm_allowed_scopes: Ok(Default::default()),
+                    project_id: Ok(Default::default()),
                     promotion_only: Err("no value supplied for promotion_only".to_string()),
                     quarantine_duration_minutes: Ok(Default::default()),
                     quarantine_enabled: Ok(Default::default()),
@@ -56783,6 +62539,7 @@ pub mod types {
                     ),
                     upstream_auth_type: Ok(Default::default()),
                     upstream_url: Ok(Default::default()),
+                    versioning_enabled: Err("no value supplied for versioning_enabled".to_string()),
                 }
             }
         }
@@ -56797,6 +62554,46 @@ pub mod types {
                 });
                 self
             }
+            pub fn apt_description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_description = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for apt_description: {e}")
+                });
+                self
+            }
+            pub fn apt_label<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_label = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for apt_label: {e}"));
+                self
+            }
+            pub fn apt_origin<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_origin = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for apt_origin: {e}"));
+                self
+            }
+            pub fn apt_release_version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_release_version = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for apt_release_version: {e}")
+                });
+                self
+            }
             pub fn created_at<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -56805,6 +62602,26 @@ pub mod types {
                 self.created_at = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn custom_user_agent<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.custom_user_agent = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for custom_user_agent: {e}")
+                });
+                self
+            }
+            pub fn debian<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::DebianRepositoryConfig>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.debian = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for debian: {e}"));
                 self
             }
             pub fn description<T>(mut self, value: T) -> Self
@@ -56825,6 +62642,16 @@ pub mod types {
                 self.format = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for format: {e}"));
+                self
+            }
+            pub fn has_trusted_gpg_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.has_trusted_gpg_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for has_trusted_gpg_key: {e}")
+                });
                 self
             }
             pub fn id<T>(mut self, value: T) -> Self
@@ -56865,6 +62692,50 @@ pub mod types {
                 self.name = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn npm_allow_unscoped<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.npm_allow_unscoped = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for npm_allow_unscoped: {e}")
+                });
+                self
+            }
+            pub fn npm_allowed_name_patterns<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.npm_allowed_name_patterns = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for npm_allowed_name_patterns: {e}")
+                });
+                self
+            }
+            pub fn npm_allowed_scopes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.npm_allowed_scopes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for npm_allowed_scopes: {e}")
+                });
+                self
+            }
+            pub fn project_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.project_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for project_id: {e}"));
                 self
             }
             pub fn promotion_only<T>(mut self, value: T) -> Self
@@ -56967,6 +62838,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for upstream_url: {e}"));
                 self
             }
+            pub fn versioning_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.versioning_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for versioning_enabled: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<RepositoryResponse> for super::RepositoryResponse {
             type Error = super::error::ConversionError;
@@ -56975,13 +62856,24 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     allow_anonymous_access: value.allow_anonymous_access?,
+                    apt_description: value.apt_description?,
+                    apt_label: value.apt_label?,
+                    apt_origin: value.apt_origin?,
+                    apt_release_version: value.apt_release_version?,
                     created_at: value.created_at?,
+                    custom_user_agent: value.custom_user_agent?,
+                    debian: value.debian?,
                     description: value.description?,
                     format: value.format?,
+                    has_trusted_gpg_key: value.has_trusted_gpg_key?,
                     id: value.id?,
                     is_public: value.is_public?,
                     key: value.key?,
                     name: value.name?,
+                    npm_allow_unscoped: value.npm_allow_unscoped?,
+                    npm_allowed_name_patterns: value.npm_allowed_name_patterns?,
+                    npm_allowed_scopes: value.npm_allowed_scopes?,
+                    project_id: value.project_id?,
                     promotion_only: value.promotion_only?,
                     quarantine_duration_minutes: value.quarantine_duration_minutes?,
                     quarantine_enabled: value.quarantine_enabled?,
@@ -56992,6 +62884,7 @@ pub mod types {
                     upstream_auth_configured: value.upstream_auth_configured?,
                     upstream_auth_type: value.upstream_auth_type?,
                     upstream_url: value.upstream_url?,
+                    versioning_enabled: value.versioning_enabled?,
                 })
             }
         }
@@ -56999,13 +62892,24 @@ pub mod types {
             fn from(value: super::RepositoryResponse) -> Self {
                 Self {
                     allow_anonymous_access: Ok(value.allow_anonymous_access),
+                    apt_description: Ok(value.apt_description),
+                    apt_label: Ok(value.apt_label),
+                    apt_origin: Ok(value.apt_origin),
+                    apt_release_version: Ok(value.apt_release_version),
                     created_at: Ok(value.created_at),
+                    custom_user_agent: Ok(value.custom_user_agent),
+                    debian: Ok(value.debian),
                     description: Ok(value.description),
                     format: Ok(value.format),
+                    has_trusted_gpg_key: Ok(value.has_trusted_gpg_key),
                     id: Ok(value.id),
                     is_public: Ok(value.is_public),
                     key: Ok(value.key),
                     name: Ok(value.name),
+                    npm_allow_unscoped: Ok(value.npm_allow_unscoped),
+                    npm_allowed_name_patterns: Ok(value.npm_allowed_name_patterns),
+                    npm_allowed_scopes: Ok(value.npm_allowed_scopes),
+                    project_id: Ok(value.project_id),
                     promotion_only: Ok(value.promotion_only),
                     quarantine_duration_minutes: Ok(value.quarantine_duration_minutes),
                     quarantine_enabled: Ok(value.quarantine_enabled),
@@ -57016,6 +62920,7 @@ pub mod types {
                     upstream_auth_configured: Ok(value.upstream_auth_configured),
                     upstream_auth_type: Ok(value.upstream_auth_type),
                     upstream_url: Ok(value.upstream_url),
+                    versioning_enabled: Ok(value.versioning_enabled),
                 }
             }
         }
@@ -57434,6 +63339,183 @@ pub mod types {
                     repository_key: Ok(value.repository_key),
                     repository_name: Ok(value.repository_name),
                     storage_bytes: Ok(value.storage_bytes),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct RepositoryStorageStatsResponse {
+            blob_count: ::std::result::Result<i64, ::std::string::String>,
+            computed_at: ::std::result::Result<
+                ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                ::std::string::String,
+            >,
+            dedup_ratio: ::std::result::Result<::std::option::Option<f64>, ::std::string::String>,
+            dedup_scope: ::std::result::Result<::std::string::String, ::std::string::String>,
+            instance_unique_bytes:
+                ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            logical_bytes: ::std::result::Result<i64, ::std::string::String>,
+            physical_bytes:
+                ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            repository_key: ::std::result::Result<::std::string::String, ::std::string::String>,
+            shared_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            unique_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+        }
+        impl ::std::default::Default for RepositoryStorageStatsResponse {
+            fn default() -> Self {
+                Self {
+                    blob_count: Err("no value supplied for blob_count".to_string()),
+                    computed_at: Ok(Default::default()),
+                    dedup_ratio: Ok(Default::default()),
+                    dedup_scope: Err("no value supplied for dedup_scope".to_string()),
+                    instance_unique_bytes: Ok(Default::default()),
+                    logical_bytes: Err("no value supplied for logical_bytes".to_string()),
+                    physical_bytes: Ok(Default::default()),
+                    repository_key: Err("no value supplied for repository_key".to_string()),
+                    shared_bytes: Ok(Default::default()),
+                    unique_bytes: Ok(Default::default()),
+                }
+            }
+        }
+        impl RepositoryStorageStatsResponse {
+            pub fn blob_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.blob_count = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for blob_count: {e}"));
+                self
+            }
+            pub fn computed_at<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.computed_at = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for computed_at: {e}"));
+                self
+            }
+            pub fn dedup_ratio<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<f64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.dedup_ratio = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for dedup_ratio: {e}"));
+                self
+            }
+            pub fn dedup_scope<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.dedup_scope = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for dedup_scope: {e}"));
+                self
+            }
+            pub fn instance_unique_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.instance_unique_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for instance_unique_bytes: {e}")
+                });
+                self
+            }
+            pub fn logical_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.logical_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for logical_bytes: {e}"));
+                self
+            }
+            pub fn physical_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.physical_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for physical_bytes: {e}")
+                });
+                self
+            }
+            pub fn repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for repository_key: {e}")
+                });
+                self
+            }
+            pub fn shared_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.shared_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for shared_bytes: {e}"));
+                self
+            }
+            pub fn unique_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.unique_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for unique_bytes: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<RepositoryStorageStatsResponse>
+            for super::RepositoryStorageStatsResponse
+        {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: RepositoryStorageStatsResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    blob_count: value.blob_count?,
+                    computed_at: value.computed_at?,
+                    dedup_ratio: value.dedup_ratio?,
+                    dedup_scope: value.dedup_scope?,
+                    instance_unique_bytes: value.instance_unique_bytes?,
+                    logical_bytes: value.logical_bytes?,
+                    physical_bytes: value.physical_bytes?,
+                    repository_key: value.repository_key?,
+                    shared_bytes: value.shared_bytes?,
+                    unique_bytes: value.unique_bytes?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::RepositoryStorageStatsResponse>
+            for RepositoryStorageStatsResponse
+        {
+            fn from(value: super::RepositoryStorageStatsResponse) -> Self {
+                Self {
+                    blob_count: Ok(value.blob_count),
+                    computed_at: Ok(value.computed_at),
+                    dedup_ratio: Ok(value.dedup_ratio),
+                    dedup_scope: Ok(value.dedup_scope),
+                    instance_unique_bytes: Ok(value.instance_unique_bytes),
+                    logical_bytes: Ok(value.logical_bytes),
+                    physical_bytes: Ok(value.physical_bytes),
+                    repository_key: Ok(value.repository_key),
+                    shared_bytes: Ok(value.shared_bytes),
+                    unique_bytes: Ok(value.unique_bytes),
                 }
             }
         }
@@ -58640,6 +64722,7 @@ pub mod types {
             has_certificate: ::std::result::Result<bool, ::std::string::String>,
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             is_enabled: ::std::result::Result<bool, ::std::string::String>,
+            map_groups_to_groups: ::std::result::Result<bool, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
             name_id_format: ::std::result::Result<::std::string::String, ::std::string::String>,
             require_signed_assertions: ::std::result::Result<bool, ::std::string::String>,
@@ -58666,6 +64749,9 @@ pub mod types {
                     has_certificate: Err("no value supplied for has_certificate".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     is_enabled: Err("no value supplied for is_enabled".to_string()),
+                    map_groups_to_groups: Err(
+                        "no value supplied for map_groups_to_groups".to_string()
+                    ),
                     name: Err("no value supplied for name".to_string()),
                     name_id_format: Err("no value supplied for name_id_format".to_string()),
                     require_signed_assertions: Err(
@@ -58753,6 +64839,16 @@ pub mod types {
                 self.is_enabled = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn map_groups_to_groups<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.map_groups_to_groups = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for map_groups_to_groups: {e}")
+                });
                 self
             }
             pub fn name<T>(mut self, value: T) -> Self
@@ -58859,6 +64955,7 @@ pub mod types {
                     has_certificate: value.has_certificate?,
                     id: value.id?,
                     is_enabled: value.is_enabled?,
+                    map_groups_to_groups: value.map_groups_to_groups?,
                     name: value.name?,
                     name_id_format: value.name_id_format?,
                     require_signed_assertions: value.require_signed_assertions?,
@@ -58881,6 +64978,7 @@ pub mod types {
                     has_certificate: Ok(value.has_certificate),
                     id: Ok(value.id),
                     is_enabled: Ok(value.is_enabled),
+                    map_groups_to_groups: Ok(value.map_groups_to_groups),
                     name: Ok(value.name),
                     name_id_format: Ok(value.name_id_format),
                     require_signed_assertions: Ok(value.require_signed_assertions),
@@ -59646,6 +65744,12 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            collapsed_not_applicable_count:
+                ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
+            collapsed_scan_types: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
             completed_at: ::std::result::Result<
                 ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
                 ::std::string::String,
@@ -59686,6 +65790,8 @@ pub mod types {
                     artifact_id: Err("no value supplied for artifact_id".to_string()),
                     artifact_name: Ok(Default::default()),
                     artifact_version: Ok(Default::default()),
+                    collapsed_not_applicable_count: Ok(Default::default()),
+                    collapsed_scan_types: Ok(Default::default()),
                     completed_at: Ok(Default::default()),
                     created_at: Err("no value supplied for created_at".to_string()),
                     critical_count: Err("no value supplied for critical_count".to_string()),
@@ -59734,6 +65840,30 @@ pub mod types {
             {
                 self.artifact_version = value.try_into().map_err(|e| {
                     format!("error converting supplied value for artifact_version: {e}")
+                });
+                self
+            }
+            pub fn collapsed_not_applicable_count<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i32>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.collapsed_not_applicable_count = value.try_into().map_err(|e| {
+                    format!(
+                        "error converting supplied value for collapsed_not_applicable_count: {e}"
+                    )
+                });
+                self
+            }
+            pub fn collapsed_scan_types<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.collapsed_scan_types = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for collapsed_scan_types: {e}")
                 });
                 self
             }
@@ -59921,6 +66051,8 @@ pub mod types {
                     artifact_id: value.artifact_id?,
                     artifact_name: value.artifact_name?,
                     artifact_version: value.artifact_version?,
+                    collapsed_not_applicable_count: value.collapsed_not_applicable_count?,
+                    collapsed_scan_types: value.collapsed_scan_types?,
                     completed_at: value.completed_at?,
                     created_at: value.created_at?,
                     critical_count: value.critical_count?,
@@ -59947,6 +66079,8 @@ pub mod types {
                     artifact_id: Ok(value.artifact_id),
                     artifact_name: Ok(value.artifact_name),
                     artifact_version: Ok(value.artifact_version),
+                    collapsed_not_applicable_count: Ok(value.collapsed_not_applicable_count),
+                    collapsed_scan_types: Ok(value.collapsed_scan_types),
                     completed_at: Ok(value.completed_at),
                     created_at: Ok(value.created_at),
                     critical_count: Ok(value.critical_count),
@@ -61311,6 +67445,64 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct SetNpmScopePolicyRequest {
+            allow_unscoped:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            allowed_scopes: ::std::result::Result<
+                ::std::vec::Vec<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for SetNpmScopePolicyRequest {
+            fn default() -> Self {
+                Self {
+                    allow_unscoped: Ok(Default::default()),
+                    allowed_scopes: Err("no value supplied for allowed_scopes".to_string()),
+                }
+            }
+        }
+        impl SetNpmScopePolicyRequest {
+            pub fn allow_unscoped<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allow_unscoped = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allow_unscoped: {e}")
+                });
+                self
+            }
+            pub fn allowed_scopes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.allowed_scopes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for allowed_scopes: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SetNpmScopePolicyRequest> for super::SetNpmScopePolicyRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SetNpmScopePolicyRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    allow_unscoped: value.allow_unscoped?,
+                    allowed_scopes: value.allowed_scopes?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SetNpmScopePolicyRequest> for SetNpmScopePolicyRequest {
+            fn from(value: super::SetNpmScopePolicyRequest) -> Self {
+                Self {
+                    allow_unscoped: Ok(value.allow_unscoped),
+                    allowed_scopes: Ok(value.allowed_scopes),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct SetPeerLabelsRequest {
             labels: ::std::result::Result<
                 ::std::vec::Vec<super::PeerLabelEntrySchema>,
@@ -61474,6 +67666,88 @@ pub mod types {
             fn from(value: super::SetupStatusResponse) -> Self {
                 Self {
                     setup_required: Ok(value.setup_required),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct SignArtifactResponse {
+            algorithm: ::std::result::Result<::std::string::String, ::std::string::String>,
+            artifact_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            key_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
+            signature_sha256: ::std::result::Result<::std::string::String, ::std::string::String>,
+        }
+        impl ::std::default::Default for SignArtifactResponse {
+            fn default() -> Self {
+                Self {
+                    algorithm: Err("no value supplied for algorithm".to_string()),
+                    artifact_id: Err("no value supplied for artifact_id".to_string()),
+                    key_id: Err("no value supplied for key_id".to_string()),
+                    signature_sha256: Err("no value supplied for signature_sha256".to_string()),
+                }
+            }
+        }
+        impl SignArtifactResponse {
+            pub fn algorithm<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.algorithm = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for algorithm: {e}"));
+                self
+            }
+            pub fn artifact_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.artifact_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for artifact_id: {e}"));
+                self
+            }
+            pub fn key_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::uuid::Uuid>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.key_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for key_id: {e}"));
+                self
+            }
+            pub fn signature_sha256<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.signature_sha256 = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for signature_sha256: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SignArtifactResponse> for super::SignArtifactResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SignArtifactResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    algorithm: value.algorithm?,
+                    artifact_id: value.artifact_id?,
+                    key_id: value.key_id?,
+                    signature_sha256: value.signature_sha256?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SignArtifactResponse> for SignArtifactResponse {
+            fn from(value: super::SignArtifactResponse) -> Self {
+                Self {
+                    algorithm: Ok(value.algorithm),
+                    artifact_id: Ok(value.artifact_id),
+                    key_id: Ok(value.key_id),
+                    signature_sha256: Ok(value.signature_sha256),
                 }
             }
         }
@@ -63709,6 +69983,74 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct SyncTriggerResponse {
+            repository: ::std::result::Result<::std::string::String, ::std::string::String>,
+            succeeded: ::std::result::Result<bool, ::std::string::String>,
+            triggered: ::std::result::Result<bool, ::std::string::String>,
+        }
+        impl ::std::default::Default for SyncTriggerResponse {
+            fn default() -> Self {
+                Self {
+                    repository: Err("no value supplied for repository".to_string()),
+                    succeeded: Err("no value supplied for succeeded".to_string()),
+                    triggered: Err("no value supplied for triggered".to_string()),
+                }
+            }
+        }
+        impl SyncTriggerResponse {
+            pub fn repository<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repository = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repository: {e}"));
+                self
+            }
+            pub fn succeeded<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.succeeded = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for succeeded: {e}"));
+                self
+            }
+            pub fn triggered<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.triggered = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for triggered: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<SyncTriggerResponse> for super::SyncTriggerResponse {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: SyncTriggerResponse,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    repository: value.repository?,
+                    succeeded: value.succeeded?,
+                    triggered: value.triggered?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::SyncTriggerResponse> for SyncTriggerResponse {
+            fn from(value: super::SyncTriggerResponse) -> Self {
+                Self {
+                    repository: Ok(value.repository),
+                    succeeded: Ok(value.succeeded),
+                    triggered: Ok(value.triggered),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct SystemConfigResponse {
             auth: ::std::result::Result<super::AuthConfig, ::std::string::String>,
             demo_mode: ::std::result::Result<bool, ::std::string::String>,
@@ -63902,6 +70244,10 @@ pub mod types {
             audit_retention_days: ::std::result::Result<i32, ::std::string::String>,
             backup_retention_count: ::std::result::Result<i32, ::std::string::String>,
             edge_stale_threshold_minutes: ::std::result::Result<i32, ::std::string::String>,
+            environment: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             max_upload_size_bytes: ::std::result::Result<i64, ::std::string::String>,
             retention_days: ::std::result::Result<i32, ::std::string::String>,
             storage_backend: ::std::result::Result<::std::string::String, ::std::string::String>,
@@ -63922,6 +70268,7 @@ pub mod types {
                     edge_stale_threshold_minutes: Err(
                         "no value supplied for edge_stale_threshold_minutes".to_string(),
                     ),
+                    environment: Ok(Default::default()),
                     max_upload_size_bytes: Err(
                         "no value supplied for max_upload_size_bytes".to_string()
                     ),
@@ -63970,6 +70317,16 @@ pub mod types {
                 self.edge_stale_threshold_minutes = value.try_into().map_err(|e| {
                     format!("error converting supplied value for edge_stale_threshold_minutes: {e}")
                 });
+                self
+            }
+            pub fn environment<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.environment = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for environment: {e}"));
                 self
             }
             pub fn max_upload_size_bytes<T>(mut self, value: T) -> Self
@@ -64023,6 +70380,7 @@ pub mod types {
                     audit_retention_days: value.audit_retention_days?,
                     backup_retention_count: value.backup_retention_count?,
                     edge_stale_threshold_minutes: value.edge_stale_threshold_minutes?,
+                    environment: value.environment?,
                     max_upload_size_bytes: value.max_upload_size_bytes?,
                     retention_days: value.retention_days?,
                     storage_backend: value.storage_backend?,
@@ -64037,6 +70395,7 @@ pub mod types {
                     audit_retention_days: Ok(value.audit_retention_days),
                     backup_retention_count: Ok(value.backup_retention_count),
                     edge_stale_threshold_minutes: Ok(value.edge_stale_threshold_minutes),
+                    environment: Ok(value.environment),
                     max_upload_size_bytes: Ok(value.max_upload_size_bytes),
                     retention_days: Ok(value.retention_days),
                     storage_backend: Ok(value.storage_backend),
@@ -67501,9 +73860,107 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct UpdateProjectRequest {
+            description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            name: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+        }
+        impl ::std::default::Default for UpdateProjectRequest {
+            fn default() -> Self {
+                Self {
+                    description: Ok(Default::default()),
+                    name: Ok(Default::default()),
+                    quota_bytes: Ok(Default::default()),
+                }
+            }
+        }
+        impl UpdateProjectRequest {
+            pub fn description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.description = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for description: {e}"));
+                self
+            }
+            pub fn name<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.name = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn quota_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quota_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for quota_bytes: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<UpdateProjectRequest> for super::UpdateProjectRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: UpdateProjectRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    description: value.description?,
+                    name: value.name?,
+                    quota_bytes: value.quota_bytes?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::UpdateProjectRequest> for UpdateProjectRequest {
+            fn from(value: super::UpdateProjectRequest) -> Self {
+                Self {
+                    description: Ok(value.description),
+                    name: Ok(value.name),
+                    quota_bytes: Ok(value.quota_bytes),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct UpdateRepositoryRequest {
             allow_anonymous_access:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            apt_description: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            apt_label: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            apt_origin: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            apt_release_version: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            custom_user_agent: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            debian: ::std::result::Result<
+                ::std::option::Option<super::DebianConfigPatch>,
+                ::std::string::String,
+            >,
             description: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -67521,6 +73978,18 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            npm_allow_unscoped:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            npm_allowed_name_patterns: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            npm_allowed_scopes: ::std::result::Result<
+                ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                ::std::string::String,
+            >,
+            project_id:
+                ::std::result::Result<::std::option::Option<::uuid::Uuid>, ::std::string::String>,
             promotion_only:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             pypi_upstream_index_path: ::std::result::Result<
@@ -67536,22 +74005,40 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            trusted_gpg_key: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            versioning_enabled:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for UpdateRepositoryRequest {
             fn default() -> Self {
                 Self {
                     allow_anonymous_access: Ok(Default::default()),
+                    apt_description: Ok(Default::default()),
+                    apt_label: Ok(Default::default()),
+                    apt_origin: Ok(Default::default()),
+                    apt_release_version: Ok(Default::default()),
+                    custom_user_agent: Ok(Default::default()),
+                    debian: Ok(Default::default()),
                     description: Ok(Default::default()),
                     index_upstream_url: Ok(Default::default()),
                     is_public: Ok(Default::default()),
                     key: Ok(Default::default()),
                     name: Ok(Default::default()),
+                    npm_allow_unscoped: Ok(Default::default()),
+                    npm_allowed_name_patterns: Ok(Default::default()),
+                    npm_allowed_scopes: Ok(Default::default()),
+                    project_id: Ok(Default::default()),
                     promotion_only: Ok(Default::default()),
                     pypi_upstream_index_path: Ok(Default::default()),
                     quarantine_duration_minutes: Ok(Default::default()),
                     quarantine_enabled: Ok(Default::default()),
                     quota_bytes: Ok(Default::default()),
                     release_repository_key: Ok(Default::default()),
+                    trusted_gpg_key: Ok(Default::default()),
+                    versioning_enabled: Ok(Default::default()),
                 }
             }
         }
@@ -67564,6 +74051,66 @@ pub mod types {
                 self.allow_anonymous_access = value.try_into().map_err(|e| {
                     format!("error converting supplied value for allow_anonymous_access: {e}")
                 });
+                self
+            }
+            pub fn apt_description<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_description = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for apt_description: {e}")
+                });
+                self
+            }
+            pub fn apt_label<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_label = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for apt_label: {e}"));
+                self
+            }
+            pub fn apt_origin<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_origin = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for apt_origin: {e}"));
+                self
+            }
+            pub fn apt_release_version<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.apt_release_version = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for apt_release_version: {e}")
+                });
+                self
+            }
+            pub fn custom_user_agent<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.custom_user_agent = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for custom_user_agent: {e}")
+                });
+                self
+            }
+            pub fn debian<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<super::DebianConfigPatch>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.debian = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for debian: {e}"));
                 self
             }
             pub fn description<T>(mut self, value: T) -> Self
@@ -67614,6 +74161,50 @@ pub mod types {
                 self.name = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
+                self
+            }
+            pub fn npm_allow_unscoped<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.npm_allow_unscoped = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for npm_allow_unscoped: {e}")
+                });
+                self
+            }
+            pub fn npm_allowed_name_patterns<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.npm_allowed_name_patterns = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for npm_allowed_name_patterns: {e}")
+                });
+                self
+            }
+            pub fn npm_allowed_scopes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<::std::vec::Vec<::std::string::String>>,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.npm_allowed_scopes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for npm_allowed_scopes: {e}")
+                });
+                self
+            }
+            pub fn project_id<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::uuid::Uuid>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.project_id = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for project_id: {e}"));
                 self
             }
             pub fn promotion_only<T>(mut self, value: T) -> Self
@@ -67676,6 +74267,26 @@ pub mod types {
                 });
                 self
             }
+            pub fn trusted_gpg_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.trusted_gpg_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for trusted_gpg_key: {e}")
+                });
+                self
+            }
+            pub fn versioning_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.versioning_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for versioning_enabled: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<UpdateRepositoryRequest> for super::UpdateRepositoryRequest {
             type Error = super::error::ConversionError;
@@ -67684,17 +74295,29 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     allow_anonymous_access: value.allow_anonymous_access?,
+                    apt_description: value.apt_description?,
+                    apt_label: value.apt_label?,
+                    apt_origin: value.apt_origin?,
+                    apt_release_version: value.apt_release_version?,
+                    custom_user_agent: value.custom_user_agent?,
+                    debian: value.debian?,
                     description: value.description?,
                     index_upstream_url: value.index_upstream_url?,
                     is_public: value.is_public?,
                     key: value.key?,
                     name: value.name?,
+                    npm_allow_unscoped: value.npm_allow_unscoped?,
+                    npm_allowed_name_patterns: value.npm_allowed_name_patterns?,
+                    npm_allowed_scopes: value.npm_allowed_scopes?,
+                    project_id: value.project_id?,
                     promotion_only: value.promotion_only?,
                     pypi_upstream_index_path: value.pypi_upstream_index_path?,
                     quarantine_duration_minutes: value.quarantine_duration_minutes?,
                     quarantine_enabled: value.quarantine_enabled?,
                     quota_bytes: value.quota_bytes?,
                     release_repository_key: value.release_repository_key?,
+                    trusted_gpg_key: value.trusted_gpg_key?,
+                    versioning_enabled: value.versioning_enabled?,
                 })
             }
         }
@@ -67702,17 +74325,29 @@ pub mod types {
             fn from(value: super::UpdateRepositoryRequest) -> Self {
                 Self {
                     allow_anonymous_access: Ok(value.allow_anonymous_access),
+                    apt_description: Ok(value.apt_description),
+                    apt_label: Ok(value.apt_label),
+                    apt_origin: Ok(value.apt_origin),
+                    apt_release_version: Ok(value.apt_release_version),
+                    custom_user_agent: Ok(value.custom_user_agent),
+                    debian: Ok(value.debian),
                     description: Ok(value.description),
                     index_upstream_url: Ok(value.index_upstream_url),
                     is_public: Ok(value.is_public),
                     key: Ok(value.key),
                     name: Ok(value.name),
+                    npm_allow_unscoped: Ok(value.npm_allow_unscoped),
+                    npm_allowed_name_patterns: Ok(value.npm_allowed_name_patterns),
+                    npm_allowed_scopes: Ok(value.npm_allowed_scopes),
+                    project_id: Ok(value.project_id),
                     promotion_only: Ok(value.promotion_only),
                     pypi_upstream_index_path: Ok(value.pypi_upstream_index_path),
                     quarantine_duration_minutes: Ok(value.quarantine_duration_minutes),
                     quarantine_enabled: Ok(value.quarantine_enabled),
                     quota_bytes: Ok(value.quota_bytes),
                     release_repository_key: Ok(value.release_repository_key),
+                    trusted_gpg_key: Ok(value.trusted_gpg_key),
+                    versioning_enabled: Ok(value.versioning_enabled),
                 }
             }
         }
@@ -67904,6 +74539,8 @@ pub mod types {
                 ::std::string::String,
             >,
             is_enabled: ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            map_groups_to_groups:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             name: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -67939,6 +74576,7 @@ pub mod types {
                     certificate: Ok(Default::default()),
                     entity_id: Ok(Default::default()),
                     is_enabled: Ok(Default::default()),
+                    map_groups_to_groups: Ok(Default::default()),
                     name: Ok(Default::default()),
                     name_id_format: Ok(Default::default()),
                     require_signed_assertions: Ok(Default::default()),
@@ -68003,6 +74641,16 @@ pub mod types {
                 self.is_enabled = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for is_enabled: {e}"));
+                self
+            }
+            pub fn map_groups_to_groups<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.map_groups_to_groups = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for map_groups_to_groups: {e}")
+                });
                 self
             }
             pub fn name<T>(mut self, value: T) -> Self
@@ -68097,6 +74745,7 @@ pub mod types {
                     certificate: value.certificate?,
                     entity_id: value.entity_id?,
                     is_enabled: value.is_enabled?,
+                    map_groups_to_groups: value.map_groups_to_groups?,
                     name: value.name?,
                     name_id_format: value.name_id_format?,
                     require_signed_assertions: value.require_signed_assertions?,
@@ -68116,6 +74765,7 @@ pub mod types {
                     certificate: Ok(value.certificate),
                     entity_id: Ok(value.entity_id),
                     is_enabled: Ok(value.is_enabled),
+                    map_groups_to_groups: Ok(value.map_groups_to_groups),
                     name: Ok(value.name),
                     name_id_format: Ok(value.name_id_format),
                     require_signed_assertions: Ok(value.require_signed_assertions),
@@ -70165,7 +76815,7 @@ pub mod types {
     }
 }
 #[derive(Clone, Debug)]
-#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. This Basic-with-token fallback applies to format endpoints only, never to `/api/v1/*`.\n\nVersion: 1.4.0"]
+#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. This Basic-with-token fallback applies to format endpoints only, never to `/api/v1/*`.\n\nVersion: 1.6.0"]
 pub struct Client {
     pub(crate) baseurl: String,
     pub(crate) client: reqwest::Client,
@@ -70203,7 +76853,7 @@ impl Client {
 }
 impl ClientInfo<()> for Client {
     fn api_version() -> &'static str {
-        "1.4.0"
+        "1.6.0"
     }
     fn baseurl(&self) -> &str {
         self.baseurl.as_str()
@@ -70231,6 +76881,10 @@ pub trait ClientCurationExt {
     fn approve_package(&self) -> builder::ApprovePackage<'_>;
     #[doc = "Sends a `POST` request to `/api/v1/curation/packages/{id}/block`\n\nArguments:\n- `id`: Package ID\n```ignore\nlet response = client.block_package()\n    .id(id)\n    .send()\n    .await;\n```"]
     fn block_package(&self) -> builder::BlockPackage<'_>;
+    #[doc = "Sends a `GET` request to `/api/v1/curation/repos/{repo_key}/packages/search`\n\nArguments:\n- `repo_key`: Staging repository key\n- `arch`: Exact architecture filter (e.g. `x86_64`, `noarch`).\n- `limit`\n- `offset`\n- `q`: Case-insensitive substring match on the package name.\n- `status`: Curation status filter (e.g. `approved`, `pending`, `blocked`, `review`).\n```ignore\nlet response = client.search_curation_packages()\n    .repo_key(repo_key)\n    .arch(arch)\n    .limit(limit)\n    .offset(offset)\n    .q(q)\n    .status(status)\n    .send()\n    .await;\n```"]
+    fn search_curation_packages(&self) -> builder::SearchCurationPackages<'_>;
+    #[doc = "Sends a `POST` request to `/api/v1/curation/repos/{repo_key}/sync`\n\nArguments:\n- `repo_key`: Staging repository key\n```ignore\nlet response = client.trigger_curation_sync()\n    .repo_key(repo_key)\n    .send()\n    .await;\n```"]
+    fn trigger_curation_sync(&self) -> builder::TriggerCurationSync<'_>;
     #[doc = "Sends a `GET` request to `/api/v1/curation/rules`\n\nArguments:\n- `staging_repo_id`: Filter by staging repo\n```ignore\nlet response = client.list_curation_rules()\n    .staging_repo_id(staging_repo_id)\n    .send()\n    .await;\n```"]
     fn list_curation_rules(&self) -> builder::ListCurationRules<'_>;
     #[doc = "Sends a `POST` request to `/api/v1/curation/rules`\n\n```ignore\nlet response = client.create_curation_rule()\n    .body(body)\n    .send()\n    .await;\n```"]
@@ -70266,6 +76920,12 @@ impl ClientCurationExt for Client {
     fn block_package(&self) -> builder::BlockPackage<'_> {
         builder::BlockPackage::new(self)
     }
+    fn search_curation_packages(&self) -> builder::SearchCurationPackages<'_> {
+        builder::SearchCurationPackages::new(self)
+    }
+    fn trigger_curation_sync(&self) -> builder::TriggerCurationSync<'_> {
+        builder::TriggerCurationSync::new(self)
+    }
     fn list_curation_rules(&self) -> builder::ListCurationRules<'_> {
         builder::ListCurationRules::new(self)
     }
@@ -70287,6 +76947,8 @@ impl ClientCurationExt for Client {
 }
 #[doc = "System administration"]
 pub trait ClientAdminExt {
+    #[doc = "Query the audit log (admin only)\n\nReturns recorded audit events ordered newest-first, filtered by any\ncombination of actor/user, action, resource type/id, and time range, with\npage/per_page pagination. Backed by the `audit_log` table and\n[`AuditService::query`]; admin-only both via the `/admin` `admin_middleware`\nand a defense-in-depth check here (#2366).\n\nSends a `GET` request to `/api/v1/admin/audit`\n\nArguments:\n- `action`: Filter by action string (e.g. `LOGIN`, `USER_CREATED`, `ARTIFACT_DOWNLOADED`).\n- `correlation_id`: Filter by exact correlation ID (#2414) — the request's\n`X-Correlation-ID` / trace ID as stored on each audit event.\n- `from`: Inclusive lower time bound (RFC 3339).\n- `page`: 1-based page index (default 1).\n- `per_page`: Page size (default 50, max 200).\n- `resource_id`: Filter by the affected resource id.\n- `resource_type`: Filter by resource type (e.g. `user`, `repository`, `artifact`).\n- `to`: Inclusive upper time bound (RFC 3339).\n- `user_id`: Filter by acting/subject user id.\n```ignore\nlet response = client.list_audit_logs()\n    .action(action)\n    .correlation_id(correlation_id)\n    .from(from)\n    .page(page)\n    .per_page(per_page)\n    .resource_id(resource_id)\n    .resource_type(resource_type)\n    .to(to)\n    .user_id(user_id)\n    .send()\n    .await;\n```"]
+    fn list_audit_logs(&self) -> builder::ListAuditLogs<'_>;
     #[doc = "List backups\n\nSends a `GET` request to `/api/v1/admin/backups`\n\n```ignore\nlet response = client.list_backups()\n    .page(page)\n    .per_page(per_page)\n    .status(status)\n    .type_(type_)\n    .send()\n    .await;\n```"]
     fn list_backups(&self) -> builder::ListBackups<'_>;
     #[doc = "Create backup\n\nSends a `POST` request to `/api/v1/admin/backups`\n\n```ignore\nlet response = client.create_backup()\n    .body(body)\n    .send()\n    .await;\n```"]
@@ -70327,12 +76989,26 @@ pub trait ClientAdminExt {
     fn toggle_provider(&self) -> builder::ToggleProvider<'_>;
     #[doc = "Run cleanup tasks\n\nSends a `POST` request to `/api/v1/admin/cleanup`\n\n```ignore\nlet response = client.run_cleanup()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn run_cleanup(&self) -> builder::RunCleanup<'_>;
+    #[doc = "List attributed downloads (client IP + user), filterable by artifact,\nuser, IP, and time range (#2365). Admin-only: download attribution is\nsensitive\n\nSends a `GET` request to `/api/v1/admin/downloads`\n\nArguments:\n- `artifact_id`: Filter to downloads of one artifact.\n- `from`: Inclusive lower bound on `downloaded_at` (RFC 3339).\n- `ip`: Filter to downloads from one client IP (exact match).\n- `page`\n- `per_page`\n- `to`: Inclusive upper bound on `downloaded_at` (RFC 3339).\n- `user_id`: Filter to downloads by one user.\n```ignore\nlet response = client.list_downloads()\n    .artifact_id(artifact_id)\n    .from(from)\n    .ip(ip)\n    .page(page)\n    .per_page(per_page)\n    .to(to)\n    .user_id(user_id)\n    .send()\n    .await;\n```"]
+    fn list_downloads(&self) -> builder::ListDownloads<'_>;
+    #[doc = "Downloads originating from one client IP: \"what did this network\nlocation pull?\" (#2365)\n\nSends a `GET` request to `/api/v1/admin/downloads/by-ip/{ip}`\n\nArguments:\n- `ip`: Client IP address\n- `artifact_id`: Filter to downloads of one artifact\n- `from`: Inclusive lower bound on downloaded_at (RFC 3339)\n- `page`\n- `per_page`\n- `to`: Inclusive upper bound on downloaded_at (RFC 3339)\n- `user_id`: Filter to downloads by one user\n```ignore\nlet response = client.list_downloads_by_ip()\n    .ip(ip)\n    .artifact_id(artifact_id)\n    .from(from)\n    .page(page)\n    .per_page(per_page)\n    .to(to)\n    .user_id(user_id)\n    .send()\n    .await;\n```"]
+    fn list_downloads_by_ip(&self) -> builder::ListDownloadsByIp<'_>;
+    #[doc = "Downloads performed by one user: \"what did this user pull?\" (#2365)\n\nSends a `GET` request to `/api/v1/admin/downloads/by-user/{user_id}`\n\nArguments:\n- `user_id`: User id\n- `artifact_id`: Filter to downloads of one artifact\n- `from`: Inclusive lower bound on downloaded_at (RFC 3339)\n- `ip`: Filter to downloads from one client IP (exact match)\n- `page`\n- `per_page`\n- `to`: Inclusive upper bound on downloaded_at (RFC 3339)\n```ignore\nlet response = client.list_downloads_by_user()\n    .user_id(user_id)\n    .artifact_id(artifact_id)\n    .from(from)\n    .ip(ip)\n    .page(page)\n    .per_page(per_page)\n    .to(to)\n    .send()\n    .await;\n```"]
+    fn list_downloads_by_user(&self) -> builder::ListDownloadsByUser<'_>;
     #[doc = "Trigger a full OpenSearch reindex of all artifacts and repositories\n\nRequires admin privileges and Meilisearch to be configured.\n\nSends a `POST` request to `/api/v1/admin/reindex`\n\n```ignore\nlet response = client.trigger_reindex()\n    .send()\n    .await;\n```"]
     fn trigger_reindex(&self) -> builder::TriggerReindex<'_>;
     #[doc = "Sends a `POST` request to `/api/v1/admin/rescan-for-inventory`\n\nArguments:\n- `body`: Optional; empty body uses defaults\n```ignore\nlet response = client.rescan_for_inventory()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn rescan_for_inventory(&self) -> builder::RescanForInventory<'_>;
     #[doc = "Trigger a full reindex of all artifacts and repositories in OpenSearch\n\nThe reindex runs asynchronously in the background. The endpoint returns\nimmediately with a confirmation that the task was started.\n\nSends a `POST` request to `/api/v1/admin/search/reindex`\n\n```ignore\nlet response = client.trigger_search_reindex()\n    .send()\n    .await;\n```"]
     fn trigger_search_reindex(&self) -> builder::TriggerSearchReindex<'_>;
+    #[doc = "Accessible-but-not-downloaded users for one artifact (#2386). The repository\nis implied by the artifact\n\nSends a `GET` request to `/api/v1/admin/security/artifact/{artifact_id}/accessible-users`\n\nArguments:\n- `artifact_id`: Artifact id\n- `page`: 1-based page over the accessible-users list.\n- `per_page`: Users per page (1..=100, default 20).\n- `repository_id`: Repository to scope the enumeration to. **Required** for the CVE route\n(a CVE spans many repos); ignored for the artifact route (implied by the\nartifact).\n```ignore\nlet response = client.artifact_accessible_users()\n    .artifact_id(artifact_id)\n    .page(page)\n    .per_page(per_page)\n    .repository_id(repository_id)\n    .send()\n    .await;\n```"]
+    fn artifact_accessible_users(&self) -> builder::ArtifactAccessibleUsers<'_>;
+    #[doc = "Blast radius for one artifact: who downloaded it, regardless of which\nCVE flagged it (#2364)\n\nSends a `GET` request to `/api/v1/admin/security/artifact/{artifact_id}/blast-radius`\n\nArguments:\n- `artifact_id`: Artifact id\n- `from`: Inclusive lower bound on `downloaded_at` (RFC 3339).\n- `page`: 1-based page over the downloaders list.\n- `per_page`: Downloaders per page (1..=100, default 20).\n- `to`: Inclusive upper bound on `downloaded_at` (RFC 3339).\n```ignore\nlet response = client.artifact_blast_radius()\n    .artifact_id(artifact_id)\n    .from(from)\n    .page(page)\n    .per_page(per_page)\n    .to(to)\n    .send()\n    .await;\n```"]
+    fn artifact_blast_radius(&self) -> builder::ArtifactBlastRadius<'_>;
+    #[doc = "Accessible-but-not-downloaded users for a CVE, scoped to one restricted\nrepository (#2386). `repository_id` is required and must be a repo the CVE\nactually affects\n\nSends a `GET` request to `/api/v1/admin/security/cve/{cve_id}/accessible-users`\n\nArguments:\n- `cve_id`: CVE id (exact match, e.g. CVE-2021-44228)\n- `page`: 1-based page over the accessible-users list.\n- `per_page`: Users per page (1..=100, default 20).\n- `repository_id`: Repository to scope the enumeration to. **Required** for the CVE route\n(a CVE spans many repos); ignored for the artifact route (implied by the\nartifact).\n```ignore\nlet response = client.cve_accessible_users()\n    .cve_id(cve_id)\n    .page(page)\n    .per_page(per_page)\n    .repository_id(repository_id)\n    .send()\n    .await;\n```"]
+    fn cve_accessible_users(&self) -> builder::CveAccessibleUsers<'_>;
+    #[doc = "Blast radius for a CVE: who downloaded any artifact flagged with it, and\nhow exposed the repositories holding those artifacts are (#2364)\n\nSends a `GET` request to `/api/v1/admin/security/cve/{cve_id}/blast-radius`\n\nArguments:\n- `cve_id`: CVE id (exact match, e.g. CVE-2021-44228)\n- `from`: Inclusive lower bound on `downloaded_at` (RFC 3339).\n- `page`: 1-based page over the downloaders list.\n- `per_page`: Downloaders per page (1..=100, default 20).\n- `to`: Inclusive upper bound on `downloaded_at` (RFC 3339).\n```ignore\nlet response = client.cve_blast_radius()\n    .cve_id(cve_id)\n    .from(from)\n    .page(page)\n    .per_page(per_page)\n    .to(to)\n    .send()\n    .await;\n```"]
+    fn cve_blast_radius(&self) -> builder::CveBlastRadius<'_>;
     #[doc = "Get system settings\n\nSends a `GET` request to `/api/v1/admin/settings`\n\n```ignore\nlet response = client.get_settings()\n    .send()\n    .await;\n```"]
     fn get_settings(&self) -> builder::GetSettings<'_>;
     #[doc = "Update system settings\n\nSends a `POST` request to `/api/v1/admin/settings`\n\n```ignore\nlet response = client.update_settings()\n    .body(body)\n    .send()\n    .await;\n```"]
@@ -70363,6 +77039,9 @@ pub trait ClientAdminExt {
     fn proxy_delete(&self) -> builder::ProxyDelete<'_>;
 }
 impl ClientAdminExt for Client {
+    fn list_audit_logs(&self) -> builder::ListAuditLogs<'_> {
+        builder::ListAuditLogs::new(self)
+    }
     fn list_backups(&self) -> builder::ListBackups<'_> {
         builder::ListBackups::new(self)
     }
@@ -70423,6 +77102,15 @@ impl ClientAdminExt for Client {
     fn run_cleanup(&self) -> builder::RunCleanup<'_> {
         builder::RunCleanup::new(self)
     }
+    fn list_downloads(&self) -> builder::ListDownloads<'_> {
+        builder::ListDownloads::new(self)
+    }
+    fn list_downloads_by_ip(&self) -> builder::ListDownloadsByIp<'_> {
+        builder::ListDownloadsByIp::new(self)
+    }
+    fn list_downloads_by_user(&self) -> builder::ListDownloadsByUser<'_> {
+        builder::ListDownloadsByUser::new(self)
+    }
     fn trigger_reindex(&self) -> builder::TriggerReindex<'_> {
         builder::TriggerReindex::new(self)
     }
@@ -70431,6 +77119,18 @@ impl ClientAdminExt for Client {
     }
     fn trigger_search_reindex(&self) -> builder::TriggerSearchReindex<'_> {
         builder::TriggerSearchReindex::new(self)
+    }
+    fn artifact_accessible_users(&self) -> builder::ArtifactAccessibleUsers<'_> {
+        builder::ArtifactAccessibleUsers::new(self)
+    }
+    fn artifact_blast_radius(&self) -> builder::ArtifactBlastRadius<'_> {
+        builder::ArtifactBlastRadius::new(self)
+    }
+    fn cve_accessible_users(&self) -> builder::CveAccessibleUsers<'_> {
+        builder::CveAccessibleUsers::new(self)
+    }
+    fn cve_blast_radius(&self) -> builder::CveBlastRadius<'_> {
+        builder::CveBlastRadius::new(self)
     }
     fn get_settings(&self) -> builder::GetSettings<'_> {
         builder::GetSettings::new(self)
@@ -71350,6 +78050,50 @@ impl ClientPluginsExt for Client {
         builder::ReloadPlugin::new(self)
     }
 }
+pub trait ClientProjectsExt {
+    #[doc = "List projects\n\nSends a `GET` request to `/api/v1/projects`\n\n```ignore\nlet response = client.projects_list()\n    .send()\n    .await;\n```"]
+    fn projects_list(&self) -> builder::ProjectsList<'_>;
+    #[doc = "Create a project\n\nSends a `POST` request to `/api/v1/projects`\n\n```ignore\nlet response = client.projects_create()\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn projects_create(&self) -> builder::ProjectsCreate<'_>;
+    #[doc = "Get a project by ID\n\nSends a `GET` request to `/api/v1/projects/{id}`\n\nArguments:\n- `id`: Project ID\n```ignore\nlet response = client.projects_get()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn projects_get(&self) -> builder::ProjectsGet<'_>;
+    #[doc = "Update a project (COALESCE semantics: omitted fields are unchanged)\n\nSends a `PUT` request to `/api/v1/projects/{id}`\n\nArguments:\n- `id`: Project ID\n- `body`\n```ignore\nlet response = client.projects_update()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn projects_update(&self) -> builder::ProjectsUpdate<'_>;
+    #[doc = "Delete a project\n\nRemoves the project's membership grants and the project row in one\ntransaction. Repositories assigned to the project are automatically\nunassigned (`project_id` -> NULL) by the FK's ON DELETE SET NULL.\n\nSends a `DELETE` request to `/api/v1/projects/{id}`\n\nArguments:\n- `id`: Project ID\n```ignore\nlet response = client.projects_delete()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn projects_delete(&self) -> builder::ProjectsDelete<'_>;
+    #[doc = "List project members (grants on the project)\n\nSends a `GET` request to `/api/v1/projects/{id}/members`\n\nArguments:\n- `id`: Project ID\n```ignore\nlet response = client.projects_list_members()\n    .id(id)\n    .send()\n    .await;\n```"]
+    fn projects_list_members(&self) -> builder::ProjectsListMembers<'_>;
+    #[doc = "Add or update a project membership grant\n\nSends a `POST` request to `/api/v1/projects/{id}/members`\n\nArguments:\n- `id`: Project ID\n- `body`\n```ignore\nlet response = client.projects_add_member()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn projects_add_member(&self) -> builder::ProjectsAddMember<'_>;
+    #[doc = "Remove a project membership grant\n\nSends a `DELETE` request to `/api/v1/projects/{id}/members`\n\nArguments:\n- `id`: Project ID\n- `body`\n```ignore\nlet response = client.projects_remove_member()\n    .id(id)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn projects_remove_member(&self) -> builder::ProjectsRemoveMember<'_>;
+}
+impl ClientProjectsExt for Client {
+    fn projects_list(&self) -> builder::ProjectsList<'_> {
+        builder::ProjectsList::new(self)
+    }
+    fn projects_create(&self) -> builder::ProjectsCreate<'_> {
+        builder::ProjectsCreate::new(self)
+    }
+    fn projects_get(&self) -> builder::ProjectsGet<'_> {
+        builder::ProjectsGet::new(self)
+    }
+    fn projects_update(&self) -> builder::ProjectsUpdate<'_> {
+        builder::ProjectsUpdate::new(self)
+    }
+    fn projects_delete(&self) -> builder::ProjectsDelete<'_> {
+        builder::ProjectsDelete::new(self)
+    }
+    fn projects_list_members(&self) -> builder::ProjectsListMembers<'_> {
+        builder::ProjectsListMembers::new(self)
+    }
+    fn projects_add_member(&self) -> builder::ProjectsAddMember<'_> {
+        builder::ProjectsAddMember::new(self)
+    }
+    fn projects_remove_member(&self) -> builder::ProjectsRemoveMember<'_> {
+        builder::ProjectsRemoveMember::new(self)
+    }
+}
 #[doc = "Staging-to-release artifact promotion"]
 pub trait ClientPromotionExt {
     #[doc = "List all promotion rules\n\nSends a `GET` request to `/api/v1/promotion-rules`\n\n```ignore\nlet response = client.list_rules()\n    .source_repo_id(source_repo_id)\n    .send()\n    .await;\n```"]
@@ -71417,6 +78161,8 @@ impl ClientPromotionExt for Client {
 }
 #[doc = "Artifact health scoring and quality gates"]
 pub trait ClientQualityExt {
+    #[doc = "Admin list-all quality check results (#2419)\n\nReturns quality check results across all repositories/artifacts, newest\nfirst, filterable by `repository_id`, `artifact_id` and `status`, with\n`page`/`per_page` pagination and a total count. This powers the web admin\nquality-checks page, which needs a repository-scoped (or unscoped) view; the\nartifact-scoped `GET /quality/checks` (which 400s without `artifact_id`)\nremains the #2334 contract and is unchanged. Admin-only via the `/admin`\n`admin_middleware` and a defense-in-depth check here.\n\nSends a `GET` request to `/api/v1/admin/quality-checks`\n\nArguments:\n- `artifact_id`: Filter by artifact id.\n- `page`: 1-based page index (default 1).\n- `per_page`: Page size (default 50, max 200).\n- `repository_id`: Filter by repository id.\n- `status`: Filter by check status (e.g. `completed`, `running`, `failed`).\n```ignore\nlet response = client.admin_list_checks()\n    .artifact_id(artifact_id)\n    .page(page)\n    .per_page(per_page)\n    .repository_id(repository_id)\n    .status(status)\n    .send()\n    .await;\n```"]
+    fn admin_list_checks(&self) -> builder::AdminListChecks<'_>;
     #[doc = "Sends a `GET` request to `/api/v1/quality/checks`\n\nArguments:\n- `artifact_id`: Artifact ID to list quality check results for\n```ignore\nlet response = client.list_checks()\n    .artifact_id(artifact_id)\n    .send()\n    .await;\n```"]
     fn list_checks(&self) -> builder::ListChecks<'_>;
     #[doc = "Sends a `POST` request to `/api/v1/quality/checks/trigger`\n\n```ignore\nlet response = client.trigger_checks()\n    .body(body)\n    .send()\n    .await;\n```"]
@@ -71449,6 +78195,9 @@ pub trait ClientQualityExt {
     fn unsuppress_issue(&self) -> builder::UnsuppressIssue<'_>;
 }
 impl ClientQualityExt for Client {
+    fn admin_list_checks(&self) -> builder::AdminListChecks<'_> {
+        builder::AdminListChecks::new(self)
+    }
     fn list_checks(&self) -> builder::ListChecks<'_> {
         builder::ListChecks::new(self)
     }
@@ -71517,7 +78266,7 @@ impl ClientQuarantineExt for Client {
 }
 #[doc = "Repository CRUD and artifact operations"]
 pub trait ClientRepositoriesExt {
-    #[doc = "List repositories\n\nSends a `GET` request to `/api/v1/repositories`\n\n```ignore\nlet response = client.list_repositories()\n    .format(format)\n    .page(page)\n    .per_page(per_page)\n    .q(q)\n    .type_(type_)\n    .send()\n    .await;\n```"]
+    #[doc = "List repositories\n\nSends a `GET` request to `/api/v1/repositories`\n\nArguments:\n- `format`\n- `page`\n- `per_page`\n- `project`: Filter the listing to repositories assigned to this project (#2472).\n- `q`\n- `type_`\n```ignore\nlet response = client.list_repositories()\n    .format(format)\n    .page(page)\n    .per_page(per_page)\n    .project(project)\n    .q(q)\n    .type_(type_)\n    .send()\n    .await;\n```"]
     fn list_repositories(&self) -> builder::ListRepositories<'_>;
     #[doc = "Create a new repository\n\nSends a `POST` request to `/api/v1/repositories`\n\n```ignore\nlet response = client.create_repository()\n    .body(body)\n    .send()\n    .await;\n```"]
     fn create_repository(&self) -> builder::CreateRepository<'_>;
@@ -71529,7 +78278,7 @@ pub trait ClientRepositoriesExt {
     fn update_repository(&self) -> builder::UpdateRepository<'_>;
     #[doc = "List artifacts in repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts`\n\nArguments:\n- `key`: Repository key\n- `group_by`: Server-side artifact grouping.\n\nSupported values:\n- `maven_component`: Maven/Gradle artifacts are grouped by\n  groupId, artifactId, and version.  Individual files (jar, pom,\n  checksums) appear in the `artifact_files` array of each component.\n- `docker_tag`: Docker/OCI artifacts are grouped by (image, tag),\n  with `total_size_bytes` summed across the manifest config and\n  referenced layer blobs.  The grouped rows are returned in the\n  `docker_tags` array.\n- `page`\n- `path_prefix`\n- `per_page`\n- `q`\n```ignore\nlet response = client.list_artifacts()\n    .key(key)\n    .group_by(group_by)\n    .page(page)\n    .path_prefix(path_prefix)\n    .per_page(per_page)\n    .q(q)\n    .send()\n    .await;\n```"]
     fn list_artifacts(&self) -> builder::ListArtifacts<'_>;
-    #[doc = "Get artifact metadata\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts/{path}`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path\n```ignore\nlet response = client.get_repository_artifact_metadata()\n    .key(key)\n    .path(path)\n    .send()\n    .await;\n```"]
+    #[doc = "Get artifact metadata\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts/{path}`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path\n- `version`\n```ignore\nlet response = client.get_repository_artifact_metadata()\n    .key(key)\n    .path(path)\n    .version(version)\n    .send()\n    .await;\n```"]
     fn get_repository_artifact_metadata(&self) -> builder::GetRepositoryArtifactMetadata<'_>;
     #[doc = "Upload artifact\n\nSends a `PUT` request to `/api/v1/repositories/{key}/artifacts/{path}`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path\n- `body`\n```ignore\nlet response = client.upload_artifact()\n    .key(key)\n    .path(path)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn upload_artifact(&self) -> builder::UploadArtifact<'_>;
@@ -71541,7 +78290,7 @@ pub trait ClientRepositoriesExt {
     fn set_cache_ttl(&self) -> builder::SetCacheTtl<'_>;
     #[doc = "Invalidate a single cached artifact entry on a Remote (proxy) repository\n(#1539)\n\nMirrors the auth + repo-access pattern of `set_cache_ttl`. Idempotent:\ninvalidating a path that was never cached (or was already evicted) still\nreturns 200, matching the underlying `ProxyService::invalidate_cache`\ncontract (which ignores delete-of-missing on the storage backend).\n\nSends a `POST` request to `/api/v1/repositories/{key}/cache/invalidate`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path to evict from the proxy cache. Same shape as the path\nsegment of `GET /api/v1/repositories/{key}/artifacts/{path}`.\nPath-traversal segments such as `..` are rejected by\n`ProxyService::cache_storage_key` (covered by\n`test_invalidate_cache_by_key_rejects_invalid_path`).\n```ignore\nlet response = client.invalidate_cache()\n    .key(key)\n    .path(path)\n    .send()\n    .await;\n```"]
     fn invalidate_cache(&self) -> builder::InvalidateCache<'_>;
-    #[doc = "Download artifact\n\nSends a `GET` request to `/api/v1/repositories/{key}/download/{path}`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path\n```ignore\nlet response = client.download_artifact()\n    .key(key)\n    .path(path)\n    .send()\n    .await;\n```"]
+    #[doc = "Download artifact\n\nSends a `GET` request to `/api/v1/repositories/{key}/download/{path}`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path\n- `version`\n```ignore\nlet response = client.download_artifact()\n    .key(key)\n    .path(path)\n    .version(version)\n    .send()\n    .await;\n```"]
     fn download_artifact(&self) -> builder::DownloadArtifact<'_>;
     #[doc = "List virtual repository members\n\nSends a `GET` request to `/api/v1/repositories/{key}/members`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.list_virtual_members()\n    .key(key)\n    .send()\n    .await;\n```"]
     fn list_virtual_members(&self) -> builder::ListVirtualMembers<'_>;
@@ -71551,6 +78300,10 @@ pub trait ClientRepositoriesExt {
     fn add_virtual_member(&self) -> builder::AddVirtualMember<'_>;
     #[doc = "Remove a member from a virtual repository\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/members/{member_key}`\n\nArguments:\n- `key`: Repository key\n- `member_key`: Member repository key\n```ignore\nlet response = client.remove_virtual_member()\n    .key(key)\n    .member_key(member_key)\n    .send()\n    .await;\n```"]
     fn remove_virtual_member(&self) -> builder::RemoveVirtualMember<'_>;
+    #[doc = "Get the npm scope policy for a repository (#2327)\n\nSame administrative tier as the write path: the policy is an\nadministrative supply-chain control, so reads require `repository:admin`\n(or global admin) as well.\n\nSends a `GET` request to `/api/v1/repositories/{key}/npm-scope-policy`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.get_npm_scope_policy()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn get_npm_scope_policy(&self) -> builder::GetNpmScopePolicy<'_>;
+    #[doc = "Set the npm scope policy for a Remote repository (#2327)\n\nMirrors the auth + repo-access pattern of `set_cache_ttl`: candidate\nselection for virtual npm resolution is a supply-chain control on the same\nadministrative tier, so non-admins need `repository:admin` on the target.\n\nSends a `PUT` request to `/api/v1/repositories/{key}/npm-scope-policy`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.set_npm_scope_policy()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
+    fn set_npm_scope_policy(&self) -> builder::SetNpmScopePolicy<'_>;
     #[doc = "List the PEP 708 `tracks` declarations on a repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/pypi-tracks`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.list_pypi_tracks()\n    .key(key)\n    .send()\n    .await;\n```"]
     fn list_pypi_tracks(&self) -> builder::ListPypiTracks<'_>;
     #[doc = "Declare (upsert) that a locally-owned PyPI project tracks an upstream one,\nallowing a virtual repository to merge versions across members for that name\ninstead of isolating it (PEP 708, #1600)\n\nSends a `PUT` request to `/api/v1/repositories/{key}/pypi-tracks/{project}`\n\nArguments:\n- `key`: Repository key\n- `project`: Project name (PEP 503 normalized server-side)\n- `body`\n```ignore\nlet response = client.put_pypi_track()\n    .key(key)\n    .project(project)\n    .body(body)\n    .send()\n    .await;\n```"]
@@ -71563,10 +78316,14 @@ pub trait ClientRepositoriesExt {
     fn set_routing_rules(&self) -> builder::SetRoutingRules<'_>;
     #[doc = "Delete all routing rules for a repository\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/routing-rules`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.delete_routing_rules()\n    .key(key)\n    .send()\n    .await;\n```"]
     fn delete_routing_rules(&self) -> builder::DeleteRoutingRules<'_>;
+    #[doc = "Get deduplicated storage accounting for a repository (#2056)\n\nReturns the true physical footprint (with dedup savings) from the\nmaterialized stats cache. Same visibility rules as `get_repository`:\npublic repos and repo members pass; everyone else gets an existence-hiding\n404.\n\nThe whole-instance aggregate `instance_unique_bytes` is admin-only and is\nomitted for non-admin/anonymous callers; they receive only this\nrepository's own figures.\n\nOn cloud (instance-scope) backends the dedup breakdown (`physical_bytes`,\n`unique_bytes`, `shared_bytes`, `dedup_ratio`) is cross-tenant-derivable and\nis likewise restricted to admins (#2560); non-admins/anon see only their\nrepository's `logical_bytes`, `blob_count`, `dedup_scope` and `computed_at`.\n\nSends a `GET` request to `/api/v1/repositories/{key}/storage`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.get_repository_storage()\n    .key(key)\n    .send()\n    .await;\n```"]
+    fn get_repository_storage(&self) -> builder::GetRepositoryStorage<'_>;
     #[doc = "Test connectivity to the upstream URL of a remote repository\n\nSends a `POST` request to `/api/v1/repositories/{key}/test-upstream`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.test_upstream()\n    .key(key)\n    .send()\n    .await;\n```"]
     fn test_upstream(&self) -> builder::TestUpstream<'_>;
     #[doc = "Set or remove upstream auth for a remote repository\n\nSends a `PUT` request to `/api/v1/repositories/{key}/upstream-auth`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.set_upstream_auth()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn set_upstream_auth(&self) -> builder::SetUpstreamAuth<'_>;
+    #[doc = "List the immutable revision history for a versioned artifact (#2367)\n\nSends a `GET` request to `/api/v1/repositories/{key}/versions/{path}`\n\nArguments:\n- `key`: Repository key\n- `path`: Artifact path\n```ignore\nlet response = client.list_artifact_versions()\n    .key(key)\n    .path(path)\n    .send()\n    .await;\n```"]
+    fn list_artifact_versions(&self) -> builder::ListArtifactVersions<'_>;
     #[doc = "Sends a `GET` request to `/api/v1/tree`\n\nArguments:\n- `include_metadata`: Whether to include metadata in the response\n- `path`: Path prefix to browse within the repository\n- `repository_key`: Repository key to browse\n```ignore\nlet response = client.get_tree()\n    .include_metadata(include_metadata)\n    .path(path)\n    .repository_key(repository_key)\n    .send()\n    .await;\n```"]
     fn get_tree(&self) -> builder::GetTree<'_>;
     #[doc = "Sends a `GET` request to `/api/v1/tree/content`\n\nArguments:\n- `max_bytes`: Optional maximum number of bytes to return (truncates the response)\n- `path`: Full artifact path within the repository\n- `repository_key`: Repository key containing the artifact\n```ignore\nlet response = client.get_content()\n    .max_bytes(max_bytes)\n    .path(path)\n    .repository_key(repository_key)\n    .send()\n    .await;\n```"]
@@ -71624,6 +78381,12 @@ impl ClientRepositoriesExt for Client {
     fn remove_virtual_member(&self) -> builder::RemoveVirtualMember<'_> {
         builder::RemoveVirtualMember::new(self)
     }
+    fn get_npm_scope_policy(&self) -> builder::GetNpmScopePolicy<'_> {
+        builder::GetNpmScopePolicy::new(self)
+    }
+    fn set_npm_scope_policy(&self) -> builder::SetNpmScopePolicy<'_> {
+        builder::SetNpmScopePolicy::new(self)
+    }
     fn list_pypi_tracks(&self) -> builder::ListPypiTracks<'_> {
         builder::ListPypiTracks::new(self)
     }
@@ -71642,11 +78405,17 @@ impl ClientRepositoriesExt for Client {
     fn delete_routing_rules(&self) -> builder::DeleteRoutingRules<'_> {
         builder::DeleteRoutingRules::new(self)
     }
+    fn get_repository_storage(&self) -> builder::GetRepositoryStorage<'_> {
+        builder::GetRepositoryStorage::new(self)
+    }
     fn test_upstream(&self) -> builder::TestUpstream<'_> {
         builder::TestUpstream::new(self)
     }
     fn set_upstream_auth(&self) -> builder::SetUpstreamAuth<'_> {
         builder::SetUpstreamAuth::new(self)
+    }
+    fn list_artifact_versions(&self) -> builder::ListArtifactVersions<'_> {
+        builder::ListArtifactVersions::new(self)
     }
     fn get_tree(&self) -> builder::GetTree<'_> {
         builder::GetTree::new(self)
@@ -72037,6 +78806,8 @@ impl ClientServiceAccountsExt for Client {
 }
 #[doc = "Signing key management"]
 pub trait ClientSigningExt {
+    #[doc = "`POST /api/v1/signing/artifacts/{artifact_id}/sign` — produce an authorized\nsignature over the artifact's content with the repository's active signing\nkey and record the attestation the promotion `require_signature` gate reads\n(#2535)\n\nThis is the ONLY writer of the per-artifact `used_for_signing` marker, and\nit is admin-gated: an artifact can satisfy `require_signature` only through a\ndeliberate, authenticated signing action over its bytes — never as a side\neffect of an (anonymous) repository-metadata read. Format-agnostic: signs\ncontent bytes, so it works for every hosted format, not just the\nmetadata-signing ones. Proxy-cached remote artifacts (no `artifacts` row)\ncannot be signed and therefore stay fail-closed under `require_signature`.\n\nSends a `POST` request to `/api/v1/signing/artifacts/{artifact_id}/sign`\n\nArguments:\n- `artifact_id`: Artifact ID\n```ignore\nlet response = client.sign_artifact()\n    .artifact_id(artifact_id)\n    .send()\n    .await;\n```"]
+    fn sign_artifact(&self) -> builder::SignArtifact<'_>;
     #[doc = "List all signing keys, optionally filtered by repository\n\nSends a `GET` request to `/api/v1/signing/keys`\n\nArguments:\n- `repository_id`: Filter by repository ID\n```ignore\nlet response = client.list_keys()\n    .repository_id(repository_id)\n    .send()\n    .await;\n```"]
     fn list_keys(&self) -> builder::ListKeys<'_>;
     #[doc = "Create a new signing key\n\nSends a `POST` request to `/api/v1/signing/keys`\n\n```ignore\nlet response = client.create_key()\n    .body(body)\n    .send()\n    .await;\n```"]
@@ -72059,6 +78830,9 @@ pub trait ClientSigningExt {
     fn get_repo_public_key(&self) -> builder::GetRepoPublicKey<'_>;
 }
 impl ClientSigningExt for Client {
+    fn sign_artifact(&self) -> builder::SignArtifact<'_> {
+        builder::SignArtifact::new(self)
+    }
     fn list_keys(&self) -> builder::ListKeys<'_> {
         builder::ListKeys::new(self)
     }
@@ -73275,6 +80049,187 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::list_audit_logs`]\n\n[`ClientAdminExt::list_audit_logs`]: super::ClientAdminExt::list_audit_logs"]
+    #[derive(Debug, Clone)]
+    pub struct ListAuditLogs<'a> {
+        client: &'a super::Client,
+        action: Result<Option<::std::string::String>, String>,
+        correlation_id: Result<Option<::std::string::String>, String>,
+        from: Result<Option<::chrono::DateTime<::chrono::offset::Utc>>, String>,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        resource_id: Result<Option<::uuid::Uuid>, String>,
+        resource_type: Result<Option<::std::string::String>, String>,
+        to: Result<Option<::chrono::DateTime<::chrono::offset::Utc>>, String>,
+        user_id: Result<Option<::uuid::Uuid>, String>,
+    }
+    impl<'a> ListAuditLogs<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                action: Ok(None),
+                correlation_id: Ok(None),
+                from: Ok(None),
+                page: Ok(None),
+                per_page: Ok(None),
+                resource_id: Ok(None),
+                resource_type: Ok(None),
+                to: Ok(None),
+                user_id: Ok(None),
+            }
+        }
+        pub fn action<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.action = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for action failed".to_string()
+            });
+            self
+        }
+        pub fn correlation_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.correlation_id = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for correlation_id failed".to_string()
+            });
+            self
+        }
+        pub fn from<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+        {
+            self . from = value . try_into () . map (Some) . map_err (| _ | "conversion to `:: chrono :: DateTime < :: chrono :: offset :: Utc >` for from failed" . to_string ()) ;
+            self
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn resource_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.resource_id = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for resource_id failed".to_string());
+            self
+        }
+        pub fn resource_type<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.resource_type = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for resource_type failed".to_string()
+            });
+            self
+        }
+        pub fn to<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::chrono::DateTime<::chrono::offset::Utc>>,
+        {
+            self . to = value . try_into () . map (Some) . map_err (| _ | "conversion to `:: chrono :: DateTime < :: chrono :: offset :: Utc >` for to failed" . to_string ()) ;
+            self
+        }
+        pub fn user_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.user_id = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for user_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/audit`"]
+        pub async fn send(self) -> Result<ResponseValue<types::AuditLogListResponse>, Error<()>> {
+            let Self {
+                client,
+                action,
+                correlation_id,
+                from,
+                page,
+                per_page,
+                resource_id,
+                resource_type,
+                to,
+                user_id,
+            } = self;
+            let action = action.map_err(Error::InvalidRequest)?;
+            let correlation_id = correlation_id.map_err(Error::InvalidRequest)?;
+            let from = from.map_err(Error::InvalidRequest)?;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let resource_id = resource_id.map_err(Error::InvalidRequest)?;
+            let resource_type = resource_type.map_err(Error::InvalidRequest)?;
+            let to = to.map_err(Error::InvalidRequest)?;
+            let user_id = user_id.map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/admin/audit", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("action", &action))
+                .query(&progenitor_client::QueryParam::new(
+                    "correlation_id",
+                    &correlation_id,
+                ))
+                .query(&progenitor_client::QueryParam::new("from", &from))
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new(
+                    "resource_id",
+                    &resource_id,
+                ))
+                .query(&progenitor_client::QueryParam::new(
+                    "resource_type",
+                    &resource_type,
+                ))
+                .query(&progenitor_client::QueryParam::new("to", &to))
+                .query(&progenitor_client::QueryParam::new("user_id", &user_id))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_audit_logs",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -74777,6 +81732,466 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientAdminExt::list_downloads`]\n\n[`ClientAdminExt::list_downloads`]: super::ClientAdminExt::list_downloads"]
+    #[derive(Debug, Clone)]
+    pub struct ListDownloads<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<Option<::uuid::Uuid>, String>,
+        from: Result<Option<::std::string::String>, String>,
+        ip: Result<Option<::std::string::String>, String>,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        to: Result<Option<::std::string::String>, String>,
+        user_id: Result<Option<::uuid::Uuid>, String>,
+    }
+    impl<'a> ListDownloads<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Ok(None),
+                from: Ok(None),
+                ip: Ok(None),
+                page: Ok(None),
+                per_page: Ok(None),
+                to: Ok(None),
+                user_id: Ok(None),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn from<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.from = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for from failed".to_string()
+            });
+            self
+        }
+        pub fn ip<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.ip = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for ip failed".to_string()
+            });
+            self
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn to<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.to = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for to failed".to_string()
+            });
+            self
+        }
+        pub fn user_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.user_id = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for user_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/downloads`"]
+        pub async fn send(self) -> Result<ResponseValue<types::DownloadListResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+                from,
+                ip,
+                page,
+                per_page,
+                to,
+                user_id,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let from = from.map_err(Error::InvalidRequest)?;
+            let ip = ip.map_err(Error::InvalidRequest)?;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let to = to.map_err(Error::InvalidRequest)?;
+            let user_id = user_id.map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/admin/downloads", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new(
+                    "artifact_id",
+                    &artifact_id,
+                ))
+                .query(&progenitor_client::QueryParam::new("from", &from))
+                .query(&progenitor_client::QueryParam::new("ip", &ip))
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new("to", &to))
+                .query(&progenitor_client::QueryParam::new("user_id", &user_id))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_downloads",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::list_downloads_by_ip`]\n\n[`ClientAdminExt::list_downloads_by_ip`]: super::ClientAdminExt::list_downloads_by_ip"]
+    #[derive(Debug, Clone)]
+    pub struct ListDownloadsByIp<'a> {
+        client: &'a super::Client,
+        ip: Result<::std::string::String, String>,
+        artifact_id: Result<Option<::uuid::Uuid>, String>,
+        from: Result<Option<::std::string::String>, String>,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        to: Result<Option<::std::string::String>, String>,
+        user_id: Result<Option<::uuid::Uuid>, String>,
+    }
+    impl<'a> ListDownloadsByIp<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                ip: Err("ip was not initialized".to_string()),
+                artifact_id: Ok(None),
+                from: Ok(None),
+                page: Ok(None),
+                per_page: Ok(None),
+                to: Ok(None),
+                user_id: Ok(None),
+            }
+        }
+        pub fn ip<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.ip = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for ip failed".to_string()
+            });
+            self
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn from<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.from = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for from failed".to_string()
+            });
+            self
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn to<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.to = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for to failed".to_string()
+            });
+            self
+        }
+        pub fn user_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.user_id = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for user_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/downloads/by-ip/{ip}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::DownloadListResponse>, Error<()>> {
+            let Self {
+                client,
+                ip,
+                artifact_id,
+                from,
+                page,
+                per_page,
+                to,
+                user_id,
+            } = self;
+            let ip = ip.map_err(Error::InvalidRequest)?;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let from = from.map_err(Error::InvalidRequest)?;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let to = to.map_err(Error::InvalidRequest)?;
+            let user_id = user_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/downloads/by-ip/{}",
+                client.baseurl,
+                encode_path(&ip.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new(
+                    "artifact_id",
+                    &artifact_id,
+                ))
+                .query(&progenitor_client::QueryParam::new("from", &from))
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new("to", &to))
+                .query(&progenitor_client::QueryParam::new("user_id", &user_id))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_downloads_by_ip",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::list_downloads_by_user`]\n\n[`ClientAdminExt::list_downloads_by_user`]: super::ClientAdminExt::list_downloads_by_user"]
+    #[derive(Debug, Clone)]
+    pub struct ListDownloadsByUser<'a> {
+        client: &'a super::Client,
+        user_id: Result<::uuid::Uuid, String>,
+        artifact_id: Result<Option<::uuid::Uuid>, String>,
+        from: Result<Option<::std::string::String>, String>,
+        ip: Result<Option<::std::string::String>, String>,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        to: Result<Option<::std::string::String>, String>,
+    }
+    impl<'a> ListDownloadsByUser<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                user_id: Err("user_id was not initialized".to_string()),
+                artifact_id: Ok(None),
+                from: Ok(None),
+                ip: Ok(None),
+                page: Ok(None),
+                per_page: Ok(None),
+                to: Ok(None),
+            }
+        }
+        pub fn user_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.user_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for user_id failed".to_string());
+            self
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn from<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.from = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for from failed".to_string()
+            });
+            self
+        }
+        pub fn ip<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.ip = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for ip failed".to_string()
+            });
+            self
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn to<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.to = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for to failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/downloads/by-user/{user_id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::DownloadListResponse>, Error<()>> {
+            let Self {
+                client,
+                user_id,
+                artifact_id,
+                from,
+                ip,
+                page,
+                per_page,
+                to,
+            } = self;
+            let user_id = user_id.map_err(Error::InvalidRequest)?;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let from = from.map_err(Error::InvalidRequest)?;
+            let ip = ip.map_err(Error::InvalidRequest)?;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let to = to.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/downloads/by-user/{}",
+                client.baseurl,
+                encode_path(&user_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new(
+                    "artifact_id",
+                    &artifact_id,
+                ))
+                .query(&progenitor_client::QueryParam::new("from", &from))
+                .query(&progenitor_client::QueryParam::new("ip", &ip))
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new("to", &to))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_downloads_by_user",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientLifecycleExt::list_lifecycle_policies`]\n\n[`ClientLifecycleExt::list_lifecycle_policies`]: super::ClientLifecycleExt::list_lifecycle_policies"]
     #[derive(Debug, Clone)]
     pub struct ListLifecyclePolicies<'a> {
@@ -75535,6 +82950,133 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientQualityExt::admin_list_checks`]\n\n[`ClientQualityExt::admin_list_checks`]: super::ClientQualityExt::admin_list_checks"]
+    #[derive(Debug, Clone)]
+    pub struct AdminListChecks<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<Option<::uuid::Uuid>, String>,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        repository_id: Result<Option<::uuid::Uuid>, String>,
+        status: Result<Option<::std::string::String>, String>,
+    }
+    impl<'a> AdminListChecks<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Ok(None),
+                page: Ok(None),
+                per_page: Ok(None),
+                repository_id: Ok(None),
+                status: Ok(None),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn repository_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.repository_id = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: uuid :: Uuid` for repository_id failed".to_string()
+            });
+            self
+        }
+        pub fn status<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.status = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for status failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/quality-checks`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::QualityCheckListResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+                page,
+                per_page,
+                repository_id,
+                status,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let repository_id = repository_id.map_err(Error::InvalidRequest)?;
+            let status = status.map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/admin/quality-checks", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new(
+                    "artifact_id",
+                    &artifact_id,
+                ))
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new(
+                    "repository_id",
+                    &repository_id,
+                ))
+                .query(&progenitor_client::QueryParam::new("status", &status))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "admin_list_checks",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientAdminExt::trigger_reindex`]\n\n[`ClientAdminExt::trigger_reindex`]: super::ClientAdminExt::trigger_reindex"]
     #[derive(Debug, Clone)]
     pub struct TriggerReindex<'a> {
@@ -75694,6 +83236,477 @@ pub mod builder {
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
                 500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::artifact_accessible_users`]\n\n[`ClientAdminExt::artifact_accessible_users`]: super::ClientAdminExt::artifact_accessible_users"]
+    #[derive(Debug, Clone)]
+    pub struct ArtifactAccessibleUsers<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<::uuid::Uuid, String>,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        repository_id: Result<Option<::uuid::Uuid>, String>,
+    }
+    impl<'a> ArtifactAccessibleUsers<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+                page: Ok(None),
+                per_page: Ok(None),
+                repository_id: Ok(None),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn repository_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.repository_id = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: uuid :: Uuid` for repository_id failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/security/artifact/{artifact_id}/accessible-users`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::AccessibleUsersResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+                page,
+                per_page,
+                repository_id,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let repository_id = repository_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/security/artifact/{}/accessible-users",
+                client.baseurl,
+                encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new(
+                    "repository_id",
+                    &repository_id,
+                ))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "artifact_accessible_users",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::artifact_blast_radius`]\n\n[`ClientAdminExt::artifact_blast_radius`]: super::ClientAdminExt::artifact_blast_radius"]
+    #[derive(Debug, Clone)]
+    pub struct ArtifactBlastRadius<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<::uuid::Uuid, String>,
+        from: Result<Option<::std::string::String>, String>,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        to: Result<Option<::std::string::String>, String>,
+    }
+    impl<'a> ArtifactBlastRadius<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+                from: Ok(None),
+                page: Ok(None),
+                per_page: Ok(None),
+                to: Ok(None),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        pub fn from<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.from = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for from failed".to_string()
+            });
+            self
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn to<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.to = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for to failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/security/artifact/{artifact_id}/blast-radius`"]
+        pub async fn send(self) -> Result<ResponseValue<types::BlastRadiusResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+                from,
+                page,
+                per_page,
+                to,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let from = from.map_err(Error::InvalidRequest)?;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let to = to.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/security/artifact/{}/blast-radius",
+                client.baseurl,
+                encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("from", &from))
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new("to", &to))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "artifact_blast_radius",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::cve_accessible_users`]\n\n[`ClientAdminExt::cve_accessible_users`]: super::ClientAdminExt::cve_accessible_users"]
+    #[derive(Debug, Clone)]
+    pub struct CveAccessibleUsers<'a> {
+        client: &'a super::Client,
+        cve_id: Result<::std::string::String, String>,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        repository_id: Result<Option<::uuid::Uuid>, String>,
+    }
+    impl<'a> CveAccessibleUsers<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                cve_id: Err("cve_id was not initialized".to_string()),
+                page: Ok(None),
+                per_page: Ok(None),
+                repository_id: Ok(None),
+            }
+        }
+        pub fn cve_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.cve_id = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for cve_id failed".to_string()
+            });
+            self
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn repository_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.repository_id = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: uuid :: Uuid` for repository_id failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/security/cve/{cve_id}/accessible-users`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::AccessibleUsersResponse>, Error<()>> {
+            let Self {
+                client,
+                cve_id,
+                page,
+                per_page,
+                repository_id,
+            } = self;
+            let cve_id = cve_id.map_err(Error::InvalidRequest)?;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let repository_id = repository_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/security/cve/{}/accessible-users",
+                client.baseurl,
+                encode_path(&cve_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new(
+                    "repository_id",
+                    &repository_id,
+                ))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "cve_accessible_users",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientAdminExt::cve_blast_radius`]\n\n[`ClientAdminExt::cve_blast_radius`]: super::ClientAdminExt::cve_blast_radius"]
+    #[derive(Debug, Clone)]
+    pub struct CveBlastRadius<'a> {
+        client: &'a super::Client,
+        cve_id: Result<::std::string::String, String>,
+        from: Result<Option<::std::string::String>, String>,
+        page: Result<Option<i32>, String>,
+        per_page: Result<Option<i32>, String>,
+        to: Result<Option<::std::string::String>, String>,
+    }
+    impl<'a> CveBlastRadius<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                cve_id: Err("cve_id was not initialized".to_string()),
+                from: Ok(None),
+                page: Ok(None),
+                per_page: Ok(None),
+                to: Ok(None),
+            }
+        }
+        pub fn cve_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.cve_id = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for cve_id failed".to_string()
+            });
+            self
+        }
+        pub fn from<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.from = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for from failed".to_string()
+            });
+            self
+        }
+        pub fn page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for page failed".to_string());
+            self
+        }
+        pub fn per_page<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i32>,
+        {
+            self.per_page = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i32` for per_page failed".to_string());
+            self
+        }
+        pub fn to<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.to = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for to failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/admin/security/cve/{cve_id}/blast-radius`"]
+        pub async fn send(self) -> Result<ResponseValue<types::BlastRadiusResponse>, Error<()>> {
+            let Self {
+                client,
+                cve_id,
+                from,
+                page,
+                per_page,
+                to,
+            } = self;
+            let cve_id = cve_id.map_err(Error::InvalidRequest)?;
+            let from = from.map_err(Error::InvalidRequest)?;
+            let page = page.map_err(Error::InvalidRequest)?;
+            let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let to = to.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/admin/security/cve/{}/blast-radius",
+                client.baseurl,
+                encode_path(&cve_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("from", &from))
+                .query(&progenitor_client::QueryParam::new("page", &page))
+                .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new("to", &to))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "cve_blast_radius",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -81111,6 +89124,206 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientCurationExt::search_curation_packages`]\n\n[`ClientCurationExt::search_curation_packages`]: super::ClientCurationExt::search_curation_packages"]
+    #[derive(Debug, Clone)]
+    pub struct SearchCurationPackages<'a> {
+        client: &'a super::Client,
+        repo_key: Result<::std::string::String, String>,
+        arch: Result<Option<::std::string::String>, String>,
+        limit: Result<Option<i64>, String>,
+        offset: Result<Option<i64>, String>,
+        q: Result<Option<::std::string::String>, String>,
+        status: Result<Option<::std::string::String>, String>,
+    }
+    impl<'a> SearchCurationPackages<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                repo_key: Err("repo_key was not initialized".to_string()),
+                arch: Ok(None),
+                limit: Ok(None),
+                offset: Ok(None),
+                q: Ok(None),
+                status: Ok(None),
+            }
+        }
+        pub fn repo_key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.repo_key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for repo_key failed".to_string()
+            });
+            self
+        }
+        pub fn arch<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.arch = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for arch failed".to_string()
+            });
+            self
+        }
+        pub fn limit<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i64>,
+        {
+            self.limit = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i64` for limit failed".to_string());
+            self
+        }
+        pub fn offset<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<i64>,
+        {
+            self.offset = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `i64` for offset failed".to_string());
+            self
+        }
+        pub fn q<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.q = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: std :: string :: String` for q failed".to_string());
+            self
+        }
+        pub fn status<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.status = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for status failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/curation/repos/{repo_key}/packages/search`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CurationPackageResponse>>, Error<()>>
+        {
+            let Self {
+                client,
+                repo_key,
+                arch,
+                limit,
+                offset,
+                q,
+                status,
+            } = self;
+            let repo_key = repo_key.map_err(Error::InvalidRequest)?;
+            let arch = arch.map_err(Error::InvalidRequest)?;
+            let limit = limit.map_err(Error::InvalidRequest)?;
+            let offset = offset.map_err(Error::InvalidRequest)?;
+            let q = q.map_err(Error::InvalidRequest)?;
+            let status = status.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/curation/repos/{}/packages/search",
+                client.baseurl,
+                encode_path(&repo_key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .query(&progenitor_client::QueryParam::new("arch", &arch))
+                .query(&progenitor_client::QueryParam::new("limit", &limit))
+                .query(&progenitor_client::QueryParam::new("offset", &offset))
+                .query(&progenitor_client::QueryParam::new("q", &q))
+                .query(&progenitor_client::QueryParam::new("status", &status))
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "search_curation_packages",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientCurationExt::trigger_curation_sync`]\n\n[`ClientCurationExt::trigger_curation_sync`]: super::ClientCurationExt::trigger_curation_sync"]
+    #[derive(Debug, Clone)]
+    pub struct TriggerCurationSync<'a> {
+        client: &'a super::Client,
+        repo_key: Result<::std::string::String, String>,
+    }
+    impl<'a> TriggerCurationSync<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                repo_key: Err("repo_key was not initialized".to_string()),
+            }
+        }
+        pub fn repo_key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.repo_key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for repo_key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/curation/repos/{repo_key}/sync`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SyncTriggerResponse>, Error<()>> {
+            let Self { client, repo_key } = self;
+            let repo_key = repo_key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/curation/repos/{}/sync",
+                client.baseurl,
+                encode_path(&repo_key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "trigger_curation_sync",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -88641,6 +96854,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -88732,6 +96946,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -88971,6 +97186,574 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientProjectsExt::projects_list`]\n\n[`ClientProjectsExt::projects_list`]: super::ClientProjectsExt::projects_list"]
+    #[derive(Debug, Clone)]
+    pub struct ProjectsList<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> ProjectsList<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/projects`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ProjectListResponse>, Error<()>> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/projects", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "projects_list",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientProjectsExt::projects_create`]\n\n[`ClientProjectsExt::projects_create`]: super::ClientProjectsExt::projects_create"]
+    #[derive(Debug, Clone)]
+    pub struct ProjectsCreate<'a> {
+        client: &'a super::Client,
+        body: Result<types::builder::CreateProjectRequest, String>,
+    }
+    impl<'a> ProjectsCreate<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::CreateProjectRequest>,
+            <V as std::convert::TryInto<types::CreateProjectRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `CreateProjectRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::CreateProjectRequest,
+                ) -> types::builder::CreateProjectRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/projects`"]
+        pub async fn send(self) -> Result<ResponseValue<types::Project>, Error<()>> {
+            let Self { client, body } = self;
+            let body = body
+                .and_then(|v| types::CreateProjectRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!("{}/api/v1/projects", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "projects_create",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientProjectsExt::projects_get`]\n\n[`ClientProjectsExt::projects_get`]: super::ClientProjectsExt::projects_get"]
+    #[derive(Debug, Clone)]
+    pub struct ProjectsGet<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> ProjectsGet<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/projects/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::Project>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/projects/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "projects_get",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientProjectsExt::projects_update`]\n\n[`ClientProjectsExt::projects_update`]: super::ClientProjectsExt::projects_update"]
+    #[derive(Debug, Clone)]
+    pub struct ProjectsUpdate<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::UpdateProjectRequest, String>,
+    }
+    impl<'a> ProjectsUpdate<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::UpdateProjectRequest>,
+            <V as std::convert::TryInto<types::UpdateProjectRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `UpdateProjectRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::UpdateProjectRequest,
+                ) -> types::builder::UpdateProjectRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/projects/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<types::Project>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::UpdateProjectRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/projects/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "projects_update",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientProjectsExt::projects_delete`]\n\n[`ClientProjectsExt::projects_delete`]: super::ClientProjectsExt::projects_delete"]
+    #[derive(Debug, Clone)]
+    pub struct ProjectsDelete<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> ProjectsDelete<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/projects/{id}`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/projects/{}",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client.client.delete(url).headers(header_map).build()?;
+            let info = OperationInfo {
+                operation_id: "projects_delete",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientProjectsExt::projects_list_members`]\n\n[`ClientProjectsExt::projects_list_members`]: super::ClientProjectsExt::projects_list_members"]
+    #[derive(Debug, Clone)]
+    pub struct ProjectsListMembers<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> ProjectsListMembers<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/projects/{id}/members`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::ProjectMemberListResponse>, Error<()>> {
+            let Self { client, id } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/projects/{}/members",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "projects_list_members",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientProjectsExt::projects_add_member`]\n\n[`ClientProjectsExt::projects_add_member`]: super::ClientProjectsExt::projects_add_member"]
+    #[derive(Debug, Clone)]
+    pub struct ProjectsAddMember<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::AddProjectMemberRequest, String>,
+    }
+    impl<'a> ProjectsAddMember<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::AddProjectMemberRequest>,
+            <V as std::convert::TryInto<types::AddProjectMemberRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `AddProjectMemberRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::AddProjectMemberRequest,
+                ) -> types::builder::AddProjectMemberRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/projects/{id}/members`"]
+        pub async fn send(self) -> Result<ResponseValue<types::ProjectMemberRow>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::AddProjectMemberRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/projects/{}/members",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "projects_add_member",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientProjectsExt::projects_remove_member`]\n\n[`ClientProjectsExt::projects_remove_member`]: super::ClientProjectsExt::projects_remove_member"]
+    #[derive(Debug, Clone)]
+    pub struct ProjectsRemoveMember<'a> {
+        client: &'a super::Client,
+        id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::RemoveProjectMemberRequest, String>,
+    }
+    impl<'a> ProjectsRemoveMember<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                id: Err("id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for id failed".to_string());
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::RemoveProjectMemberRequest>,
+            <V as std::convert::TryInto<types::RemoveProjectMemberRequest>>::Error:
+                std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `RemoveProjectMemberRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::RemoveProjectMemberRequest,
+                ) -> types::builder::RemoveProjectMemberRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `DELETE` request to `/api/v1/projects/{id}/members`"]
+        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+            let Self { client, id, body } = self;
+            let id = id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::RemoveProjectMemberRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/projects/{}/members",
+                client.baseurl,
+                encode_path(&id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .delete(url)
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "projects_remove_member",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => Ok(ResponseValue::empty(response)),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -90715,6 +99498,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -91161,6 +99945,7 @@ pub mod builder {
         format: Result<Option<::std::string::String>, String>,
         page: Result<Option<i32>, String>,
         per_page: Result<Option<i32>, String>,
+        project: Result<Option<::uuid::Uuid>, String>,
         q: Result<Option<::std::string::String>, String>,
         type_: Result<Option<::std::string::String>, String>,
     }
@@ -91171,6 +99956,7 @@ pub mod builder {
                 format: Ok(None),
                 page: Ok(None),
                 per_page: Ok(None),
+                project: Ok(None),
                 q: Ok(None),
                 type_: Ok(None),
             }
@@ -91204,6 +99990,16 @@ pub mod builder {
                 .map_err(|_| "conversion to `i32` for per_page failed".to_string());
             self
         }
+        pub fn project<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.project = value
+                .try_into()
+                .map(Some)
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for project failed".to_string());
+            self
+        }
         pub fn q<V>(mut self, value: V) -> Self
         where
             V: std::convert::TryInto<::std::string::String>,
@@ -91230,12 +100026,14 @@ pub mod builder {
                 format,
                 page,
                 per_page,
+                project,
                 q,
                 type_,
             } = self;
             let format = format.map_err(Error::InvalidRequest)?;
             let page = page.map_err(Error::InvalidRequest)?;
             let per_page = per_page.map_err(Error::InvalidRequest)?;
+            let project = project.map_err(Error::InvalidRequest)?;
             let q = q.map_err(Error::InvalidRequest)?;
             let type_ = type_.map_err(Error::InvalidRequest)?;
             let url = format!("{}/api/v1/repositories", client.baseurl,);
@@ -91255,6 +100053,7 @@ pub mod builder {
                 .query(&progenitor_client::QueryParam::new("format", &format))
                 .query(&progenitor_client::QueryParam::new("page", &page))
                 .query(&progenitor_client::QueryParam::new("per_page", &per_page))
+                .query(&progenitor_client::QueryParam::new("project", &project))
                 .query(&progenitor_client::QueryParam::new("q", &q))
                 .query(&progenitor_client::QueryParam::new("type", &type_))
                 .headers(header_map)
@@ -91849,6 +100648,7 @@ pub mod builder {
         client: &'a super::Client,
         key: Result<::std::string::String, String>,
         path: Result<::std::string::String, String>,
+        version: Result<Option<::std::string::String>, String>,
     }
     impl<'a> GetRepositoryArtifactMetadata<'a> {
         pub fn new(client: &'a super::Client) -> Self {
@@ -91856,6 +100656,7 @@ pub mod builder {
                 client: client,
                 key: Err("key was not initialized".to_string()),
                 path: Err("path was not initialized".to_string()),
+                version: Ok(None),
             }
         }
         pub fn key<V>(mut self, value: V) -> Self
@@ -91876,11 +100677,26 @@ pub mod builder {
             });
             self
         }
+        pub fn version<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.version = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for version failed".to_string()
+            });
+            self
+        }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/artifacts/{path}`"]
         pub async fn send(self) -> Result<ResponseValue<types::ArtifactResponse>, Error<()>> {
-            let Self { client, key, path } = self;
+            let Self {
+                client,
+                key,
+                path,
+                version,
+            } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let path = path.map_err(Error::InvalidRequest)?;
+            let version = version.map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/api/v1/repositories/{}/artifacts/{}",
                 client.baseurl,
@@ -91900,6 +100716,7 @@ pub mod builder {
                     ::reqwest::header::ACCEPT,
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
+                .query(&progenitor_client::QueryParam::new("version", &version))
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -92311,6 +101128,7 @@ pub mod builder {
         client: &'a super::Client,
         key: Result<::std::string::String, String>,
         path: Result<::std::string::String, String>,
+        version: Result<Option<::std::string::String>, String>,
     }
     impl<'a> DownloadArtifact<'a> {
         pub fn new(client: &'a super::Client) -> Self {
@@ -92318,6 +101136,7 @@ pub mod builder {
                 client: client,
                 key: Err("key was not initialized".to_string()),
                 path: Err("path was not initialized".to_string()),
+                version: Ok(None),
             }
         }
         pub fn key<V>(mut self, value: V) -> Self
@@ -92338,11 +101157,26 @@ pub mod builder {
             });
             self
         }
+        pub fn version<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.version = value.try_into().map(Some).map_err(|_| {
+                "conversion to `:: std :: string :: String` for version failed".to_string()
+            });
+            self
+        }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/download/{path}`"]
         pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
-            let Self { client, key, path } = self;
+            let Self {
+                client,
+                key,
+                path,
+                version,
+            } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let path = path.map_err(Error::InvalidRequest)?;
+            let version = version.map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/api/v1/repositories/{}/download/{}",
                 client.baseurl,
@@ -92355,7 +101189,12 @@ pub mod builder {
                 ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
             );
             #[allow(unused_mut)]
-            let mut request = client.client.get(url).headers(header_map).build()?;
+            let mut request = client
+                .client
+                .get(url)
+                .query(&progenitor_client::QueryParam::new("version", &version))
+                .headers(header_map)
+                .build()?;
             let info = OperationInfo {
                 operation_id: "download_artifact",
             };
@@ -93240,6 +102079,159 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientRepositoriesExt::get_npm_scope_policy`]\n\n[`ClientRepositoriesExt::get_npm_scope_policy`]: super::ClientRepositoriesExt::get_npm_scope_policy"]
+    #[derive(Debug, Clone)]
+    pub struct GetNpmScopePolicy<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> GetNpmScopePolicy<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/npm-scope-policy`"]
+        pub async fn send(self) -> Result<ResponseValue<types::NpmScopePolicyResponse>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/npm-scope-policy",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_npm_scope_policy",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoriesExt::set_npm_scope_policy`]\n\n[`ClientRepositoriesExt::set_npm_scope_policy`]: super::ClientRepositoriesExt::set_npm_scope_policy"]
+    #[derive(Debug, Clone)]
+    pub struct SetNpmScopePolicy<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        body: Result<types::builder::SetNpmScopePolicyRequest, String>,
+    }
+    impl<'a> SetNpmScopePolicy<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::SetNpmScopePolicyRequest>,
+            <V as std::convert::TryInto<types::SetNpmScopePolicyRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value.try_into().map(From::from).map_err(|s| {
+                format!(
+                    "conversion to `SetNpmScopePolicyRequest` for body failed: {}",
+                    s
+                )
+            });
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(
+                    types::builder::SetNpmScopePolicyRequest,
+                ) -> types::builder::SetNpmScopePolicyRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
+        #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/npm-scope-policy`"]
+        pub async fn send(self) -> Result<ResponseValue<types::NpmScopePolicyResponse>, Error<()>> {
+            let Self { client, key, body } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| {
+                    types::SetNpmScopePolicyRequest::try_from(v).map_err(|e| e.to_string())
+                })
+                .map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/npm-scope-policy",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .put(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .json(&body)
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "set_npm_scope_policy",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientRepositoriesExt::list_pypi_tracks`]\n\n[`ClientRepositoriesExt::list_pypi_tracks`]: super::ClientRepositoriesExt::list_pypi_tracks"]
     #[derive(Debug, Clone)]
     pub struct ListPypiTracks<'a> {
@@ -93971,6 +102963,68 @@ pub mod builder {
             }
         }
     }
+    #[doc = "Builder for [`ClientRepositoriesExt::get_repository_storage`]\n\n[`ClientRepositoriesExt::get_repository_storage`]: super::ClientRepositoriesExt::get_repository_storage"]
+    #[derive(Debug, Clone)]
+    pub struct GetRepositoryStorage<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+    }
+    impl<'a> GetRepositoryStorage<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/storage`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::RepositoryStorageStatsResponse>, Error<()>> {
+            let Self { client, key } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/storage",
+                client.baseurl,
+                encode_path(&key.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_repository_storage",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
     #[doc = "Builder for [`ClientRepositoriesExt::test_upstream`]\n\n[`ClientRepositoriesExt::test_upstream`]: super::ClientRepositoriesExt::test_upstream"]
     #[derive(Debug, Clone)]
     pub struct TestUpstream<'a> {
@@ -94410,6 +103464,81 @@ pub mod builder {
                 200u16 => Ok(ResponseValue::empty(response)),
                 400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientRepositoriesExt::list_artifact_versions`]\n\n[`ClientRepositoriesExt::list_artifact_versions`]: super::ClientRepositoriesExt::list_artifact_versions"]
+    #[derive(Debug, Clone)]
+    pub struct ListArtifactVersions<'a> {
+        client: &'a super::Client,
+        key: Result<::std::string::String, String>,
+        path: Result<::std::string::String, String>,
+    }
+    impl<'a> ListArtifactVersions<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                key: Err("key was not initialized".to_string()),
+                path: Err("path was not initialized".to_string()),
+            }
+        }
+        pub fn key<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.key = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for key failed".to_string()
+            });
+            self
+        }
+        pub fn path<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::std::string::String>,
+        {
+            self.path = value.try_into().map_err(|_| {
+                "conversion to `:: std :: string :: String` for path failed".to_string()
+            });
+            self
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/versions/{path}`"]
+        pub async fn send(
+            self,
+        ) -> Result<ResponseValue<types::ArtifactVersionListResponse>, Error<()>> {
+            let Self { client, key, path } = self;
+            let key = key.map_err(Error::InvalidRequest)?;
+            let path = path.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/repositories/{}/versions/{}",
+                client.baseurl,
+                encode_path(&key.to_string()),
+                encode_path(&path.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "list_artifact_versions",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
                 404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -95101,6 +104230,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -96778,6 +105908,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
@@ -98043,6 +107175,71 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => ResponseValue::from_response(response).await,
+                _ => Err(Error::UnexpectedResponse(response)),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientSigningExt::sign_artifact`]\n\n[`ClientSigningExt::sign_artifact`]: super::ClientSigningExt::sign_artifact"]
+    #[derive(Debug, Clone)]
+    pub struct SignArtifact<'a> {
+        client: &'a super::Client,
+        artifact_id: Result<::uuid::Uuid, String>,
+    }
+    impl<'a> SignArtifact<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self {
+                client: client,
+                artifact_id: Err("artifact_id was not initialized".to_string()),
+            }
+        }
+        pub fn artifact_id<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<::uuid::Uuid>,
+        {
+            self.artifact_id = value
+                .try_into()
+                .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
+            self
+        }
+        #[doc = "Sends a `POST` request to `/api/v1/signing/artifacts/{artifact_id}/sign`"]
+        pub async fn send(self) -> Result<ResponseValue<types::SignArtifactResponse>, Error<()>> {
+            let Self {
+                client,
+                artifact_id,
+            } = self;
+            let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let url = format!(
+                "{}/api/v1/signing/artifacts/{}/sign",
+                client.baseurl,
+                encode_path(&artifact_id.to_string()),
+            );
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .post(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "sign_artifact",
+            };
+            client.pre(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => ResponseValue::from_response(response).await,
+                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
+                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
                 _ => Err(Error::UnexpectedResponse(response)),
             }
         }
@@ -101937,6 +111134,7 @@ pub mod prelude {
     pub use super::ClientPeersExt;
     pub use super::ClientPermissionsExt;
     pub use super::ClientPluginsExt;
+    pub use super::ClientProjectsExt;
     pub use super::ClientPromotionExt;
     pub use super::ClientQualityExt;
     pub use super::ClientQuarantineExt;

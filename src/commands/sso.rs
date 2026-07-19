@@ -537,6 +537,9 @@ impl SsoUpdateCommand {
                     require_signed_assertions,
                     use_absolute_acs_url,
                     is_enabled,
+                    // New 1.6.0 optional field; no CLI flag yet (added by a
+                    // follow-up feature PR on epic #149).
+                    map_groups_to_groups: None,
                 };
                 update_saml(&id, body, global).await
             }
@@ -771,6 +774,9 @@ async fn create_saml(
         admin_group: None,
         is_enabled: None,
         use_absolute_acs_url: None,
+        // New 1.6.0 optional field; no CLI flag yet (added by a follow-up
+        // feature PR on epic #149).
+        map_groups_to_groups: None,
     };
 
     let resp = client
@@ -1838,6 +1844,7 @@ mod tests {
             require_signed_assertions: true,
             admin_group: Some("admins".to_string()),
             use_absolute_acs_url: false,
+            map_groups_to_groups: false,
             is_enabled: enabled,
             created_at: Utc::now(),
             updated_at: Utc::now(),
@@ -2086,6 +2093,7 @@ mod tests {
             "require_signed_assertions": true,
             "admin_group": "admins",
             "use_absolute_acs_url": false,
+            "map_groups_to_groups": false,
             "is_enabled": true,
             "created_at": "2026-01-01T00:00:00Z",
             "updated_at": "2026-01-15T12:00:00Z"
@@ -2567,6 +2575,7 @@ mod tests {
             require_signed_assertions: None,
             use_absolute_acs_url: None,
             is_enabled: None,
+            map_groups_to_groups: None,
         };
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);

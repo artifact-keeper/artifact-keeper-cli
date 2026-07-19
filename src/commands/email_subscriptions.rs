@@ -2,7 +2,7 @@ use artifact_keeper_sdk::ClientEmailSubscriptionsExt;
 use clap::Subcommand;
 use miette::Result;
 
-use super::client::{client_for, resolve_base_url_and_auth};
+use super::client::client_for;
 use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -146,62 +146,32 @@ async fn subscribe(
         );
     }
 
-    // NOTE: the SDK's `create_subscription` only accepts an HTTP 201 response,
-    // but the live backend returns 200 for this endpoint (spec drift). Build the
-    // request directly so any 2xx is treated as success.
-    // TODO(#98): drop this workaround for the strict `create_subscription` SDK
-    // method once the backend spec-fidelity fix (201) is deployed in a release.
-    // Verified 2026-07-09: the deployed rig still returns 200 here.
-    let body = serde_json::json!({
-        "event_types": events,
-        "recipients": recipients,
-        "enabled": !disabled,
-    });
+    // The v1.6.0 spec declares this endpoint as `201 Created`, matching the
+    // strict generated client, so the #98 raw-HTTP workaround (the backend used
+    // to reply `200 OK`) is no longer needed.
+    let body = artifact_keeper_sdk::types::CreateEmailSubscriptionRequest {
+        event_types: events,
+        recipients,
+        enabled: Some(!disabled),
+    };
 
-    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
+    let client = client_for(global)?;
     let spinner = output::spinner("Creating email subscription...");
 
-    let http = super::client::raw_http_client()?;
-    let resp = http
-        .post(format!(
-            "{}/api/v1/repositories/{repo}/email-subscriptions",
-            base_url.trim_end_matches('/')
-        ))
-        .header(reqwest::header::AUTHORIZATION, auth_header)
-        .json(&body)
+    let resp = client
+        .create_subscription()
+        .key(repo)
+        .body(body)
         .send()
-        .await
-        .map_err(|e| sdk_err("create email subscription", e))?;
-
-    let status = resp.status();
-    let text = resp
-        .text()
         .await
         .map_err(|e| sdk_err("create email subscription", e))?;
 
     spinner.finish_and_clear();
 
-    if !status.is_success() {
-        let msg = serde_json::from_str::<serde_json::Value>(&text)
-            .ok()
-            .and_then(|v| {
-                v.get("message")
-                    .and_then(|m| m.as_str())
-                    .map(str::to_string)
-            })
-            .unwrap_or(text);
-        return Err(AkError::ServerError(format!(
-            "create email subscription failed (HTTP {}): {msg}",
-            status.as_u16()
-        ))
-        .into());
-    }
-
-    let sub: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| sdk_err("parse email subscription response", e))?;
-    let id = sub["id"].as_str().unwrap_or_default().to_string();
-    let recipient_count = sub["recipients"].as_array().map(|a| a.len()).unwrap_or(0);
-    let event_count = sub["event_types"].as_array().map(|a| a.len()).unwrap_or(0);
+    let sub = resp.into_inner();
+    let id = sub.id.to_string();
+    let recipient_count = sub.recipients.len();
+    let event_count = sub.event_types.len();
 
     emit_mutation(
         &sub,
@@ -462,11 +432,10 @@ mod tests {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
 
-        // The live backend returns 200 (not the spec's 201); the raw-request
-        // path must accept any 2xx.
+        // v1.6.0 spec declares 201 (#98 fixed); the strict SDK method expects it.
         Mock::given(method("POST"))
             .and(path("/api/v1/repositories/npm-local/email-subscriptions"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(subscription_body()))
+            .respond_with(ResponseTemplate::new(201).set_body_json(subscription_body()))
             .mount(&server)
             .await;
 

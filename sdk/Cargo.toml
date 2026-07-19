@@ -1,6 +1,6 @@
 [package]
 name = "artifact-keeper-sdk"
-version = "1.4.0"
+version = "1.6.0"
 edition = "2024"
 description = "Generated Rust SDK for the Artifact Keeper API"
 license = "Apache-2.0"
