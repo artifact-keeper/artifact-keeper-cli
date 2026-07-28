@@ -118,7 +118,7 @@ Security & Compliance
   ak sbom          Software Bill of Materials operations
   ak license       License compliance management
   ak quality-gate  Manage artifact quality gates
-  ak quarantine    Check, release, and reject quarantined artifacts
+  ak quarantine    Hold, release, and reject quarantined artifacts
   ak totp          Manage two-factor authentication (TOTP)
 
 Organization
