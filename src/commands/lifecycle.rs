@@ -438,16 +438,10 @@ async fn create_policy(
     Ok(())
 }
 
-// The lifecycle PATCH endpoint (`/api/v1/admin/lifecycle/:id`) is documented in
-// the OpenAPI spec as taking `UpdatePolicyRequest`, but that schema is a
-// quality-gate shape whose fields (is_enabled, max_artifact_age_days, ...) are
-// ignored by this endpoint. The endpoint actually accepts the lifecycle-policy
-// fields (name/enabled/priority/description/config/cron_schedule), so — as with
-// `create_policy` — build the request body directly rather than via the SDK.
-// TODO(#98): the backend spec-fidelity fix renames the PATCH body schema to
-// `UpdateLifecyclePolicyRequest` with the correct lifecycle fields; once that is
-// deployed in a release, this raw request can move to the strict SDK method.
-// Verified 2026-07-09: kept because the deployed rig predates that fix.
+// #98 fixed: the v1.6.0 spec renames the PATCH body schema from the wrong
+// `UpdatePolicyRequest` (a quality-gate shape) to `UpdateLifecyclePolicyRequest`
+// with the correct lifecycle fields (name/enabled/priority/description/config/
+// cron_schedule), so this now uses the strict generated SDK method.
 #[allow(clippy::too_many_arguments)]
 async fn update_policy(
     id: &str,
@@ -460,91 +454,76 @@ async fn update_policy(
     cron_schedule: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    parse_uuid(id, "policy")?;
+    let policy_id = parse_uuid(id, "policy")?;
 
-    let mut body = serde_json::Map::new();
-    if let Some(n) = name {
-        body.insert("name".to_string(), serde_json::Value::from(n));
-    }
     // `--enabled` / `--disabled` are mutually exclusive (enforced by clap); only
     // send the field when one was explicitly given.
-    if enabled {
-        body.insert("enabled".to_string(), serde_json::Value::from(true));
+    let enabled_field = if enabled {
+        Some(true)
     } else if disabled {
-        body.insert("enabled".to_string(), serde_json::Value::from(false));
-    }
-    if let Some(p) = priority {
-        body.insert("priority".to_string(), serde_json::Value::from(p));
-    }
-    if let Some(d) = description {
-        body.insert("description".to_string(), serde_json::Value::from(d));
-    }
-    if let Some(c) = config {
-        let config_json: serde_json::Value = serde_json::from_str(c)
-            .map_err(|e| AkError::ConfigError(format!("--config must be a JSON object: {e}")))?;
-        if !config_json.is_object() {
-            return Err(AkError::ConfigError("--config must be a JSON object".into()).into());
-        }
-        body.insert("config".to_string(), config_json);
-    }
-    if let Some(cs) = cron_schedule {
-        body.insert("cron_schedule".to_string(), serde_json::Value::from(cs));
-    }
+        Some(false)
+    } else {
+        None
+    };
 
-    if body.is_empty() {
+    let config_field = match config {
+        Some(c) => {
+            let config_json: serde_json::Value = serde_json::from_str(c).map_err(|e| {
+                AkError::ConfigError(format!("--config must be a JSON object: {e}"))
+            })?;
+            match config_json {
+                serde_json::Value::Object(map) => Some(map),
+                _ => {
+                    return Err(
+                        AkError::ConfigError("--config must be a JSON object".into()).into(),
+                    );
+                }
+            }
+        }
+        None => None,
+    };
+
+    if name.is_none()
+        && enabled_field.is_none()
+        && priority.is_none()
+        && description.is_none()
+        && config_field.is_none()
+        && cron_schedule.is_none()
+    {
         return Err(AkError::ConfigError(
             "No fields to update; provide at least one of --name/--enabled/--disabled/--priority/--description/--config/--cron-schedule".into(),
         )
         .into());
     }
 
-    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
+    let body = artifact_keeper_sdk::types::UpdateLifecyclePolicyRequest {
+        name: name.map(str::to_string),
+        enabled: enabled_field,
+        priority,
+        description: description.map(str::to_string),
+        config: config_field,
+        cron_schedule: cron_schedule.map(str::to_string),
+    };
+
+    let client = client_for(global)?;
     let spinner = output::spinner("Updating lifecycle policy...");
 
-    let http = super::client::raw_http_client()?;
-    let resp = http
-        .patch(format!(
-            "{}/api/v1/admin/lifecycle/{id}",
-            base_url.trim_end_matches('/')
-        ))
-        .header(reqwest::header::AUTHORIZATION, auth_header)
-        .json(&serde_json::Value::Object(body))
+    let resp = client
+        .update_lifecycle_policy()
+        .id(policy_id)
+        .body(body)
         .send()
-        .await
-        .map_err(|e| sdk_err("update lifecycle policy", e))?;
-
-    let status = resp.status();
-    let text = resp
-        .text()
         .await
         .map_err(|e| sdk_err("update lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
-    if !status.is_success() {
-        let msg = serde_json::from_str::<serde_json::Value>(&text)
-            .ok()
-            .and_then(|v| {
-                v.get("message")
-                    .and_then(|m| m.as_str())
-                    .map(str::to_string)
-            })
-            .unwrap_or(text);
-        return Err(AkError::ServerError(format!(
-            "update lifecycle policy failed (HTTP {}): {msg}",
-            status.as_u16()
-        ))
-        .into());
-    }
-
-    let policy: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| sdk_err("parse lifecycle policy response", e))?;
-    let pname = policy["name"].as_str().unwrap_or("");
+    let policy = resp.into_inner();
 
     emit_mutation(
         &policy,
         id,
-        &format!("Lifecycle policy '{pname}' updated (ID: {id})."),
+        &format!("Lifecycle policy '{}' updated (ID: {id}).", policy.name),
         global,
     );
 

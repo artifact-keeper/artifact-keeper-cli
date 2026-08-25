@@ -313,16 +313,8 @@ async fn show_account(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
-/// Response from service-account creation (the subset of the API's
-/// `ServiceAccountResponse` that `create` actually uses).
-#[derive(Debug, serde::Deserialize)]
-struct CreateAccountResponse {
-    id: String,
-    username: String,
-}
-
 async fn create_account(name: &str, description: Option<&str>, global: &GlobalArgs) -> Result<()> {
-    let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
+    let client = client_for(global)?;
     let spinner = output::spinner("Creating service account...");
 
     let body = artifact_keeper_sdk::types::CreateServiceAccountRequest {
@@ -330,46 +322,16 @@ async fn create_account(name: &str, description: Option<&str>, global: &GlobalAr
         description: description.map(|s| s.to_string()),
     };
 
-    // Raw request instead of the generated SDK method: the backend responds
-    // `200 OK` here, but the generated client (`create_service_account`) only
-    // accepts `201`, so every successful create was reported as an error even
-    // though the account was created (#98). Accept any 2xx success status.
-    let result = super::client::raw_http_client()?
-        .post(format!("{base_url}/api/v1/service-accounts"))
-        .header(reqwest::header::AUTHORIZATION, &auth_header)
-        .json(&body)
+    // The v1.6.0 spec declares this endpoint as `201 Created`, matching the
+    // strict generated client, so the #98 raw-HTTP workaround (which accepted
+    // the backend's earlier `200 OK`) is no longer needed.
+    let resp = client
+        .create_service_account()
+        .body(body)
         .send()
-        .await;
-
-    let resp = match result {
-        Ok(r) => r,
-        Err(e) => {
-            spinner.finish_and_clear();
-            return Err(
-                AkError::NetworkError(format!("Create service account failed: {e}")).into(),
-            );
-        }
-    };
-
-    if !resp.status().is_success() {
-        spinner.finish_and_clear();
-        let status = resp.status();
-        let text = resp.text().await.unwrap_or_default();
-        return Err(AkError::ServerError(format!(
-            "Create service account failed ({status}): {text}"
-        ))
-        .into());
-    }
-
-    let sa: CreateAccountResponse = match resp.json().await {
-        Ok(v) => v,
-        Err(e) => {
-            spinner.finish_and_clear();
-            return Err(
-                AkError::ServerError(format!("Invalid service account response: {e}")).into(),
-            );
-        }
-    };
+        .await
+        .map_err(|e| sdk_err("create service account", e))?;
+    let sa = resp.into_inner();
 
     spinner.finish_and_clear();
 
@@ -1034,10 +996,11 @@ mod tests {
         crate::test_utils::teardown_env();
     }
 
-    /// The backend returns `200 OK` on create; a successful create must not
-    /// be treated as an error even though the spec declares `201` (#98).
+    /// #98 fixed: the v1.6.0 spec declares `201 Created`, so the CLI now uses
+    /// the strict generated client. A non-201 success (the backend's earlier
+    /// `200 OK`) is treated as an unexpected response rather than success.
     #[tokio::test]
-    async fn handler_create_accepts_200() {
+    async fn handler_create_rejects_non_201() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
 
@@ -1048,7 +1011,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        assert!(create_account("ci", Some("robot"), &global).await.is_ok());
+        assert!(create_account("ci", Some("robot"), &global).await.is_err());
         crate::test_utils::teardown_env();
     }
 

@@ -417,6 +417,20 @@ impl RepoCommand {
                         index_upstream_url,
                         pypi_upstream_index_path,
                         release_repository_key,
+                        // New 1.6.0 optional fields; no CLI flags yet (added by
+                        // follow-up feature PRs on epic #149).
+                        apt_description: None,
+                        apt_label: None,
+                        apt_origin: None,
+                        apt_release_version: None,
+                        custom_user_agent: None,
+                        debian: None,
+                        npm_allow_unscoped: None,
+                        npm_allowed_name_patterns: None,
+                        npm_allowed_scopes: None,
+                        project_id: None,
+                        trusted_gpg_key: None,
+                        versioning_enabled: None,
                     },
                     global,
                 )
@@ -670,6 +684,20 @@ async fn create_repo(
         upstream_auth_type: None,
         upstream_username: None,
         upstream_password: None,
+        // New 1.6.0 optional fields; no CLI flags yet (added by follow-up
+        // feature PRs on epic #149).
+        apt_description: None,
+        apt_label: None,
+        apt_origin: None,
+        apt_release_version: None,
+        custom_user_agent: None,
+        debian: None,
+        npm_allow_unscoped: None,
+        npm_allowed_name_patterns: None,
+        npm_allowed_scopes: None,
+        project_id: None,
+        trusted_gpg_key: None,
+        versioning_enabled: None,
     };
 
     let resp = client
@@ -2036,6 +2064,8 @@ mod tests {
             "upstream_url": null,
             "upstream_auth_type": null,
             "upstream_auth_configured": false,
+            "has_trusted_gpg_key": false,
+            "versioning_enabled": false,
             "created_at": "2026-01-15T12:00:00Z",
             "updated_at": "2026-01-15T12:00:00Z"
         })

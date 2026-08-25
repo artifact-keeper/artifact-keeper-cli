@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-19
+
+Foundation for the 1.6.0 line (epic #149): the bundled SDK is regenerated against
+the Artifact Keeper **v1.6.0** OpenAPI surface. Feature commands that build on the
+new API operations land in follow-up releases.
+
+### Changed
+
+- Regenerated the vendored SDK from the OpenAPI **v1.6.0** spec via `cargo xtask generate` (#150); SDK version tracks the API at `1.6.0`. Adds the new `projects` operation surface and 1.6.0 request fields (repository APT/npm/Debian/versioning/project options, SAML group mapping)
+- Dropped the #98 spec-fidelity workarounds now that the v1.6.0 spec is correct: `ak service-account create`, `ak email-subscriptions subscribe`, and `ak lifecycle update` call the strict generated SDK methods instead of raw HTTP (endpoints now declare `201`/`UpdateLifecyclePolicyRequest` as appropriate)
+
 ## [1.2.0] - 2026-07-13
 
 ### Added
