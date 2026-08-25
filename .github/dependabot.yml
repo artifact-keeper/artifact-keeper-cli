@@ -1,0 +1,41 @@
+# Dependency monitoring for artifact-keeper-cli.
+#
+# Modelled on the backend's .github/dependabot.yml, minus the parts that are
+# specific to the backend workspace: its RustCrypto/`digest` ignore block
+# tracks a migration that does not exist in this repository, and its
+# `reviewers: artifact-keeper/maintainers` points at a team that does not
+# exist in this org, so copying it would request review from nobody. Labels
+# are left to Dependabot's own `dependencies` default rather than naming
+# custom labels this repository does not define -- Dependabot silently drops
+# labels it cannot find.
+version: 2
+updates:
+  # Workflow actions. release.yml publishes the signed `ak` binaries and the
+  # .deb/.rpm packages using `id-token: write` for cosign keyless signing, so
+  # a compromised action here is a supply-chain compromise of every published
+  # CLI artifact.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+
+  # The Cargo workspace: the root `artifact-keeper-cli` package plus its
+  # `sdk` and `xtask` members, all reachable from the root manifest.
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
+
+  # Dockerfile base images: `rust:1.88-slim` (builder) and
+  # `debian:bookworm-slim` (runtime). Both are plain tagged references, so
+  # Dependabot can resolve and bump them.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore"
