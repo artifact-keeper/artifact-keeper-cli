@@ -3975,13 +3975,23 @@ async fn toggle_ci_oidc_mapping(
 
 // ---- Storage GC and reports ----
 
+/// Build the `POST /api/v1/admin/storage-gc` request body.
+///
+/// `dry_run` is always sent explicitly. The generated field is
+/// `Option<bool>` with `skip_serializing_if = "Option::is_none"`, so a `None`
+/// drops the key and posts `{}` — which the backend rejects with 422 once
+/// artifact-keeper#3619 lands (`dry_run` required, unknown fields denied).
+fn storage_gc_body(dry_run: bool) -> artifact_keeper_sdk::types::StorageGcRequest {
+    artifact_keeper_sdk::types::StorageGcRequest {
+        dry_run: Some(dry_run),
+    }
+}
+
 async fn run_storage_gc(dry_run: bool, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Running storage garbage collection...");
 
-    let body = artifact_keeper_sdk::types::StorageGcRequest {
-        dry_run: dry_run.then_some(true),
-    };
+    let body = storage_gc_body(dry_run);
 
     let r = client
         .run_storage_gc()
@@ -7202,6 +7212,21 @@ mod tests {
         } else {
             panic!("Expected StorageGcCommand::Run");
         }
+    }
+
+    #[test]
+    fn storage_gc_body_always_sends_dry_run() {
+        // A live run must send `"dry_run": false`, not an empty body: the
+        // backend requires the field and rejects unknown ones
+        // (artifact-keeper#3619).
+        assert_eq!(
+            serde_json::to_value(storage_gc_body(false)).unwrap(),
+            json!({ "dry_run": false })
+        );
+        assert_eq!(
+            serde_json::to_value(storage_gc_body(true)).unwrap(),
+            json!({ "dry_run": true })
+        );
     }
 
     #[test]

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `ak admin storage-gc run` now always sends `dry_run` explicitly, so a live run posts `{"dry_run": false}` instead of an empty body. Companion to artifact-keeper#3619, which makes `dry_run` required on the storage-GC endpoint and rejects unknown fields (422)
+
 ## [1.2.0] - 2026-07-13
 
 ### Added
