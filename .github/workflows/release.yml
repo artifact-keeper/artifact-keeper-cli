@@ -75,7 +75,7 @@ jobs:
             shasum -a 256 ${{ matrix.artifact }} > ${{ matrix.artifact }}.sha256
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: |
@@ -114,12 +114,12 @@ jobs:
       - name: Create man pages archive
         run: tar czf ak-man-pages.tar.gz -C man .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ak-completions
           path: ak-completions.tar.gz
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ak-man-pages
           path: ak-man-pages.tar.gz
@@ -217,7 +217,7 @@ jobs:
       - name: Build package
         run: nfpm pkg --packager ${{ matrix.format }} --target .
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ak-${{ matrix.format }}-${{ matrix.arch }}
           path: |
