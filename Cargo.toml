@@ -60,7 +60,7 @@ ratatui = "0.30"
 crossterm = { version = "0.29", features = ["event-stream"] }
 
 # Cryptography
-sha2 = "0.10"
+sha2 = "0.11"
 hex = "0.4"
 
 # Utilities
