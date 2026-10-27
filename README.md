@@ -102,6 +102,34 @@ ak artifact pull my-repo org/pkg/1.0/pkg-1.0.jar
 ak setup auto
 ```
 
+### Headless and SSO login
+
+On a host without a browser, or when the instance uses SSO, sign in with the
+device authorization grant (RFC 8628) instead of a password:
+
+```bash
+ak auth login --oidc-device
+```
+
+The CLI prints a verification URL and a short code. Open the URL on any device
+where you are already signed in to Artifact Keeper, enter the code, and approve
+the request. The CLI polls at the server's interval, honours `slow_down`, and
+stores the returned access and refresh tokens through the same credential store
+as a password login. Tokens are never printed.
+
+- `--scope <SCOPE>` requests specific AK scopes, repeatable or comma-separated
+  (default: `read:artifacts`). `*`, `admin` and OIDC scopes (`openid`,
+  `profile`, `email`) are refused: this is a plain Artifact Keeper grant, not
+  an OIDC device flow.
+- `--no-input` keeps the flow fully non-interactive; it never opens a browser
+  and never prompts. Set `AK_NO_BROWSER=1` to suppress the browser launch
+  without disabling prompts.
+- `--device` is an alias for `--oidc-device`.
+
+The server must have `DEVICE_AUTH_ENABLED=true`; otherwise the command reports
+that device authorization is disabled. Use `ak auth logout` to clear the
+stored credential.
+
 ## Commands
 
 ```
