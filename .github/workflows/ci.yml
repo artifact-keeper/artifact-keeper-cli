@@ -117,7 +117,9 @@ jobs:
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v6
 
-  # Cross-platform build smoke test
+  # Cross-platform build smoke test. The Linux leg builds the static musl
+  # target that release.yml ships, so a dependency that breaks static linking
+  # (e.g. one that links a system library) fails here instead of at release (#178).
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -125,12 +127,32 @@ jobs:
       contents: read
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - os: macos-latest
+          - os: windows-latest
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install musl toolchain
+        if: matrix.target
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends musl-tools
+          echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --release
+      - name: Build (host)
+        if: ${{ !matrix.target }}
+        run: cargo build --release
+      - name: Build (static musl)
+        if: matrix.target
+        run: |
+          cargo build --release --target ${{ matrix.target }}
+          .github/scripts/check-static-binary.sh target/${{ matrix.target }}/release/ak
+          docker run --rm -v "$PWD/target/${{ matrix.target }}/release:/w:ro" alpine:3.22 /w/ak --version
 
   # Builds the Dockerfile and runs the binary in its runtime stage. A passing
   # `docker build` proves nothing about the image: a builder with a newer glibc

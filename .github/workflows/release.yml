@@ -18,13 +18,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
+          # Linux binaries are fully static (musl), so they run on any distro
+          # regardless of its glibc version, including Alpine and distroless
+          # images. The runner image no longer affects compatibility (#178).
+          - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
             artifact: ak-linux-amd64
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
+            musl: true
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-24.04-arm
             artifact: ak-linux-arm64
-            cross: true
+            musl: true
           - target: x86_64-apple-darwin
             os: macos-latest
             artifact: ak-darwin-amd64
@@ -42,12 +46,14 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools
-        if: matrix.cross
+      # C dependencies (aws-lc-sys, ring) must be compiled against musl too.
+      - name: Install musl toolchain
+        if: matrix.musl
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+          sudo apt-get install -y --no-install-recommends musl-tools
+          target="${{ matrix.target }}"
+          echo "CC_${target//-/_}=musl-gcc" >> "$GITHUB_ENV"
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -61,6 +67,16 @@ jobs:
         run: |
           cp target/${{ matrix.target }}/release/ak ${{ matrix.artifact }}
           chmod +x ${{ matrix.artifact }}
+
+      - name: Check binary is static
+        if: matrix.musl
+        run: .github/scripts/check-static-binary.sh ${{ matrix.artifact }}
+
+      # Both Linux legs build natively, so the binary can run on the runner.
+      # Alpine has no glibc: if this works, the binary has no libc dependency.
+      - name: Smoke test on Alpine
+        if: matrix.musl
+        run: docker run --rm -v "$PWD:/w:ro" alpine:3.22 /w/${{ matrix.artifact }} --version
 
       - name: Rename binary (windows)
         if: runner.os == 'Windows'

@@ -12,6 +12,8 @@ curl -fsSL https://raw.githubusercontent.com/artifact-keeper/artifact-keeper-cli
 
 The installer auto-detects your OS and architecture, downloads the latest release binary, verifies its SHA-256 checksum, and installs to `/usr/local/bin` (or `~/.local/bin` if not writable).
 
+Linux binaries and `.deb`/`.rpm` packages are statically linked and have no glibc requirement, so they also run on Alpine and in distroless containers.
+
 ### Homebrew (macOS/Linux)
 
 ```bash
