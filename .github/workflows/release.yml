@@ -63,12 +63,14 @@ jobs:
           targets: ${{ matrix.target }}
 
       # Runs inside the ubuntu:22.04 container as root, so no sudo.
+      # libc6-dev-arm64-cross (the arm64 C headers aws-lc-sys needs) is only a
+      # Recommends of the compiler package, so name it explicitly.
       - name: Install cross-compilation tools
         if: matrix.cross
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu
+          apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu libc6-dev-arm64-cross
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
 
       - uses: Swatinem/rust-cache@v2
