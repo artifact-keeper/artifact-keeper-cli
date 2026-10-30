@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `ak admin storage-gc run` now always sends `dry_run` explicitly, so a live run posts `{"dry_run": false}` instead of an empty body. Companion to artifact-keeper#3619, which makes `dry_run` required on the storage-GC endpoint and rejects unknown fields (422)
 
+### Security
+
+- Updated `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338/0340 remote-peer panics, RUSTSEC-2026-0339/0341/0342 memory exhaustion)
+- Updated `rustls` to 0.23.46 (RUSTSEC-2026-0285 handshake messages accepted across encryption levels, RUSTSEC-2026-0346 TLS secrets in `Debug` output, RUSTSEC-2026-0348 pre-authentication allocation, RUSTSEC-2026-0349 ServerHello downgrade)
+- Updated `rustls-webpki` to 0.103.16 (RUSTSEC-2026-0382, distrusted intermediates accepted) and `webpki-root-certs` to 1.0.11 (RUSTSEC-2026-0383, distrusted emSign intermediates)
+- The patched `rustls`/`rustls-webpki` require `aws-lc-rs` >= 1.18 (now 1.19.0, with `aws-lc-sys` 0.47.0) and the patched `quinn-proto` requires `rand` 0.10, so those move too
+
 ## [1.2.0] - 2026-07-13
 
 ### Added
