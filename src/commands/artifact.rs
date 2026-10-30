@@ -37,6 +37,12 @@ pub enum ArtifactCommand {
         /// Disable chunked upload (force single PUT even for large files)
         #[arg(long)]
         no_chunked: bool,
+
+        /// Override the Content-Type sent to the server (e.g.
+        /// "application/x-rpm"). When omitted, the type is detected from the
+        /// file extension, falling back to "application/octet-stream".
+        #[arg(long = "content-type", id = "content_type")]
+        content_type: Option<String>,
     },
 
     /// Download an artifact from a repository
@@ -155,6 +161,7 @@ impl ArtifactCommand {
                 path,
                 chunk_size,
                 no_chunked,
+                content_type,
             } => {
                 push(
                     &repo,
@@ -162,6 +169,7 @@ impl ArtifactCommand {
                     path.as_deref(),
                     &chunk_size,
                     no_chunked,
+                    content_type.as_deref(),
                     global,
                 )
                 .await
@@ -207,28 +215,47 @@ impl ArtifactCommand {
     }
 }
 
-/// Map a file name to the MIME type Artifact Keeper uses to classify the
-/// artifact's package format. Without this every upload went out as
-/// `application/octet-stream`, so the server stored RPMs (and other formats)
-/// as generic artifacts instead of indexing them into their format repo (#185).
+/// Detect the MIME type the server should use to classify an upload.
 ///
-/// Only extensions where the server keys on content type are listed; anything
-/// unknown keeps the generic `application/octet-stream` default, which is the
-/// correct type for an opaque blob.
-fn content_type_for_path(path: &str) -> &'static str {
+/// Without this the CLI sent every upload as `application/octet-stream`, so
+/// the server stored RPMs (and anything else) as generic artifacts instead of
+/// indexing them into their format repo (#185). Mirroring what Artifactory
+/// does for generic repositories, we now guess the type from the file name.
+///
+/// Resolution order:
+/// 1. A curated override table, for extensions where the bundled mime.types
+///    database is wrong or missing. `mime_guess` maps `.rpm` to
+///    `audio/x-pn-realaudio-plugin` (a legacy collision) and has no `.deb`
+///    entry at all, so those must be pinned explicitly.
+/// 2. `mime_guess` (the Apache/IANA `mime.types` DB, the Rust analogue of
+///    Python's `mimetypes`) for the long tail of common extensions.
+/// 3. `application/octet-stream` as the fallback for unknown/extensionless
+///    files, which is the correct type for an opaque blob.
+fn content_type_for_path(path: &str) -> String {
+    const OCTET_STREAM: &str = "application/octet-stream";
+
     let ext = Path::new(path)
         .extension()
         .and_then(|e| e.to_str())
         .map(str::to_ascii_lowercase);
 
-    match ext.as_deref() {
-        Some("rpm") => "application/x-rpm",
-        Some("deb") => "application/vnd.debian.binary-package",
-        Some("jar") | Some("war") | Some("ear") => "application/java-archive",
-        Some("gz") | Some("tgz") => "application/gzip",
-        Some("zip") | Some("nupkg") | Some("whl") => "application/zip",
-        _ => "application/octet-stream",
+    // 1. Curated overrides (DB is wrong or absent for these).
+    if let Some(ext) = ext.as_deref() {
+        let override_type = match ext {
+            "rpm" => Some("application/x-rpm"),
+            "deb" | "udeb" => Some("application/vnd.debian.binary-package"),
+            _ => None,
+        };
+        if let Some(t) = override_type {
+            return t.to_string();
+        }
     }
+
+    // 2. mime_guess for everything else, 3. octet-stream fallback.
+    mime_guess::from_path(path)
+        .first_raw()
+        .unwrap_or(OCTET_STREAM)
+        .to_string()
 }
 
 async fn push(
@@ -237,6 +264,7 @@ async fn push(
     target_path: Option<&str>,
     chunk_size_str: &str,
     no_chunked: bool,
+    content_type_override: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
@@ -290,7 +318,10 @@ async fn push(
 
         let use_chunked = !no_chunked && file_size >= threshold;
 
-        let content_type = content_type_for_path(&artifact_path);
+        let content_type = match content_type_override {
+            Some(ct) => ct.to_string(),
+            None => content_type_for_path(&artifact_path),
+        };
 
         if use_chunked {
             // Chunked upload for large files
@@ -303,7 +334,7 @@ async fn push(
                 chunk_size,
                 file_size,
                 file_name,
-                content_type,
+                &content_type,
             )
             .await?;
 
@@ -347,7 +378,7 @@ async fn push(
                 repo,
                 &artifact_path,
                 body,
-                content_type,
+                &content_type,
             )
             .await?;
 
@@ -1150,29 +1181,36 @@ mod tests {
 
     #[test]
     fn content_type_detects_rpm_and_falls_back_to_generic() {
-        // The bug: RPMs went up as octet-stream and were stored as generic.
+        // Curated overrides: the bundled mime.types DB maps .rpm to
+        // audio/x-pn-realaudio-plugin and has no .deb entry, so these are pinned.
         assert_eq!(
             content_type_for_path("pkg-1.0-1.el9.x86_64.rpm"),
             "application/x-rpm"
         );
-        // Path with directories and mixed case extension still resolves.
         assert_eq!(
             content_type_for_path("nested/dir/PKG.RPM"),
             "application/x-rpm"
         );
-        // A few other format-bearing extensions the server classifies.
         assert_eq!(
             content_type_for_path("app.deb"),
             "application/vnd.debian.binary-package"
         );
+
+        // Long tail resolved via mime_guess (like Python's mimetypes).
         assert_eq!(content_type_for_path("lib.jar"), "application/java-archive");
+        assert_eq!(content_type_for_path("notes.txt"), "text/plain");
+        assert_eq!(content_type_for_path("page.html"), "text/html");
+
         // Unknown / extensionless stays the correct generic blob type.
-        assert_eq!(content_type_for_path("output.tar.gz"), "application/gzip");
         assert_eq!(
             content_type_for_path("release-1.0"),
             "application/octet-stream"
         );
         assert_eq!(content_type_for_path("README"), "application/octet-stream");
+        assert_eq!(
+            content_type_for_path("archive.unknownext"),
+            "application/octet-stream"
+        );
     }
 
     // ---- Push subcommand parsing ----
@@ -1275,6 +1313,31 @@ mod tests {
         {
             assert_eq!(chunk_size, "16MB");
             assert!(!no_chunked);
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+    }
+
+    #[test]
+    fn parse_push_content_type_flag() {
+        let cli = parse(&[
+            "test",
+            "push",
+            "my-repo",
+            "file.bin",
+            "--content-type",
+            "application/x-rpm",
+        ]);
+        if let ArtifactCommand::Push { content_type, .. } = cli.command {
+            assert_eq!(content_type.as_deref(), Some("application/x-rpm"));
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+
+        // Omitted => None (detection path).
+        let cli = parse(&["test", "push", "my-repo", "file.bin"]);
+        if let ArtifactCommand::Push { content_type, .. } = cli.command {
+            assert!(content_type.is_none());
         } else {
             panic!("Expected ArtifactCommand::Push");
         }
@@ -2063,6 +2126,7 @@ mod tests {
             None,
             "8MB",
             false,
+            None,
             &global,
         )
         .await;
@@ -2095,6 +2159,7 @@ mod tests {
             None,
             "8MB",
             false,
+            None,
             &global,
         )
         .await;
@@ -2130,6 +2195,7 @@ mod tests {
             Some("nested/dir/"),
             "8MB",
             false,
+            None,
             &global,
         )
         .await;
@@ -2162,6 +2228,7 @@ mod tests {
             None,
             "8MB",
             false,
+            None,
             &global,
         )
         .await;
