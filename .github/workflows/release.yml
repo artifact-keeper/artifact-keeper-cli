@@ -9,20 +9,31 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  # Oldest glibc the Linux binaries may require. It follows the glibc of the
+  # build container below, so it is asserted after each build and declared as
+  # a dependency of the .deb/.rpm packages. Raising it drops Debian 12,
+  # Ubuntu 22.04, RHEL 9 and Amazon Linux 2023 (#178).
+  GLIBC_FLOOR: "2.34"
 
 jobs:
   build:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    # Linux targets build inside a pinned Ubuntu 22.04 (glibc 2.35) container
+    # rather than on the moving `ubuntu-latest` image, so the glibc they link
+    # against cannot rise when GitHub migrates the runner (#178).
+    container: ${{ matrix.container }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            container: ubuntu:22.04
             artifact: ak-linux-amd64
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
+            container: ubuntu:22.04
             artifact: ak-linux-arm64
             cross: true
           - target: x86_64-apple-darwin
@@ -36,17 +47,28 @@ jobs:
             artifact: ak-windows-amd64.exe
 
     steps:
+      - name: Install build dependencies (container)
+        if: matrix.container
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            build-essential cmake curl ca-certificates git binutils
+
       - uses: actions/checkout@v4
 
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
+      # Runs inside the ubuntu:22.04 container as root, so no sudo.
       - name: Install cross-compilation tools
         if: matrix.cross
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+          apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu
           echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
 
       - uses: Swatinem/rust-cache@v2
@@ -61,6 +83,10 @@ jobs:
         run: |
           cp target/${{ matrix.target }}/release/ak ${{ matrix.artifact }}
           chmod +x ${{ matrix.artifact }}
+
+      - name: Check glibc floor
+        if: runner.os == 'Linux'
+        run: .github/scripts/check-glibc-floor.sh ${{ matrix.artifact }}
 
       - name: Rename binary (windows)
         if: runner.os == 'Windows'
@@ -195,6 +221,15 @@ jobs:
           license: "MIT"
           section: "devel"
           priority: "optional"
+          # Fail at install time, not first run, on a distro whose glibc is
+          # older than the binary needs (#178).
+          overrides:
+            deb:
+              depends:
+                - "libc6 (>= ${GLIBC_FLOOR})"
+            rpm:
+              depends:
+                - "glibc >= ${GLIBC_FLOOR}"
           contents:
             - src: pkg/usr/bin/ak
               dst: /usr/bin/ak

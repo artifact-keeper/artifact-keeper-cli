@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Linux release binaries (and the `.deb`/`.rpm` packages) run again on glibc 2.34+, covering Debian 12, Ubuntu 22.04, RHEL/Alma/Rocky 9 and Amazon Linux 2023. They were built on `ubuntu-latest` and so required glibc 2.39; they now build in a pinned `ubuntu:22.04` container, CI fails if the glibc floor rises, and the packages declare `libc6 (>= 2.34)` / `glibc >= 2.34` so an unsupported system fails at install time instead of at first run (#178)
 - `ak admin storage-gc run` now always sends `dry_run` explicitly, so a live run posts `{"dry_run": false}` instead of an empty body. Companion to artifact-keeper#3619, which makes `dry_run` required on the storage-GC endpoint and rejects unknown fields (422)
 
 ## [1.2.0] - 2026-07-13
