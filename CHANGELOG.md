@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `ak artifact push` now sends a format-appropriate `Content-Type` derived from the file extension (e.g. `.rpm` → `application/x-rpm`) on both the single-PUT and chunked-upload paths, so RPMs and other packages are classified into their format repository instead of being stored as generic artifacts (#185)
 - `ak admin storage-gc run` now always sends `dry_run` explicitly, so a live run posts `{"dry_run": false}` instead of an empty body. Companion to artifact-keeper#3619, which makes `dry_run` required on the storage-GC endpoint and rejects unknown fields (422)
 
 ### Security

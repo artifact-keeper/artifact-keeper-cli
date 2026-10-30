@@ -224,6 +224,7 @@ pub async fn chunked_upload(
     chunk_size: u64,
     file_size: u64,
     file_name: &str,
+    content_type: &str,
 ) -> Result<FinalizeResponse> {
     // Step 1: Compute SHA256
     let sha_spinner = crate::output::spinner(&format!("Computing checksum for {file_name}..."));
@@ -254,6 +255,7 @@ pub async fn chunked_upload(
                     file_size,
                     &file_sha256,
                     chunk_size,
+                    content_type,
                 )
                 .await?;
 
@@ -381,6 +383,7 @@ async fn create_session(
     total_size: u64,
     checksum_sha256: &str,
     chunk_size: u64,
+    content_type: &str,
 ) -> Result<CreateSessionResponse> {
     let body = CreateSessionRequest {
         repository_key: repo.to_string(),
@@ -388,7 +391,7 @@ async fn create_session(
         total_size,
         checksum_sha256: checksum_sha256.to_string(),
         chunk_size: Some(chunk_size),
-        content_type: None,
+        content_type: Some(content_type.to_string()),
     };
 
     let resp = http

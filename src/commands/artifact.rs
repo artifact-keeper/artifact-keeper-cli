@@ -207,6 +207,30 @@ impl ArtifactCommand {
     }
 }
 
+/// Map a file name to the MIME type Artifact Keeper uses to classify the
+/// artifact's package format. Without this every upload went out as
+/// `application/octet-stream`, so the server stored RPMs (and other formats)
+/// as generic artifacts instead of indexing them into their format repo (#185).
+///
+/// Only extensions where the server keys on content type are listed; anything
+/// unknown keeps the generic `application/octet-stream` default, which is the
+/// correct type for an opaque blob.
+fn content_type_for_path(path: &str) -> &'static str {
+    let ext = Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase);
+
+    match ext.as_deref() {
+        Some("rpm") => "application/x-rpm",
+        Some("deb") => "application/vnd.debian.binary-package",
+        Some("jar") | Some("war") | Some("ear") => "application/java-archive",
+        Some("gz") | Some("tgz") => "application/gzip",
+        Some("zip") | Some("nupkg") | Some("whl") => "application/zip",
+        _ => "application/octet-stream",
+    }
+}
+
 async fn push(
     repo: &str,
     file_patterns: &[String],
@@ -266,6 +290,8 @@ async fn push(
 
         let use_chunked = !no_chunked && file_size >= threshold;
 
+        let content_type = content_type_for_path(&artifact_path);
+
         if use_chunked {
             // Chunked upload for large files
             let result = super::chunked_upload::chunked_upload(
@@ -277,6 +303,7 @@ async fn push(
                 chunk_size,
                 file_size,
                 file_name,
+                content_type,
             )
             .await?;
 
@@ -314,8 +341,15 @@ async fn push(
             });
             let body = reqwest::Body::wrap_stream(stream);
 
-            let resp =
-                single_put_upload(&base_url, &auth_header, repo, &artifact_path, body).await?;
+            let resp = single_put_upload(
+                &base_url,
+                &auth_header,
+                repo,
+                &artifact_path,
+                body,
+                content_type,
+            )
+            .await?;
 
             pb.finish_with_message(format!("Uploaded {file_name}"));
 
@@ -367,6 +401,7 @@ async fn single_put_upload(
     repo: &str,
     artifact_path: &str,
     body: reqwest::Body,
+    content_type: &str,
 ) -> Result<SinglePutUploadResponse> {
     let mut url = reqwest::Url::parse(base_url)
         .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
@@ -379,7 +414,7 @@ async fn single_put_upload(
     let resp = super::client::raw_http_client()?
         .put(url)
         .header(reqwest::header::AUTHORIZATION, auth_header)
-        .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+        .header(reqwest::header::CONTENT_TYPE, content_type)
         .body(body)
         .send()
         .await
@@ -1111,6 +1146,33 @@ mod tests {
 
     fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
         TestCli::try_parse_from(args)
+    }
+
+    #[test]
+    fn content_type_detects_rpm_and_falls_back_to_generic() {
+        // The bug: RPMs went up as octet-stream and were stored as generic.
+        assert_eq!(
+            content_type_for_path("pkg-1.0-1.el9.x86_64.rpm"),
+            "application/x-rpm"
+        );
+        // Path with directories and mixed case extension still resolves.
+        assert_eq!(
+            content_type_for_path("nested/dir/PKG.RPM"),
+            "application/x-rpm"
+        );
+        // A few other format-bearing extensions the server classifies.
+        assert_eq!(
+            content_type_for_path("app.deb"),
+            "application/vnd.debian.binary-package"
+        );
+        assert_eq!(content_type_for_path("lib.jar"), "application/java-archive");
+        // Unknown / extensionless stays the correct generic blob type.
+        assert_eq!(content_type_for_path("output.tar.gz"), "application/gzip");
+        assert_eq!(
+            content_type_for_path("release-1.0"),
+            "application/octet-stream"
+        );
+        assert_eq!(content_type_for_path("README"), "application/octet-stream");
     }
 
     // ---- Push subcommand parsing ----
