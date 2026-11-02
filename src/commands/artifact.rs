@@ -215,22 +215,27 @@ impl ArtifactCommand {
     }
 }
 
-/// Detect the MIME type the server should use to classify an upload.
+/// Detect the `Content-Type` to declare for an upload, which the server stores
+/// with the artifact and returns on download.
 ///
-/// Without this the CLI sent every upload as `application/octet-stream`, so
-/// the server stored RPMs (and anything else) as generic artifacts instead of
-/// indexing them into their format repo (#185). Mirroring what Artifactory
-/// does for generic repositories, we now guess the type from the file name.
+/// This only sets the stored `content_type`. It does not decide the artifact's
+/// format or whether it gets indexed; the server does that from the repository
+/// format and the file itself.
 ///
 /// Resolution order:
-/// 1. A curated override table, for extensions where the bundled mime.types
-///    database is wrong or missing. `mime_guess` maps `.rpm` to
-///    `audio/x-pn-realaudio-plugin` (a legacy collision) and has no `.deb`
-///    entry at all, so those must be pinned explicitly.
-/// 2. `mime_guess` (the Apache/IANA `mime.types` DB, the Rust analogue of
-///    Python's `mimetypes`) for the long tail of common extensions.
-/// 3. `application/octet-stream` as the fallback for unknown/extensionless
-///    files, which is the correct type for an opaque blob.
+/// 1. A curated override table, for extensions the bundled `mime_guess` database
+///    gets wrong for packages:
+///    - `.rpm` maps to `audio/x-pn-realaudio-plugin` (a legacy collision).
+///    - `.deb` maps to `application/octet-stream`.
+///    - `.tgz` maps to the vague `application/x-compressed`, while `.tar.gz`
+///      gets `application/gzip`.
+///    - `.mod` (Go modules) maps to `video/mpeg` and `.ts` (usually TypeScript)
+///      to an MPEG transport stream type. There's no type to say what those
+///      really are, so they stay opaque.
+/// 2. `mime_guess` for the long tail of common extensions.
+/// 3. `application/octet-stream` for unknown or extensionless files. This
+///    includes `.whl`, `.crate`, `.nupkg` and `.gem`, which aren't in the
+///    database.
 fn content_type_for_path(path: &str) -> String {
     const OCTET_STREAM: &str = "application/octet-stream";
 
@@ -239,11 +244,13 @@ fn content_type_for_path(path: &str) -> String {
         .and_then(|e| e.to_str())
         .map(str::to_ascii_lowercase);
 
-    // 1. Curated overrides (DB is wrong or absent for these).
+    // 1. Curated overrides (DB is wrong or too vague for these).
     if let Some(ext) = ext.as_deref() {
         let override_type = match ext {
             "rpm" => Some("application/x-rpm"),
             "deb" | "udeb" => Some("application/vnd.debian.binary-package"),
+            "tgz" => Some("application/gzip"),
+            "mod" | "ts" => Some(OCTET_STREAM),
             _ => None,
         };
         if let Some(t) = override_type {
@@ -1180,9 +1187,8 @@ mod tests {
     }
 
     #[test]
-    fn content_type_detects_rpm_and_falls_back_to_generic() {
-        // Curated overrides: the bundled mime.types DB maps .rpm to
-        // audio/x-pn-realaudio-plugin and has no .deb entry, so these are pinned.
+    fn content_type_uses_overrides_then_mime_guess_then_octet_stream() {
+        // Curated overrides: the bundled mime.types DB gets these wrong.
         assert_eq!(
             content_type_for_path("pkg-1.0-1.el9.x86_64.rpm"),
             "application/x-rpm"
@@ -1195,6 +1201,31 @@ mod tests {
             content_type_for_path("app.deb"),
             "application/vnd.debian.binary-package"
         );
+
+        assert_eq!(content_type_for_path("pkg-1.0.tgz"), "application/gzip");
+        assert_eq!(content_type_for_path("pkg-1.0.tar.gz"), "application/gzip");
+        assert_eq!(
+            content_type_for_path("v1.0.0.mod"),
+            "application/octet-stream"
+        );
+        assert_eq!(
+            content_type_for_path("index.ts"),
+            "application/octet-stream"
+        );
+
+        // Package formats not in the database stay octet-stream, same as before.
+        for name in [
+            "a-1.0-py3-none-any.whl",
+            "a-1.0.crate",
+            "a.1.0.nupkg",
+            "a-1.0.gem",
+        ] {
+            assert_eq!(
+                content_type_for_path(name),
+                "application/octet-stream",
+                "{name}"
+            );
+        }
 
         // Long tail resolved via mime_guess (like Python's mimetypes).
         assert_eq!(content_type_for_path("lib.jar"), "application/java-archive");

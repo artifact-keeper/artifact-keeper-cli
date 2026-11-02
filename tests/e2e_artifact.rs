@@ -55,6 +55,87 @@ fn write_test_file(path: &std::path::Path, size: usize) -> Vec<u8> {
     data
 }
 
+/// The `content_type` the server stored for an artifact.
+fn stored_content_type(env: &common::TestEnv, repo: &str, path: &str) -> String {
+    let output = env
+        .ak_cmd()
+        .args(["artifact", "info", repo, path])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let info: serde_json::Value = serde_json::from_slice(&output).expect("artifact info JSON");
+    info["content_type"]
+        .as_str()
+        .expect("artifact info has content_type")
+        .to_string()
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_push_stores_detected_content_type() {
+    let env = common::TestEnv::setup();
+    let pid = std::process::id();
+    let repo = format!("e2e-art-ctype-{pid}");
+    let _guard = RepoGuard::create(&env, &repo, "generic");
+    let dir = tempfile::TempDir::new().unwrap();
+
+    // Single PUT: the Content-Type header.
+    for (name, expected) in [
+        ("pkg-1.0-1.noarch.rpm", "application/x-rpm"),
+        ("pkg-1.0.tgz", "application/gzip"),
+        ("pkg-1.0.crate", "application/octet-stream"),
+    ] {
+        let file = dir.path().join(name);
+        write_test_file(&file, 1024);
+        env.ak_cmd()
+            .args(["artifact", "push", &repo, file.to_str().unwrap()])
+            .assert()
+            .success();
+        assert_eq!(stored_content_type(&env, &repo, name), expected, "{name}");
+    }
+
+    // Explicit --content-type wins over detection.
+    let file = dir.path().join("override.rpm");
+    write_test_file(&file, 1024);
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "push",
+            &repo,
+            file.to_str().unwrap(),
+            "--content-type",
+            "application/x-custom",
+        ])
+        .assert()
+        .success();
+    assert_eq!(
+        stored_content_type(&env, &repo, "override.rpm"),
+        "application/x-custom"
+    );
+
+    // Chunked: the upload session's content_type.
+    let file = dir.path().join("chunked-1.0.jar");
+    write_test_file(&file, 6 * 1024 * 1024);
+    env.ak_cmd()
+        .env("AK_CHUNKED_THRESHOLD", "1MB")
+        .args([
+            "artifact",
+            "push",
+            &repo,
+            file.to_str().unwrap(),
+            "--chunk-size",
+            "5MB",
+        ])
+        .assert()
+        .success();
+    assert_eq!(
+        stored_content_type(&env, &repo, "chunked-1.0.jar"),
+        "application/java-archive"
+    );
+}
+
 #[test]
 #[ignore = "requires E2E backend"]
 fn artifact_push_small_file_single_put() {
