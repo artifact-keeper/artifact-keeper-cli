@@ -107,11 +107,8 @@ async fn device_login_never_prints_tokens() {
         "verification URI missing from stderr"
     );
     assert!(
-        stderr.contains("alice"),
-        "account confirmation missing from stderr"
+        stderr.contains("Logged in"),
+        "confirmation missing from stderr"
     );
-    assert!(
-        !stderr.contains("alice@example.com"),
-        "email address found in stderr"
-    );
+    assert!(!stderr.contains("alice"), "account details found in stderr");
 }

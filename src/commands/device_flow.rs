@@ -647,7 +647,7 @@ async fn login_with_policy(
     // a working credential.
     let sdk_client =
         crate::commands::client::build_client(instance_name, instance, Some(&credential))?;
-    let user = sdk_client
+    sdk_client
         .get_current_user()
         .send()
         .await
@@ -660,7 +660,7 @@ async fn login_with_policy(
     store_credential(instance_name, &credential)?;
 
     if !matches!(global.format, OutputFormat::Quiet) {
-        eprintln!("Logged in to '{instance_name}' as {}", user.username);
+        eprintln!("Logged in to '{instance_name}'. Run `ak auth whoami` to see the account.");
         if !tokens.scope.is_empty() {
             eprintln!("Granted scopes: {}", tokens.scope);
         }
