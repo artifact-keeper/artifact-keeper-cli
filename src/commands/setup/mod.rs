@@ -314,77 +314,59 @@ fn write_config_file(path: &Path, content: &str, description: &str) -> Result<()
     Ok(())
 }
 
-/// Mask every occurrence of the token. No part of it is kept: this text goes to
-/// the terminal, and from there to scrollback and CI logs.
-fn redact_token(content: &str, token: &str) -> String {
-    if token.is_empty() {
-        content.to_string()
-    } else {
-        content.replace(token, "****")
+/// Stands in for the token in every config template, and is what the user sees
+/// in a preview. Previews are built from the template, so they never hold the
+/// token at all: nothing has to find it and remove it, and nothing can miss it.
+const TOKEN_SLOT: &str = "****";
+
+/// The bytes for disk: the template with the real token in the slot.
+fn fill_token(template: &str, token: &str) -> String {
+    template.replace(TOKEN_SLOT, token)
+}
+
+/// The `.netrc` line for Go module authentication, as a template.
+fn go_netrc_line(host: &str) -> String {
+    format!("machine {host} login __token__ password {TOKEN_SLOT}")
+}
+
+/// Append a line to `.netrc`, which is owner-only from creation.
+fn append_netrc_line(path: &Path, line: &str) -> Result<()> {
+    use std::io::Write;
+    let mut options = std::fs::OpenOptions::new();
+    options.create(true).append(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
     }
+    let mut file = options.open(path).into_diagnostic()?;
+    writeln!(file, "{line}").into_diagnostic()?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).into_diagnostic()?;
+    }
+    Ok(())
 }
 
-/// Build the `.netrc` line for Go module authentication and its redacted
-/// console display. The real line goes into the 0600 `.netrc` file; only the
-/// redacted form may be printed to the terminal.
-fn go_netrc_lines(host: &str, token: &str) -> (String, String) {
-    let line = format!("machine {host} login __token__ password {token}");
-    let display = redact_token(&line, token);
-    (line, display)
-}
-
-/// Build the yum/dnf `.repo` file content and its redacted console display.
-/// The real content goes into the repo file (via `sudo tee`); only the
-/// redacted form may be printed to the terminal.
-fn yum_repo_file(repo_key: &str, yum_url: &str, token: &str) -> (String, String) {
-    let content = format!(
+/// The yum/dnf `.repo` file, as a template.
+fn yum_repo_file(repo_key: &str, yum_url: &str) -> String {
+    format!(
         "[artifact-keeper-{repo_key}]\n\
          name=Artifact Keeper - {repo_key}\n\
          baseurl={yum_url}\n\
          enabled=1\n\
          gpgcheck=0\n\
          username=__token__\n\
-         password={token}\n"
-    );
-    let display = redact_token(&content, token);
-    (content, display)
+         password={TOKEN_SLOT}\n"
+    )
 }
 
-/// The form of a config file that is safe to print.
-///
-/// The token is removed by value, wherever it sits in the file: a URL's
-/// userinfo, an XML element, a quoted string. Looking for lines that seem to
-/// hold a secret is kept only as a second layer for values that aren't this
-/// token, such as an existing credential in a template.
-fn redact_config(content: &str, token: &str) -> String {
-    redact_token(content, token)
-        .lines()
-        .map(|line| {
-            if line.contains("_authToken")
-                || line.contains("_auth")
-                || line.contains("password")
-                || line.contains("ClearTextPassword")
-                || line.contains("token =")
-                || line.contains("Bearer ")
-            {
-                if let Some(eq) = line.find('=') {
-                    format!("{}= ****", &line[..eq])
-                } else if let Some(colon) = line.find(':') {
-                    format!("{}: ****", &line[..colon])
-                } else {
-                    "****".to_string()
-                }
-            } else {
-                line.to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-fn confirm_write(path: &Path, content: &str, token: &str, no_input: bool) -> Result<bool> {
+/// Show a config template and ask whether to write it.
+fn confirm_write(path: &Path, template: &str, no_input: bool) -> Result<bool> {
     eprintln!("\nConfiguration to write to {}:\n", path.display());
-    eprintln!("{}", redact_config(content, token));
+    eprintln!("{template}");
 
     if no_input {
         return Ok(true);
@@ -421,6 +403,30 @@ fn sudo_write(path: &Path, content: &str, mode: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Run a package manager's CLI with a secret on its stdin. A secret on the
+/// command line would be readable through `ps` and /proc by every local user
+/// for as long as the program runs.
+fn run_with_secret_on_stdin(
+    program: &str,
+    args: &[&str],
+    secret: &str,
+) -> Result<std::process::ExitStatus> {
+    std::process::Command::new(program)
+        .args(args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::inherit())
+        .stderr(std::process::Stdio::inherit())
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(secret.as_bytes())?;
+            }
+            child.wait()
+        })
+        .into_diagnostic()
 }
 
 async fn auto_detect(global: &GlobalArgs) -> Result<()> {
@@ -466,19 +472,22 @@ async fn setup_npm(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     let npmrc_content = format!(
         "registry={npm_registry_url}\n\
-         //{host}:_authToken={token}\n",
+         //{host}:_authToken={TOKEN_SLOT}\n",
         host = strip_protocol(&npm_registry_url),
-        token = ctx.token,
     );
 
     let npmrc_path = home_dir()?.join(".npmrc");
 
-    if !confirm_write(&npmrc_path, &npmrc_content, &ctx.token, global.no_input)? {
+    if !confirm_write(&npmrc_path, &npmrc_content, global.no_input)? {
         eprintln!("Skipped npm configuration.");
         return Ok(());
     }
 
-    write_config_file(&npmrc_path, &npmrc_content, ".npmrc")?;
+    write_config_file(
+        &npmrc_path,
+        &fill_token(&npmrc_content, &ctx.token),
+        ".npmrc",
+    )?;
     eprintln!(
         "npm is now configured to use repository '{}'.",
         ctx.repo_key
@@ -492,25 +501,23 @@ async fn setup_pip(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     let pip_conf_content = format!(
         "[global]\n\
-         index-url = https://__token__:{token}@{host_and_path}\n",
-        token = ctx.token,
+         index-url = https://__token__:{TOKEN_SLOT}@{host_and_path}\n",
         host_and_path = strip_protocol(&index_url),
     );
 
     let filename = if cfg!(windows) { "pip.ini" } else { "pip.conf" };
     let pip_conf_path = config_dir()?.join("pip").join(filename);
 
-    if !confirm_write(
-        &pip_conf_path,
-        &pip_conf_content,
-        &ctx.token,
-        global.no_input,
-    )? {
+    if !confirm_write(&pip_conf_path, &pip_conf_content, global.no_input)? {
         eprintln!("Skipped pip configuration.");
         return Ok(());
     }
 
-    write_config_file(&pip_conf_path, &pip_conf_content, "pip.conf")?;
+    write_config_file(
+        &pip_conf_path,
+        &fill_token(&pip_conf_content, &ctx.token),
+        "pip.conf",
+    )?;
     eprintln!(
         "pip is now configured to use repository '{}'.",
         ctx.repo_key
@@ -540,32 +547,30 @@ async fn setup_cargo(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     let credentials_content = format!(
         "[registries.artifact-keeper]\n\
-         token = \"Bearer {}\"\n",
-        ctx.token,
+         token = \"Bearer {TOKEN_SLOT}\"\n",
     );
 
     let config_path = cargo_home.join("config.toml");
     let creds_path = cargo_home.join("credentials.toml");
 
     eprintln!("Will write two files:");
-    if !confirm_write(&config_path, &config_content, &ctx.token, global.no_input)? {
+    if !confirm_write(&config_path, &config_content, global.no_input)? {
         eprintln!("Skipped Cargo configuration.");
         return Ok(());
     }
 
     write_config_file(&config_path, &config_content, "cargo config.toml")?;
 
-    if !confirm_write(
-        &creds_path,
-        &credentials_content,
-        &ctx.token,
-        global.no_input,
-    )? {
+    if !confirm_write(&creds_path, &credentials_content, global.no_input)? {
         eprintln!("Skipped Cargo credentials.");
         return Ok(());
     }
 
-    write_config_file(&creds_path, &credentials_content, "cargo credentials.toml")?;
+    write_config_file(
+        &creds_path,
+        &fill_token(&credentials_content, &ctx.token),
+        "cargo credentials.toml",
+    )?;
     eprintln!(
         "Cargo is now configured to use repository '{}'.",
         ctx.repo_key
@@ -589,20 +594,11 @@ async fn setup_docker(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         ctx.repo_key
     );
 
-    let status = std::process::Command::new("docker")
-        .args(["login", &host, "-u", "__token__", "--password-stdin"])
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::inherit())
-        .stderr(std::process::Stdio::inherit())
-        .spawn()
-        .and_then(|mut child| {
-            use std::io::Write;
-            if let Some(mut stdin) = child.stdin.take() {
-                stdin.write_all(ctx.token.as_bytes())?;
-            }
-            child.wait()
-        })
-        .into_diagnostic()?;
+    let status = run_with_secret_on_stdin(
+        "docker",
+        &["login", &host, "-u", "__token__", "--password-stdin"],
+        &ctx.token,
+    )?;
 
     if !status.success() {
         return Err(
@@ -628,7 +624,7 @@ async fn setup_maven(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     <server>
       <id>artifact-keeper</id>
       <username>__token__</username>
-      <password>{token}</password>
+      <password>{TOKEN_SLOT}</password>
     </server>
   </servers>
   <profiles>
@@ -648,23 +644,21 @@ async fn setup_maven(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     <activeProfile>artifact-keeper</activeProfile>
   </activeProfiles>
 </settings>
-"#,
-        token = ctx.token,
+"#
     );
 
     let settings_path = home_dir()?.join(".m2").join("settings.xml");
 
-    if !confirm_write(
-        &settings_path,
-        &settings_content,
-        &ctx.token,
-        global.no_input,
-    )? {
+    if !confirm_write(&settings_path, &settings_content, global.no_input)? {
         eprintln!("Skipped Maven configuration.");
         return Ok(());
     }
 
-    write_config_file(&settings_path, &settings_content, "Maven settings.xml")?;
+    write_config_file(
+        &settings_path,
+        &fill_token(&settings_content, &ctx.token),
+        "Maven settings.xml",
+    )?;
     eprintln!(
         "Maven is now configured to use repository '{}'.",
         ctx.repo_key
@@ -683,13 +677,12 @@ async fn setup_gradle(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
             url "{gradle_url}"
             credentials {{
                 username = "__token__"
-                password = "{token}"
+                password = "{TOKEN_SLOT}"
             }}
         }}
     }}
 }}
-"#,
-        token = ctx.token,
+"#
     );
 
     let init_path = home_dir()?
@@ -697,12 +690,16 @@ async fn setup_gradle(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         .join("init.d")
         .join("artifact-keeper.gradle");
 
-    if !confirm_write(&init_path, &init_content, &ctx.token, global.no_input)? {
+    if !confirm_write(&init_path, &init_content, global.no_input)? {
         eprintln!("Skipped Gradle configuration.");
         return Ok(());
     }
 
-    write_config_file(&init_path, &init_content, "Gradle init script")?;
+    write_config_file(
+        &init_path,
+        &fill_token(&init_content, &ctx.token),
+        "Gradle init script",
+    )?;
     eprintln!(
         "Gradle is now configured to use repository '{}'.",
         ctx.repo_key
@@ -721,14 +718,14 @@ async fn setup_go(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     eprintln!("  export GONOSUMCHECK=\"{host}\"");
     eprintln!();
 
-    let (netrc_line, netrc_display) = go_netrc_lines(host, &ctx.token);
+    let netrc_template = go_netrc_line(host);
     let netrc_path = home_dir()?.join(".netrc");
 
     eprintln!(
         "For authentication, add this line to {}:",
         netrc_path.display()
     );
-    eprintln!("  {netrc_display}");
+    eprintln!("  {netrc_template}");
 
     if global.no_input {
         return Ok(());
@@ -741,24 +738,7 @@ async fn setup_go(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         .into_diagnostic()?;
 
     if write_netrc {
-        use std::io::Write;
-        let mut options = std::fs::OpenOptions::new();
-        options.create(true).append(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            options.mode(0o600);
-        }
-        let mut file = options.open(&netrc_path).into_diagnostic()?;
-        writeln!(file, "{netrc_line}").into_diagnostic()?;
-
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(&netrc_path, std::fs::Permissions::from_mode(0o600))
-                .into_diagnostic()?;
-        }
-
+        append_netrc_line(&netrc_path, &fill_token(&netrc_template, &ctx.token))?;
         eprintln!("Updated {}", netrc_path.display());
     }
 
@@ -772,10 +752,9 @@ async fn setup_helm(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     eprintln!("Running: helm repo add artifact-keeper {helm_url}");
 
-    // --password-stdin, not --password: argv is readable by every local user
-    // through `ps` and /proc for as long as helm runs.
-    let status = std::process::Command::new("helm")
-        .args([
+    let status = run_with_secret_on_stdin(
+        "helm",
+        &[
             "repo",
             "add",
             "artifact-keeper",
@@ -783,19 +762,9 @@ async fn setup_helm(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
             "--username",
             "__token__",
             "--password-stdin",
-        ])
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::inherit())
-        .stderr(std::process::Stdio::inherit())
-        .spawn()
-        .and_then(|mut child| {
-            use std::io::Write;
-            if let Some(mut stdin) = child.stdin.take() {
-                stdin.write_all(ctx.token.as_bytes())?;
-            }
-            child.wait()
-        })
-        .into_diagnostic()?;
+        ],
+        &ctx.token,
+    )?;
 
     if !status.success() {
         return Err(AkError::ConfigError("helm repo add failed".into()).into());
@@ -818,12 +787,11 @@ async fn setup_nuget(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
   <packageSourceCredentials>
     <ArtifactKeeper>
       <add key="Username" value="__token__" />
-      <add key="ClearTextPassword" value="{token}" />
+      <add key="ClearTextPassword" value="{TOKEN_SLOT}" />
     </ArtifactKeeper>
   </packageSourceCredentials>
 </configuration>
-"#,
-        token = ctx.token,
+"#
     );
 
     let config_path = if cfg!(windows) {
@@ -835,12 +803,16 @@ async fn setup_nuget(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
             .join("NuGet.Config")
     };
 
-    if !confirm_write(&config_path, &nuget_config, &ctx.token, global.no_input)? {
+    if !confirm_write(&config_path, &nuget_config, global.no_input)? {
         eprintln!("Skipped NuGet configuration.");
         return Ok(());
     }
 
-    write_config_file(&config_path, &nuget_config, "nuget.config")?;
+    write_config_file(
+        &config_path,
+        &fill_token(&nuget_config, &ctx.token),
+        "nuget.config",
+    )?;
     eprintln!(
         "NuGet is now configured to use repository '{}'.",
         ctx.repo_key
@@ -852,7 +824,7 @@ async fn setup_yum(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("rpm", repo, global).await?;
     let yum_url = format!("{}/{}/", ctx.registry_url, ctx.repo_key);
 
-    let (repo_content, repo_display) = yum_repo_file(&ctx.repo_key, &yum_url, &ctx.token);
+    let repo_template = yum_repo_file(&ctx.repo_key, &yum_url);
 
     let repo_path = PathBuf::from(format!(
         "/etc/yum.repos.d/artifact-keeper-{}.repo",
@@ -863,14 +835,14 @@ async fn setup_yum(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         "This requires writing to {} (needs sudo).",
         repo_path.display()
     );
-    eprintln!("\nConfiguration:\n{repo_display}");
+    eprintln!("\nConfiguration:\n{repo_template}");
 
     if global.no_input {
         eprintln!("Run the following command manually, with your token in place of ****:");
         eprintln!(
             "  sudo install -m 600 /dev/stdin {} <<'EOF'\n{}EOF",
             repo_path.display(),
-            repo_display
+            repo_template
         );
         return Ok(());
     }
@@ -886,7 +858,7 @@ async fn setup_yum(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
-    sudo_write(&repo_path, &repo_content, "600")?;
+    sudo_write(&repo_path, &fill_token(&repo_template, &ctx.token), "600")?;
     eprintln!(
         "yum/dnf is now configured to use repository '{}'.",
         ctx.repo_key
@@ -900,11 +872,10 @@ async fn setup_apt(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let host = host_from_url(&apt_url);
 
     let sources_content = format!("deb [trusted=yes] {apt_url} stable main\n");
-    let auth_content = format!(
+    let auth_template = format!(
         "machine {host}\n\
          login __token__\n\
-         password {}\n",
-        ctx.token,
+         password {TOKEN_SLOT}\n"
     );
 
     let sources_path = PathBuf::from(format!(
@@ -913,11 +884,9 @@ async fn setup_apt(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     ));
     let auth_path = PathBuf::from("/etc/apt/auth.conf.d/artifact-keeper.conf");
 
-    let redacted_auth = redact_token(&auth_content, &ctx.token);
-
     eprintln!("This requires writing to /etc/apt/ (needs sudo).");
     eprintln!("\nSources list:\n{sources_content}");
-    eprintln!("Auth config:\n{redacted_auth}");
+    eprintln!("Auth config:\n{auth_template}");
 
     if global.no_input {
         eprintln!("Run the following commands manually, with your token in place of ****:");
@@ -929,7 +898,7 @@ async fn setup_apt(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         eprintln!(
             "  sudo install -m 600 /dev/stdin {} <<'EOF'\n{}EOF",
             auth_path.display(),
-            redacted_auth
+            auth_template
         );
         return Ok(());
     }
@@ -945,6 +914,7 @@ async fn setup_apt(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
+    let auth_content = fill_token(&auth_template, &ctx.token);
     for (path, content, desc, mode) in [
         (
             &sources_path,
@@ -1232,48 +1202,16 @@ mod tests {
     fn confirm_write_no_input_returns_true() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.conf");
-        let result = confirm_write(&path, "content", "tok", true).unwrap();
+        let result = confirm_write(&path, "content", true).unwrap();
         assert!(result);
     }
 
-    // ---- redact_token / redact_config ----
+    // ---- fill_token ----
 
     #[test]
-    fn redact_token_keeps_no_part_of_the_token() {
-        let out = redact_token("password unit-test-token-1234", "unit-test-token-1234");
-        assert_eq!(out, "password ****");
-    }
-
-    #[test]
-    fn redact_token_empty_token_changes_nothing() {
-        assert_eq!(redact_token("password x", ""), "password x");
-    }
-
-    #[test]
-    fn redact_config_masks_a_token_in_url_userinfo() {
-        let token = "unit-test-token-1234";
-        let out = redact_config(
-            &format!("[global]\nindex-url = https://__token__:{token}@host/pypi/r/simple/\n"),
-            token,
-        );
-        assert!(!out.contains(token), "{out}");
-        assert!(
-            out.contains("https://__token__:****@host/pypi/r/simple/"),
-            "{out}"
-        );
-    }
-
-    #[test]
-    fn redact_config_masks_a_token_in_xml_and_quotes() {
-        let token = "unit-test-token-1234";
-        for content in [
-            format!("<password>{token}</password>"),
-            format!("value=\"{token}\""),
-            format!("token = \"Bearer {token}\""),
-        ] {
-            let out = redact_config(&content, token);
-            assert!(!out.contains(token), "{out}");
-        }
+    fn fill_token_fills_every_slot() {
+        let filled = fill_token(&format!("a={TOKEN_SLOT} b={TOKEN_SLOT}"), "tok");
+        assert_eq!(filled, "a=tok b=tok");
     }
 
     #[cfg(unix)]
@@ -1315,52 +1253,30 @@ mod tests {
         assert_eq!(std::fs::read_to_string(&real).unwrap(), "new");
     }
 
-    // ---- go_netrc_lines (setup go console redaction) ----
+    // ---- templates hold no token, and filling one in gives the real file ----
 
     #[test]
-    fn go_netrc_file_line_keeps_real_token() {
+    fn go_netrc_line_is_a_template() {
         let token = "unit-test-token-1234";
-        let (line, _) = go_netrc_lines("example.com", token);
+        let template = go_netrc_line("example.com");
         assert_eq!(
-            line,
+            template,
+            "machine example.com login __token__ password ****"
+        );
+        assert_eq!(
+            fill_token(&template, token),
             format!("machine example.com login __token__ password {token}")
         );
     }
 
     #[test]
-    fn go_netrc_console_display_is_redacted() {
+    fn yum_repo_file_is_a_template() {
         let token = "unit-test-token-1234";
-        let (line, display) = go_netrc_lines("example.com", token);
-        // The line written to .netrc must contain the real token...
-        assert!(line.contains(token));
-        // ...but the console display must never expose it.
-        assert!(!display.contains(token));
-        assert!(display.contains("password ****"));
-    }
-
-    // ---- yum_repo_file (setup yum console redaction) ----
-
-    #[test]
-    fn yum_repo_file_content_keeps_real_token() {
-        let token = "unit-test-token-1234";
-        let (content, _) = yum_repo_file("rpm-local", "https://ak.example.com/api/v1/rpm/", token);
-        assert!(content.contains(&format!("password={token}")));
-        assert!(content.contains("[artifact-keeper-rpm-local]"));
-        assert!(content.contains("baseurl=https://ak.example.com/api/v1/rpm/"));
-    }
-
-    #[test]
-    fn yum_repo_console_display_is_redacted() {
-        let token = "unit-test-token-1234";
-        let (content, display) =
-            yum_repo_file("rpm-local", "https://ak.example.com/api/v1/rpm/", token);
-        // The .repo file content must contain the real token...
-        assert!(content.contains(token));
-        // ...but the console display must never expose it.
-        assert!(!display.contains(token));
-        assert!(display.contains("password=****"));
-        // Non-secret fields are displayed unchanged.
-        assert!(display.contains("baseurl=https://ak.example.com/api/v1/rpm/"));
+        let template = yum_repo_file("rpm-local", "https://ak.example.com/rpm/rpm-local/");
+        assert!(template.contains("password=****"));
+        assert!(template.contains("[artifact-keeper-rpm-local]"));
+        assert!(template.contains("baseurl=https://ak.example.com/rpm/rpm-local/"));
+        assert!(fill_token(&template, token).contains(&format!("password={token}")));
     }
 
     // ---- DetectedEcosystem struct ----
