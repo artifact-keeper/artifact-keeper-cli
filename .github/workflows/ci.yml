@@ -7,7 +7,6 @@ on:
       - "**/*.md"
       - "CLAUDE.md"
       - "LICENSE"
-      - ".beads/**"
   # No paths-ignore here. Branch protection requires jobs from this workflow, and
   # a PR that a path filter skips never reports them, so it stays blocked forever.
   pull_request:
@@ -97,6 +96,10 @@ jobs:
   # A job-level `if` can't read secrets, so the guard is on each step: without
   # a token the job still runs and passes. That way the check reports a result
   # on every PR and can be required.
+  #
+  # A green SonarCloud check proves only that the scan ran (or was skipped), not
+  # that the quality gate passed: sonar.qualitygate.wait isn't set, so the job
+  # doesn't wait for the gate's result.
   sonar:
     name: SonarCloud
     runs-on: ubuntu-latest
