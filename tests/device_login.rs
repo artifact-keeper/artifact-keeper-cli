@@ -70,6 +70,7 @@ async fn device_login_never_prints_tokens() {
         .expect("ak binary")
         .env("AK_CONFIG_DIR", config_dir.path())
         .env_remove("AK_TOKEN")
+        .env("AK_CREDENTIAL_STORE", "file")
         .arg("--no-input")
         .arg("--format")
         .arg("json")

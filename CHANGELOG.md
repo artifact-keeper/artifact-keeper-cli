@@ -18,6 +18,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak quarantine hold <artifact-id> [--reason]` to quarantine an artifact immediately, blocking downloads until an admin releases or rejects it (#156). `--reason` is optional; the server records a default when it is omitted.
   Requires backend 1.7.0 or newer.
 - `ak auth login --oidc-device` (`--device` alias) signs in with Artifact Keeper's RFC 8628 device authorization grant, for headless hosts and SSO-backed instances. Requires backend 1.12.0 or newer. The CLI prints the verification URL and user code, polls at the server's interval, honours `authorization_pending` and `slow_down`, reports `expired_token`, `access_denied` and `invalid_grant` clearly, and stores the returned access and refresh tokens through the existing credential store. `--scope` selects AK scopes (default `read:artifacts`); `--no-input` keeps the flow non-interactive and never opens a browser. Tokens are never printed (artifact-keeper#3462)
+- `AK_CREDENTIAL_STORE=file` skips the OS keychain and keeps credentials in the 0600 credentials file.
 
 ### Changed
 
@@ -51,6 +52,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - Updated `rustls-webpki` to 0.103.16 (RUSTSEC-2026-0382, distrusted intermediates accepted) and `webpki-root-certs` to 1.0.11 (RUSTSEC-2026-0383, distrusted emSign intermediates)
 - Updated `tokio` to 1.54.1 (RUSTSEC-2026-0386, `AsyncFd` I/O-safety unsoundness)
 - The patched `rustls`/`rustls-webpki` require `aws-lc-rs` >= 1.18 (now 1.19.0, with `aws-lc-sys` 0.47.0) and the patched `quinn-proto` requires `rand` 0.10, so those move too (`rand` 0.10 is only in `Cargo.lock` as well)
+- `ak setup pip` no longer prints the access token to stderr (#207). `setup` previews are now built from templates that never hold the token, `setup helm` passes it on stdin instead of the command line, and config files and their backups are 0600 from the moment they exist. If you ran `ak setup pip` in a shared terminal or a CI job, treat that token as exposed.
 
 ## [1.2.0] - 2026-07-13
 

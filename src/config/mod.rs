@@ -109,7 +109,10 @@ impl AppConfig {
 /// `set_permissions`, which leaves a umask-dependent race window. On other
 /// platforms the file inherits the default ACLs of the (already restricted)
 /// parent directory.
-pub(crate) fn write_private_atomic(path: &std::path::Path, content: &str) -> Result<()> {
+pub(crate) fn write_private_atomic(
+    path: &std::path::Path,
+    content: impl AsRef<[u8]>,
+) -> Result<()> {
     use std::io::Write;
 
     let parent = match path.parent() {
@@ -126,7 +129,7 @@ pub(crate) fn write_private_atomic(path: &std::path::Path, content: &str) -> Res
     }
 
     let mut tmp = builder.tempfile_in(&parent).into_diagnostic()?;
-    tmp.write_all(content.as_bytes()).into_diagnostic()?;
+    tmp.write_all(content.as_ref()).into_diagnostic()?;
     tmp.as_file().sync_all().into_diagnostic()?;
     // `persist` renames the temp file over `path`, atomically replacing any
     // existing file; on failure the temp file is cleaned up.
