@@ -25,7 +25,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak webhook rotate-secret` no longer shows a new secret, because the server no longer returns one. It shows the digest, and `--format quiet` prints the webhook ID.
 - `ak quality-gate checks` now requires `--artifact`, as the API does.
 - `ak scan scores`: the `UNSCANNED` column is now `OPEN`. It subtracted acknowledged findings from `total_findings`, which the server already counts as open findings only.
-- `ak peer repo list` shows each subscription's sync state, mode and last replication.
+- `ak peer subscription list` shows each subscription's sync state, mode and last replication.
 - `ak curation update-rule` keeps a rule's engine and config. An update used to reset them to the defaults.
 - `ak admin users role assign` warns that the role grants no repository access, since backend 1.11 deprecated the endpoint in favour of `ak permission create`.
 - `ak lifecycle update` and `ak email-subscriptions subscribe` use the generated SDK instead of raw HTTP.
