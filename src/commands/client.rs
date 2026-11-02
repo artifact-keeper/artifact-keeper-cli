@@ -139,6 +139,14 @@ mod tests {
 
     #[test]
     fn build_client_with_valid_token() {
+        // These "clean state" build tests must not observe an `AK_CA_CERT` set
+        // by a concurrently-running custom-CA test (in this module or in
+        // `transport`), which would make `build_client` fail loading that CA.
+        // Serialize on the shared env lock and clear the var, matching the
+        // custom-CA tests below.
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var(transport::CA_CERT_ENV) };
+
         let instance = InstanceConfig {
             url: "https://example.com".to_string(),
             api_version: "v1".to_string(),
@@ -155,6 +163,9 @@ mod tests {
 
     #[test]
     fn build_client_with_empty_token() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var(transport::CA_CERT_ENV) };
+
         let instance = InstanceConfig {
             url: "https://example.com".to_string(),
             api_version: "v1".to_string(),
@@ -172,6 +183,9 @@ mod tests {
 
     #[test]
     fn build_client_different_urls() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var(transport::CA_CERT_ENV) };
+
         let urls = vec![
             "https://registry.example.com",
             "http://localhost:8080",

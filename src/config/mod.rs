@@ -429,7 +429,8 @@ url = "https://test.com"
         let path = dir.path().join("secret.json");
         // Simulate a pre-existing file with overly broad permissions.
         std::fs::write(&path, "old").unwrap();
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+        // The 0644 is the point of this test: write_private_atomic must tighten it to 0600.
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap(); // NOSONAR
 
         write_private_atomic(&path, "new").unwrap();
 
