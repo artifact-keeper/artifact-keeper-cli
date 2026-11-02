@@ -135,6 +135,20 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo build --release
 
+  # Builds the Dockerfile and runs the binary in its runtime stage. A passing
+  # `docker build` proves nothing about the image: a builder with a newer glibc
+  # than the runtime stage builds fine and then can't start (#189).
+  docker:
+    name: Docker Image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build -t ak:ci .
+      - run: docker run --rm ak:ci --version
+
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
