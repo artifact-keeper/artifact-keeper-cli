@@ -2,9 +2,10 @@ use artifact_keeper_sdk::ClientQuarantineExt;
 use clap::Subcommand;
 use miette::Result;
 
-use super::client::client_for;
+use super::client::{client_for, resolve_base_url_and_auth};
 use super::helpers::{emit_mutation, parse_uuid, sdk_err};
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output;
 
 #[derive(Subcommand)]
@@ -13,6 +14,17 @@ pub enum QuarantineCommand {
     Status {
         /// Artifact ID (UUID)
         artifact: String,
+    },
+
+    /// Quarantine an artifact immediately, blocking downloads (admin only)
+    Hold {
+        /// Artifact ID (UUID)
+        artifact: String,
+
+        /// Reason shown to developers whose downloads are blocked
+        /// (defaults server-side when omitted)
+        #[arg(long)]
+        reason: Option<String>,
     },
 
     /// Release a quarantined artifact so it can be served (admin only)
@@ -37,6 +49,7 @@ impl QuarantineCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Status { artifact } => status(&artifact, global).await,
+            Self::Hold { artifact, reason } => hold(&artifact, reason.as_deref(), global).await,
             Self::Release { artifact } => release(&artifact, global).await,
             Self::Reject { artifact, reason } => reject(&artifact, reason.as_deref(), global).await,
         }
@@ -69,6 +82,86 @@ async fn status(artifact: &str, global: &GlobalArgs) -> Result<()> {
     println!("{}", output::render(&info, &global.format, Some(table_str)));
 
     Ok(())
+}
+
+async fn hold(artifact: &str, reason: Option<&str>, global: &GlobalArgs) -> Result<()> {
+    let artifact_id = parse_uuid(artifact, "artifact")?;
+
+    // The vendored SDK's `ClientQuarantineExt` predates this route and exposes
+    // no quarantine-now operation, so call it over raw HTTP the way other
+    // post-SDK endpoints do (see email_subscriptions.rs).
+    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
+    let spinner = output::spinner("Quarantining artifact...");
+
+    let http = super::client::raw_http_client()?;
+    let resp = http
+        .post(format!(
+            "{}/api/v1/quarantine/{artifact_id}/quarantine",
+            base_url.trim_end_matches('/')
+        ))
+        .header(reqwest::header::AUTHORIZATION, auth_header)
+        .json(&serde_json::json!({ "reason": reason }))
+        .send()
+        .await
+        .map_err(|e| sdk_err("quarantine artifact", e))?;
+
+    let status = resp.status();
+    let text = resp
+        .text()
+        .await
+        .map_err(|e| sdk_err("quarantine artifact", e))?;
+
+    spinner.finish_and_clear();
+
+    if !status.is_success() {
+        return Err(hold_error(status, &text, artifact_id).into());
+    }
+
+    let action: serde_json::Value =
+        serde_json::from_str(&text).map_err(|e| sdk_err("parse quarantine response", e))?;
+
+    let id = action["artifact_id"]
+        .as_str()
+        .map(str::to_string)
+        .unwrap_or_else(|| artifact_id.to_string());
+    let new_status = action["new_status"].as_str().unwrap_or("quarantined");
+    let message = action["message"].as_str().unwrap_or("Artifact quarantined");
+
+    let human = format!("Quarantined artifact {id} (status: {new_status}). {message}");
+    emit_mutation(&action, &id, &human, global);
+
+    Ok(())
+}
+
+/// Map a failed hold response to an actionable message.
+///
+/// The raw-HTTP path exposes the status code, so unlike the SDK-backed
+/// subcommands this can explain what to do about a 403/404/409 instead of
+/// surfacing a bare transport error.
+fn hold_error(status: reqwest::StatusCode, text: &str, artifact_id: uuid::Uuid) -> AkError {
+    let server_msg = serde_json::from_str::<serde_json::Value>(text)
+        .ok()
+        .and_then(|v| {
+            v.get("message")
+                .and_then(|m| m.as_str())
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| text.to_string());
+
+    let detail = match status.as_u16() {
+        403 => "Quarantining an artifact requires admin access.".to_string(),
+        404 => format!("No artifact with ID {artifact_id} exists on this instance."),
+        409 => {
+            "The artifact was rejected during security review, so it cannot be quarantined again."
+                .to_string()
+        }
+        _ => server_msg,
+    };
+
+    AkError::ServerError(format!(
+        "quarantine artifact failed (HTTP {}): {detail}",
+        status.as_u16()
+    ))
 }
 
 async fn release(artifact: &str, global: &GlobalArgs) -> Result<()> {
@@ -251,6 +344,39 @@ mod tests {
         assert!(try_parse(&["test", "reject"]).is_err());
     }
 
+    // ---- parsing: hold ----
+
+    #[test]
+    fn parse_hold_no_reason() {
+        let cli = parse(&["test", "hold", "some-id"]);
+        match cli.command {
+            QuarantineCommand::Hold { artifact, reason } => {
+                assert_eq!(artifact, "some-id");
+                // The endpoint substitutes a default reason for an absent one,
+                // so --reason stays optional (matching `reject`).
+                assert!(reason.is_none());
+            }
+            _ => panic!("expected Hold"),
+        }
+    }
+
+    #[test]
+    fn parse_hold_with_reason() {
+        let cli = parse(&["test", "hold", "some-id", "--reason", "Failed scan"]);
+        match cli.command {
+            QuarantineCommand::Hold { artifact, reason } => {
+                assert_eq!(artifact, "some-id");
+                assert_eq!(reason.as_deref(), Some("Failed scan"));
+            }
+            _ => panic!("expected Hold"),
+        }
+    }
+
+    #[test]
+    fn parse_hold_missing_artifact() {
+        assert!(try_parse(&["test", "hold"]).is_err());
+    }
+
     // ---- format functions ----
 
     #[test]
@@ -378,6 +504,118 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = reject(NIL_UUID, None, &global).await;
         assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    // ---- wiremock handler tests: hold ----
+
+    /// The hold route is `/{id}/quarantine`, not `/{id}` (renamed upstream);
+    /// pinning the path here is the point of this test.
+    #[tokio::test]
+    async fn handler_hold() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/quarantine/{NIL_UUID}/quarantine")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(action_json("quarantined")))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = hold(NIL_UUID, Some("Failed scan"), &global).await;
+        assert!(result.is_ok(), "hold failed: {:?}", result.err());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_hold_no_reason() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/quarantine/{NIL_UUID}/quarantine")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(action_json("quarantined")))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = hold(NIL_UUID, None, &global).await;
+        assert!(result.is_ok(), "hold failed: {:?}", result.err());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_hold_invalid_uuid() {
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = hold("not-a-uuid", None, &global).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn handler_hold_forbidden_mentions_admin() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/quarantine/{NIL_UUID}/quarantine")))
+            .respond_with(
+                ResponseTemplate::new(403).set_body_json(json!({"message": "admin required"})),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let err = hold(NIL_UUID, None, &global).await.unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("403"), "should carry the status: {msg}");
+        assert!(
+            msg.to_lowercase().contains("admin"),
+            "403 should explain the admin requirement: {msg}"
+        );
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_hold_not_found_mentions_artifact() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/quarantine/{NIL_UUID}/quarantine")))
+            .respond_with(ResponseTemplate::new(404).set_body_json(json!({"message": "not found"})))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let err = hold(NIL_UUID, None, &global).await.unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("404"), "should carry the status: {msg}");
+        assert!(
+            msg.contains(NIL_UUID),
+            "404 should name the artifact looked for: {msg}"
+        );
+        crate::test_utils::teardown_env();
+    }
+
+    /// 409 is unique to hold: the artifact was already rejected in review.
+    #[tokio::test]
+    async fn handler_hold_conflict_is_error() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/quarantine/{NIL_UUID}/quarantine")))
+            .respond_with(
+                ResponseTemplate::new(409).set_body_json(json!({"message": "already rejected"})),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let err = hold(NIL_UUID, None, &global).await.unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("409"), "should carry the status: {msg}");
         crate::test_utils::teardown_env();
     }
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ak quarantine hold <artifact-id> [--reason]` to quarantine an artifact immediately, blocking downloads until an admin releases or rejects it (#156). `--reason` is optional; the server records a default when it is omitted.
+
 ### Fixed
 
 - `ak artifact push` now sends a detected `Content-Type` instead of always using `application/octet-stream`, so the server stores a meaningful `content_type` for each artifact. The type is guessed from the file extension via `mime_guess`, with overrides for extensions its database gets wrong (for example `.rpm` is `application/x-rpm` and `.deb` is `application/vnd.debian.binary-package`) and an `application/octet-stream` fallback for unknown types. A new `--content-type` flag sets the type explicitly. Applies to both the single-PUT and chunked-upload paths. This changes only the stored `content_type`, not how the server classifies or indexes packages (#185)
@@ -24,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `ak age-gate` command group (`get`, `set`, `reviews`, `review`, `approve`, `reject`) for remote-proxy publish-age cooldown (#95)
+- `ak quarantine` command group (`status`, `release`, `reject` with a `purge` alias) for inspecting and resolving artifact quarantine holds (#102)
 - `ak group update <id> <name> [--description]` to rename/redescribe a group
 - `ak permission show <id>` and `ak permission update <id>` for reading and replacing permission rules
 - `ak label repo set <key> <labels...>` to replace all labels on a repository in one call
