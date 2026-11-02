@@ -12,7 +12,54 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
+
+/// Operations left out of the SDK, because Progenitor cannot generate
+/// multipart/form-data. `src/commands` calls these over raw HTTP. Generation
+/// fails on any other skip, so a new one can't silently drop out of the SDK.
+const KNOWN_SKIPS: &[&str] = &["POST /api/v1/plugins", "POST /api/v1/plugins/install/zip"];
+
+/// Response fields the pinned API requires but the previous minor doesn't send.
+///
+/// `ak` supports the server minor it's built for and the one before it. The
+/// generated SDK rejects a response that lacks a required field, so without this
+/// every command touching one of these types fails on the previous minor. They
+/// are generated as `Option`. Update this list when the pin moves to a new minor:
+/// each schema's `required` in the pinned spec, minus the same in the previous
+/// minor's specs (here 1.11.10 against 1.10.0 and 1.10.1).
+const NOT_REQUIRED_ON_PREVIOUS_MINOR: &[(&str, &[&str])] = &[
+    ("AssessmentResult", &["total_artifacts_exact"]),
+    ("CiOidcProviderResponse", &["key_source"]),
+    ("DownloadRecord", &["source"]),
+    ("ExchangeCodeResponse", &["expires_in"]),
+    ("FindingResponse", &["finding_class"]),
+    ("FormatHandlerResponse", &["scan_on_proxy"]),
+    ("LifecyclePolicy", &["applies_to_all", "repository_ids"]),
+    ("PermissionResponse", &["conditions"]),
+    ("PermissionRow", &["conditions"]),
+    ("PolicyExecutionResult", &["proxy_cache"]),
+    ("PolicyResponse", &["predicates"]),
+    ("PromotionResponse", &["gate_results"]),
+    ("ReadyzResponse", &["dependencies"]),
+    ("RepositoryAssessment", &["artifact_count_exact"]),
+    (
+        "RepositoryResponse",
+        &[
+            "allow_public_with_upstream_credentials",
+            "public_with_upstream_credentials",
+            "repodata_depth",
+            "repodata_depth_editable",
+            "storage_backend",
+            "upstream_url_has_credentials",
+            "visibility",
+        ],
+    ),
+    ("ScanResponse", &["scan_completeness"]),
+    ("ScoreResponse", &["has_uncataloged_scan"]),
+    ("SearchResultItem", &["quarantine_status"]),
+    ("SystemStats", &["proxy_download_count"]),
+    ("WebhookResponse", &["signing_mode"]),
+];
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
@@ -51,8 +98,24 @@ fn generate_sdk(check: bool) -> Result<()> {
     let mut spec: serde_json::Value =
         serde_json::from_str(&spec_content).context("Failed to parse OpenAPI spec as JSON")?;
 
+    check_version_pin(&workspace_root, &spec)?;
+
     // Convert OpenAPI 3.1 → 3.0 compatible format
-    convert_31_to_30(&mut spec);
+    let skipped = convert_31_to_30(&mut spec);
+
+    let unexpected: Vec<&String> = skipped
+        .iter()
+        .filter(|op| !KNOWN_SKIPS.contains(&op.as_str()))
+        .collect();
+    ensure!(
+        unexpected.is_empty(),
+        "Operations the SDK cannot generate, not in KNOWN_SKIPS: {unexpected:?}"
+    );
+    eprintln!(
+        "{} operations generated, {} skipped",
+        count_operations(&spec),
+        skipped.len()
+    );
 
     let spec_str = serde_json::to_string_pretty(&spec).context("Failed to serialize spec")?;
 
@@ -78,9 +141,15 @@ fn generate_sdk(check: bool) -> Result<()> {
     if check {
         let existing = fs::read_to_string(&output_path).unwrap_or_default();
         if existing != formatted {
+            let line = existing
+                .lines()
+                .zip(formatted.lines())
+                .position(|(a, b)| a != b)
+                .unwrap_or(existing.lines().count().min(formatted.lines().count()))
+                + 1;
             bail!(
                 "Generated SDK is out of date. Run `cargo xtask generate` to update.\n\
-                 Diff: {} bytes existing vs {} bytes generated",
+                 First difference at line {line}: {} bytes committed, {} bytes generated",
                 existing.len(),
                 formatted.len()
             );
@@ -99,7 +168,55 @@ fn generate_sdk(check: bool) -> Result<()> {
     Ok(())
 }
 
-/// Convert OpenAPI 3.1 constructs to 3.0 compatible format.
+/// Fail unless `API_VERSION`, the spec, and the SDK crate name the same version.
+fn check_version_pin(workspace_root: &Path, spec: &serde_json::Value) -> Result<()> {
+    let pin = fs::read_to_string(workspace_root.join("API_VERSION"))
+        .context("Failed to read API_VERSION")?;
+    let pin = pin.trim();
+
+    let spec_version = spec
+        .pointer("/info/version")
+        .and_then(|v| v.as_str())
+        .context("OpenAPI spec has no info.version")?;
+    ensure!(
+        spec_version == pin,
+        "API_VERSION is {pin}, but the spec is {spec_version}. \
+         Check out artifact-keeper-api at v{pin}."
+    );
+
+    let manifest = fs::read_to_string(workspace_root.join("sdk/Cargo.toml"))
+        .context("Failed to read sdk/Cargo.toml")?;
+    let sdk_version = manifest
+        .lines()
+        .find_map(|line| line.strip_prefix("version = "))
+        .map(|v| v.trim().trim_matches('"'))
+        .context("sdk/Cargo.toml has no version")?;
+    ensure!(
+        sdk_version == pin,
+        "API_VERSION is {pin}, but sdk/Cargo.toml has version {sdk_version}."
+    );
+
+    Ok(())
+}
+
+const HTTP_METHODS: &[&str] = &["get", "post", "put", "delete", "patch", "head", "options"];
+
+fn count_operations(spec: &serde_json::Value) -> usize {
+    spec.get("paths")
+        .and_then(|p| p.as_object())
+        .map(|paths| {
+            paths
+                .values()
+                .filter_map(|methods| methods.as_object())
+                .flat_map(|methods| methods.keys())
+                .filter(|method| HTTP_METHODS.contains(&method.as_str()))
+                .count()
+        })
+        .unwrap_or(0)
+}
+
+/// Convert OpenAPI 3.1 constructs to 3.0 compatible format, returning the
+/// operations that had to be removed.
 ///
 /// Main differences handled:
 /// - Version string: "3.1.0" → "3.0.3"
@@ -108,7 +225,7 @@ fn generate_sdk(check: bool) -> Result<()> {
 /// - `const` → `enum` with single value
 /// - Remove `examples` (3.1) if `example` (3.0) exists
 /// - Fix missing schemas for octet-stream/text-plain content types
-fn convert_31_to_30(spec: &mut serde_json::Value) {
+fn convert_31_to_30(spec: &mut serde_json::Value) -> Vec<String> {
     // Downgrade version string
     if let Some(version) = spec.get_mut("openapi")
         && (version.as_str() == Some("3.1.0") || version.as_str() == Some("3.1.1"))
@@ -117,7 +234,16 @@ fn convert_31_to_30(spec: &mut serde_json::Value) {
     }
 
     // Remove endpoints with unsupported content types (multipart/form-data)
-    remove_unsupported_endpoints(spec);
+    let skipped = remove_unsupported_endpoints(spec);
+
+    // Progenitor rejects any other request content type it does not know
+    alias_xml_request_bodies(spec);
+
+    // Progenitor panics on an operation with two different success bodies
+    merge_divergent_success_bodies(spec);
+
+    // Keep responses from the previous server minor deserializable
+    relax_previous_minor_fields(spec);
 
     // Strip error response bodies that cause Progenitor to panic
     // (assertion `response_types.len() <= 1` when both success and error have different schemas)
@@ -125,10 +251,14 @@ fn convert_31_to_30(spec: &mut serde_json::Value) {
 
     // Recursively transform the spec
     transform_value(spec);
+
+    skipped
 }
 
-/// Remove endpoints that use content types Progenitor doesn't support.
-fn remove_unsupported_endpoints(spec: &mut serde_json::Value) {
+/// Remove endpoints that use content types Progenitor doesn't support, returning
+/// them as `METHOD /path`.
+fn remove_unsupported_endpoints(spec: &mut serde_json::Value) -> Vec<String> {
+    let mut skipped = Vec::new();
     if let Some(paths) = spec.get_mut("paths")
         && let Some(paths_obj) = paths.as_object_mut()
     {
@@ -159,6 +289,7 @@ fn remove_unsupported_endpoints(spec: &mut serde_json::Value) {
                     path
                 );
                 methods_obj.remove(method);
+                skipped.push(format!("{} {path}", method.to_uppercase()));
             }
         }
 
@@ -167,12 +298,7 @@ fn remove_unsupported_endpoints(spec: &mut serde_json::Value) {
             .iter()
             .filter(|(_, v)| {
                 v.as_object()
-                    .map(|o| {
-                        o.keys().all(|k| {
-                            !["get", "post", "put", "delete", "patch", "head", "options"]
-                                .contains(&k.as_str())
-                        })
-                    })
+                    .map(|o| o.keys().all(|k| !HTTP_METHODS.contains(&k.as_str())))
                     .unwrap_or(true)
             })
             .map(|(k, _)| k.clone())
@@ -181,6 +307,118 @@ fn remove_unsupported_endpoints(spec: &mut serde_json::Value) {
         for path in empty_paths {
             paths_obj.remove(&path);
         }
+    }
+    skipped
+}
+
+/// Drop `NOT_REQUIRED_ON_PREVIOUS_MINOR` fields from their schemas' `required`.
+fn relax_previous_minor_fields(spec: &mut serde_json::Value) {
+    for (schema, fields) in NOT_REQUIRED_ON_PREVIOUS_MINOR {
+        let pointer = format!("/components/schemas/{schema}/required");
+        if let Some(required) = spec.pointer_mut(&pointer).and_then(|r| r.as_array_mut()) {
+            required.retain(|field| !field.as_str().is_some_and(|f| fields.contains(&f)));
+        }
+    }
+}
+
+/// Generate `text/xml` request bodies as `text/plain`.
+///
+/// Progenitor only accepts JSON, octet-stream, form and plain-text request
+/// bodies, and fails the whole generation on anything else. The XML-RPC body of
+/// `POST /pypi/{repo_key}/pypi` is an opaque string, and the backend handler
+/// does not look at its Content-Type, so the plain-text path is equivalent.
+/// Responses need no alias: a non-JSON response body is generated as raw bytes.
+fn alias_xml_request_bodies(spec: &mut serde_json::Value) {
+    let Some(paths) = spec.get_mut("paths").and_then(|p| p.as_object_mut()) else {
+        return;
+    };
+    for (path, methods) in paths.iter_mut() {
+        let Some(methods) = methods.as_object_mut() else {
+            continue;
+        };
+        for (method, detail) in methods.iter_mut() {
+            if let Some(content) = detail
+                .get_mut("requestBody")
+                .and_then(|rb| rb.get_mut("content"))
+                .and_then(|c| c.as_object_mut())
+                && let Some(xml) = content.remove("text/xml")
+            {
+                eprintln!(
+                    "  Aliasing text/xml request body of {} {} to text/plain",
+                    method.to_uppercase(),
+                    path
+                );
+                content.insert("text/plain".to_string(), xml);
+            }
+        }
+    }
+}
+
+/// Give an operation with different 2xx JSON bodies one body type: a `oneOf`.
+///
+/// Progenitor 0.12 panics (`response_types.len() <= 1`) on these. The union is
+/// added as `<operationId>_outcome`, and every 2xx response points at it, so
+/// the operation stays in the SDK with all of its bodies typed.
+fn merge_divergent_success_bodies(spec: &mut serde_json::Value) {
+    // A JSON pointer escapes the `/` in a media type as `~1`.
+    const JSON: &str = "/content/application~1json";
+    let mut unions: Vec<(String, serde_json::Value)> = Vec::new();
+
+    let Some(paths) = spec.get_mut("paths").and_then(|p| p.as_object_mut()) else {
+        return;
+    };
+    for (path, methods) in paths.iter_mut() {
+        let Some(methods) = methods.as_object_mut() else {
+            continue;
+        };
+        for (method, detail) in methods.iter_mut() {
+            let op_id = detail
+                .get("operationId")
+                .and_then(|id| id.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let Some(responses) = detail.get_mut("responses").and_then(|r| r.as_object_mut())
+            else {
+                continue;
+            };
+
+            let mut bodies: Vec<serde_json::Value> = Vec::new();
+            for (code, resp) in responses.iter() {
+                if code.starts_with('2')
+                    && let Some(schema) = resp.pointer(&format!("{JSON}/schema"))
+                    && !bodies.contains(schema)
+                {
+                    bodies.push(schema.clone());
+                }
+            }
+            if bodies.len() < 2 {
+                continue;
+            }
+
+            let name = format!("{op_id}_outcome");
+            eprintln!(
+                "  Merging {} success bodies of {} {} into {name}",
+                bodies.len(),
+                method.to_uppercase(),
+                path
+            );
+            let reference = format!("#/components/schemas/{name}");
+            for (code, resp) in responses.iter_mut() {
+                if code.starts_with('2')
+                    && let Some(media) = resp.pointer_mut(JSON)
+                {
+                    media["schema"] = serde_json::json!({ "$ref": reference });
+                }
+            }
+            unions.push((name, serde_json::json!({ "oneOf": bodies })));
+        }
+    }
+
+    if let Some(schemas) = spec
+        .pointer_mut("/components/schemas")
+        .and_then(|s| s.as_object_mut())
+    {
+        schemas.extend(unions);
     }
 }
 

@@ -15,28 +15,13 @@ services:
       timeout: 5s
       retries: 15
 
-  meilisearch:
-    image: getmeili/meilisearch:v1.12
-    environment:
-      MEILI_ENV: development
-    ports:
-      - "7701:7700"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
-      interval: 2s
-      timeout: 5s
-      retries: 15
-
   backend:
     image: ghcr.io/artifact-keeper/artifact-keeper-backend:${API_VERSION:?set by tests/start-backend.sh}
     depends_on:
       postgres:
         condition: service_healthy
-      meilisearch:
-        condition: service_healthy
     environment:
       DATABASE_URL: "postgresql://registry:registry@postgres:5432/artifact_registry_test"
-      MEILI_URL: "http://meilisearch:7700"
       ADMIN_PASSWORD: "TestRunner!2026secure"
       JWT_SECRET: "${JWT_SECRET:?set by tests/start-backend.sh}"
     ports:

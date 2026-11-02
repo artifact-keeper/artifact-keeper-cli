@@ -663,6 +663,7 @@ mod tests {
 
     fn make_admin_user() -> AdminUserResponse {
         AdminUserResponse {
+            is_service_account: false,
             id: Uuid::nil(),
             username: "alice".to_string(),
             email: "alice@example.com".to_string(),
@@ -767,6 +768,8 @@ mod tests {
     #[test]
     fn format_created_token_output() {
         let token = ApiTokenCreatedResponse {
+            expires_at: None,
+            policy_applied: false,
             id: Uuid::nil(),
             name: "my-token".to_string(),
             token: "ak_secretvalue123".to_string(),
@@ -811,7 +814,8 @@ mod tests {
             "auth_provider": "local",
             "must_change_password": false,
             "created_at": "2026-01-01T00:00:00Z",
-            "last_login_at": null
+            "last_login_at": null,
+            "is_service_account": false
         })
     }
 
@@ -874,7 +878,8 @@ mod tests {
                 "auth_provider": "local",
                 "must_change_password": false,
                 "created_at": "2026-01-01T00:00:00Z",
-                "last_login_at": null
+                "last_login_at": null,
+                "is_service_account": false
             })))
             .mount(&server)
             .await;
@@ -924,7 +929,8 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": NIL_UUID,
                 "name": "deploy-token",
-                "token": "ak_secretvalue123"
+                "token": "ak_secretvalue123",
+                "policy_applied": false
             })))
             .mount(&server)
             .await;

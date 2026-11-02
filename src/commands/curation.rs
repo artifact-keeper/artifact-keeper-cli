@@ -539,9 +539,12 @@ async fn create_rule(
 
     let body = artifact_keeper_sdk::types::CurationCreateRuleRequest {
         action: action.to_string(),
-        package_pattern: package_pattern.to_string(),
+        package_pattern: Some(package_pattern.to_string()),
         reason: reason.to_string(),
         staging_repo_id: staging_id,
+        config: Default::default(),
+        rule_type: None,
+        scope: None,
         architecture: architecture.map(|s| s.to_string()),
         priority,
         version_constraint: version_constraint.map(|s| s.to_string()),
@@ -601,7 +604,19 @@ async fn update_rule(
     let client = client_for(global)?;
     let spinner = output::spinner("Updating curation rule...");
 
+    // PUT replaces the rule, and an omitted `rule_type` means `pattern`. Carry
+    // the current engine and its config over so a typed rule keeps them.
+    let existing = client
+        .get_curation_rule()
+        .id(rule_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get curation rule", e))?
+        .into_inner();
+
     let body = artifact_keeper_sdk::types::CurationUpdateRuleRequest {
+        config: existing.config,
+        rule_type: Some(existing.rule_type),
         action: action.to_string(),
         package_pattern: package_pattern.to_string(),
         reason: reason.to_string(),
@@ -1204,6 +1219,7 @@ mod tests {
             "evaluation_reason": null,
             "first_seen_at": "2026-07-01T12:00:00Z",
             "metadata": {},
+            "attestation_state": "unverified",
         })
     }
 
@@ -1221,6 +1237,9 @@ mod tests {
             "created_by": null,
             "created_at": "2026-07-01T12:00:00Z",
             "updated_at": "2026-07-01T12:00:00Z",
+            "rule_type": "pattern",
+            "config": {},
+            "scope": "repository",
         })
     }
 
@@ -1297,7 +1316,8 @@ mod tests {
             "evaluated_by": null,
             "evaluation_reason": null,
             "first_seen_at": "2026-07-01T12:00:00Z",
-            "metadata": {}
+            "metadata": {},
+            "attestation_state": "unverified"
         })
     }
 
@@ -1314,7 +1334,10 @@ mod tests {
             "staging_repo_id": null,
             "created_by": null,
             "created_at": "2026-07-01T12:00:00Z",
-            "updated_at": "2026-07-01T12:00:00Z"
+            "updated_at": "2026-07-01T12:00:00Z",
+            "rule_type": "pattern",
+            "config": {},
+            "scope": "global"
         })
     }
 
@@ -1510,6 +1533,12 @@ mod tests {
     async fn handler_update_rule() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/curation/rules/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(rule_body()))
+            .mount(&server)
+            .await;
 
         Mock::given(method("PUT"))
             .and(path(format!("/api/v1/curation/rules/{NIL_UUID}")))

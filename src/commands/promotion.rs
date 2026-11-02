@@ -1346,7 +1346,8 @@ mod tests {
                 "target": "releases",
                 "message": "Promoted successfully",
                 "promotion_id": NIL_UUID,
-                "policy_violations": []
+                "policy_violations": [],
+                "gate_results": []
             })))
             .mount(&server)
             .await;
@@ -1371,7 +1372,8 @@ mod tests {
                 "source": "staging",
                 "target": "releases",
                 "promotion_id": NIL_UUID,
-                "policy_violations": []
+                "policy_violations": [],
+                "gate_results": []
             })))
             .mount(&server)
             .await;
@@ -1897,14 +1899,16 @@ mod tests {
                         "source": "staging",
                         "target": "releases",
                         "promotion_id": NIL_UUID,
-                        "policy_violations": []
+                        "policy_violations": [],
+                        "gate_results": []
                     },
                     {
                         "promoted": true,
                         "source": "staging",
                         "target": "releases",
                         "promotion_id": NIL_UUID,
-                        "policy_violations": []
+                        "policy_violations": [],
+                        "gate_results": []
                     }
                 ]
             })))
@@ -1934,7 +1938,8 @@ mod tests {
                     "source": "staging",
                     "target": "releases",
                     "promotion_id": NIL_UUID,
-                    "policy_violations": []
+                    "policy_violations": [],
+                    "gate_results": []
                 }]
             })))
             .mount(&server)

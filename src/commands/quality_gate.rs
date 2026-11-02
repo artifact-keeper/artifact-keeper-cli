@@ -100,11 +100,11 @@ pub enum QualityGateCommand {
         repo: Option<String>,
     },
 
-    /// List quality checks (optionally filtered by artifact or repository)
+    /// List the quality checks of an artifact
     Checks {
-        /// Filter by artifact ID
+        /// Artifact ID
         #[arg(long)]
-        artifact: Option<String>,
+        artifact: String,
 
         /// Filter by repository ID
         #[arg(long)]
@@ -218,7 +218,7 @@ impl QualityGateCommand {
                 check_artifact(&artifact, repo.as_deref(), global).await
             }
             Self::Checks { artifact, repo } => {
-                list_checks(artifact.as_deref(), repo.as_deref(), global).await
+                list_checks(&artifact, repo.as_deref(), global).await
             }
             Self::CheckShow { id } => show_check(&id, global).await,
             Self::CheckTrigger { artifact, repo } => {
@@ -598,23 +598,16 @@ async fn check_artifact(
 
 // ---- quality checks ----
 
-async fn list_checks(
-    artifact: Option<&str>,
-    repo: Option<&str>,
-    global: &GlobalArgs,
-) -> Result<()> {
-    let artifact_id = parse_optional_uuid(artifact, "artifact")?;
+async fn list_checks(artifact: &str, repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
+    let artifact_id = parse_uuid(artifact, "artifact")?;
     let repository_id = parse_optional_uuid(repo, "repository")?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching quality checks...");
 
-    let mut req = client.list_checks();
-    if let Some(a) = artifact_id {
-        req = req.artifact_id(a);
-    }
-
-    let checks = req
+    let checks = client
+        .list_checks()
+        .artifact_id(artifact_id)
         .send()
         .await
         .map_err(|e| sdk_err("list quality checks", e))?;
@@ -1619,10 +1612,10 @@ mod tests {
 
     #[test]
     fn parse_checks_minimal() {
-        let cli = parse(&["test", "checks"]);
+        let cli = parse(&["test", "checks", "--artifact", "a-id"]);
         match cli.command {
             QualityGateCommand::Checks { artifact, repo } => {
-                assert!(artifact.is_none());
+                assert_eq!(artifact, "a-id");
                 assert!(repo.is_none());
             }
             _ => panic!("expected Checks"),
@@ -1634,7 +1627,7 @@ mod tests {
         let cli = parse(&["test", "checks", "--artifact", "a-id", "--repo", "r-id"]);
         match cli.command {
             QualityGateCommand::Checks { artifact, repo } => {
-                assert_eq!(artifact.as_deref(), Some("a-id"));
+                assert_eq!(artifact, "a-id");
                 assert_eq!(repo.as_deref(), Some("r-id"));
             }
             _ => panic!("expected Checks"),
@@ -1797,7 +1790,7 @@ mod tests {
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         // artifact_id is now a required query parameter.
-        let result = list_checks(Some(NIL_UUID), None, &global).await;
+        let result = list_checks(NIL_UUID, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1814,7 +1807,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_checks(Some(NIL_UUID), None, &global).await;
+        let result = list_checks(NIL_UUID, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

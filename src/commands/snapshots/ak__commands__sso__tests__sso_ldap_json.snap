@@ -12,7 +12,9 @@ group_base_dn: "ou=groups,dc=corp"
 group_filter: ~
 groups_attribute: memberOf
 has_bind_password: true
+has_ca_certificate: false
 id: 00000000-0000-0000-0000-000000000000
+insecure_skip_verify: false
 is_enabled: true
 name: corp-ldap
 priority: 10

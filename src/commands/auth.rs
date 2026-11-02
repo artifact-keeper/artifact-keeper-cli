@@ -525,7 +525,7 @@ async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) 
     let client = build_client(&instance_name, instance_cfg, Some(&jwt_cred))?;
 
     let body = artifact_keeper_sdk::types::CiTokenRequest {
-        provider_id: provider,
+        provider_id: Some(provider),
     };
 
     let resp = client
@@ -656,6 +656,7 @@ async fn token_create(
         name,
         scopes: vec!["*".to_string()],
         expires_in_days: Some(i64::from(expires_in)),
+        repo_selector: None,
     };
 
     let resp = client
@@ -793,7 +794,8 @@ mod tests {
                 "token_prefix": "ak_test_",
                 "scopes": ["*"],
                 "created_at": "2026-01-15T12:00:00Z",
-                "expires_at": "2026-04-15T12:00:00Z"
+                "expires_at": "2026-04-15T12:00:00Z",
+                "policy_applied": false
             })))
             .mount(&server)
             .await;
@@ -818,7 +820,8 @@ mod tests {
                 "token_prefix": "ak_test_",
                 "scopes": ["*"],
                 "created_at": "2026-01-15T12:00:00Z",
-                "expires_at": "2026-04-15T12:00:00Z"
+                "expires_at": "2026-04-15T12:00:00Z",
+                "policy_applied": false
             })))
             .mount(&server)
             .await;

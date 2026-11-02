@@ -15,4 +15,5 @@ expression: parsed
   name: deploy-hook
   payload_template: generic
   repository_id: ~
+  signing_mode: hmac
   url: "https://ci.example.com/hook"

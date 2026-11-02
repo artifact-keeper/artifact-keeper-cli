@@ -675,6 +675,12 @@ mod tests {
                     "database": { "status": "ok", "message": null },
                     "migrations": { "status": "ok", "message": null },
                     "setup_complete": { "status": "ok", "message": null }
+                },
+                "dependencies": {
+                    "opensearch": { "status": "healthy", "required": false },
+                    "storage": { "status": "healthy", "required": true },
+                    "scanner": { "status": "healthy", "required": false },
+                    "ldap": { "status": "unavailable", "required": false }
                 }
             })))
             .mount(&server)

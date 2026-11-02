@@ -330,10 +330,10 @@ async fn create_account(name: &str, description: Option<&str>, global: &GlobalAr
         description: description.map(|s| s.to_string()),
     };
 
-    // Raw request instead of the generated SDK method: the backend responds
-    // `200 OK` here, but the generated client (`create_service_account`) only
-    // accepts `201`, so every successful create was reported as an error even
-    // though the account was created (#98). Accept any 2xx success status.
+    // Raw request instead of the generated SDK method: backend 1.11.10 still
+    // responds `200 OK` here while its spec declares `201`, so the generated
+    // client (`create_service_account`) reports every successful create as an
+    // error. Accept any 2xx success status.
     let result = super::client::raw_http_client()?
         .post(format!("{base_url}/api/v1/service-accounts"))
         .header(reqwest::header::AUTHORIZATION, &auth_header)
@@ -1154,7 +1154,8 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": TOK_ID,
                 "name": "deploy",
-                "token": "ak_secret_value"
+                "token": "ak_secret_value",
+                "policy_applied": false
             })))
             .mount(&server)
             .await;

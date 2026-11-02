@@ -39,6 +39,37 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --workspace --locked
 
+  # The committed SDK must be what xtask generates from the pinned API version,
+  # and the pin, the spec and the SDK crate version must agree (xtask checks
+  # both). xtask reads the spec from a sibling checkout. Same toolchain as the
+  # Format job, because the generated file goes through rustfmt.
+  sdk-drift:
+    name: SDK Drift
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: artifact-keeper-cli
+      - name: Read the API pin
+        id: pin
+        run: echo "version=$(tr -d '[:space:]' < artifact-keeper-cli/API_VERSION)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: artifact-keeper/artifact-keeper-api
+          ref: v${{ steps.pin.outputs.version }}
+          path: artifact-keeper-api
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: artifact-keeper-cli
+      - name: Check the generated SDK
+        working-directory: artifact-keeper-cli
+        run: cargo run -p xtask -- generate --check
+
   fmt:
     name: Format
     runs-on: ubuntu-latest
@@ -195,17 +226,6 @@ jobs:
           --health-interval 2s
           --health-timeout 5s
           --health-retries 15
-      meilisearch:
-        image: getmeili/meilisearch:v1.12
-        env:
-          MEILI_ENV: development
-        ports:
-          - 7701:7700
-        options: >-
-          --health-cmd "curl -f http://localhost:7700/health"
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 15
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
@@ -230,7 +250,6 @@ jobs:
           docker run -d --name e2e-backend \
             --network ${{ job.services.postgres.network }} \
             -e DATABASE_URL="postgresql://registry:registry@postgres:5432/artifact_registry_test" \
-            -e MEILI_URL="http://meilisearch:7700" \
             -e ADMIN_PASSWORD="TestRunner!2026secure" \
             -e JWT_SECRET="${JWT_SECRET}" \
             -e RATE_LIMIT_ENABLED="false" \
