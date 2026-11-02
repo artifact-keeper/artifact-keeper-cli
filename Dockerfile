@@ -1,4 +1,8 @@
-FROM rust:1.88-slim AS builder
+# The builder and runtime must share a Debian release: the binary links against
+# the builder's glibc, so a builder newer than the runtime stage produces an
+# image that fails at startup with "GLIBC_x.y not found". The CI Docker job
+# runs the built image to catch this.
+FROM rust:1.99-slim-bookworm AS builder
 
 WORKDIR /build
 COPY . .

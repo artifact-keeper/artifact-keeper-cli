@@ -30,9 +30,13 @@ updates:
     commit-message:
       prefix: "chore"
 
-  # Dockerfile base images: `rust:1.88-slim` (builder) and
-  # `debian:bookworm-slim` (runtime). Both are plain tagged references, so
-  # Dependabot can resolve and bump them.
+  # Dockerfile base images: `rust:1.99-slim-bookworm` (builder) and
+  # `debian:bookworm-slim` (runtime). The builder tag names its Debian release
+  # on purpose. A bare `rust:X-slim` follows Debian's current stable, which
+  # moved past the runtime stage and broke the image (#189). Dependabot keeps
+  # a tag's suffix when it bumps, so it proposes `rust:X-slim-bookworm` and
+  # never switches back to the bare tag. Moving both stages to a newer Debian
+  # is a manual change; the CI Docker job runs the image and catches a mismatch.
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
