@@ -115,7 +115,7 @@ jobs:
           fetch-depth: 0
       - name: SonarCloud Scan
         if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v8
 
   # Cross-platform build smoke test. The Linux leg builds the static musl
   # target that release.yml ships, so a dependency that breaks static linking
