@@ -22,8 +22,20 @@ pub enum AuthCommand {
         url: Option<String>,
 
         /// Skip interactive prompt and go straight to token authentication
-        #[arg(long)]
+        #[arg(long, conflicts_with = "oidc_device")]
         token: bool,
+
+        /// Sign in with the RFC 8628 device authorization grant instead of
+        /// prompting for a password or token. Prints a verification URL and a
+        /// short user code, then polls until the user approves it. Works
+        /// headlessly and with SSO-backed instances. Requires backend 1.12.0+.
+        #[arg(long = "oidc-device", visible_alias = "device")]
+        oidc_device: bool,
+
+        /// AK scopes to request with --oidc-device (repeatable, or
+        /// comma-separated). Defaults to `read:artifacts`.
+        #[arg(long, value_delimiter = ',', requires = "oidc_device")]
+        scope: Vec<String>,
     },
 
     /// Log out and remove stored credentials
@@ -116,7 +128,18 @@ pub enum TokenCommand {
 impl AuthCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
-            Self::Login { url, token } => login(url.as_deref(), token, global).await,
+            Self::Login {
+                url,
+                token,
+                oidc_device,
+                scope,
+            } => {
+                if oidc_device {
+                    login_with_device(url.as_deref(), &scope, global).await
+                } else {
+                    login(url.as_deref(), token, global).await
+                }
+            }
             Self::Logout { instance } => logout(instance.as_deref(), global).await,
             Self::Token { command } => match command {
                 TokenCommand::Create {
@@ -154,23 +177,31 @@ impl AuthCommand {
     }
 }
 
-async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Result<()> {
+/// Resolve the instance named by `--url` (if given) or the configured
+/// default/`--instance`. Shared by the password, token and device login paths.
+fn resolve_login_instance(
+    url: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<(String, InstanceConfig)> {
     let config = AppConfig::load()?;
-    let (instance_name, instance) = if let Some(url) = url {
-        let (name, inst) = config
+    if let Some(url) = url {
+        let (name, instance) = config
             .instances
             .iter()
-            .find(|(_, inst)| inst.url == url)
+            .find(|(_, instance)| instance.url == url)
             .ok_or_else(|| {
                 AkError::ConfigError(format!(
                     "No instance configured with URL '{url}'. Run `ak instance add <name> {url}` first."
                 ))
             })?;
-        (name.to_string(), inst.clone())
-    } else {
-        let (name, inst) = config.resolve_instance(global.instance.as_deref())?;
-        (name.to_string(), inst.clone())
-    };
+        return Ok((name.to_string(), instance.clone()));
+    }
+    let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    Ok((name.to_string(), instance.clone()))
+}
+
+async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Result<()> {
+    let (instance_name, instance) = resolve_login_instance(url, global)?;
 
     if global.no_input {
         let hint = if use_token {
@@ -208,6 +239,19 @@ async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Resul
         1 => login_with_token(&instance_name, &instance).await,
         _ => unreachable!(),
     }
+}
+
+/// Sign in with the server's RFC 8628 device authorization grant.
+///
+/// `--no-input` is not an error here: the flow never prompts. It prints the
+/// verification URL and user code, and the user approves on a second device.
+async fn login_with_device(
+    url: Option<&str>,
+    scopes: &[String],
+    global: &GlobalArgs,
+) -> Result<()> {
+    let (instance_name, instance) = resolve_login_instance(url, global)?;
+    crate::commands::device_flow::login(&instance_name, &instance, scopes, global).await
 }
 
 async fn login_with_token(instance_name: &str, instance: &InstanceConfig) -> Result<()> {
@@ -700,7 +744,7 @@ mod tests {
 
     // ---- wiremock handler tests ----
 
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{body_string_contains, method, path};
     use wiremock::{Mock, ResponseTemplate};
 
     static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
@@ -912,6 +956,65 @@ mod tests {
     }
 
     #[test]
+    fn parse_login_oidc_device() {
+        match parse_auth(&["auth", "login", "--oidc-device"]) {
+            AuthCommand::Login {
+                oidc_device,
+                token,
+                scope,
+                ..
+            } => {
+                assert!(oidc_device);
+                assert!(!token);
+                assert!(scope.is_empty());
+            }
+            _ => panic!("expected Login"),
+        }
+    }
+
+    #[test]
+    fn parse_login_device_alias() {
+        match parse_auth(&["auth", "login", "--device"]) {
+            AuthCommand::Login { oidc_device, .. } => assert!(oidc_device),
+            _ => panic!("expected Login"),
+        }
+    }
+
+    #[test]
+    fn parse_login_device_scopes() {
+        match parse_auth(&[
+            "auth",
+            "login",
+            "--oidc-device",
+            "--scope",
+            "read:artifacts,write:artifacts",
+            "--scope",
+            "delete:artifacts",
+        ]) {
+            AuthCommand::Login {
+                oidc_device, scope, ..
+            } => {
+                assert!(oidc_device);
+                assert_eq!(
+                    scope,
+                    vec!["read:artifacts", "write:artifacts", "delete:artifacts"]
+                );
+            }
+            _ => panic!("expected Login"),
+        }
+    }
+
+    #[test]
+    fn parse_login_token_and_device_conflict() {
+        assert!(TestCli::try_parse_from(["auth", "login", "--token", "--oidc-device"]).is_err());
+    }
+
+    #[test]
+    fn parse_login_scope_requires_device() {
+        assert!(TestCli::try_parse_from(["auth", "login", "--scope", "read:artifacts"]).is_err());
+    }
+
+    #[test]
     fn parse_revoke_token() {
         match parse_auth(&["auth", "revoke-token", "abc-123"]) {
             AuthCommand::RevokeToken { id } => assert_eq!(id, "abc-123"),
@@ -1061,6 +1164,8 @@ mod tests {
 
         // Drop AK_TOKEN so the stored file credential (with a refresh token) is used.
         unsafe { std::env::remove_var("AK_TOKEN") };
+        // A keyring entry left by another test would win over the file below.
+        delete_credential("test").expect("clear test credential");
         let cred = serde_json::json!({
             "access_token": "old_access",
             "refresh_token": "old_refresh"
@@ -1076,6 +1181,9 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path("/api/v1/auth/refresh"))
+            // A device-login credential has exactly this shape: an access
+            // token plus the refresh token the grant returned.
+            .and(body_string_contains("old_refresh"))
             .respond_with(ResponseTemplate::new(200).set_body_json(login_response_json()))
             .mount(&server)
             .await;

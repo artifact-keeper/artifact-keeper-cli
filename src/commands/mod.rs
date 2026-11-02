@@ -10,6 +10,7 @@ pub mod client;
 pub mod completion;
 pub mod config;
 pub mod curation;
+pub mod device_flow;
 pub mod doctor;
 pub mod dt;
 pub mod email_subscriptions;
