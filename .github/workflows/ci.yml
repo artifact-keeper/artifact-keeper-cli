@@ -117,9 +117,10 @@ jobs:
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v6
 
-  # Cross-platform build smoke test. The Linux leg builds the static musl
-  # target that release.yml ships, so a dependency that breaks static linking
-  # (e.g. one that links a system library) fails here instead of at release (#178).
+  # Cross-platform build smoke test. The Linux legs build the static musl
+  # targets that release.yml ships, on the same runners, so a dependency that
+  # breaks static linking (e.g. one that links a system library) fails here
+  # instead of at release (#178).
   build:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -130,6 +131,8 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
           - os: macos-latest
           - os: windows-latest
     steps:
@@ -142,7 +145,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends musl-tools
-          echo "CC_x86_64_unknown_linux_musl=musl-gcc" >> "$GITHUB_ENV"
+          target="${{ matrix.target }}"
+          echo "CC_${target//-/_}=musl-gcc" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@v2
       - name: Build (host)
         if: ${{ !matrix.target }}

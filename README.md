@@ -32,12 +32,6 @@ Requires Rust 1.88+:
 cargo install artifact-keeper-cli
 ```
 
-### Snap (Linux)
-
-```bash
-snap install ak --classic
-```
-
 ### Docker
 
 ```bash

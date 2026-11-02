@@ -4,8 +4,10 @@ on:
   push:
     tags: ["v*"]
 
+# Read-only by default. Only the release job, which publishes the GitHub Release
+# and signs with cosign, asks for more.
 permissions:
-  contents: write
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -282,6 +284,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
+          # install.sh follows /releases/latest, which skips prereleases, so an
+          # rc tag must not become the release users get.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
           body: |
             ## Verifying signatures
@@ -315,7 +320,12 @@ jobs:
   homebrew:
     name: Update Homebrew Tap
     needs: release
+    # A tag with a hyphen is a prerelease (v1.11.0-rc.1), which must not move the tap.
+    if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
+    # Downloads public release assets and pushes with the deploy key, so the
+    # GITHUB_TOKEN isn't used at all.
+    permissions: {}
     steps:
       - name: Extract version
         id: version
@@ -326,16 +336,20 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           BASE="https://github.com/artifact-keeper/artifact-keeper-cli/releases/download/${TAG}"
           for f in ak-darwin-amd64 ak-darwin-arm64 ak-linux-amd64 ak-linux-arm64; do
-            curl -sLO "${BASE}/${f}.sha256"
+            curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors -O "${BASE}/${f}.sha256"
           done
 
       - name: Parse checksums
         id: sums
         run: |
-          echo "darwin_amd64=$(awk '{print $1}' ak-darwin-amd64.sha256)" >> "$GITHUB_OUTPUT"
-          echo "darwin_arm64=$(awk '{print $1}' ak-darwin-arm64.sha256)" >> "$GITHUB_OUTPUT"
-          echo "linux_amd64=$(awk '{print $1}' ak-linux-amd64.sha256)" >> "$GITHUB_OUTPUT"
-          echo "linux_arm64=$(awk '{print $1}' ak-linux-arm64.sha256)" >> "$GITHUB_OUTPUT"
+          for platform in darwin_amd64 darwin_arm64 linux_amd64 linux_arm64; do
+            sum="$(awk '{print $1}' "ak-${platform/_/-}.sha256")"
+            if ! [[ "$sum" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::ak-${platform/_/-}.sha256 does not hold a SHA-256: '$sum'"
+              exit 1
+            fi
+            echo "${platform}=${sum}" >> "$GITHUB_OUTPUT"
+          done
 
       - name: Generate Homebrew formula
         run: |
@@ -381,33 +395,30 @@ jobs:
           end
           FORMULA
 
+      # Plain git rather than a third-party action, so the deploy key is never
+      # handed to code from outside this repository. The tap's host key is pinned
+      # (GitHub publishes it at api.github.com/meta) instead of trusted on first use.
       - name: Push to Homebrew tap
-        uses: cpina/github-action-push-to-another-repository@main
         env:
-          SSH_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-        with:
-          source-directory: Formula
-          destination-github-username: artifact-keeper
-          destination-repository-name: homebrew-tap
-          target-directory: Formula
-          user-email: "github-actions[bot]@users.noreply.github.com"
-          user-name: "github-actions[bot]"
-          commit-message: "Update ak formula to ${{ steps.version.outputs.version }}"
-          target-branch: main
+          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          key="$RUNNER_TEMP/tap_deploy_key"
+          known_hosts="$RUNNER_TEMP/tap_known_hosts"
+          trap 'rm -f "$key"' EXIT
+          (umask 077 && printf '%s\n' "$DEPLOY_KEY" > "$key")
+          echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o UserKnownHostsFile=$known_hosts -o StrictHostKeyChecking=yes"
 
-  snap:
-    name: Publish to Snap Store
-    needs: release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: snapcore/action-build@v1
-        id: build
-
-      - uses: snapcore/action-publish@v1
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_STORE_TOKEN }}
-        with:
-          snap: ${{ steps.build.outputs.snap }}
-          release: stable
+          git clone --depth 1 --branch main git@github.com:artifact-keeper/homebrew-tap.git tap
+          cp Formula/ak.rb tap/Formula/ak.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/ak.rb
+          if git diff --cached --quiet; then
+            echo "Formula is already up to date"
+            exit 0
+          fi
+          git commit -m "Update ak formula to ${VERSION}"
+          git push origin main
