@@ -130,6 +130,7 @@ dependencies = [
  "insta",
  "keyring",
  "miette",
+ "mime_guess",
  "predicates",
  "ratatui",
  "reqwest",

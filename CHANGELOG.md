@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `ak artifact push` now sends a detected `Content-Type` instead of always using `application/octet-stream`, so the server stores a meaningful `content_type` for each artifact. The type is guessed from the file extension via `mime_guess`, with overrides for extensions its database gets wrong (for example `.rpm` is `application/x-rpm` and `.deb` is `application/vnd.debian.binary-package`) and an `application/octet-stream` fallback for unknown types. A new `--content-type` flag sets the type explicitly. Applies to both the single-PUT and chunked-upload paths. This changes only the stored `content_type`, not how the server classifies or indexes packages (#185)
 - `ak admin storage-gc run` now always sends `dry_run` explicitly, so a live run posts `{"dry_run": false}` instead of an empty body. Companion to artifact-keeper#3619, which makes `dry_run` required on the storage-GC endpoint and rejects unknown fields (422)
 
 ### Security

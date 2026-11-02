@@ -37,6 +37,12 @@ pub enum ArtifactCommand {
         /// Disable chunked upload (force single PUT even for large files)
         #[arg(long)]
         no_chunked: bool,
+
+        /// Override the Content-Type sent to the server (e.g.
+        /// "application/x-rpm"). When omitted, the type is detected from the
+        /// file extension, falling back to "application/octet-stream".
+        #[arg(long = "content-type", id = "content_type")]
+        content_type: Option<String>,
     },
 
     /// Download an artifact from a repository
@@ -155,6 +161,7 @@ impl ArtifactCommand {
                 path,
                 chunk_size,
                 no_chunked,
+                content_type,
             } => {
                 push(
                     &repo,
@@ -162,6 +169,7 @@ impl ArtifactCommand {
                     path.as_deref(),
                     &chunk_size,
                     no_chunked,
+                    content_type.as_deref(),
                     global,
                 )
                 .await
@@ -207,12 +215,63 @@ impl ArtifactCommand {
     }
 }
 
+/// Detect the `Content-Type` to declare for an upload, which the server stores
+/// with the artifact and returns on download.
+///
+/// This only sets the stored `content_type`. It does not decide the artifact's
+/// format or whether it gets indexed; the server does that from the repository
+/// format and the file itself.
+///
+/// Resolution order:
+/// 1. A curated override table, for extensions the bundled `mime_guess` database
+///    gets wrong for packages:
+///    - `.rpm` maps to `audio/x-pn-realaudio-plugin` (a legacy collision).
+///    - `.deb` maps to `application/octet-stream`.
+///    - `.tgz` maps to the vague `application/x-compressed`, while `.tar.gz`
+///      gets `application/gzip`.
+///    - `.mod` (Go modules) maps to `video/mpeg` and `.ts` (usually TypeScript)
+///      to an MPEG transport stream type. There's no type to say what those
+///      really are, so they stay opaque.
+/// 2. `mime_guess` for the long tail of common extensions.
+/// 3. `application/octet-stream` for unknown or extensionless files. This
+///    includes `.whl`, `.crate`, `.nupkg` and `.gem`, which aren't in the
+///    database.
+fn content_type_for_path(path: &str) -> String {
+    const OCTET_STREAM: &str = "application/octet-stream";
+
+    let ext = Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(str::to_ascii_lowercase);
+
+    // 1. Curated overrides (DB is wrong or too vague for these).
+    if let Some(ext) = ext.as_deref() {
+        let override_type = match ext {
+            "rpm" => Some("application/x-rpm"),
+            "deb" | "udeb" => Some("application/vnd.debian.binary-package"),
+            "tgz" => Some("application/gzip"),
+            "mod" | "ts" => Some(OCTET_STREAM),
+            _ => None,
+        };
+        if let Some(t) = override_type {
+            return t.to_string();
+        }
+    }
+
+    // 2. mime_guess for everything else, 3. octet-stream fallback.
+    mime_guess::from_path(path)
+        .first_raw()
+        .unwrap_or(OCTET_STREAM)
+        .to_string()
+}
+
 async fn push(
     repo: &str,
     file_patterns: &[String],
     target_path: Option<&str>,
     chunk_size_str: &str,
     no_chunked: bool,
+    content_type_override: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
@@ -266,6 +325,11 @@ async fn push(
 
         let use_chunked = !no_chunked && file_size >= threshold;
 
+        let content_type = match content_type_override {
+            Some(ct) => ct.to_string(),
+            None => content_type_for_path(&artifact_path),
+        };
+
         if use_chunked {
             // Chunked upload for large files
             let result = super::chunked_upload::chunked_upload(
@@ -277,6 +341,7 @@ async fn push(
                 chunk_size,
                 file_size,
                 file_name,
+                &content_type,
             )
             .await?;
 
@@ -314,8 +379,15 @@ async fn push(
             });
             let body = reqwest::Body::wrap_stream(stream);
 
-            let resp =
-                single_put_upload(&base_url, &auth_header, repo, &artifact_path, body).await?;
+            let resp = single_put_upload(
+                &base_url,
+                &auth_header,
+                repo,
+                &artifact_path,
+                body,
+                &content_type,
+            )
+            .await?;
 
             pb.finish_with_message(format!("Uploaded {file_name}"));
 
@@ -367,6 +439,7 @@ async fn single_put_upload(
     repo: &str,
     artifact_path: &str,
     body: reqwest::Body,
+    content_type: &str,
 ) -> Result<SinglePutUploadResponse> {
     let mut url = reqwest::Url::parse(base_url)
         .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
@@ -379,7 +452,7 @@ async fn single_put_upload(
     let resp = super::client::raw_http_client()?
         .put(url)
         .header(reqwest::header::AUTHORIZATION, auth_header)
-        .header(reqwest::header::CONTENT_TYPE, "application/octet-stream")
+        .header(reqwest::header::CONTENT_TYPE, content_type)
         .body(body)
         .send()
         .await
@@ -1113,6 +1186,64 @@ mod tests {
         TestCli::try_parse_from(args)
     }
 
+    #[test]
+    fn content_type_uses_overrides_then_mime_guess_then_octet_stream() {
+        // Curated overrides: the bundled mime.types DB gets these wrong.
+        assert_eq!(
+            content_type_for_path("pkg-1.0-1.el9.x86_64.rpm"),
+            "application/x-rpm"
+        );
+        assert_eq!(
+            content_type_for_path("nested/dir/PKG.RPM"),
+            "application/x-rpm"
+        );
+        assert_eq!(
+            content_type_for_path("app.deb"),
+            "application/vnd.debian.binary-package"
+        );
+
+        assert_eq!(content_type_for_path("pkg-1.0.tgz"), "application/gzip");
+        assert_eq!(content_type_for_path("pkg-1.0.tar.gz"), "application/gzip");
+        assert_eq!(
+            content_type_for_path("v1.0.0.mod"),
+            "application/octet-stream"
+        );
+        assert_eq!(
+            content_type_for_path("index.ts"),
+            "application/octet-stream"
+        );
+
+        // Package formats not in the database stay octet-stream, same as before.
+        for name in [
+            "a-1.0-py3-none-any.whl",
+            "a-1.0.crate",
+            "a.1.0.nupkg",
+            "a-1.0.gem",
+        ] {
+            assert_eq!(
+                content_type_for_path(name),
+                "application/octet-stream",
+                "{name}"
+            );
+        }
+
+        // Long tail resolved via mime_guess (like Python's mimetypes).
+        assert_eq!(content_type_for_path("lib.jar"), "application/java-archive");
+        assert_eq!(content_type_for_path("notes.txt"), "text/plain");
+        assert_eq!(content_type_for_path("page.html"), "text/html");
+
+        // Unknown / extensionless stays the correct generic blob type.
+        assert_eq!(
+            content_type_for_path("release-1.0"),
+            "application/octet-stream"
+        );
+        assert_eq!(content_type_for_path("README"), "application/octet-stream");
+        assert_eq!(
+            content_type_for_path("archive.unknownext"),
+            "application/octet-stream"
+        );
+    }
+
     // ---- Push subcommand parsing ----
 
     #[test]
@@ -1213,6 +1344,31 @@ mod tests {
         {
             assert_eq!(chunk_size, "16MB");
             assert!(!no_chunked);
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+    }
+
+    #[test]
+    fn parse_push_content_type_flag() {
+        let cli = parse(&[
+            "test",
+            "push",
+            "my-repo",
+            "file.bin",
+            "--content-type",
+            "application/x-rpm",
+        ]);
+        if let ArtifactCommand::Push { content_type, .. } = cli.command {
+            assert_eq!(content_type.as_deref(), Some("application/x-rpm"));
+        } else {
+            panic!("Expected ArtifactCommand::Push");
+        }
+
+        // Omitted => None (detection path).
+        let cli = parse(&["test", "push", "my-repo", "file.bin"]);
+        if let ArtifactCommand::Push { content_type, .. } = cli.command {
+            assert!(content_type.is_none());
         } else {
             panic!("Expected ArtifactCommand::Push");
         }
@@ -2001,6 +2157,7 @@ mod tests {
             None,
             "8MB",
             false,
+            None,
             &global,
         )
         .await;
@@ -2033,6 +2190,7 @@ mod tests {
             None,
             "8MB",
             false,
+            None,
             &global,
         )
         .await;
@@ -2068,6 +2226,7 @@ mod tests {
             Some("nested/dir/"),
             "8MB",
             false,
+            None,
             &global,
         )
         .await;
@@ -2100,6 +2259,7 @@ mod tests {
             None,
             "8MB",
             false,
+            None,
             &global,
         )
         .await;
