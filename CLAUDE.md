@@ -103,6 +103,7 @@ The CLI minor tracks the API minor it's generated from. `ak` supports servers on
 | `AK_COLOR` | Color mode (auto/always/never) |
 | `AK_CONFIG_DIR` | Override config directory |
 | `AK_TOKEN` | API token (alternative to keychain) |
+| `AK_CREDENTIAL_STORE` | `file` skips the OS keychain and uses the credentials file only |
 | `AK_CA_CERT` | Path to a PEM file with additional root CA certificate(s) to trust (same as `--ca-cert`) |
 | `NO_COLOR` | Standard no-color flag |
 

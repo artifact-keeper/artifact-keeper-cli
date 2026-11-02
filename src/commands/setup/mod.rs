@@ -291,31 +291,34 @@ fn write_config_file(path: &Path, content: &str, description: &str) -> Result<()
         std::fs::create_dir_all(parent).into_diagnostic()?;
     }
 
-    if path.exists() {
+    // Write through a symlink rather than replacing it, so a dotfile managed
+    // elsewhere stays managed.
+    let target = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+
+    if target.exists() {
+        let backup = target.with_extension("bak");
         eprintln!(
-            "Backing up existing {} to {}.bak",
+            "Backing up existing {} to {}",
             description,
-            path.display()
+            backup.display()
         );
-        std::fs::copy(path, path.with_extension("bak")).into_diagnostic()?;
+        // The file being replaced may hold an older token, so the backup is
+        // owner-only from creation, whatever the original's mode was.
+        let existing = std::fs::read(&target).into_diagnostic()?;
+        crate::config::write_private_atomic(&backup, &existing)?;
     }
 
-    std::fs::write(path, content).into_diagnostic()?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).into_diagnostic()?;
-    }
+    // Owner-only from the moment the file exists: this content has a token in it.
+    crate::config::write_private_atomic(&target, content.as_bytes())?;
     eprintln!("Wrote {}: {}", description, path.display());
     Ok(())
 }
 
+/// Mask every occurrence of the token. No part of it is kept: this text goes to
+/// the terminal, and from there to scrollback and CI logs.
 fn redact_token(content: &str, token: &str) -> String {
-    if token.len() > 8 {
-        content.replace(
-            token,
-            &format!("{}...{}", &token[..4], &token[token.len() - 4..]),
-        )
+    if token.is_empty() {
+        content.to_string()
     } else {
         content.replace(token, "****")
     }
@@ -347,10 +350,14 @@ fn yum_repo_file(repo_key: &str, yum_url: &str, token: &str) -> (String, String)
     (content, display)
 }
 
-fn confirm_write(path: &Path, content: &str, no_input: bool) -> Result<bool> {
-    eprintln!("\nConfiguration to write to {}:\n", path.display());
-    // Redact anything that looks like a token or password before printing
-    let display = content
+/// The form of a config file that is safe to print.
+///
+/// The token is removed by value, wherever it sits in the file: a URL's
+/// userinfo, an XML element, a quoted string. Looking for lines that seem to
+/// hold a secret is kept only as a second layer for values that aren't this
+/// token, such as an existing credential in a template.
+fn redact_config(content: &str, token: &str) -> String {
+    redact_token(content, token)
         .lines()
         .map(|line| {
             if line.contains("_authToken")
@@ -372,8 +379,12 @@ fn confirm_write(path: &Path, content: &str, no_input: bool) -> Result<bool> {
             }
         })
         .collect::<Vec<_>>()
-        .join("\n");
-    eprintln!("{display}");
+        .join("\n")
+}
+
+fn confirm_write(path: &Path, content: &str, token: &str, no_input: bool) -> Result<bool> {
+    eprintln!("\nConfiguration to write to {}:\n", path.display());
+    eprintln!("{}", redact_config(content, token));
 
     if no_input {
         return Ok(true);
@@ -386,18 +397,19 @@ fn confirm_write(path: &Path, content: &str, no_input: bool) -> Result<bool> {
         .into_diagnostic()
 }
 
-/// Write content to a system path using `sudo tee`, then set the file mode
-/// with `sudo chmod`. `tee` creates files with the default umask (typically
-/// 0644), so files that embed credentials must be tightened to `600` here.
+/// Write content to a system path with `sudo install`, which creates the file
+/// with its final mode. The content goes over stdin, so it's never on a command
+/// line. `sudo tee` followed by `chmod` would leave a credential file readable
+/// by everyone until the `chmod` ran.
 fn sudo_write(path: &Path, content: &str, mode: &str) -> Result<()> {
     let status = std::process::Command::new("sudo")
-        .args(["tee", &path.to_string_lossy()])
+        .args(["install", "-m", mode, "/dev/stdin", &path.to_string_lossy()])
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::null())
         .spawn()
         .and_then(|mut child| {
             use std::io::Write;
-            if let Some(ref mut stdin) = child.stdin {
+            if let Some(mut stdin) = child.stdin.take() {
                 stdin.write_all(content.as_bytes())?;
             }
             child.wait()
@@ -406,19 +418,6 @@ fn sudo_write(path: &Path, content: &str, mode: &str) -> Result<()> {
 
     if !status.success() {
         return Err(AkError::ConfigError(format!("Failed to write {}", path.display())).into());
-    }
-
-    let chmod_status = std::process::Command::new("sudo")
-        .args(["chmod", mode, &path.to_string_lossy()])
-        .status()
-        .into_diagnostic()?;
-
-    if !chmod_status.success() {
-        return Err(AkError::ConfigError(format!(
-            "Failed to set permissions on {}",
-            path.display()
-        ))
-        .into());
     }
 
     Ok(())
@@ -474,7 +473,7 @@ async fn setup_npm(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     let npmrc_path = home_dir()?.join(".npmrc");
 
-    if !confirm_write(&npmrc_path, &npmrc_content, global.no_input)? {
+    if !confirm_write(&npmrc_path, &npmrc_content, &ctx.token, global.no_input)? {
         eprintln!("Skipped npm configuration.");
         return Ok(());
     }
@@ -501,7 +500,12 @@ async fn setup_pip(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let filename = if cfg!(windows) { "pip.ini" } else { "pip.conf" };
     let pip_conf_path = config_dir()?.join("pip").join(filename);
 
-    if !confirm_write(&pip_conf_path, &pip_conf_content, global.no_input)? {
+    if !confirm_write(
+        &pip_conf_path,
+        &pip_conf_content,
+        &ctx.token,
+        global.no_input,
+    )? {
         eprintln!("Skipped pip configuration.");
         return Ok(());
     }
@@ -544,14 +548,19 @@ async fn setup_cargo(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let creds_path = cargo_home.join("credentials.toml");
 
     eprintln!("Will write two files:");
-    if !confirm_write(&config_path, &config_content, global.no_input)? {
+    if !confirm_write(&config_path, &config_content, &ctx.token, global.no_input)? {
         eprintln!("Skipped Cargo configuration.");
         return Ok(());
     }
 
     write_config_file(&config_path, &config_content, "cargo config.toml")?;
 
-    if !confirm_write(&creds_path, &credentials_content, global.no_input)? {
+    if !confirm_write(
+        &creds_path,
+        &credentials_content,
+        &ctx.token,
+        global.no_input,
+    )? {
         eprintln!("Skipped Cargo credentials.");
         return Ok(());
     }
@@ -588,7 +597,7 @@ async fn setup_docker(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         .spawn()
         .and_then(|mut child| {
             use std::io::Write;
-            if let Some(ref mut stdin) = child.stdin {
+            if let Some(mut stdin) = child.stdin.take() {
                 stdin.write_all(ctx.token.as_bytes())?;
             }
             child.wait()
@@ -645,7 +654,12 @@ async fn setup_maven(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     let settings_path = home_dir()?.join(".m2").join("settings.xml");
 
-    if !confirm_write(&settings_path, &settings_content, global.no_input)? {
+    if !confirm_write(
+        &settings_path,
+        &settings_content,
+        &ctx.token,
+        global.no_input,
+    )? {
         eprintln!("Skipped Maven configuration.");
         return Ok(());
     }
@@ -683,7 +697,7 @@ async fn setup_gradle(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         .join("init.d")
         .join("artifact-keeper.gradle");
 
-    if !confirm_write(&init_path, &init_content, global.no_input)? {
+    if !confirm_write(&init_path, &init_content, &ctx.token, global.no_input)? {
         eprintln!("Skipped Gradle configuration.");
         return Ok(());
     }
@@ -728,11 +742,14 @@ async fn setup_go(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     if write_netrc {
         use std::io::Write;
-        let mut file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&netrc_path)
-            .into_diagnostic()?;
+        let mut options = std::fs::OpenOptions::new();
+        options.create(true).append(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options.open(&netrc_path).into_diagnostic()?;
         writeln!(file, "{netrc_line}").into_diagnostic()?;
 
         #[cfg(unix)]
@@ -755,6 +772,8 @@ async fn setup_helm(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     eprintln!("Running: helm repo add artifact-keeper {helm_url}");
 
+    // --password-stdin, not --password: argv is readable by every local user
+    // through `ps` and /proc for as long as helm runs.
     let status = std::process::Command::new("helm")
         .args([
             "repo",
@@ -763,12 +782,19 @@ async fn setup_helm(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
             &helm_url,
             "--username",
             "__token__",
-            "--password",
-            &ctx.token,
+            "--password-stdin",
         ])
+        .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::inherit())
         .stderr(std::process::Stdio::inherit())
-        .status()
+        .spawn()
+        .and_then(|mut child| {
+            use std::io::Write;
+            if let Some(mut stdin) = child.stdin.take() {
+                stdin.write_all(ctx.token.as_bytes())?;
+            }
+            child.wait()
+        })
         .into_diagnostic()?;
 
     if !status.success() {
@@ -809,7 +835,7 @@ async fn setup_nuget(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
             .join("NuGet.Config")
     };
 
-    if !confirm_write(&config_path, &nuget_config, global.no_input)? {
+    if !confirm_write(&config_path, &nuget_config, &ctx.token, global.no_input)? {
         eprintln!("Skipped NuGet configuration.");
         return Ok(());
     }
@@ -840,9 +866,9 @@ async fn setup_yum(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     eprintln!("\nConfiguration:\n{repo_display}");
 
     if global.no_input {
-        eprintln!("Run the following command manually:");
+        eprintln!("Run the following command manually, with your token in place of ****:");
         eprintln!(
-            "  sudo tee {} <<'EOF'\n{}EOF",
+            "  sudo install -m 600 /dev/stdin {} <<'EOF'\n{}EOF",
             repo_path.display(),
             repo_display
         );
@@ -894,14 +920,14 @@ async fn setup_apt(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     eprintln!("Auth config:\n{redacted_auth}");
 
     if global.no_input {
-        eprintln!("Run the following commands manually:");
+        eprintln!("Run the following commands manually, with your token in place of ****:");
         eprintln!(
-            "  sudo tee {} <<'EOF'\n{}EOF",
+            "  sudo install -m 644 /dev/stdin {} <<'EOF'\n{}EOF",
             sources_path.display(),
             sources_content
         );
         eprintln!(
-            "  sudo tee {} <<'EOF'\n{}EOF",
+            "  sudo install -m 600 /dev/stdin {} <<'EOF'\n{}EOF",
             auth_path.display(),
             redacted_auth
         );
@@ -1206,22 +1232,87 @@ mod tests {
     fn confirm_write_no_input_returns_true() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("test.conf");
-        let result = confirm_write(&path, "content", true).unwrap();
+        let result = confirm_write(&path, "content", "tok", true).unwrap();
         assert!(result);
     }
 
-    // ---- redact_token ----
+    // ---- redact_token / redact_config ----
 
     #[test]
-    fn redact_token_long_token_shows_ends_only() {
+    fn redact_token_keeps_no_part_of_the_token() {
         let out = redact_token("password unit-test-token-1234", "unit-test-token-1234");
-        assert_eq!(out, "password unit...1234");
+        assert_eq!(out, "password ****");
     }
 
     #[test]
-    fn redact_token_short_token_fully_masked() {
-        let out = redact_token("password abc12345", "abc12345");
-        assert_eq!(out, "password ****");
+    fn redact_token_empty_token_changes_nothing() {
+        assert_eq!(redact_token("password x", ""), "password x");
+    }
+
+    #[test]
+    fn redact_config_masks_a_token_in_url_userinfo() {
+        let token = "unit-test-token-1234";
+        let out = redact_config(
+            &format!("[global]\nindex-url = https://__token__:{token}@host/pypi/r/simple/\n"),
+            token,
+        );
+        assert!(!out.contains(token), "{out}");
+        assert!(
+            out.contains("https://__token__:****@host/pypi/r/simple/"),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn redact_config_masks_a_token_in_xml_and_quotes() {
+        let token = "unit-test-token-1234";
+        for content in [
+            format!("<password>{token}</password>"),
+            format!("value=\"{token}\""),
+            format!("token = \"Bearer {token}\""),
+        ] {
+            let out = redact_config(&content, token);
+            assert!(!out.contains(token), "{out}");
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_config_file_is_owner_only_and_so_is_its_backup() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pip.conf");
+        std::fs::write(&path, "old-token").unwrap();
+        // The broad mode is the point: neither the new file nor the backup may inherit it.
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap(); // NOSONAR
+
+        write_config_file(&path, "new-token", "pip.conf").unwrap();
+
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&path), 0o600);
+        let backup = dir.path().join("pip.bak");
+        assert_eq!(std::fs::read_to_string(&backup).unwrap(), "old-token");
+        assert_eq!(mode(&backup), 0o600);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_config_file_writes_through_a_symlink() {
+        let dir = tempfile::tempdir().unwrap();
+        let real = dir.path().join("dotfiles-npmrc");
+        std::fs::write(&real, "old").unwrap();
+        let link = dir.path().join(".npmrc");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+
+        write_config_file(&link, "new", ".npmrc").unwrap();
+
+        assert!(
+            std::fs::symlink_metadata(&link)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+        assert_eq!(std::fs::read_to_string(&real).unwrap(), "new");
     }
 
     // ---- go_netrc_lines (setup go console redaction) ----
@@ -1244,7 +1335,7 @@ mod tests {
         assert!(line.contains(token));
         // ...but the console display must never expose it.
         assert!(!display.contains(token));
-        assert!(display.contains("unit...1234"));
+        assert!(display.contains("password ****"));
     }
 
     // ---- yum_repo_file (setup yum console redaction) ----
@@ -1267,7 +1358,7 @@ mod tests {
         assert!(content.contains(token));
         // ...but the console display must never expose it.
         assert!(!display.contains(token));
-        assert!(display.contains("password=unit...1234"));
+        assert!(display.contains("password=****"));
         // Non-secret fields are displayed unchanged.
         assert!(display.contains("baseurl=https://ak.example.com/api/v1/rpm/"));
     }
