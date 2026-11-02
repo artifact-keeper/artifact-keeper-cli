@@ -43,6 +43,9 @@ const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const SLOW_DOWN_STEP: Duration = Duration::from_secs(5);
 /// The server caps its own interval at 60 seconds; do the same locally.
 const MAX_POLL_INTERVAL: Duration = Duration::from_secs(60);
+/// The server caps a code's lifetime at 30 minutes. Holding to that locally means
+/// a bad `expires_in` can't keep the CLI polling indefinitely.
+const MAX_CODE_LIFETIME: Duration = Duration::from_secs(1800);
 /// Extra attempts for transient transport/5xx failures before giving up.
 const MAX_TRANSPORT_RETRIES: u32 = 3;
 
@@ -122,9 +125,9 @@ pub(crate) struct PollPolicy {
 impl PollPolicy {
     pub(crate) fn from_server(interval_secs: u64, expires_in_secs: u64) -> Self {
         Self {
-            interval: Duration::from_secs(interval_secs.max(1)),
+            interval: Duration::from_secs(interval_secs.max(1)).min(MAX_POLL_INTERVAL),
             max_interval: MAX_POLL_INTERVAL,
-            deadline: Duration::from_secs(expires_in_secs.max(1)),
+            deadline: Duration::from_secs(expires_in_secs.max(1)).min(MAX_CODE_LIFETIME),
             slow_down_step: SLOW_DOWN_STEP,
             max_transport_retries: MAX_TRANSPORT_RETRIES,
         }
@@ -282,7 +285,12 @@ fn should_open_browser(no_input: bool) -> bool {
 }
 
 /// Best-effort browser launch. Failure is not an error: the URL was printed.
-fn try_open_browser(url: &str) -> bool {
+///
+/// `url` comes from the server and has been through [`validate_device_code`].
+/// On Windows this avoids `cmd /C start`, which would treat `&` in the URL as a
+/// command separator. The child is spawned and not waited on, because `xdg-open`
+/// can block until the browser exits, and polling must start right away.
+fn try_open_browser(url: &str) {
     #[cfg(target_os = "macos")]
     let mut command = {
         let mut command = std::process::Command::new("open");
@@ -292,8 +300,8 @@ fn try_open_browser(url: &str) -> bool {
 
     #[cfg(target_os = "windows")]
     let mut command = {
-        let mut command = std::process::Command::new("cmd");
-        command.args(["/C", "start", ""]).arg(url);
+        let mut command = std::process::Command::new("rundll32");
+        command.arg("url.dll,FileProtocolHandler").arg(url);
         command
     };
 
@@ -304,12 +312,11 @@ fn try_open_browser(url: &str) -> bool {
         command
     };
 
-    command
+    let _ = command
+        .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
+        .spawn();
 }
 
 fn device_endpoint(instance: &InstanceConfig, leaf: &str) -> String {
@@ -325,23 +332,28 @@ fn device_endpoint(instance: &InstanceConfig, leaf: &str) -> String {
 }
 
 fn build_http_client() -> Result<reqwest::Client> {
+    // No redirects: a 307 or 308 would resend the device code to another host.
     let builder = reqwest::ClientBuilder::new()
         .connect_timeout(CONNECT_TIMEOUT)
-        .timeout(REQUEST_TIMEOUT);
+        .timeout(REQUEST_TIMEOUT)
+        .redirect(reqwest::redirect::Policy::none());
     transport::apply_custom_ca(builder)?
         .build()
         .into_diagnostic()
 }
 
 fn oauth_failure(status: u16, body: &str, context: &str) -> AkError {
-    if status == 404 {
-        return AkError::ServerError(
-            "device authorization is not enabled on this instance (HTTP 404); ask the \
-             administrator to set DEVICE_AUTH_ENABLED=true"
-                .into(),
-        );
-    }
     let parsed: Option<OAuthErrorBody> = serde_json::from_str(body).ok();
+    let is_oauth_error = parsed.as_ref().is_some_and(|error| !error.error.is_empty());
+    // The device endpoints are public, so a 401 without an OAuth error means the
+    // route doesn't exist: backends before 1.12.0 send unknown /api/v1 paths
+    // through auth. A supporting backend with the feature off answers 404.
+    if status == 404 || (status == 401 && !is_oauth_error) {
+        return AkError::ServerError(format!(
+            "device authorization is not available on this instance (HTTP {status}); it \
+             needs backend 1.12.0 or newer with DEVICE_AUTH_ENABLED=true"
+        ));
+    }
     match parsed {
         Some(error) if !error.error.is_empty() => {
             let detail = if error.error_description.is_empty() {
@@ -388,6 +400,14 @@ pub(crate) async fn request_device_code(
         ))
     })?;
 
+    validate_device_code(&code)?;
+    Ok(code)
+}
+
+/// Check the server-supplied fields that get printed to the terminal and handed
+/// to the OS to open, so a bad response can't send escape sequences to the
+/// terminal or launch a non-web URL handler.
+fn validate_device_code(code: &DeviceCodeResponse) -> Result<()> {
     if code.device_code.is_empty() || code.user_code.is_empty() || code.verification_uri.is_empty()
     {
         return Err(AkError::ServerError(
@@ -396,7 +416,17 @@ pub(crate) async fn request_device_code(
         .into());
     }
 
-    Ok(code)
+    let has_control = |text: &str| text.chars().any(char::is_control);
+    let is_web_url = reqwest::Url::parse(&code.verification_uri)
+        .is_ok_and(|url| matches!(url.scheme(), "http" | "https"));
+    if has_control(&code.user_code) || has_control(&code.verification_uri) || !is_web_url {
+        return Err(AkError::ServerError(
+            "device authorization request returned an invalid verification URL or user code".into(),
+        )
+        .into());
+    }
+
+    Ok(())
 }
 
 /// Poll the token endpoint until the user decides, the code expires, or a
@@ -541,7 +571,13 @@ fn timed_out(policy: &PollPolicy) -> miette::Report {
 
 async fn backoff(policy: &PollPolicy, failures: u32) {
     let factor = 1u32 << failures.saturating_sub(1).min(31);
-    tokio::time::sleep(policy.interval.saturating_mul(factor)).await;
+    tokio::time::sleep(
+        policy
+            .interval
+            .saturating_mul(factor)
+            .min(policy.max_interval),
+    )
+    .await;
 }
 
 /// Run the full flow and store the resulting credential.
@@ -585,7 +621,7 @@ async fn login_with_policy(
 
     eprintln!("{}", prompt_text(&code));
     if should_open_browser(global.no_input) {
-        let _ = try_open_browser(&code.verification_uri);
+        try_open_browser(&code.verification_uri);
     }
 
     let policy = policy.unwrap_or_else(|| PollPolicy::from_server(code.interval, code.expires_in));
@@ -624,10 +660,7 @@ async fn login_with_policy(
     store_credential(instance_name, &credential)?;
 
     if !matches!(global.format, OutputFormat::Quiet) {
-        eprintln!(
-            "Logged in to '{instance_name}' as {} ({})",
-            user.username, user.email
-        );
+        eprintln!("Logged in to '{instance_name}' as {}", user.username);
         if !tokens.scope.is_empty() {
             eprintln!("Granted scopes: {}", tokens.scope);
         }
@@ -821,6 +854,45 @@ mod tests {
     }
 
     #[test]
+    fn server_supplied_interval_and_lifetime_are_capped() {
+        let policy = PollPolicy::from_server(u64::MAX, u64::MAX);
+        assert_eq!(policy.interval, MAX_POLL_INTERVAL);
+        assert_eq!(policy.deadline, MAX_CODE_LIFETIME);
+
+        let policy = PollPolicy::from_server(0, 0);
+        assert_eq!(policy.interval, Duration::from_secs(1));
+        assert_eq!(policy.deadline, Duration::from_secs(1));
+
+        let policy = PollPolicy::from_server(5, 600);
+        assert_eq!(policy.interval, Duration::from_secs(5));
+        assert_eq!(policy.deadline, Duration::from_secs(600));
+    }
+
+    #[test]
+    fn unsafe_verification_urls_and_user_codes_are_rejected() {
+        let code = |uri: &str, user_code: &str| DeviceCodeResponse {
+            device_code: "device-secret-code".into(),
+            user_code: user_code.into(),
+            verification_uri: uri.into(),
+            expires_in: 60,
+            interval: 5,
+        };
+        assert!(validate_device_code(&code("https://ak.example/device", "BCDF-GHJK")).is_ok());
+        for uri in [
+            "file:///etc/passwd",
+            "smb://evil.example/share",
+            "not a url",
+            "https://ak.example/\u{1b}[2J",
+        ] {
+            assert!(
+                validate_device_code(&code(uri, "BCDF-GHJK")).is_err(),
+                "{uri}"
+            );
+        }
+        assert!(validate_device_code(&code("https://ak.example/device", "BCDF\u{1b}[2J")).is_err());
+    }
+
+    #[test]
     fn prompt_shows_the_url_and_code_but_never_the_device_code() {
         let code = DeviceCodeResponse {
             device_code: "super-secret-device-code".into(),
@@ -995,7 +1067,28 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(error.contains("DEVICE_AUTH_ENABLED"), "{error}");
+        assert!(error.contains("1.12.0"), "{error}");
         crate::test_utils::teardown_env();
+    }
+
+    /// Backends before 1.12.0 have no device route, and their auth middleware
+    /// answers 401 for the unknown path.
+    #[tokio::test]
+    async fn a_backend_without_the_route_explains_the_401() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/device/code"))
+            .respond_with(ResponseTemplate::new(401).set_body_string("Authentication required"))
+            .mount(&server)
+            .await;
+
+        let (name, instance, global) = instance_and_global().await;
+        let error = login_with_policy(&name, &instance, &[], &global, Some(test_policy()))
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("1.12.0"), "{error}");
     }
 
     #[tokio::test]

@@ -81,9 +81,12 @@ async fn device_login_never_prints_tokens() {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
+    // Assertion messages leave out the output: on a failure here it may contain
+    // the token material this test exists to keep out of logs.
     assert!(
         output.status.success(),
-        "device login failed\nstdout: {stdout}\nstderr: {stderr}"
+        "device login failed: {:?}",
+        output.status.code()
     );
 
     for secret in [
@@ -91,17 +94,24 @@ async fn device_login_never_prints_tokens() {
         "device-refresh-token",
         "device-secret-code",
     ] {
-        assert!(!stdout.contains(secret), "stdout leaked {secret}: {stdout}");
-        assert!(!stderr.contains(secret), "stderr leaked {secret}: {stderr}");
+        assert!(!stdout.contains(secret), "token material found in stdout");
+        assert!(!stderr.contains(secret), "token material found in stderr");
     }
 
-    assert!(stderr.contains("BCDF-GHJK"), "user code missing: {stderr}");
+    assert!(
+        stderr.contains("BCDF-GHJK"),
+        "user code missing from stderr"
+    );
     assert!(
         stderr.contains("/device"),
-        "verification URI missing: {stderr}"
+        "verification URI missing from stderr"
     );
     assert!(
         stderr.contains("alice"),
-        "account confirmation missing: {stderr}"
+        "account confirmation missing from stderr"
+    );
+    assert!(
+        !stderr.contains("alice@example.com"),
+        "email address found in stderr"
     );
 }

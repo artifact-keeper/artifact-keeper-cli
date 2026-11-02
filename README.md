@@ -104,6 +104,8 @@ ak setup auto
 
 ### Headless and SSO login
 
+Requires Artifact Keeper backend 1.12.0 or newer.
+
 On a host without a browser, or when the instance uses SSO, sign in with the
 device authorization grant (RFC 8628) instead of a password:
 
@@ -126,8 +128,8 @@ as a password login. Tokens are never printed.
   without disabling prompts.
 - `--device` is an alias for `--oidc-device`.
 
-The server must have `DEVICE_AUTH_ENABLED=true`; otherwise the command reports
-that device authorization is disabled. Use `ak auth logout` to clear the
+The server must have `DEVICE_AUTH_ENABLED=true`; otherwise, or on an older
+backend, the command reports that device authorization isn't available. Use `ak auth logout` to clear the
 stored credential.
 
 ## Commands

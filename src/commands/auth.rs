@@ -28,7 +28,7 @@ pub enum AuthCommand {
         /// Sign in with the RFC 8628 device authorization grant instead of
         /// prompting for a password or token. Prints a verification URL and a
         /// short user code, then polls until the user approves it. Works
-        /// headlessly and with SSO-backed instances.
+        /// headlessly and with SSO-backed instances. Requires backend 1.12.0+.
         #[arg(long = "oidc-device", visible_alias = "device")]
         oidc_device: bool,
 
@@ -36,13 +36,6 @@ pub enum AuthCommand {
         /// comma-separated). Defaults to `read:artifacts`.
         #[arg(long, value_delimiter = ',', requires = "oidc_device")]
         scope: Vec<String>,
-
-        /// OIDC provider ID. Accepted for compatibility with the original
-        /// request, but Artifact Keeper's device grant is a plain AK grant:
-        /// the approving user signs in with whatever the instance allows, so
-        /// this value is ignored.
-        #[arg(long, requires = "oidc_device")]
-        provider_id: Option<String>,
     },
 
     /// Log out and remove stored credentials
@@ -140,10 +133,9 @@ impl AuthCommand {
                 token,
                 oidc_device,
                 scope,
-                provider_id,
             } => {
                 if oidc_device {
-                    login_with_device(url.as_deref(), &scope, provider_id.as_deref(), global).await
+                    login_with_device(url.as_deref(), &scope, global).await
                 } else {
                     login(url.as_deref(), token, global).await
                 }
@@ -256,17 +248,9 @@ async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Resul
 async fn login_with_device(
     url: Option<&str>,
     scopes: &[String],
-    provider_id: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let (instance_name, instance) = resolve_login_instance(url, global)?;
-    if provider_id.is_some() {
-        eprintln!(
-            "warning: --provider-id is ignored: Artifact Keeper's device grant is a plain AK \
-             grant, not an OIDC provider flow; the approving user signs in with whatever the \
-             instance allows."
-        );
-    }
     crate::commands::device_flow::login(&instance_name, &instance, scopes, global).await
 }
 
@@ -978,13 +962,11 @@ mod tests {
                 oidc_device,
                 token,
                 scope,
-                provider_id,
                 ..
             } => {
                 assert!(oidc_device);
                 assert!(!token);
                 assert!(scope.is_empty());
-                assert!(provider_id.is_none());
             }
             _ => panic!("expected Login"),
         }
@@ -999,7 +981,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_login_device_scopes_and_provider() {
+    fn parse_login_device_scopes() {
         match parse_auth(&[
             "auth",
             "login",
@@ -1008,23 +990,14 @@ mod tests {
             "read:artifacts,write:artifacts",
             "--scope",
             "delete:artifacts",
-            "--provider-id",
-            "00000000-0000-0000-0000-000000000000",
         ]) {
             AuthCommand::Login {
-                oidc_device,
-                scope,
-                provider_id,
-                ..
+                oidc_device, scope, ..
             } => {
                 assert!(oidc_device);
                 assert_eq!(
                     scope,
                     vec!["read:artifacts", "write:artifacts", "delete:artifacts"]
-                );
-                assert_eq!(
-                    provider_id.as_deref(),
-                    Some("00000000-0000-0000-0000-000000000000")
                 );
             }
             _ => panic!("expected Login"),
@@ -1191,6 +1164,8 @@ mod tests {
 
         // Drop AK_TOKEN so the stored file credential (with a refresh token) is used.
         unsafe { std::env::remove_var("AK_TOKEN") };
+        // A keyring entry left by another test would win over the file below.
+        delete_credential("test").expect("clear test credential");
         let cred = serde_json::json!({
             "access_token": "old_access",
             "refresh_token": "old_refresh"
