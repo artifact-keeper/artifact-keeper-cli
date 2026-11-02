@@ -4,7 +4,9 @@ expression: parsed
 ---
 auth:
   ldap_enabled: false
+  local_login_enabled: false
   oidc_enabled: true
+  silent_sso_enabled: false
   sso_enabled: true
 demo_mode: false
 guest_access_enabled: true

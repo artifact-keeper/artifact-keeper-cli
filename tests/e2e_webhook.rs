@@ -25,7 +25,7 @@ fn webhook_create_show_delete_lifecycle() {
         &serde_json::json!({
             "name": name,
             "url": "https://httpbin.org/post",
-            "events": ["artifact.created"],
+            "events": ["artifact_uploaded"],
             "enabled": true
         }),
     );

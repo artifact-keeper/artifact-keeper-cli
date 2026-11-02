@@ -19,6 +19,9 @@ const DOT: &str = "-";
 const DIAG_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const DIAG_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 
+/// The server API version this build of `ak` is generated from.
+const AK_API_VERSION: &str = include_str!("../../API_VERSION").trim_ascii();
+
 #[derive(Default)]
 struct DiagResult {
     passes: u32,
@@ -66,6 +69,7 @@ pub async fn execute(_global: &crate::cli::GlobalArgs) -> Result<()> {
     eprintln!("  {}", style("Instances").bold().underlined());
     for (name, instance) in &config.instances {
         check_instance(name, instance, &mut diag).await;
+        check_server_version(name, instance, &mut diag).await;
     }
     eprintln!();
 
@@ -196,6 +200,92 @@ async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagRe
             ));
         }
     }
+}
+
+/// Fetch the server version from `/health`.
+///
+/// This reads the one field it needs instead of using the generated client, so
+/// it still works on an old server whose response no longer fits the SDK types,
+/// which is exactly when the answer matters.
+async fn fetch_server_version(instance: &InstanceConfig) -> std::result::Result<String, String> {
+    let builder = reqwest::ClientBuilder::new()
+        .connect_timeout(DIAG_CONNECT_TIMEOUT)
+        .timeout(DIAG_REQUEST_TIMEOUT);
+    let http = crate::transport::apply_custom_ca(builder)
+        .map_err(|e| e.to_string())?
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = format!("{}/health", instance.url.trim_end_matches('/'));
+    let body: serde_json::Value = http
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    body.get("version")
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| "no version in the /health response".to_string())
+}
+
+async fn check_server_version(name: &str, instance: &InstanceConfig, diag: &mut DiagResult) {
+    match fetch_server_version(instance).await {
+        Ok(server) => match server_support(&server, AK_API_VERSION) {
+            ServerSupport::Supported => {
+                diag.pass(&format!("{name} -- server version {server}"));
+            }
+            ServerSupport::TooOld => diag.warn(&format!(
+                "{name} -- server version {server} is unsupported by ak {} \
+                 (built for API {AK_API_VERSION}), upgrade the server",
+                env!("CARGO_PKG_VERSION"),
+            )),
+            ServerSupport::TooNew => diag.warn(&format!(
+                "{name} -- server version {server} is newer than ak {} \
+                 (built for API {AK_API_VERSION}), upgrade ak",
+                env!("CARGO_PKG_VERSION"),
+            )),
+            ServerSupport::Unknown => diag.warn(&format!(
+                "{name} -- could not interpret server version '{server}'"
+            )),
+        },
+        Err(e) => diag.warn(&format!(
+            "{name} -- could not read the server version: {}",
+            classify_connection_error(&e)
+        )),
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ServerSupport {
+    Supported,
+    TooOld,
+    TooNew,
+    Unknown,
+}
+
+/// `ak` supports the server minor it is built for and the one before it.
+fn server_support(server: &str, api: &str) -> ServerSupport {
+    let (Some(server), Some(api)) = (major_minor(server), major_minor(api)) else {
+        return ServerSupport::Unknown;
+    };
+    if server > api {
+        ServerSupport::TooNew
+    } else if server.0 == api.0 && server.1 + 1 >= api.1 {
+        ServerSupport::Supported
+    } else {
+        ServerSupport::TooOld
+    }
+}
+
+fn major_minor(version: &str) -> Option<(u64, u64)> {
+    let mut parts = version.trim().trim_start_matches('v').split('.');
+    let major = parts.next()?.parse().ok()?;
+    let minor = parts.next()?.parse().ok()?;
+    Some((major, minor))
 }
 
 /// Turn a raw error string into a concise diagnostic message.
@@ -446,6 +536,95 @@ fn check_cli(diag: &mut DiagResult) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---- server version support ----
+
+    #[test]
+    fn server_support_allows_current_and_previous_minor() {
+        assert_eq!(
+            server_support("1.11.10", "1.11.10"),
+            ServerSupport::Supported
+        );
+        assert_eq!(
+            server_support("1.11.0", "1.11.10"),
+            ServerSupport::Supported
+        );
+        assert_eq!(
+            server_support("1.11.99", "1.11.10"),
+            ServerSupport::Supported
+        );
+        assert_eq!(
+            server_support("1.10.2", "1.11.10"),
+            ServerSupport::Supported
+        );
+        assert_eq!(
+            server_support("v1.10.2", "1.11.10"),
+            ServerSupport::Supported
+        );
+    }
+
+    #[test]
+    fn server_support_flags_old_servers() {
+        assert_eq!(server_support("1.9.1", "1.11.10"), ServerSupport::TooOld);
+        assert_eq!(server_support("0.11.0", "1.11.10"), ServerSupport::TooOld);
+        assert_eq!(server_support("1.99.0", "2.0.0"), ServerSupport::TooOld);
+    }
+
+    #[test]
+    fn server_support_flags_new_servers() {
+        assert_eq!(server_support("1.12.0", "1.11.10"), ServerSupport::TooNew);
+        assert_eq!(server_support("2.0.0", "1.11.10"), ServerSupport::TooNew);
+    }
+
+    #[test]
+    fn server_support_unknown_on_unparseable_version() {
+        assert_eq!(server_support("dev", "1.11.10"), ServerSupport::Unknown);
+        assert_eq!(server_support("", "1.11.10"), ServerSupport::Unknown);
+    }
+
+    #[test]
+    fn api_version_is_pinned() {
+        assert!(major_minor(AK_API_VERSION).is_some());
+    }
+
+    async fn version_check_diag(body: serde_json::Value) -> DiagResult {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+        let instance = InstanceConfig {
+            url: server.uri(),
+            api_version: "v1".to_string(),
+            allow_insecure_http: true,
+        };
+        let mut diag = DiagResult::default();
+        check_server_version("test", &instance, &mut diag).await;
+        diag
+    }
+
+    #[tokio::test]
+    async fn check_server_version_passes_current_server() {
+        let diag = version_check_diag(serde_json::json!({ "version": AK_API_VERSION })).await;
+        assert_eq!((diag.passes, diag.warnings), (1, 0));
+    }
+
+    #[tokio::test]
+    async fn check_server_version_warns_on_old_server() {
+        // Only `version` is present: an old server may not fit the SDK's types.
+        let diag = version_check_diag(serde_json::json!({ "version": "0.1.0" })).await;
+        assert_eq!((diag.passes, diag.warnings), (0, 1));
+    }
+
+    #[tokio::test]
+    async fn check_server_version_warns_without_version() {
+        let diag = version_check_diag(serde_json::json!({ "status": "healthy" })).await;
+        assert_eq!((diag.passes, diag.warnings), (0, 1));
+    }
 
     // ---- DiagResult ----
 

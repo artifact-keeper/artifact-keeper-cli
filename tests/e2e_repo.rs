@@ -181,3 +181,63 @@ fn repo_virtual_members_lifecycle() {
         .assert()
         .success();
 }
+
+/// A virtual repository stores nothing itself, so its size is its members' total.
+#[test]
+#[ignore = "requires E2E backend"]
+fn repo_virtual_shows_member_storage() {
+    let env = common::TestEnv::setup();
+    let suffix = std::process::id();
+    let member = format!("e2e-virt-member-{suffix}");
+    let virt = format!("e2e-virt-{suffix}");
+
+    env.ak_cmd()
+        .args(["repo", "create", &member, "--pkg-format", "generic"])
+        .assert()
+        .success();
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &virt,
+            "--pkg-format",
+            "generic",
+            "--repo-type",
+            "virtual",
+        ])
+        .assert()
+        .success();
+    env.ak_cmd()
+        .args(["repo", "members", "add", &virt, &member])
+        .assert()
+        .success();
+
+    let file = env.config_dir.path().join("member.bin");
+    std::fs::write(&file, vec![7u8; 2048]).unwrap();
+    env.ak_cmd()
+        .args(["artifact", "push", &member, file.to_str().unwrap()])
+        .assert()
+        .success();
+
+    let output = env
+        .ak_cmd()
+        .args(["repo", "show", &virt])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let shown: serde_json::Value = serde_json::from_slice(&output).unwrap();
+    assert_eq!(shown["storage_used_bytes"], 0);
+    assert_eq!(shown["member_storage_used_bytes"], 2048);
+    assert_eq!(shown["storage_used"], "2.0 KB");
+
+    env.ak_cmd_table()
+        .args(["repo", "show", &virt, "--format", "table"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("2.0 KB (members)"));
+
+    env.api_delete(&format!("/api/v1/repositories/{virt}"));
+    env.api_delete(&format!("/api/v1/repositories/{member}"));
+}

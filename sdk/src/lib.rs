@@ -24,11 +24,13 @@ pub use generated_sdk::{builder, prelude, types};
 // Per-tag operation extension traits.
 pub use generated_sdk::{
     ClientAdminExt, ClientAgeGateExt, ClientAnalyticsExt, ClientApprovalExt,
-    ClientArtifactLabelsExt, ClientArtifactsExt, ClientAuthExt, ClientBuildsExt, ClientCurationExt,
-    ClientEmailSubscriptionsExt, ClientGroupsExt, ClientHealthExt, ClientLifecycleExt,
-    ClientMigrationExt, ClientMonitoringExt, ClientPackagesExt, ClientPeerInstanceLabelsExt,
-    ClientPeersExt, ClientPermissionsExt, ClientPluginsExt, ClientPromotionExt, ClientQualityExt,
-    ClientQuarantineExt, ClientRepositoriesExt, ClientRepositoryLabelsExt,
+    ClientArtifactLabelsExt, ClientArtifactsExt, ClientAttestationsExt, ClientAuthExt,
+    ClientBannersExt, ClientBuildsExt, ClientBundlesExt, ClientCurationExt,
+    ClientEmailSubscriptionsExt, ClientEnvironmentsExt, ClientGroupsExt, ClientHealthExt,
+    ClientHoldsExt, ClientImageBuildsExt, ClientLifecycleExt, ClientMigrationExt,
+    ClientMonitoringExt, ClientPackagesExt, ClientPeerInstanceLabelsExt, ClientPeersExt,
+    ClientPermissionsExt, ClientPluginsExt, ClientProjectsExt, ClientPromotionExt, ClientPypiExt,
+    ClientQualityExt, ClientQuarantineExt, ClientRepositoriesExt, ClientRepositoryLabelsExt,
     ClientRepositoryTokensExt, ClientSbomExt, ClientSearchExt, ClientSecurityExt,
     ClientServiceAccountsExt, ClientSigningExt, ClientSsoExt, ClientSystemExt, ClientTelemetryExt,
     ClientUploadsExt, ClientUsersExt, ClientWebhooksExt,

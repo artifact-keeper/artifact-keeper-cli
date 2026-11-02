@@ -147,6 +147,8 @@ async fn set_config(
     let body = artifact_keeper_sdk::types::UpdateAgeGateConfigRequest {
         enabled: is_enabled,
         min_age_days,
+        // Omitted keeps the repository's current mode.
+        mode: None,
     };
 
     let config = client
@@ -690,6 +692,7 @@ mod tests {
             "repository_key": "npm-proxy",
             "enabled": true,
             "min_age_days": 7,
+            "mode": "first_seen",
         })
     }
 

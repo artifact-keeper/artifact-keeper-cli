@@ -237,6 +237,7 @@ async fn update_permission(
         target_id,
         target_type: target_type.to_string(),
         actions,
+        conditions: None,
     };
 
     let perm = client
@@ -378,6 +379,7 @@ async fn create_permission(
         target_id,
         target_type: target_type.to_string(),
         actions,
+        conditions: None,
     };
 
     let perm = client
@@ -766,7 +768,8 @@ mod tests {
             "target_type": "repository",
             "actions": ["read", "write"],
             "created_at": "2026-01-15T12:00:00Z",
-            "updated_at": "2026-01-15T12:00:00Z"
+            "updated_at": "2026-01-15T12:00:00Z",
+            "conditions": {}
         })
     }
 

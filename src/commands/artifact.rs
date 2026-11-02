@@ -422,17 +422,9 @@ struct SinglePutUploadResponse {
 
 /// Upload a small file via a single `PUT` using a raw HTTP request.
 ///
-/// The backend responds `201 Created` on this endpoint, but the generated
-/// SDK method (`upload_artifact`) only accepts `200`, so every successful
-/// small-file push was reported as an error even though the artifact was
-/// created (#91, #98). Mirroring `chunked_upload`, this accepts any 2xx
-/// success status and surfaces genuine HTTP errors with status and body.
-///
-/// TODO(#98): the regenerated SDK now declares `201` for this endpoint, and the
-/// deployed rig already returns `201` (verified 2026-07-09), so the status
-/// reason is resolved; this raw path is retained for streaming-body upload,
-/// which the generated builder does not support. Revisit if the SDK gains a
-/// streaming body.
+/// The generated builder takes the whole body in memory, so this raw path is
+/// what lets a push stream from disk. It surfaces HTTP errors with status and
+/// body, as `chunked_upload` does.
 async fn single_put_upload(
     base_url: &str,
     auth_header: &str,
@@ -1826,7 +1818,8 @@ mod tests {
                     "analyzable": true,
                     "download_count": 150_i64,
                     "repository_key": "maven-central",
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "quarantine_status": "not_quarantined"
                 }],
                 "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
             })))
@@ -1858,7 +1851,8 @@ mod tests {
                     "analyzable": true,
                     "download_count": 150_i64,
                     "repository_key": "maven-central",
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "quarantine_status": "not_quarantined"
                 }],
                 "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
             })))
@@ -1909,7 +1903,8 @@ mod tests {
                 "analyzable": true,
                 "download_count": 150_i64,
                 "repository_key": "maven-central",
-                "created_at": "2026-01-15T10:00:00Z"
+                "created_at": "2026-01-15T10:00:00Z",
+                "quarantine_status": "not_quarantined"
             })))
             .mount(&server)
             .await;
@@ -2002,7 +1997,8 @@ mod tests {
                     "version": "2.17.1",
                     "type": "library",
                     "size_bytes": 1887436_i64,
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "quarantine_status": "not_quarantined"
                 }],
                 "facets": { "formats": [], "repositories": [], "content_types": [] },
                 "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
@@ -2054,7 +2050,8 @@ mod tests {
                     "analyzable": true,
                     "download_count": 5_i64,
                     "repository_key": "src-repo",
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "quarantine_status": "not_quarantined"
                 }],
                 "pagination": { "page": 1, "per_page": 1, "total": 1_i64, "total_pages": 1 }
             })))
@@ -2071,7 +2068,8 @@ mod tests {
                 "source": "src-repo",
                 "target": "dst-repo",
                 "policy_violations": [],
-                "message": "Artifact promoted"
+                "message": "Artifact promoted",
+                "gate_results": []
             })))
             .mount(&server)
             .await;
@@ -2127,7 +2125,8 @@ mod tests {
             "download_count": 0_i64,
             "created_at": "2026-01-15T12:00:00Z",
             "metadata": null,
-            "analyzable": true
+            "analyzable": true,
+            "quarantine_status": "not_quarantined"
         })
     }
 

@@ -271,7 +271,13 @@ mod tests {
 
     fn config_json() -> serde_json::Value {
         json!({
-            "auth": { "ldap_enabled": false, "oidc_enabled": true, "sso_enabled": true },
+            "auth": {
+                "ldap_enabled": false,
+                "local_login_enabled": false,
+                "oidc_enabled": true,
+                "silent_sso_enabled": false,
+                "sso_enabled": true
+            },
             "demo_mode": false,
             "guest_access_enabled": true,
             "max_upload_size_bytes": 1048576,
@@ -287,7 +293,13 @@ mod tests {
     fn config_json_minimal() -> serde_json::Value {
         // Non-admin caller: security-posture fields omitted.
         json!({
-            "auth": { "ldap_enabled": false, "oidc_enabled": false, "sso_enabled": false },
+            "auth": {
+                "ldap_enabled": false,
+                "local_login_enabled": true,
+                "oidc_enabled": false,
+                "silent_sso_enabled": false,
+                "sso_enabled": false
+            },
             "demo_mode": false,
             "guest_access_enabled": false,
             "max_upload_size_bytes": 0

@@ -1179,7 +1179,10 @@ async fn create_backup(backup_type: &str, global: &GlobalArgs) -> Result<()> {
     let spinner = output::spinner("Creating backup...");
 
     let body = artifact_keeper_sdk::types::CreateBackupRequest {
+        exclude_repositories: None,
+        name: None,
         repository_ids: None,
+        since: None,
         type_: Some(backup_type.to_string()),
     };
 
@@ -1234,6 +1237,7 @@ async fn restore_backup(
     let spinner = output::spinner("Restoring backup...");
 
     let body = artifact_keeper_sdk::types::RestoreRequest {
+        allow_unverified_archive: None,
         restore_database: database.then_some(true),
         restore_artifacts: artifacts.then_some(true),
         target_repository_id: None,
@@ -2308,27 +2312,25 @@ async fn install_plugin_local(path: &str, global: &GlobalArgs) -> Result<()> {
         path: path.to_string(),
     };
 
-    let resp = client
-        .install_from_local()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("install plugin from local path", e))?;
-    let resp = resp.into_inner();
+    // The spec declares no success response: 1.11 answers 501 NOT_IMPLEMENTED.
+    let result = client.install_from_local().body(body).send().await;
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", resp.plugin_id);
-        return Ok(());
+    match result {
+        Ok(_) => {
+            eprintln!("Plugin installed from {path}.");
+            Ok(())
+        }
+        Err(e) if e.status().map(|s| s.as_u16()) == Some(501) => {
+            Err(crate::error::AkError::ServerError(
+                "This server does not implement local-path plugin installs. \
+                 Use `ak admin plugins install-zip` instead."
+                    .to_string(),
+            )
+            .into())
+        }
+        Err(e) => Err(sdk_err("install plugin from local path", e).into()),
     }
-
-    eprintln!(
-        "Plugin '{}' v{} installed (format: {}).",
-        resp.name, resp.version, resp.format_key
-    );
-    eprintln!("{}", resp.message);
-
-    Ok(())
 }
 
 async fn install_plugin_zip(path: &str, global: &GlobalArgs) -> Result<()> {
@@ -2586,6 +2588,13 @@ async fn assign_role(user_id: &str, role_id: &str, global: &GlobalArgs) -> Resul
     let client = client_for(global)?;
     let id = parse_uuid(user_id, "user")?;
     let role = parse_uuid(role_id, "role")?;
+
+    // Backend 1.11 deprecated this endpoint: it writes `user_roles`, which is
+    // SSO role-mapping metadata that no authorization check reads (#3522).
+    eprintln!(
+        "Warning: a role assigned here does not grant repository access. \
+         Use `ak permission create` to grant access."
+    );
 
     let spinner = output::spinner("Assigning role...");
     let body = artifact_keeper_sdk::types::AssignRoleRequest { role_id: role };
@@ -3540,6 +3549,8 @@ async fn create_ci_oidc_provider(
         audience: audience.map(|s| s.to_string()),
         provider_type: provider_type.map(|s| s.to_string()),
         is_enabled: enabled.then_some(true),
+        key_source: None,
+        static_jwks: None,
     };
 
     let p = client
@@ -3578,6 +3589,8 @@ async fn update_ci_oidc_provider(
         audience: audience.map(|s| s.to_string()),
         provider_type: provider_type.map(|s| s.to_string()),
         is_enabled: enabled,
+        key_source: None,
+        static_jwks: None,
     };
 
     let p = client
@@ -3826,6 +3839,7 @@ async fn create_ci_oidc_mapping(
         claim_filters: filters,
         priority,
         allowed_repo_ids: allowed,
+        group_binding_ids: None,
         is_enabled: enabled.then_some(true),
     };
 
@@ -3877,6 +3891,7 @@ async fn update_ci_oidc_mapping(
         claim_filters: filters,
         priority,
         allowed_repo_ids: allowed,
+        group_binding_ids: None,
         is_enabled: enabled,
     };
 
@@ -3977,14 +3992,10 @@ async fn toggle_ci_oidc_mapping(
 
 /// Build the `POST /api/v1/admin/storage-gc` request body.
 ///
-/// `dry_run` is always sent explicitly. The generated field is
-/// `Option<bool>` with `skip_serializing_if = "Option::is_none"`, so a `None`
-/// drops the key and posts `{}` — which the backend rejects with 422 once
-/// artifact-keeper#3619 lands (`dry_run` required, unknown fields denied).
+/// `dry_run` is required since backend 1.10.0: without it, the backend answers
+/// 422 and collects nothing (artifact-keeper#3619).
 fn storage_gc_body(dry_run: bool) -> artifact_keeper_sdk::types::StorageGcRequest {
-    artifact_keeper_sdk::types::StorageGcRequest {
-        dry_run: Some(dry_run),
-    }
+    artifact_keeper_sdk::types::StorageGcRequest { dry_run }
 }
 
 async fn run_storage_gc(dry_run: bool, global: &GlobalArgs) -> Result<()> {
@@ -5223,6 +5234,7 @@ mod tests {
         use artifact_keeper_sdk::types::{FormatHandlerResponse, FormatHandlerType};
 
         let handler = FormatHandlerResponse {
+            scan_on_proxy: Some(artifact_keeper_sdk::types::ScanOnProxySupport::Enforced),
             capabilities: None,
             created_at: "2026-01-01T00:00:00Z".parse().unwrap(),
             description: Some("Maven repositories".to_string()),
@@ -5879,7 +5891,10 @@ mod tests {
                 "total_storage_bytes": 13421772800_i64,
                 "total_users": 100,
                 "active_peers": 3,
-                "pending_sync_tasks": 0
+                "pending_sync_tasks": 0,
+                "proxy_download_count": 40,
+                "proxy_artifact_count": 25,
+                "proxy_storage_bytes": 1048576
             })))
             .mount(&server)
             .await;
@@ -5927,7 +5942,8 @@ mod tests {
                     "is_active": true,
                     "must_change_password": false,
                     "auth_provider": "local",
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "is_service_account": false
                 }],
                 "pagination": { "page": 1, "per_page": 20, "total": 1_i64, "total_pages": 1 }
             })))
@@ -5957,7 +5973,8 @@ mod tests {
                     "is_active": true,
                     "must_change_password": true,
                     "auth_provider": "local",
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "is_service_account": false
                 },
                 "generated_password": "temp-pass-123"
             })))
@@ -5986,7 +6003,8 @@ mod tests {
                 "is_active": true,
                 "must_change_password": false,
                 "auth_provider": "local",
-                "created_at": "2026-01-15T10:00:00Z"
+                "created_at": "2026-01-15T10:00:00Z",
+                "is_service_account": false
             })))
             .mount(&server)
             .await;
@@ -6058,7 +6076,8 @@ mod tests {
                 "auth_provider": "local",
                 "must_change_password": false,
                 "created_at": "2026-01-01T00:00:00Z",
-                "last_login_at": null
+                "last_login_at": null,
+                "is_service_account": false
             })))
             .mount(&server)
             .await;
@@ -6193,7 +6212,8 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": "00000000-0000-0000-0000-000000000003",
                 "name": "ci-token",
-                "token": "ak_secret789"
+                "token": "ak_secret789",
+                "policy_applied": false
             })))
             .mount(&server)
             .await;
@@ -6719,7 +6739,10 @@ mod tests {
                 "total_storage_bytes": 13421772800_i64,
                 "total_users": 100,
                 "active_peers": 3,
-                "pending_sync_tasks": 0
+                "pending_sync_tasks": 0,
+                "proxy_download_count": 40,
+                "proxy_artifact_count": 25,
+                "proxy_storage_bytes": 1048576
             })))
             .mount(&server)
             .await;

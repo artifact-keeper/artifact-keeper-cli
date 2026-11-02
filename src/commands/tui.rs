@@ -379,7 +379,7 @@ impl App {
                     .map(|r| RepoEntry {
                         key: r.key.clone(),
                         format: r.format.clone(),
-                        storage_used: r.storage_used_bytes,
+                        storage_used: super::repo::displayed_storage_bytes(r),
                     })
                     .collect();
 

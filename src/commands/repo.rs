@@ -417,6 +417,7 @@ impl RepoCommand {
                         index_upstream_url,
                         pypi_upstream_index_path,
                         release_repository_key,
+                        ..Default::default()
                     },
                     global,
                 )
@@ -537,8 +538,9 @@ async fn list_repos(
                 "format": r.format,
                 "type": r.repo_type,
                 "public": r.is_public,
-                "storage_used": format_bytes(r.storage_used_bytes),
+                "storage_used": format_bytes(displayed_storage_bytes(r)),
                 "storage_used_bytes": r.storage_used_bytes,
+                "member_storage_used_bytes": r.member_storage_used_bytes,
                 "description": r.description,
             })
         })
@@ -553,7 +555,7 @@ async fn list_repos(
 
         for r in &resp.items {
             let public = if r.is_public { "yes" } else { "no" };
-            let storage = format_bytes(r.storage_used_bytes);
+            let storage = storage_label(r);
             table.add_row(vec![
                 r.key.as_str(),
                 r.name.as_str(),
@@ -583,6 +585,26 @@ async fn list_repos(
     Ok(())
 }
 
+/// The size to show for a repository. A virtual repository stores nothing of
+/// its own (`storage_used_bytes` is 0), so show the total of its members. Sums
+/// across repositories must keep using `storage_used_bytes`, or they count
+/// those bytes twice.
+pub(super) fn displayed_storage_bytes(
+    repo: &artifact_keeper_sdk::types::RepositoryResponse,
+) -> i64 {
+    repo.member_storage_used_bytes
+        .unwrap_or(repo.storage_used_bytes)
+}
+
+fn storage_label(repo: &artifact_keeper_sdk::types::RepositoryResponse) -> String {
+    let size = format_bytes(displayed_storage_bytes(repo));
+    if repo.member_storage_used_bytes.is_some() {
+        format!("{size} (members)")
+    } else {
+        size
+    }
+}
+
 async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
 
@@ -601,8 +623,9 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         "upstream_url": repo.upstream_url,
         "public": repo.is_public,
         "description": repo.description,
-        "storage_used": format_bytes(repo.storage_used_bytes),
+        "storage_used": format_bytes(displayed_storage_bytes(&repo)),
         "storage_used_bytes": repo.storage_used_bytes,
+        "member_storage_used_bytes": repo.member_storage_used_bytes,
         "quota_bytes": repo.quota_bytes,
         "created_at": repo.created_at.to_rfc3339(),
         "updated_at": repo.updated_at.to_rfc3339(),
@@ -627,7 +650,7 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         repo.upstream_url.as_deref().unwrap_or("-"),
         if repo.is_public { "yes" } else { "no" },
         repo.description.as_deref().unwrap_or("-"),
-        format_bytes(repo.storage_used_bytes),
+        storage_label(&repo),
         repo.quota_bytes
             .map(format_bytes)
             .unwrap_or_else(|| "unlimited".into()),
@@ -670,6 +693,24 @@ async fn create_repo(
         upstream_auth_type: None,
         upstream_username: None,
         upstream_password: None,
+        allow_public_with_upstream_credentials: None,
+        apt_description: None,
+        apt_label: None,
+        apt_origin: None,
+        apt_release_version: None,
+        curation_allow_unverified: None,
+        custom_user_agent: None,
+        debian: None,
+        npm_allow_unscoped: None,
+        npm_allowed_name_patterns: None,
+        npm_allowed_scopes: None,
+        oci_trusted_bearer_realms: None,
+        npm_virtual_isolate_hosted_names: None,
+        project_id: None,
+        repodata_depth: None,
+        trusted_gpg_key: None,
+        versioning_enabled: None,
+        visibility: None,
     };
 
     let resp = client
@@ -1327,6 +1368,8 @@ async fn set_upstream_auth(
             auth_type: auth_type.to_string(),
             username,
             password,
+            allow_public_with_upstream_credentials: None,
+            aws: None,
         })
         .send()
         .await
@@ -2020,6 +2063,44 @@ mod tests {
     use wiremock::matchers::{method, path, path_regex};
     use wiremock::{Mock, ResponseTemplate};
 
+    #[test]
+    fn storage_label_uses_member_total_for_virtual_repos() {
+        let mut virtual_repo = repo_json("v");
+        virtual_repo["repo_type"] = serde_json::json!("virtual");
+        virtual_repo["storage_used_bytes"] = serde_json::json!(0);
+        virtual_repo["member_storage_used_bytes"] = serde_json::json!(2048);
+        let virtual_repo: artifact_keeper_sdk::types::RepositoryResponse =
+            serde_json::from_value(virtual_repo).unwrap();
+        assert_eq!(displayed_storage_bytes(&virtual_repo), 2048);
+        assert_eq!(storage_label(&virtual_repo), "2.0 KB (members)");
+
+        let local_repo: artifact_keeper_sdk::types::RepositoryResponse =
+            serde_json::from_value(repo_json("l")).unwrap();
+        assert_eq!(displayed_storage_bytes(&local_repo), 1024);
+        assert_eq!(storage_label(&local_repo), "1.0 KB");
+    }
+
+    /// A 1.10 server doesn't send the fields 1.11 added.
+    #[test]
+    fn repo_response_parses_without_fields_new_in_1_11() {
+        let mut repo = repo_json("r");
+        let fields = repo.as_object_mut().unwrap();
+        for field in [
+            "allow_public_with_upstream_credentials",
+            "public_with_upstream_credentials",
+            "repodata_depth",
+            "repodata_depth_editable",
+            "storage_backend",
+            "upstream_url_has_credentials",
+            "visibility",
+        ] {
+            fields.remove(field);
+        }
+        assert!(
+            serde_json::from_value::<artifact_keeper_sdk::types::RepositoryResponse>(repo).is_ok()
+        );
+    }
+
     fn repo_json(key: &str) -> serde_json::Value {
         json!({
             "id": "00000000-0000-0000-0000-000000000001",
@@ -2037,7 +2118,18 @@ mod tests {
             "upstream_auth_type": null,
             "upstream_auth_configured": false,
             "created_at": "2026-01-15T12:00:00Z",
-            "updated_at": "2026-01-15T12:00:00Z"
+            "updated_at": "2026-01-15T12:00:00Z",
+            "repodata_depth": 0,
+            "repodata_depth_editable": true,
+            "visibility": "public",
+            "versioning_enabled": false,
+            "storage_backend": "filesystem",
+            "has_trusted_gpg_key": false,
+            "upstream_url_has_credentials": false,
+            "public_with_upstream_credentials": false,
+            "allow_public_with_upstream_credentials": false,
+            "curation_enabled": false,
+            "curation_default_action": "allow"
         })
     }
 
@@ -2217,7 +2309,8 @@ mod tests {
                     "analyzable": true,
                     "download_count": 0_i64,
                     "created_at": "2026-01-15T12:00:00Z",
-                    "repository_key": "npm-local"
+                    "repository_key": "npm-local",
+                    "quarantine_status": "not_quarantined"
                 }],
                 "pagination": { "page": 1, "per_page": 100, "total": 1_i64, "total_pages": 1 }
             })))

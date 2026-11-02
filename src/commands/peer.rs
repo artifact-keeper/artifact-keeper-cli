@@ -1124,20 +1124,42 @@ async fn list_subscriptions(id: &str, global: &GlobalArgs) -> Result<()> {
 
     if matches!(global.format, OutputFormat::Quiet) {
         for r in &repos {
-            println!("{r}");
+            println!("{}", r.repository_id);
         }
         return Ok(());
     }
 
     let entries: Vec<Value> = repos
         .iter()
-        .map(|r| serde_json::json!({ "repository_id": r.to_string() }))
+        .map(|r| {
+            serde_json::json!({
+                "repository_id": r.repository_id.to_string(),
+                "sync_enabled": r.sync_enabled,
+                "replication_mode": r.replication_mode,
+                "replication_schedule": r.replication_schedule,
+                "last_replicated_at": r.last_replicated_at.map(|t| t.to_rfc3339()),
+            })
+        })
         .collect();
 
     let table_str = {
-        let mut table = new_table(vec!["REPOSITORY ID"]);
+        let mut table = new_table(vec!["REPOSITORY ID", "SYNC", "MODE", "LAST REPLICATED"]);
         for r in &repos {
-            table.add_row(vec![r.to_string()]);
+            table.add_row(vec![
+                r.repository_id.to_string(),
+                if r.sync_enabled {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+                .to_string(),
+                r.replication_mode
+                    .clone()
+                    .unwrap_or_else(|| "-".to_string()),
+                r.last_replicated_at
+                    .map(|t| t.format("%Y-%m-%d %H:%M UTC").to_string())
+                    .unwrap_or_else(|| "-".to_string()),
+            ]);
         }
         table.to_string()
     };
@@ -4064,7 +4086,7 @@ mod tests {
             &server,
             "GET",
             format!("/api/v1/peers/{NIL_UUID}/repositories"),
-            json!([OTHER_UUID]),
+            json!([subscription_json()]),
         )
         .await;
         let global = crate::test_utils::test_global(OutputFormat::Json);

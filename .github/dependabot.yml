@@ -20,6 +20,10 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore"
+    # The MSRV job pins this action's tag to `rust-version` in Cargo.toml, so the
+    # tag is the point of the job. The other jobs use @stable.
+    ignore:
+      - dependency-name: "dtolnay/rust-toolchain"
 
   # The Cargo workspace: the root `artifact-keeper-cli` package plus its
   # `sdk` and `xtask` members, all reachable from the root manifest.

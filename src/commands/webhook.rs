@@ -255,6 +255,7 @@ async fn create_webhook(
         headers: None,
         event_schema_version: None,
         payload_template: None,
+        signing_mode: None,
     };
 
     let webhook = client
@@ -400,25 +401,22 @@ async fn rotate_webhook_secret(id: &str, global: &GlobalArgs) -> Result<()> {
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", resp.secret);
+        println!("{}", resp.id);
         return Ok(());
     }
 
     let info = serde_json::json!({
         "id": resp.id.to_string(),
-        "secret": resp.secret,
         "secret_digest": resp.secret_digest,
         "previous_secret_expires_at": resp.previous_secret_expires_at.to_rfc3339(),
     });
 
     let table_str = format!(
-        "Webhook secret rotated. Store the new secret now — it is shown only once.\n\n\
+        "Webhook secret rotated. The server does not return the new secret.\n\n\
          Webhook:              {}\n\
-         New Secret:           {}\n\
          Secret Digest:        {}\n\
          Previous Secret Until: {}",
         resp.id,
-        resp.secret,
         resp.secret_digest,
         resp.previous_secret_expires_at
             .format("%Y-%m-%d %H:%M:%S UTC"),
@@ -1058,6 +1056,7 @@ mod tests {
 
     fn make_test_webhook(name: &str, enabled: bool) -> WebhookResponse {
         WebhookResponse {
+            signing_mode: Some(artifact_keeper_sdk::types::SigningMode::Hmac),
             id: Uuid::nil(),
             name: name.to_string(),
             url: "https://ci.example.com/hook".to_string(),
@@ -1365,7 +1364,8 @@ mod tests {
             "last_triggered_at": null,
             "created_at": "2026-01-15T12:00:00Z",
             "event_schema_version": "2026-04-01",
-            "payload_template": "generic"
+            "payload_template": "generic",
+            "signing_mode": "hmac"
         })
     }
 
