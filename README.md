@@ -1,5 +1,9 @@
 # ak: Artifact Keeper CLI
 
+<p align="center">
+  <img alt="Artifact Keeper" src="https://raw.githubusercontent.com/artifact-keeper/.github/main/brand/banners/github-readme_1600x600.png" width="100%">
+</p>
+
 The official CLI/TUI for [Artifact Keeper](https://artifactkeeper.com), an enterprise artifact registry supporting 45+ package formats. Browse repositories, upload and download artifacts, run security scans, configure package managers, and more, all from your terminal.
 
 ## Installation
