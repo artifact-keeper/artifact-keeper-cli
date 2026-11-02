@@ -4,7 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 
-echo "Starting E2E test backend..."
+# The backend refuses to start on a weak JWT secret.
+export JWT_SECRET="$(openssl rand -base64 48)"
+API_VERSION="$(tr -d '[:space:]' < "$SCRIPT_DIR/../API_VERSION")"
+export API_VERSION
+
+echo "Starting E2E test backend ${API_VERSION}..."
 docker compose -f "$COMPOSE_FILE" up -d
 
 echo "Waiting for backend health check..."
