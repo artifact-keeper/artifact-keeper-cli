@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Linux release binaries (and the `.deb`/`.rpm` packages that wrap them) are now fully static musl builds, so they run on any Linux distribution regardless of its glibc version: Debian 12, Ubuntu 22.04, RHEL/Alma/Rocky 8 and 9, Amazon Linux 2023, Alpine and distroless images. They were previously built on `ubuntu-latest` and required glibc 2.39. CI now fails if a dependency breaks static linking (#178)
 - `ak admin storage-gc run` now always sends `dry_run` explicitly, so a live run posts `{"dry_run": false}` instead of an empty body. Companion to artifact-keeper#3619, which makes `dry_run` required on the storage-GC endpoint and rejects unknown fields (422)
 
+### Removed
+
+- The Snap package. It never published: the store blocks classic confinement and the build got a bad version. Use the installer, Homebrew, the `.deb`/`.rpm` packages or the static binaries (#148)
+
 ### Security
 
 - Updated `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338/0340 remote-peer panics, RUSTSEC-2026-0339/0341/0342 memory exhaustion)
