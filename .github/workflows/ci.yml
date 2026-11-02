@@ -8,13 +8,10 @@ on:
       - "CLAUDE.md"
       - "LICENSE"
       - ".beads/**"
+  # No paths-ignore here. Branch protection requires jobs from this workflow, and
+  # a PR that a path filter skips never reports them, so it stays blocked forever.
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "CLAUDE.md"
-      - "LICENSE"
-      - ".beads/**"
 
 env:
   CARGO_TERM_COLOR: always
