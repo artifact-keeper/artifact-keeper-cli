@@ -385,9 +385,38 @@ jobs:
             artifacts/*.rpm.sig
             artifacts/*.rpm.pem
 
+  # Checks what was published, from the public downloads, before the tap moves. An
+  # rc tag runs this too.
+  verify-release:
+    name: Verify Release (${{ matrix.arch }})
+    needs: release
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            os: ubuntu-latest
+          - arch: arm64
+            os: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      # The same cosign that signed, see the release job.
+      - uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.6.3"
+      - name: Verify the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/verify-release-linux.sh "$GITHUB_REF_NAME" "${{ matrix.arch }}"
+
   homebrew:
     name: Update Homebrew Tap
-    needs: release
+    # Linux verification first: a release that fails it never reaches the tap. With
+    # no status check in its condition, this job is skipped if either need failed.
+    needs: [release, verify-release]
     # A tag with a hyphen is a prerelease (v1.11.0-rc.1), which must not move the
     # tap. The preflight job refuses any other tag that isn't plain vX.Y.Z, and
     # this job can't run without it, through release and build.
@@ -493,35 +522,10 @@ jobs:
           git commit -m "Update ak formula to ${VERSION}"
           git push origin main
 
-  # Checks what was published, from the public downloads. Skipping homebrew on an
-  # rc tag must not skip this, hence the explicit condition.
-  verify-release:
-    name: Verify Release (${{ matrix.arch }})
-    needs: [release, homebrew]
-    if: ${{ !cancelled() && needs.release.result == 'success' }}
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            os: ubuntu-latest
-          - arch: arm64
-            os: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v7
-      # The same cosign that signed, see the release job.
-      - uses: sigstore/cosign-installer@v3
-        with:
-          cosign-release: "v2.6.3"
-      - name: Verify the release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: .github/scripts/verify-release-linux.sh "$GITHUB_REF_NAME" "${{ matrix.arch }}"
-
-  # Homebrew and macOS. An rc tag has no tap update to check. Skipped with homebrew.
+  # Homebrew and macOS. brew installs from the tap, so this can only run once the tap
+  # has moved, and a failure here leaves the tap on this version with the release
+  # still a prerelease: the verdict job's issue says to revert the formula if the
+  # release is broken. An rc tag has no tap update to check. Skipped with homebrew.
   verify-macos:
     name: Verify Homebrew and macOS
     needs: [release, homebrew]
@@ -612,10 +616,6 @@ jobs:
       - name: Report the failure
         if: ${{ steps.decide.outputs.ok != 'true' || failure() }}
         run: |
-          body="Run: $RUN_URL
-
-          release: $RELEASE, homebrew: $HOMEBREW, verify-release: $VERIFY, verify-macos: $VERIFY_MACOS
-
-          The release stays a prerelease, so install.sh and /releases/latest keep serving the previous one. If homebrew passed, the tap already points at this version: revert Formula/ak.rb in artifact-keeper/homebrew-tap if the release is broken."
+          body="$(.github/scripts/release-failure-body.sh "$RUN_URL")"
           .github/scripts/tracking-issue.sh fail "Release $GITHUB_REF_NAME failed verification" "$body"
           exit 1
