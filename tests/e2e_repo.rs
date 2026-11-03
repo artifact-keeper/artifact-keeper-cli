@@ -456,3 +456,288 @@ fn repo_delete_wait_returns_once_the_repository_is_gone() {
         .success();
     env.ak_cmd().args(["repo", "show", &key]).assert().failure();
 }
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn repo_capabilities_reports_rpm_depth() {
+    let env = common::TestEnv::setup();
+    let caps = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "capabilities"])
+            .assert()
+            .success(),
+    );
+    assert!(
+        caps["rpm_repodata_depth"]["supported"].is_boolean(),
+        "{caps}"
+    );
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn repo_allowlist_set_get_delete() {
+    let env = common::TestEnv::setup();
+    let pid = std::process::id();
+    let member = format!("e2e-al-m-{pid}");
+    let virt = format!("e2e-al-v-{pid}");
+    env.ak_cmd()
+        .args(["repo", "create", &member, "--pkg-format", "conda"])
+        .assert()
+        .success();
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &virt,
+            "--pkg-format",
+            "conda",
+            "--repo-type",
+            "virtual",
+            "--member",
+            &member,
+        ])
+        .assert()
+        .success();
+
+    let set = json_stdout(
+        env.ak_cmd()
+            .args([
+                "repo",
+                "allowlist",
+                "set",
+                &virt,
+                "--package",
+                "numpy=>=2,<3",
+                "--entries",
+                r#"[{"name":"pandas","subdirs":["noarch"]}]"#,
+                "--scope",
+                "remote_only",
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(set["enabled"], true);
+    assert_eq!(set["scope"], "remote_only");
+    assert_eq!(set["entry_count"], 2);
+
+    let got = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "allowlist", "get", &virt])
+            .assert()
+            .success(),
+    );
+    assert_eq!(got["entries"][1]["version"], ">=2,<3");
+    assert_eq!(got["entries"][0]["subdirs"][0], "noarch");
+
+    let off = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "allowlist", "set", &virt, "--enabled", "false"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(off["enabled"], false);
+
+    let removed = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "allowlist", "delete", &virt, "--yes"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(removed["entry_count"], 0);
+
+    for key in [&virt, &member] {
+        env.ak_cmd()
+            .args(["repo", "delete", key, "--yes", "--wait"])
+            .assert()
+            .success();
+    }
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn repo_remote_settings_round_trip() {
+    let env = common::TestEnv::setup();
+    let key = format!("e2e-rem-{}", std::process::id());
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &key,
+            "--pkg-format",
+            "npm",
+            "--repo-type",
+            "remote",
+            "--upstream-url",
+            "https://upstream.example.com/npm",
+        ])
+        .assert()
+        .success();
+
+    // Upstream filter
+    let set = json_stdout(
+        env.ak_cmd()
+            .args([
+                "repo",
+                "upstream-filter",
+                "set",
+                &key,
+                "--include",
+                "^a/",
+                "--exclude",
+                r"x{1,2}\.tgz$",
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(set["active"], true);
+    assert_eq!(set["exclude_patterns"][0], r"x{1,2}\.tgz$");
+    let got = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "upstream-filter", "get", &key])
+            .assert()
+            .success(),
+    );
+    assert_eq!(got["include_patterns"][0], "^a/");
+    let removed = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "upstream-filter", "delete", &key, "--yes"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(removed["active"], false);
+
+    // Egress proxy: the server masks credentials and the CLI shows what it masks.
+    let set = json_stdout(
+        env.ak_cmd()
+            .args([
+                "repo",
+                "egress-proxy",
+                "set",
+                &key,
+                "--mode",
+                "explicit",
+                "--proxy-url",
+                "https://u:p@proxy.example.com:8443",
+                "--no-proxy",
+                "a.example.com",
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(set["proxy_credentials_configured"], true);
+    assert!(!set["proxy_url"].as_str().unwrap().contains("u:p"), "{set}");
+    let got = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "egress-proxy", "get", &key])
+            .assert()
+            .success(),
+    );
+    assert_eq!(got["mode"], "explicit");
+    assert_eq!(got["no_proxy"], "a.example.com");
+
+    // npm scope policy
+    let set = json_stdout(
+        env.ak_cmd()
+            .args([
+                "repo",
+                "npm-scope-policy",
+                "set",
+                &key,
+                "--allowed-scopes",
+                "@a,@b",
+                "--allow-unscoped",
+                "true",
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(set["allowed_scopes"], serde_json::json!(["@a", "@b"]));
+    assert_eq!(set["allow_unscoped"], true);
+    let empty = json_stdout(
+        env.ak_cmd()
+            .args([
+                "repo",
+                "npm-scope-policy",
+                "set",
+                &key,
+                "--allowed-scopes",
+                "",
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(empty["allowed_scopes"], serde_json::json!([]));
+    assert_eq!(empty["active"], true);
+    let got = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "npm-scope-policy", "get", &key])
+            .assert()
+            .success(),
+    );
+    assert_eq!(got["active"], true);
+
+    // Upstream auth: the server's own answer comes through.
+    let auth = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "upstream-auth", &key, "--type", "none"])
+            .assert()
+            .success(),
+    );
+    assert!(auth["message"].is_string(), "{auth}");
+
+    env.ak_cmd()
+        .args(["repo", "delete", &key, "--yes", "--wait"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn repo_storage_and_gc() {
+    let env = common::TestEnv::setup();
+    let key = format!("e2e-sto-{}", std::process::id());
+    env.ak_cmd()
+        .args(["repo", "create", &key, "--pkg-format", "generic"])
+        .assert()
+        .success();
+
+    let stats = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "storage", &key])
+            .assert()
+            .success(),
+    );
+    assert_eq!(stats["repository_key"], key.as_str());
+    assert!(stats["blob_count"].is_number(), "{stats}");
+
+    let tree = json_stdout(
+        env.ak_cmd()
+            .args([
+                "repo", "storage", &key, "--tree", "--prefix", "dir", "--depth", "2", "--limit",
+                "5",
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(tree["node"]["prefix"], "dir");
+
+    let gc = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "storage-gc", &key, "--dry-run"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(gc["dry_run"], true);
+    let gc = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "storage-gc", &key, "--yes"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(gc["dry_run"], false);
+
+    env.ak_cmd()
+        .args(["repo", "delete", &key, "--yes", "--wait"])
+        .assert()
+        .success();
+}

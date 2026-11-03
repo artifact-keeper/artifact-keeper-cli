@@ -34,6 +34,7 @@ pub mod promotion;
 pub mod quality_gate;
 pub mod quarantine;
 pub mod repo;
+pub mod repo_settings;
 pub mod repo_token;
 pub mod sbom;
 pub mod scan;
