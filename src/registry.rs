@@ -17,7 +17,7 @@
 //! - `method` and `path` are as in the backend's route table: `{name}` for a path
 //!   parameter, the same names as the OpenAPI spec.
 //! - `command` is the path of subcommands, as typed after `ak`, with no arguments.
-//! - `binds` lists every query and body field in the 1.11.10 schema that a flag or
+//! - `binds` lists every query and body field in the pinned API schema that a flag or
 //!   positional can set. Path parameters aren't listed. The gate will compare this
 //!   with the schema, so leave out a field the command can't set. An empty list
 //!   today means "not checked yet", not "there are none".

@@ -80,7 +80,7 @@ tarballs — substitute the file name.
 
 ## Supported Servers
 
-The first two numbers of the `ak` version tell you the server version it's built for. The last number is the CLI's own and doesn't match the server's patch number, so `ak` 1.11.0 is built from API 1.11.10. New commands may ship in CLI patch releases (1.11.x).
+The first two numbers of the `ak` version tell you the server version it's built for. The last number is the CLI's own and doesn't match the server's patch number, so `ak` 1.11.0 is built from API 1.11.11. New commands may ship in CLI patch releases (1.11.x).
 
 A 1.11.x CLI supports servers on 1.10 and 1.11. Each `ak` minor supports the server minor it's built for and the one before. Other versions aren't tested, and `ak doctor` warns about them.
 

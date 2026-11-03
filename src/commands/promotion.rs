@@ -1062,7 +1062,7 @@ async fn promotion_history(
 
     spinner.finish_and_clear();
 
-    // Servers up to at least 1.11.10 accept `artifact_id` and ignore it.
+    // Servers up to at least 1.11.11 accept `artifact_id` and ignore it.
     if let Some(id) = artifact_id
         && resp.items.iter().any(|entry| entry.artifact_id != id)
     {

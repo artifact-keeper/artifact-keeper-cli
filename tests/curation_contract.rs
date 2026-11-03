@@ -1,5 +1,5 @@
 //! What `ak curation` sends and how it reads the answer. Contract, not E2E: these
-//! run against a mock server, because no API on 1.11.10 links a staging repository
+//! run against a mock server, because no API on 1.11.11 links a staging repository
 //! to its source, so a real one never has a package to approve or a failing sync.
 //! The commands reach a real backend in `tests/e2e_curation.rs`.
 

@@ -2,7 +2,7 @@
 //!
 //! Requires the E2E backend: ./tests/start-backend.sh
 //!
-//! No API on 1.11.10 links a staging repository to its source, so a repository
+//! No API on 1.11.11 links a staging repository to its source, so a repository
 //! made here has nothing to sync and no packages. These tests prove every command
 //! reaches the real route and shows what the server answers. Approving and
 //! publishing a real package isn't covered here.

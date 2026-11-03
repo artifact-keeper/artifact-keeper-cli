@@ -103089,7 +103089,7 @@ pub mod types {
     }
 }
 #[derive(Clone, Debug)]
-#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. The one `/api/v1` route that shares this contract is the repository download route, `GET /api/v1/repositories/{key}/download/{path}`: it serves the same bytes as the format endpoints, so it accepts the API token as the Basic password and answers an anonymous request on a non-public repository with `401` and a `WWW-Authenticate` challenge, like they do. Every other `/api/v1/*` route refuses the Basic-with-token fallback.\n\nVersion: 1.11.10"]
+#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. The one `/api/v1` route that shares this contract is the repository download route, `GET /api/v1/repositories/{key}/download/{path}`: it serves the same bytes as the format endpoints, so it accepts the API token as the Basic password and answers an anonymous request on a non-public repository with `401` and a `WWW-Authenticate` challenge, like they do. Every other `/api/v1/*` route refuses the Basic-with-token fallback.\n\nVersion: 1.11.11"]
 pub struct Client {
     pub(crate) baseurl: String,
     pub(crate) client: reqwest::Client,
@@ -103127,7 +103127,7 @@ impl Client {
 }
 impl ClientInfo<()> for Client {
     fn api_version() -> &'static str {
-        "1.11.10"
+        "1.11.11"
     }
     fn baseurl(&self) -> &str {
         self.baseurl.as_str()

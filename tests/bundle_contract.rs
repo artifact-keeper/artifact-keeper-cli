@@ -1,6 +1,6 @@
 //! What `ak bundle` sends and prints, against a mock server.
 //!
-//! Contract, not E2E, for `export` and `import`: the 1.11.10 server answers both
+//! Contract, not E2E, for `export` and `import`: the 1.11.11 server answers both
 //! with 501, so these are the only tests of what happens when one succeeds. The
 //! other commands also run against a real backend in tests/e2e_bundle.rs.
 
