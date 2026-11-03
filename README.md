@@ -168,6 +168,8 @@ Federation & Integration
 
 Administration
   ak admin         Backup, cleanup, metrics, user management, plugins
+  ak project       Projects: grouped repositories, members and a storage quota
+  ak banner        System-wide maintenance and downtime banners
   ak tui           Launch interactive TUI dashboard
   ak completion    Generate shell completions (bash/zsh/fish/powershell)
   ak man-pages     Generate man pages for all commands

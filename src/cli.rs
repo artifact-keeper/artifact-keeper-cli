@@ -452,6 +452,24 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::system::SystemCommand,
     },
+
+    /// Manage projects: groups of repositories with shared members and a storage quota
+    #[command(
+        after_help = "Examples:\n  ak project list\n  ak project create payments --name Payments --quota-bytes 10737418240\n  ak project update payments --description 'Payments team'\n  ak project members add payments --principal <user-id> --actions read,write\n  ak project delete payments --yes"
+    )]
+    Project {
+        #[command(subcommand)]
+        command: commands::project::ProjectCommand,
+    },
+
+    /// Manage system-wide maintenance and downtime banners
+    #[command(
+        after_help = "Examples:\n  ak banner active\n  ak banner create 'Maintenance' --message 'Down at 09:00 UTC' --severity warning --ends-at 2026-12-01T10:00:00Z\n  ak banner update <id> --disable\n  ak banner delete <id> --yes"
+    )]
+    Banner {
+        #[command(subcommand)]
+        command: commands::banner::BannerCommand,
+    },
 }
 
 impl Cli {
@@ -546,6 +564,8 @@ impl Cli {
             Command::Monitoring { command } => command.execute(&global).await,
             Command::Packages { command } => command.execute(&global).await,
             Command::System { command } => command.execute(&global).await,
+            Command::Project { command } => command.execute(&global).await,
+            Command::Banner { command } => command.execute(&global).await,
         }
     }
 }
@@ -2624,6 +2644,85 @@ mod tests {
     #[test]
     fn parse_packages_tree_content_requires_path() {
         assert!(parse(&["ak", "packages", "tree", "npm-local", "--content"]).is_err());
+    }
+
+    // ---- Project and banner command parsing ----
+
+    #[test]
+    fn parse_project_members_add() {
+        let cli = parse(&[
+            "ak",
+            "project",
+            "members",
+            "add",
+            "payments",
+            "--principal",
+            "x",
+            "--actions",
+            "read,write",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Project { .. }));
+    }
+
+    #[test]
+    fn parse_project_members_add_needs_actions() {
+        assert!(parse(&["ak", "project", "members", "add", "p", "--principal", "x"]).is_err());
+    }
+
+    #[test]
+    fn parse_project_create_takes_a_negative_quota() {
+        assert!(parse(&["ak", "project", "create", "p", "--quota-bytes", "-1"]).is_ok());
+    }
+
+    #[test]
+    fn parse_banner_create() {
+        let cli = parse(&[
+            "ak",
+            "banner",
+            "create",
+            "t",
+            "--message",
+            "m",
+            "--severity",
+            "critical",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Banner { .. }));
+    }
+
+    #[test]
+    fn parse_banner_rejects_an_unknown_severity() {
+        assert!(
+            parse(&[
+                "ak",
+                "banner",
+                "create",
+                "t",
+                "--message",
+                "m",
+                "--severity",
+                "x"
+            ])
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn parse_banner_update_rejects_set_and_clear_together() {
+        assert!(
+            parse(&[
+                "ak",
+                "banner",
+                "update",
+                "i",
+                "--link-url",
+                "u",
+                "--no-link-url"
+            ])
+            .is_err()
+        );
+        assert!(parse(&["ak", "banner", "update", "i", "--enable", "--disable"]).is_err());
     }
 
     // ---- System command parsing ----

@@ -26,7 +26,8 @@ pub enum LifecycleCommand {
         id: String,
     },
 
-    /// Create a lifecycle policy
+    /// Create a lifecycle policy. It's enabled from the start, so say what it
+    /// applies to with --repo or --all-repos
     Create {
         /// Policy name
         name: String,
@@ -52,10 +53,14 @@ pub enum LifecycleCommand {
         #[arg(long)]
         priority: Option<i32>,
 
-        /// Apply to one repository key or ID (required for max_versions and
-        /// size_quota_bytes). Without it, the policy applies to all repositories.
-        #[arg(long)]
+        /// Apply to one repository key or ID
+        #[arg(long, conflicts_with = "all_repos")]
         repo: Option<String>,
+
+        /// Apply to every repository. A 1.10 server refuses this for max_versions
+        /// and size_quota_bytes, which there need --repo
+        #[arg(long)]
+        all_repos: bool,
 
         /// Cron schedule for automatic execution (e.g. "0 2 * * *")
         #[arg(long)]
@@ -134,6 +139,7 @@ impl LifecycleCommand {
                 description,
                 priority,
                 repo,
+                all_repos,
                 cron_schedule,
             } => {
                 create_policy(
@@ -143,6 +149,7 @@ impl LifecycleCommand {
                     description.as_deref(),
                     priority,
                     repo.as_deref(),
+                    all_repos,
                     cron_schedule.as_deref(),
                     global,
                 )
@@ -368,9 +375,21 @@ async fn create_policy(
     description: Option<&str>,
     priority: Option<i32>,
     repo_id: Option<&str>,
+    all_repos: bool,
     cron_schedule: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
+    // A policy is live once it's created and it deletes, so its reach has to be
+    // asked for, not assumed from a flag that was left off.
+    if repo_id.is_none() && !all_repos {
+        return Err(AkError::ConfigError(
+            "say what this policy applies to: --repo <key> for one repository, or \
+             --all-repos for every repository. It's enabled as soon as it's created"
+                .to_string(),
+        )
+        .into());
+    }
+
     let client = client_for(global)?;
     if !VALID_POLICY_TYPES.contains(&policy_type) {
         return Err(AkError::ConfigError(format!(
@@ -384,9 +403,10 @@ async fn create_policy(
     let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
 
     let body = artifact_keeper_sdk::types::CreateLifecyclePolicyRequest {
-        // Since backend 1.11, a policy with no repository and no `applies_to_all`
-        // is created dormant and never deletes anything.
-        applies_to_all: repository_id.is_none().then_some(true),
+        // 1.11 needs this for a global policy: with no repository and no
+        // `applies_to_all`, it creates a dormant one that never deletes anything.
+        // 1.10 ignores the field, and there no repository means every repository.
+        applies_to_all: all_repos.then_some(true),
         config: config_map,
         cron_schedule: cron_schedule.map(str::to_string),
         description: description.map(str::to_string),
@@ -749,6 +769,7 @@ mod tests {
                 description,
                 priority,
                 repo,
+                all_repos,
                 cron_schedule,
             } => {
                 assert_eq!(name, "retention-policy");
@@ -757,6 +778,7 @@ mod tests {
                 assert!(description.is_none());
                 assert!(priority.is_none());
                 assert!(repo.is_none());
+                assert!(!all_repos);
                 assert!(cron_schedule.is_none());
             }
             _ => panic!("expected Create"),
@@ -790,6 +812,7 @@ mod tests {
                 description,
                 priority,
                 repo,
+                all_repos,
                 cron_schedule,
             } => {
                 assert_eq!(name, "strict-policy");
@@ -798,10 +821,29 @@ mod tests {
                 assert_eq!(description.as_deref(), Some("keep latest 5"));
                 assert_eq!(priority, Some(10));
                 assert_eq!(repo.as_deref(), Some("repo-id"));
+                assert!(!all_repos);
                 assert_eq!(cron_schedule.as_deref(), Some("0 2 * * *"));
             }
             _ => panic!("expected Create"),
         }
+    }
+
+    #[test]
+    fn parse_create_all_repos_conflicts_with_repo() {
+        let args = [
+            "test",
+            "create",
+            "p",
+            "--policy-type",
+            "max_age_days",
+            "--config",
+            "{}",
+            "--repo",
+            "r",
+            "--all-repos",
+        ];
+        let err = try_parse(&args).err().expect("should conflict");
+        assert_eq!(err.kind(), clap::error::ErrorKind::ArgumentConflict);
     }
 
     #[test]
@@ -1036,7 +1078,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_create_policy_without_repo_applies_to_all() {
+    async fn handler_create_policy_all_repos_sends_applies_to_all() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
 
@@ -1058,11 +1100,43 @@ mod tests {
             None,
             None,
             None,
+            true,
             None,
             &global,
         )
         .await;
         assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_policy_with_no_scope_sends_nothing() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(lifecycle_policy_json()))
+            .expect(0)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let err = create_policy(
+            "p",
+            "max_age_days",
+            r#"{"days":30}"#,
+            None,
+            None,
+            None,
+            false,
+            None,
+            &global,
+        )
+        .await
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("--repo"), "{err}");
+        assert!(err.contains("--all-repos"), "{err}");
         crate::test_utils::teardown_env();
     }
 
@@ -1093,6 +1167,7 @@ mod tests {
             None,
             None,
             Some(ID),
+            false,
             None,
             &global,
         )
@@ -1225,6 +1300,7 @@ mod tests {
             None,
             None,
             None,
+            true,
             None,
             &global,
         )
@@ -1252,6 +1328,7 @@ mod tests {
             Some("desc"),
             Some(5),
             None,
+            true,
             None,
             &global,
         )
@@ -1263,8 +1340,18 @@ mod tests {
     #[tokio::test]
     async fn handler_create_policy_invalid_type() {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result =
-            create_policy("bad", "not_a_type", "{}", None, None, None, None, &global).await;
+        let result = create_policy(
+            "bad",
+            "not_a_type",
+            "{}",
+            None,
+            None,
+            None,
+            true,
+            None,
+            &global,
+        )
+        .await;
         assert!(result.is_err());
     }
 
@@ -1278,6 +1365,7 @@ mod tests {
             None,
             None,
             None,
+            true,
             None,
             &global,
         )

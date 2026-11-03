@@ -11,7 +11,7 @@ use crate::output::{self, OutputFormat};
 pub fn new_table(headers: Vec<&str>) -> Table {
     let mut table = Table::new();
     table
-        .load_preset(UTF8_FULL_CONDENSED)
+        .load_style(UTF8_FULL_CONDENSED)
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_header(headers);
     table
@@ -270,6 +270,21 @@ fn resolve_secret_from<R: std::io::Read>(
         .interact()
         .into_diagnostic()?;
     Ok(non_empty(entered))
+}
+
+/// The error dialoguer gives for a prompt with no terminal to ask on.
+pub fn is_no_terminal_io_error(e: &std::io::Error) -> bool {
+    e.kind() == std::io::ErrorKind::NotConnected && e.to_string() == "not a terminal"
+}
+
+/// An error for a failed prompt, for a caller that says what it was asking for.
+pub fn prompt_err(what: &str, e: dialoguer::Error) -> AkError {
+    let dialoguer::Error::IO(io) = &e;
+    if is_no_terminal_io_error(io) {
+        AkError::NoTerminal
+    } else {
+        AkError::ConfigError(format!("{what}: {e}"))
+    }
 }
 
 /// Prompt the user to confirm a destructive action. Returns `true` if the

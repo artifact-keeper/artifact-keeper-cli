@@ -518,7 +518,7 @@ async fn source_delete(id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
             .with_prompt(format!("Delete source connection {id}?"))
             .default(false)
             .interact()
-            .map_err(|e| AkError::ConfigError(format!("prompt failed: {e}")))?;
+            .map_err(|e| super::helpers::prompt_err("prompt failed", e))?;
         if !confirmed {
             eprintln!("Cancelled.");
             return Ok(());
@@ -786,7 +786,7 @@ async fn job_delete(id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
             .with_prompt(format!("Delete import job {id}?"))
             .default(false)
             .interact()
-            .map_err(|e| AkError::ConfigError(format!("prompt failed: {e}")))?;
+            .map_err(|e| super::helpers::prompt_err("prompt failed", e))?;
         if !confirmed {
             eprintln!("Cancelled.");
             return Ok(());
