@@ -213,6 +213,18 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
             json!({"name": "@a/demo", "versions": {"1.0.0": {}, "2.0.0": {}}}),
         ),
         (
+            "POST",
+            "/incus/{repo}/images/{product}/{version}/{file}/uploads",
+            201,
+            json!({"session_id": UUID}),
+        ),
+        (
+            "POST",
+            "/lxc/{repo}/images/{product}/{version}/{file}/uploads",
+            201,
+            json!({"session_id": UUID}),
+        ),
+        (
             "GET",
             "/api/v1/auth/me",
             200,
@@ -684,6 +696,12 @@ fn hints(
     }
 }
 
+fn fx_plain(home: &std::path::Path, name: &str) -> std::path::PathBuf {
+    let path = home.join(name);
+    std::fs::write(&path, "package").expect("write");
+    path
+}
+
 /// `ak pkg` reads the package it's given, so it needs a real one. A format's other URL
 /// for the same handler is chosen with `--endpoint`.
 fn pkg_hints(home: &std::path::Path, line: &Line) -> Vec<(&'static str, String)> {
@@ -712,6 +730,38 @@ fn pkg_hints(home: &std::path::Path, line: &Line) -> Vec<(&'static str, String)>
             if path.ends_with("/{version}") {
                 args.push(("encoded_name", String::new()));
             }
+        }
+        "pkg debian publish" => {
+            file(fx_plain(home, "demo_1.0_all.deb"));
+            if path.ends_with("/upload") {
+                args.push(("endpoint", "upload".to_string()));
+            }
+        }
+        "pkg rpm publish" if path.ends_with("/upload") => {
+            args.push(("endpoint", "upload".to_string()));
+        }
+        "pkg rpm publish" if path.ends_with("{upstream_path}") => {
+            args.push(("path", "a/demo.rpm".to_string()));
+        }
+        "pkg alpine publish" if path.contains("{branch}") => {
+            args.push(("endpoint", "path".to_string()));
+            args.push(("arch", "x86_64".to_string()));
+        }
+        "pkg conda publish" | "pkg conda attest" => {
+            if path.contains("{subdir}") && line.command == "pkg conda publish" {
+                args.push(("subdir", "noarch".to_string()));
+            }
+            if path.starts_with("/conda/t/") {
+                args.push(("token_in_url", "conda-t".to_string()));
+            }
+            if path.starts_with("/t/") {
+                args.push(("token_in_url", "t-conda".to_string()));
+            }
+        }
+        "pkg incus publish" | "pkg lxc publish"
+            if !path.contains("/images/") || path.ends_with("/uploads") =>
+        {
+            args.push(("chunked", String::new()));
         }
         "pkg npm audit" => {
             let kind = if path.ends_with("quick") {
