@@ -13,6 +13,16 @@ use wiremock::MockServer;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
 
+/// Stderr with the line wrapping of a miette diagnostic undone, to search for a
+/// whole message.
+pub fn unwrapped(stderr: &[u8]) -> String {
+    String::from_utf8_lossy(stderr)
+        .split_whitespace()
+        .filter(|word| *word != "│")
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 pub struct Mocked {
     pub server: MockServer,
     dir: TempDir,

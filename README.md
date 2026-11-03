@@ -182,6 +182,8 @@ Administration
   ak admin         Backup, cleanup, metrics, users, plugins, audit log, downloads, blast radius, holds
   ak project       Projects: grouped repositories, members and a storage quota
   ak banner        System-wide maintenance and downtime banners
+  ak bundle        Offline bundles: format, manifest checks, export and import jobs
+  ak environment   Stored lockfiles, and which of them contain a component
   ak tui           Launch interactive TUI dashboard
   ak completion    Generate shell completions (bash/zsh/fish/powershell)
   ak man-pages     Generate man pages for all commands

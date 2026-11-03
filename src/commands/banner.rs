@@ -210,7 +210,7 @@ fn parse_target(value: &str) -> Result<BannerTarget> {
         .map_err(|_| AkError::ConfigError(format!("Invalid target: {value}")).into())
 }
 
-fn parse_time(value: Option<&str>, flag: &str) -> Result<Option<DateTime<Utc>>> {
+pub(super) fn parse_time(value: Option<&str>, flag: &str) -> Result<Option<DateTime<Utc>>> {
     value
         .map(|v| {
             DateTime::parse_from_rfc3339(v)

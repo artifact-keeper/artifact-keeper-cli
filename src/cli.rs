@@ -470,6 +470,24 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::banner::BannerCommand,
     },
+
+    /// Export and import repositories as offline bundles, and inspect bundle jobs
+    #[command(
+        after_help = "Examples:\n  ak bundle format\n  ak bundle validate-manifest manifest.json\n  ak bundle jobs list --direction export --status failed\n  ak bundle jobs items <job-id>"
+    )]
+    Bundle {
+        #[command(subcommand)]
+        command: commands::bundle::BundleCommand,
+    },
+
+    /// Store lockfiles as environments, and find which ones contain a component
+    #[command(
+        after_help = "Examples:\n  ak environment ingest my-repo uv.lock --name prod\n  ak environment list my-repo\n  ak environment lookup pkg:pypi/requests@2.31.0\n  ak environment advisories my-repo prod\n  ak environment advisory-transitions --since 2026-01-01T00:00:00Z"
+    )]
+    Environment {
+        #[command(subcommand)]
+        command: commands::environment::EnvironmentCommand,
+    },
 }
 
 impl Cli {
@@ -566,6 +584,8 @@ impl Cli {
             Command::System { command } => command.execute(&global).await,
             Command::Project { command } => command.execute(&global).await,
             Command::Banner { command } => command.execute(&global).await,
+            Command::Bundle { command } => command.execute(&global).await,
+            Command::Environment { command } => command.execute(&global).await,
         }
     }
 }
@@ -2723,6 +2743,61 @@ mod tests {
             .is_err()
         );
         assert!(parse(&["ak", "banner", "update", "i", "--enable", "--disable"]).is_err());
+    }
+
+    // ---- Bundle and environment command parsing ----
+
+    #[test]
+    fn parse_bundle_export_needs_a_repo() {
+        assert!(parse(&["ak", "bundle", "export"]).is_err());
+        let cli = parse(&[
+            "ak",
+            "bundle",
+            "export",
+            "--repo",
+            "a,b",
+            "--media-profile",
+            "bd_r",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Bundle { .. }));
+    }
+
+    #[test]
+    fn parse_bundle_jobs_items() {
+        let cli = parse(&[
+            "ak",
+            "bundle",
+            "jobs",
+            "items",
+            "i",
+            "--status",
+            "failed",
+            "--per-page",
+            "5",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Bundle { .. }));
+    }
+
+    #[test]
+    fn parse_environment_ingest() {
+        let cli = parse(&[
+            "ak",
+            "environment",
+            "ingest",
+            "r",
+            "-",
+            "--filename",
+            "uv.lock",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::Environment { .. }));
+    }
+
+    #[test]
+    fn parse_environment_lookup_needs_a_purl() {
+        assert!(parse(&["ak", "environment", "lookup"]).is_err());
     }
 
     // ---- System command parsing ----

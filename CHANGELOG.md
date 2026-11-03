@@ -41,6 +41,9 @@ These can change what you see, or break a script, coming from 1.2:
 - `ak repo upstream-auth` takes `aws_ecr` and `aws_codeartifact` with `--aws` (JSON), `--allow-public-with-upstream-credentials` and `--password-stdin`. `ak repo list` takes `--project`.
 - `ak repo delete --wait` follows a background deletion to its end, and `--wait-timeout` limits how long it waits (default 30 minutes).
 - Admin observability commands, with every filter the API has: `ak admin audit list`, `ak admin downloads list|by-ip|by-user`, `ak admin blast-radius artifact|cve [--accessible-users]`, `ak admin proxy-scan-verdict show|delete`, `ak admin npm-feed status`, `ak admin holds quarantine|summary`, `ak age-gate reopen` and `ak quality-gate checks --all`. On a 1.10 server, `admin holds` and `admin npm-feed` say they need 1.11, and `admin downloads --repo` or `--source` fail rather than print an unfiltered list, because 1.10 ignores those filters.
+- Admin observability commands, with every filter the API has: `ak admin audit list`, `ak admin downloads list|by-ip|by-user`, `ak admin blast-radius artifact|cve [--accessible-users]`, `ak admin proxy-scan-verdict show|delete`, `ak admin npm-feed status`, `ak admin holds quarantine|summary`, `ak age-gate reopen` and `ak quality-gate checks --all`.
+- `ak bundle` covers offline bundles: `format`, `validate-manifest`, `jobs list|show|items`, `export` and `import`. `validate-manifest` exits 1 for an invalid manifest. The 1.11.10 server answers 501 to `export` and `import`, and the command shows that message. Needs a 1.11 server.
+- `ak environment` stores lockfiles and searches them: `ingest`, `list`, `show`, `delete`, `advisories`, `lookup <purl>` and `advisory-transitions`. Commands take an environment's name or its ID. Needs a 1.11 server.
 
 ### Changed
 
