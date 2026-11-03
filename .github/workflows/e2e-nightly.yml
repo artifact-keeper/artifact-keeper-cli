@@ -1,0 +1,113 @@
+name: Nightly
+
+# The backend and the advisory database change with no commit here, so PR checks
+# can't see those failures. Each problem gets one issue, which this workflow
+# closes again on the first green run.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  e2e:
+    name: E2E (${{ matrix.leg }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        leg: [pinned, latest, previous-minor]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: artifact_registry_test
+          POSTGRES_USER: registry
+          POSTGRES_PASSWORD: registry
+        ports:
+          - 30433:5432
+        options: >-
+          --health-cmd "pg_isready -U registry -d artifact_registry_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    # The token goes only to the steps that use it, not to crates' build scripts.
+    env:
+      GH_REPO: ${{ github.repository }}
+      ISSUE_TITLE: "Nightly E2E failing: ${{ matrix.leg }} backend"
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Resolve the backend version
+        id: backend
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "version=$(.github/scripts/e2e-backend-version.sh "${{ matrix.leg }}")" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Start backend
+        run: .github/scripts/e2e-start-backend.sh "${{ steps.backend.outputs.version }}" "${{ job.services.postgres.network }}"
+      - name: Run E2E tests
+        env:
+          E2E_BACKEND_URL: http://localhost:8081
+        run: cargo test --test 'e2e_*' -- --include-ignored --test-threads=1
+      - name: Backend logs (on failure)
+        if: failure()
+        run: docker logs e2e-backend
+      - name: Close the issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          .github/scripts/tracking-issue.sh pass "$ISSUE_TITLE" "Passing again against backend ${{ steps.backend.outputs.version }}: $RUN_URL"
+      - name: Report
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          .github/scripts/tracking-issue.sh fail "$ISSUE_TITLE" "E2E failed against backend ${{ steps.backend.outputs.version }}: $RUN_URL"
+
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_REPO: ${{ github.repository }}
+      ISSUE_TITLE: "Nightly cargo audit failing"
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - run: cargo audit
+      - name: Close the issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          .github/scripts/tracking-issue.sh pass "$ISSUE_TITLE" "Clean again: $RUN_URL"
+      - name: Report
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          .github/scripts/tracking-issue.sh fail "$ISSUE_TITLE" "cargo audit found advisories: $RUN_URL"

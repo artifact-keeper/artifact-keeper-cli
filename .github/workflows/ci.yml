@@ -206,12 +206,27 @@ jobs:
       - run: docker build -t ak:ci .
       - run: docker run --rm ak:ci --version
 
+  # "E2E Tests" is a required check, so the pinned leg keeps that exact name. The
+  # other two are the rest of the support policy and aren't required. A newer
+  # backend can break the CLI with no change here, so a red `latest` leg doesn't
+  # fail the run. e2e-nightly.yml runs the same legs and files an issue.
   e2e:
-    name: E2E Tests
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     needs: [check]
+    continue-on-error: ${{ matrix.leg == 'latest' }}
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: E2E Tests
+            leg: pinned
+          - name: E2E (latest)
+            leg: latest
+          - name: E2E (previous minor)
+            leg: previous-minor
     services:
       postgres:
         image: postgres:16
@@ -228,48 +243,31 @@ jobs:
           --health-retries 15
     steps:
       - uses: actions/checkout@v7
+      - name: Resolve the backend version
+        id: backend
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(.github/scripts/e2e-backend-version.sh "${{ matrix.leg }}")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          pinned="$(tr -d '[:space:]' < API_VERSION)"
+          # While the pin is the newest release, the latest leg repeats the pinned one.
+          if [ "${{ matrix.leg }}" = latest ] && [ "$version" = "$pinned" ]; then
+            echo "::notice title=${{ matrix.name }}::The latest backend is the pinned $pinned, so this leg has nothing to add."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.backend.outputs.skip != 'true'
       - uses: Swatinem/rust-cache@v2
+        if: steps.backend.outputs.skip != 'true'
       - name: Start backend
-        run: |
-          # The backend hard-fails at startup ("JWT_SECRET is unsuitable:
-          # ... known placeholder value") on weak/placeholder signing
-          # secrets in EVERY environment. The old literal
-          # "e2e-test-secret-key-not-for-production" trips that check (it
-          # embeds the weak substrings "test-secret" / "secret-key"), so
-          # the backend never booted and "Wait for backend" timed out.
-          # Generate a strong, random secret per run instead. Use base64
-          # (not hex): the backend also rejects "low entropy" secrets with
-          # fewer than 16 DISTINCT characters, and a hex string draws from
-          # only 16 symbols so a random one occasionally lands at 14-15
-          # distinct and is rejected (flaky). base64 draws from 64 symbols,
-          # so `openssl rand -base64 48` reliably clears the check — and it
-          # is exactly what the backend's error message recommends.
-          JWT_SECRET="$(openssl rand -base64 48)"
-          API_VERSION="$(tr -d '[:space:]' < API_VERSION)"
-          docker run -d --name e2e-backend \
-            --network ${{ job.services.postgres.network }} \
-            -e DATABASE_URL="postgresql://registry:registry@postgres:5432/artifact_registry_test" \
-            -e ADMIN_PASSWORD="TestRunner!2026secure" \
-            -e JWT_SECRET="${JWT_SECRET}" \
-            -e RATE_LIMIT_ENABLED="false" \
-            -p 8081:8080 \
-            "ghcr.io/artifact-keeper/artifact-keeper-backend:${API_VERSION}"
-      - name: Wait for backend
-        run: |
-          for i in $(seq 1 60); do
-            if curl -sf http://localhost:8081/health > /dev/null 2>&1; then
-              echo "Backend healthy after $i attempts"
-              exit 0
-            fi
-            sleep 2
-          done
-          docker logs e2e-backend
-          exit 1
+        if: steps.backend.outputs.skip != 'true'
+        run: .github/scripts/e2e-start-backend.sh "${{ steps.backend.outputs.version }}" "${{ job.services.postgres.network }}"
       - name: Run E2E tests
+        if: steps.backend.outputs.skip != 'true'
         env:
           E2E_BACKEND_URL: http://localhost:8081
         run: cargo test --test 'e2e_*' -- --include-ignored --test-threads=1
       - name: Backend logs (on failure)
-        if: failure()
+        if: failure() && steps.backend.outputs.skip != 'true'
         run: docker logs e2e-backend

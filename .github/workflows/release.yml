@@ -13,8 +13,74 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # A tag push is the only thing that starts this workflow and it publishes
+  # within the hour, so nothing builds until the tag and the code hold up.
+  preflight:
+    name: Preflight
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: artifact-keeper-cli
+      - name: Check the tag
+        working-directory: artifact-keeper-cli
+        run: .github/scripts/release-preflight.sh "$GITHUB_REF_NAME"
+      - name: Read the API pin
+        id: pin
+        run: echo "version=$(tr -d '[:space:]' < artifact-keeper-cli/API_VERSION)" >> "$GITHUB_OUTPUT"
+      # xtask reads the spec from a sibling checkout.
+      - uses: actions/checkout@v7
+        with:
+          repository: artifact-keeper/artifact-keeper-api
+          ref: v${{ steps.pin.outputs.version }}
+          path: artifact-keeper-api
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: artifact-keeper-cli
+      - name: Check the generated SDK
+        working-directory: artifact-keeper-cli
+        run: cargo run -p xtask -- generate --check
+      - name: Test
+        working-directory: artifact-keeper-cli
+        run: cargo test --workspace
+
+  preflight-e2e:
+    name: Preflight E2E
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: artifact_registry_test
+          POSTGRES_USER: registry
+          POSTGRES_PASSWORD: registry
+        ports:
+          - 30433:5432
+        options: >-
+          --health-cmd "pg_isready -U registry -d artifact_registry_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Start backend
+        run: .github/scripts/e2e-start-backend.sh "$(tr -d '[:space:]' < API_VERSION)" "${{ job.services.postgres.network }}"
+      - name: Run E2E tests
+        env:
+          E2E_BACKEND_URL: http://localhost:8081
+        run: cargo test --test 'e2e_*' -- --include-ignored --test-threads=1
+      - name: Backend logs (on failure)
+        if: failure()
+        run: docker logs e2e-backend
+
   build:
     name: Build (${{ matrix.target }})
+    needs: [preflight, preflight-e2e]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -102,6 +168,7 @@ jobs:
 
   completions:
     name: Generate Completions & Man Pages
+    needs: [preflight, preflight-e2e]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -284,9 +351,10 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          # install.sh follows /releases/latest, which skips prereleases, so an
-          # rc tag must not become the release users get.
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          # Every tag starts as a prerelease, which /releases/latest and so
+          # install.sh skip. The verdict job promotes a release once it has been
+          # checked; an rc tag stays a prerelease for good.
+          prerelease: true
           generate_release_notes: true
           body: |
             ## Verifying signatures
@@ -320,7 +388,9 @@ jobs:
   homebrew:
     name: Update Homebrew Tap
     needs: release
-    # A tag with a hyphen is a prerelease (v1.11.0-rc.1), which must not move the tap.
+    # A tag with a hyphen is a prerelease (v1.11.0-rc.1), which must not move the
+    # tap. The preflight job refuses any other tag that isn't plain vX.Y.Z, and
+    # this job can't run without it, through release and build.
     if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
     # Downloads public release assets and pushes with the deploy key, so the
@@ -422,3 +492,130 @@ jobs:
           fi
           git commit -m "Update ak formula to ${VERSION}"
           git push origin main
+
+  # Checks what was published, from the public downloads. Skipping homebrew on an
+  # rc tag must not skip this, hence the explicit condition.
+  verify-release:
+    name: Verify Release (${{ matrix.arch }})
+    needs: [release, homebrew]
+    if: ${{ !cancelled() && needs.release.result == 'success' }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            os: ubuntu-latest
+          - arch: arm64
+            os: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      # The same cosign that signed, see the release job.
+      - uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.6.3"
+      - name: Verify the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/verify-release-linux.sh "$GITHUB_REF_NAME" "${{ matrix.arch }}"
+
+  # Homebrew and macOS. An rc tag has no tap update to check. Skipped with homebrew.
+  verify-macos:
+    name: Verify Homebrew and macOS
+    needs: [release, homebrew]
+    if: ${{ !cancelled() && needs.homebrew.result == 'success' }}
+    runs-on: macos-latest
+    permissions: {}
+    steps:
+      - name: brew install
+        run: |
+          brew install artifact-keeper/tap/ak
+          want="ak ${GITHUB_REF_NAME#v}"
+          got="$("$(brew --prefix)/bin/ak" --version)"
+          if [ "$got" != "$want" ]; then
+            echo "::error::brew's ak printed '$got', wanted '$want'"
+            exit 1
+          fi
+          echo "$got"
+      - name: install.sh
+        run: |
+          curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
+            "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_REF_NAME}/install.sh" -o install.sh
+          sh install.sh --version "$GITHUB_REF_NAME" --install-dir "$RUNNER_TEMP/bin"
+          want="ak ${GITHUB_REF_NAME#v}"
+          got="$("$RUNNER_TEMP/bin/ak" --version)"
+          if [ "$got" != "$want" ]; then
+            echo "::error::install.sh's ak printed '$got', wanted '$want'"
+            exit 1
+          fi
+          echo "$got"
+
+  # Decides what the tag becomes. It lives in its own job so that the jobs running
+  # third-party binaries hold no write access. It runs even when an earlier job
+  # failed, because that's when someone needs to hear about it.
+  verdict:
+    name: Promote or Report
+    needs: [preflight, preflight-e2e, build, completions, packages, release, homebrew, verify-release, verify-macos]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE: ${{ needs.release.result }}
+      HOMEBREW: ${{ needs.homebrew.result }}
+      VERIFY: ${{ needs.verify-release.result }}
+      VERIFY_MACOS: ${{ needs.verify-macos.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Decide
+        id: decide
+        run: |
+          ok=true
+          if [ "$RELEASE" != success ] || [ "$VERIFY" != success ]; then ok=false; fi
+          case "$GITHUB_REF_NAME" in
+            *-*)
+              # An rc must never have touched the tap, so a homebrew job that
+              # ran here is a failure whatever its own result was.
+              [ "$HOMEBREW" = skipped ] || ok=false
+              ;;
+            *)
+              if [ "$HOMEBREW" != success ] || [ "$VERIFY_MACOS" != success ]; then ok=false; fi
+              ;;
+          esac
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          echo "release=$RELEASE homebrew=$HOMEBREW verify=$VERIFY verify-macos=$VERIFY_MACOS ok=$ok" >> "$GITHUB_STEP_SUMMARY"
+      - name: Promote the release
+        if: ${{ steps.decide.outputs.ok == 'true' && !contains(github.ref_name, '-') }}
+        run: gh release edit "$GITHUB_REF_NAME" --prerelease=false --latest
+      - name: The default install.sh now gets this release
+        if: ${{ steps.decide.outputs.ok == 'true' && !contains(github.ref_name, '-') }}
+        run: |
+          sh install.sh --install-dir "$RUNNER_TEMP/bin"
+          want="ak ${GITHUB_REF_NAME#v}"
+          got="$("$RUNNER_TEMP/bin/ak" --version)"
+          if [ "$got" != "$want" ]; then
+            echo "::error::install.sh with no options installed '$got', wanted '$want'"
+            exit 1
+          fi
+          echo "$got"
+      - name: Close any earlier failure report
+        if: ${{ steps.decide.outputs.ok == 'true' }}
+        run: |
+          .github/scripts/tracking-issue.sh pass "Release $GITHUB_REF_NAME failed verification" \
+            "This run passed: $RUN_URL"
+      - name: Report the failure
+        if: ${{ steps.decide.outputs.ok != 'true' || failure() }}
+        run: |
+          body="Run: $RUN_URL
+
+          release: $RELEASE, homebrew: $HOMEBREW, verify-release: $VERIFY, verify-macos: $VERIFY_MACOS
+
+          The release stays a prerelease, so install.sh and /releases/latest keep serving the previous one. If homebrew passed, the tap already points at this version: revert Formula/ak.rb in artifact-keeper/homebrew-tap if the release is broken."
+          .github/scripts/tracking-issue.sh fail "Release $GITHUB_REF_NAME failed verification" "$body"
+          exit 1
