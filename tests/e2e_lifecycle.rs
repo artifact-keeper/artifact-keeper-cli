@@ -140,10 +140,18 @@ fn create_with_all_repos_applies_to_all_and_matches() {
     let id = policy["id"].as_str().unwrap().to_string();
     guard.policies.push(id.clone());
 
-    assert_eq!(policy["applies_to_all"], true);
-    let shown = json_output(env.ak_cmd().args(["lifecycle", "show", &id]));
-    assert_eq!(shown["applies_to_all"], true);
+    // applies_to_all is new in 1.11. A 1.10 policy with no repository applies to all.
+    let older = common::server_older_than(1, 11, "applies_to_all");
+    if !older {
+        assert_eq!(policy["applies_to_all"], true);
+        let shown = json_output(env.ak_cmd().args(["lifecycle", "show", &id]));
+        assert_eq!(shown["applies_to_all"], true);
+    }
     assert_eq!(matched(&env, &id), 1);
+
+    if older {
+        return;
+    }
 
     // The dormant policy `ak` used to create doesn't match: this is the bug.
     let dormant: Value = env
@@ -200,8 +208,13 @@ fn create_with_repo_applies_to_that_repo_and_update_keeps_scope() {
     let id = policy["id"].as_str().unwrap().to_string();
     guard.policies.push(id.clone());
 
-    assert_eq!(policy["applies_to_all"], false);
-    assert_eq!(policy["repository_ids"][0], repo_id);
+    let older = common::server_older_than(1, 11, "applies_to_all");
+    if older {
+        assert_eq!(policy["repository_id"], repo_id);
+    } else {
+        assert_eq!(policy["applies_to_all"], false);
+        assert_eq!(policy["repository_ids"][0], repo_id);
+    }
     assert_eq!(matched(&env, &id), 1);
 
     // PATCH goes through the strict SDK method.
@@ -215,5 +228,15 @@ fn create_with_repo_applies_to_that_repo_and_update_keeps_scope() {
     ]));
     assert_eq!(updated["description"], "updated");
     assert_eq!(updated["enabled"], false);
-    assert_eq!(updated["repository_ids"][0], repo_id);
+    let scope = if older {
+        "repository_id"
+    } else {
+        "repository_ids"
+    };
+    let kept = if older {
+        &updated[scope]
+    } else {
+        &updated[scope][0]
+    };
+    assert_eq!(*kept, repo_id);
 }

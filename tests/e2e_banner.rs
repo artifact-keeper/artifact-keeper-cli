@@ -38,6 +38,9 @@ fn shows(list: &Value, id: &str) -> bool {
 #[test]
 #[ignore = "requires E2E backend"]
 fn banner_lifecycle() {
+    if common::server_older_than(1, 11, "banners") {
+        return;
+    }
     let env = common::TestEnv::setup();
     let created = json_output(env.ak_cmd().args([
         "banner",
@@ -133,6 +136,9 @@ fn banner_lifecycle() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn an_invalid_banner_shows_the_servers_message() {
+    if common::server_older_than(1, 11, "banners") {
+        return;
+    }
     let env = common::TestEnv::setup();
     env.ak_cmd()
         .args([
