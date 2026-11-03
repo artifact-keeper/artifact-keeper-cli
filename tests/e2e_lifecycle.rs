@@ -370,7 +370,7 @@ fn attach_and_detach_change_which_repositories_a_policy_applies_to() {
             "--policy-type",
             "tag_pattern_delete",
             "--config",
-            &config,
+            r#"{"pattern":"^nothing-has-this-name$"}"#,
             "--repo",
             &repo,
         ]));
@@ -395,6 +395,7 @@ fn attach_and_detach_change_which_repositories_a_policy_applies_to() {
     let capabilities = json_output(env.ak_cmd().args(["lifecycle", "capabilities"]));
     assert_eq!(capabilities["explicit_repository_assignment"], true);
 
+    // Disabled, or the scheduler can run it first and delete what the preview counts.
     let policy = json_output(env.ak_cmd().args([
         "lifecycle",
         "create",
@@ -405,7 +406,9 @@ fn attach_and_detach_change_which_repositories_a_policy_applies_to() {
         &config,
         "--repos",
         &format!("{repo},{other}"),
+        "--disabled",
     ]));
+    assert_eq!(policy["enabled"], false);
     let id = policy["id"].as_str().unwrap().to_string();
     guard.policies.push(id.clone());
     let (repo_id, other_id) = (repo_id_of(&env, &repo), repo_id_of(&env, &other));
