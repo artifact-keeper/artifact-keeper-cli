@@ -1,9 +1,9 @@
-use artifact_keeper_sdk::{ClientPackagesExt, ClientRepositoriesExt};
+use artifact_keeper_sdk::{ClientAdminExt, ClientPackagesExt, ClientRepositoriesExt};
 use clap::Subcommand;
 use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
-use super::client::client_for_optional_auth;
+use super::client::{client_for_optional_auth, client_for_slow};
 use super::helpers::{new_table, parse_uuid, print_page_info, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -68,11 +68,19 @@ pub enum PackagesCommand {
         #[arg(long)]
         max_bytes: Option<i64>,
     },
+
+    /// Register existing artifacts in the package catalog (admin)
+    Backfill {
+        /// Only this repository, by key
+        #[arg(long)]
+        repo: Option<String>,
+    },
 }
 
 impl PackagesCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
+            Self::Backfill { repo } => backfill(repo, global).await,
             Self::List {
                 repo,
                 pkg_format,
@@ -448,6 +456,42 @@ fn format_package_detail(pkg: &artifact_keeper_sdk::types::PackageResponse) -> S
         pkg.created_at.to_rfc3339(),
         pkg.updated_at.to_rfc3339(),
     )
+}
+
+async fn backfill(repo: Option<String>, global: &GlobalArgs) -> Result<()> {
+    let client = client_for_slow(global)?;
+    let mut req = client.backfill_packages();
+    if let Some(repo) = repo {
+        req = req.repository_key(repo);
+    }
+    let spinner = output::spinner("Backfilling package catalog...");
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let report = resp
+        .map_err(|e| sdk_err("backfill package catalog", e))?
+        .into_inner();
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", report.packages_registered);
+        return Ok(());
+    }
+    let table = format!(
+        "{}\n\
+         Artifacts scanned:    {}\n\
+         Packages registered:  {}\n\
+         Artifacts skipped:    {}\n\
+         Artifacts failed:     {}",
+        report.message,
+        report.artifacts_scanned,
+        report.packages_registered,
+        report.artifacts_skipped,
+        report.artifacts_failed,
+    );
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &report, &global.format, Some(table))
+    );
+    Ok(())
 }
 
 #[cfg(test)]
