@@ -155,7 +155,7 @@ fn list_instances(format: &OutputFormat) -> Result<()> {
     let table_str = {
         let mut table = Table::new();
         table
-            .load_preset(UTF8_FULL_CONDENSED)
+            .load_style(UTF8_FULL_CONDENSED)
             .set_content_arrangement(ContentArrangement::Dynamic)
             .set_header(vec!["", "NAME", "URL", "API VERSION"]);
 
