@@ -136,7 +136,8 @@ impl Lines {
 }
 
 /// `.npmrc`: the default registry and that registry's token. Keys are line by
-/// line, and a line starting `[` opens a section that holds what follows it.
+/// line, and a line starting `[` opens a section that holds what follows it, so
+/// only the lines before the first section are the settings that count.
 pub(super) fn npmrc(existing: &str, registry: &str, auth_key: &str, token: &str) -> Merged {
     let key_of = |line: &str| -> Option<String> {
         let line = line.trim();
@@ -145,15 +146,20 @@ pub(super) fn npmrc(existing: &str, registry: &str, auth_key: &str, token: &str)
         }
         Some(line.split_once('=')?.0.trim().to_string())
     };
+    let top_level_end = |file: &Lines| {
+        file.lines
+            .iter()
+            .position(|line| line.trim_start().starts_with('['))
+            .unwrap_or(file.lines.len())
+    };
     let mut file = Lines::parse(existing);
     let mut replaced = Vec::new();
 
-    let old_registry = file
-        .lines
+    let old_registry = file.lines[..top_level_end(&file)]
         .iter()
         .rfind(|line| key_of(line).as_deref() == Some("registry"))
         .and_then(|line| line.split_once('='))
-        .map(|(_, old)| old.trim().to_string());
+        .map(|(_, old)| old.trim().trim_matches(['"', '\'']).to_string());
     if old_registry.is_some_and(|old| old != registry) {
         replaced.push("registry");
     }
@@ -162,11 +168,12 @@ pub(super) fn npmrc(existing: &str, registry: &str, auth_key: &str, token: &str)
         ("registry", format!("registry={registry}")),
         (auth_key, format!("{auth_key}={token}")),
     ] {
+        let end = top_level_end(&file);
+        let newline = file.line(&new);
         let mut placed = false;
         let mut kept = Vec::with_capacity(file.lines.len());
-        let newline = file.line(&new);
-        for line in file.lines.drain(..) {
-            if key_of(&line).as_deref() != Some(key) {
+        for (i, line) in file.lines.drain(..).enumerate() {
+            if i >= end || key_of(&line).as_deref() != Some(key) {
                 kept.push(line);
             } else if !placed {
                 kept.push(newline.clone());
@@ -176,11 +183,7 @@ pub(super) fn npmrc(existing: &str, registry: &str, auth_key: &str, token: &str)
         }
         file.lines = kept;
         if !placed {
-            let at = file
-                .lines
-                .iter()
-                .position(|line| line.trim_start().starts_with('['))
-                .unwrap_or(file.lines.len());
+            let at = top_level_end(&file);
             file.insert(at, &new);
         }
     }
@@ -191,41 +194,95 @@ pub(super) fn npmrc(existing: &str, registry: &str, auth_key: &str, token: &str)
     }
 }
 
-/// The name of the key on a line of a pip config, which also takes `key: value`
-/// and spells keys with `_` or `-`. A line that starts with a space continues the
-/// value above it.
-fn pip_key(line: &str) -> Option<String> {
-    if line.starts_with([' ', '\t']) || line.trim_start().starts_with(['#', ';', '[']) {
-        return None;
+/// A section of a pip config, as Python's `configparser` reads it.
+struct PipSection {
+    name: String,
+    header: usize,
+    /// One past its last line.
+    end: usize,
+    options: Vec<PipOption>,
+}
+
+struct PipOption {
+    /// Lowercase, with `-` for `_`, as pip reads it.
+    key: String,
+    start: usize,
+    /// One past its last line. A value goes on over any more-indented lines, blank
+    /// lines between them included.
+    stop: usize,
+}
+
+/// Read a pip config the way pip does, or say why pip couldn't, in which case
+/// there's no safe edit to make. Each case here makes pip refuse every command.
+fn pip_sections(file: &Lines) -> Result<Vec<PipSection>, String> {
+    let mut sections: Vec<PipSection> = Vec::new();
+    // How far the current option's first line is indented.
+    let mut indent = 0;
+    for (i, line) in file.lines.iter().enumerate() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with(['#', ';']) {
+            continue;
+        }
+        let this_indent = line.len() - line.trim_start().len();
+        if let Some(option) = sections.last_mut().and_then(|s| s.options.last_mut())
+            && this_indent > indent
+        {
+            option.stop = i + 1;
+            continue;
+        }
+        if let Some(name) = trimmed
+            .strip_prefix('[')
+            .and_then(|rest| rest.find(']').map(|end| &rest[..end]))
+            .filter(|name| !name.is_empty())
+        {
+            if sections.iter().any(|s| s.name == name) {
+                return Err(format!("it has more than one [{name}] section"));
+            }
+            if let Some(last) = sections.last_mut() {
+                last.end = i;
+            }
+            sections.push(PipSection {
+                name: name.to_string(),
+                header: i,
+                end: file.lines.len(),
+                options: Vec::new(),
+            });
+            indent = 0;
+            continue;
+        }
+        let number = i + 1;
+        let Some(section) = sections.last_mut() else {
+            return Err(format!("line {number} is outside any section"));
+        };
+        let Some((key, _)) = trimmed.split_once(['=', ':']) else {
+            return Err(format!("line {number} has no value"));
+        };
+        let key = key.trim().replace('_', "-").to_lowercase();
+        if section.options.iter().any(|o| o.key == key) {
+            return Err(format!("{key} appears twice in [{}]", section.name));
+        }
+        indent = this_indent;
+        section.options.push(PipOption {
+            key,
+            start: i,
+            stop: i + 1,
+        });
     }
-    let (key, _) = line.split_once(['=', ':'])?;
-    Some(key.trim().replace('_', "-").to_lowercase())
+    Ok(sections)
 }
 
-/// The lines of `[global]`: its header, and one past its last line.
-fn pip_global(file: &Lines) -> Option<(usize, usize)> {
-    let header = file
-        .lines
-        .iter()
-        .position(|line| line.trim() == "[global]")?;
-    let end = file.lines[header + 1..]
-        .iter()
-        .position(|line| line.trim_start().starts_with('['))
-        .map_or(file.lines.len(), |i| header + 1 + i);
-    Some((header, end))
+fn pip_global(sections: &[PipSection]) -> Option<&PipSection> {
+    sections.iter().find(|s| s.name == "global")
 }
 
-/// The line of a key in `[global]`, and one past the lines continuing its value.
-fn pip_value(file: &Lines, key: &str) -> Option<(usize, usize)> {
-    let (header, end) = pip_global(file)?;
-    let start = (header + 1..end).find(|&i| pip_key(&file.lines[i]).as_deref() == Some(key))?;
-    let stop = (start + 1..end)
-        .find(|&i| {
-            let line = &file.lines[i];
-            !line.starts_with([' ', '\t']) || line.trim().is_empty()
-        })
-        .unwrap_or(end);
-    Some((start, stop))
+/// Where a new key goes in `[global]`: after its last line that isn't blank. Anything
+/// indented straight after the new key would become part of its value, so it can't
+/// go above the section's other keys, and it starts at the margin.
+fn pip_insert_at(file: &Lines, section: &PipSection) -> usize {
+    (section.header + 1..section.end)
+        .rev()
+        .find(|&i| !file.lines[i].trim().is_empty())
+        .map_or(section.header + 1, |i| i + 1)
 }
 
 /// A URL with any password taken out, so a new token isn't a new index.
@@ -238,12 +295,29 @@ fn without_password(url: &str) -> String {
 }
 
 /// `pip.conf`: `index-url`, and `trusted-host` when plain HTTP needs it, in
-/// `[global]`. Other keys and sections stay, `extra-index-url` among them.
-pub(super) fn pip_conf(existing: &str, index_url: &str, trusted_host: Option<&str>) -> Merged {
+/// `[global]`. Other keys and sections stay, `extra-index-url` among them. Fails if
+/// pip couldn't read the result, or wouldn't use it.
+pub(super) fn pip_conf(
+    existing: &str,
+    index_url: &str,
+    trusted_host: Option<&str>,
+) -> Result<Merged, String> {
     let mut file = Lines::parse(existing);
     let mut replaced = Vec::new();
+    let sections = pip_sections(&file)?;
 
-    if pip_global(&file).is_none() {
+    // pip reads a command's own section over [global], so this wouldn't take effect.
+    if let Some(section) = sections
+        .iter()
+        .find(|s| s.name != "global" && s.options.iter().any(|o| o.key == "index-url"))
+    {
+        return Err(format!(
+            "index-url in its [{}] section would override [global]",
+            section.name
+        ));
+    }
+
+    if pip_global(&sections).is_none() {
         if !file.lines.is_empty() {
             let end = file.lines.len();
             file.insert(end, "");
@@ -252,127 +326,181 @@ pub(super) fn pip_conf(existing: &str, index_url: &str, trusted_host: Option<&st
         file.insert(end, "[global]");
     }
 
-    let new = format!("index-url = {index_url}");
-    if let Some((start, stop)) = pip_value(&file, "index-url") {
-        let old = file.lines[start..stop].concat();
+    let sections = pip_sections(&file)?;
+    let global = pip_global(&sections).expect("added above");
+    if let Some(option) = global.options.iter().find(|o| o.key == "index-url") {
+        let old = file.lines[option.start..option.stop].concat();
         let old = old.split_once(['=', ':']).map_or("", |(_, old)| old.trim());
         if without_password(old) != without_password(index_url) {
             replaced.push("index-url");
         }
-        let line = file.line(&new);
+        // At the same indent, or a line indented below it becomes part of its value.
+        let first = &file.lines[option.start];
+        let indent = &first[..first.len() - first.trim_start().len()];
+        let line = file.line(&format!("{indent}index-url = {index_url}"));
+        let (start, stop) = (option.start, option.stop);
         file.lines.splice(start..stop, [line]);
     } else {
-        let (header, _) = pip_global(&file).expect("added above");
-        file.insert(header + 1, &new);
+        let at = pip_insert_at(&file, global);
+        file.insert(at, &format!("index-url = {index_url}"));
     }
 
     if let Some(host) = trusted_host {
-        match pip_value(&file, "trusted-host") {
-            Some((start, stop)) => {
-                let values = file.lines[start..stop].concat();
+        let sections = pip_sections(&file)?;
+        let global = pip_global(&sections).expect("added above");
+        match global.options.iter().find(|o| o.key == "trusted-host") {
+            Some(option) => {
+                let values = file.lines[option.start..option.stop].concat();
                 let values = values.split_once(['=', ':']).map_or("", |(_, rest)| rest);
                 if !values.split_whitespace().any(|known| known == host) {
-                    file.insert(stop, &format!("    {host}"));
+                    let first = &file.lines[option.start];
+                    let indent = first.len() - first.trim_start().len();
+                    let stop = option.stop;
+                    file.insert(stop, &format!("{}{host}", " ".repeat(indent + 4)));
                 }
             }
             None => {
-                let (start, _) = pip_value(&file, "index-url").expect("set above");
-                file.insert(start + 1, &format!("trusted-host = {host}"));
+                let at = pip_insert_at(&file, global);
+                file.insert(at, &format!("trusted-host = {host}"));
             }
         }
     }
 
-    Merged {
+    Ok(Merged {
         text: file.text(),
         replaced,
-    }
+    })
 }
 
-/// One token of a `.netrc` and where it starts. Comments and `macdef` bodies, which
-/// can hold anything, aren't tokens.
-fn netrc_tokens(text: &str) -> Vec<(usize, &str)> {
-    let mut tokens = Vec::new();
+/// One entry of a `.netrc`, and the bytes it takes up.
+struct NetrcEntry {
+    /// `machine`'s value, or `None` for `default` and `macdef`.
+    host: Option<String>,
+    is_default: bool,
+    start: usize,
+    end: usize,
+}
+
+/// Read one word from `at`: to the closing quote if it opens with one, or else to the
+/// next space. Which means it's up to the caller whether a word is a keyword: a
+/// password can be `default`, `machine` or `#hash`.
+fn netrc_word(text: &str, at: usize) -> Option<(&str, usize)> {
+    let rest = &text[at..];
+    let start = at + (rest.len() - rest.trim_start().len());
+    let rest = &text[start..];
+    if rest.is_empty() {
+        return None;
+    }
+    let len = if let Some(quoted) = rest.strip_prefix('"') {
+        quoted.find('"').map_or(rest.len(), |end| end + 2)
+    } else {
+        rest.find(char::is_whitespace).unwrap_or(rest.len())
+    };
+    Some((&text[start..start + len], start))
+}
+
+/// Read a `.netrc` by its grammar, or say why that isn't possible.
+fn netrc_entries(text: &str) -> Result<Vec<NetrcEntry>, String> {
+    let line_of = |at: usize| text[..at].lines().count().max(1);
+    let mut entries = Vec::new();
     let mut at = 0;
-    while at < text.len() {
-        let rest = &text[at..];
-        let trimmed = rest.trim_start();
-        at += rest.len() - trimmed.len();
-        if trimmed.is_empty() {
-            break;
-        }
-        if trimmed.starts_with('#') {
-            at += trimmed.find('\n').unwrap_or(trimmed.len());
-            continue;
-        }
-        let len = if let Some(quoted) = trimmed.strip_prefix('"') {
-            quoted.find('"').map_or(trimmed.len(), |end| end + 2)
-        } else {
-            trimmed.find(char::is_whitespace).unwrap_or(trimmed.len())
-        };
-        let token = &trimmed[..len];
-        tokens.push((at, token));
-        at += len;
-        if token == "macdef" {
-            // The macro's name, then its body up to a blank line.
-            let body = &text[at..];
-            at += body.find("\n\n").map_or(body.len(), |end| end + 2);
-            // Marks where the entry's text ends; the body is never read as tokens.
+    while let Some((word, start)) = netrc_word(text, at) {
+        at = start + word.len();
+        match word {
+            // Where a keyword is expected, `#` starts a comment.
+            _ if word.starts_with('#') => {
+                at = start + text[start..].find('\n').unwrap_or(text.len() - start);
+            }
+            "machine" => {
+                let (host, host_at) = netrc_word(text, at)
+                    .ok_or_else(|| format!("line {} has no host after machine", line_of(start)))?;
+                at = host_at + host.len();
+                entries.push(NetrcEntry {
+                    host: Some(host.trim_matches('"').to_string()),
+                    is_default: false,
+                    start,
+                    end: at,
+                });
+            }
+            "default" => entries.push(NetrcEntry {
+                host: None,
+                is_default: true,
+                start,
+                end: at,
+            }),
+            "login" | "password" | "account" => {
+                let entry = entries
+                    .last_mut()
+                    .filter(|e| e.host.is_some() || e.is_default);
+                let entry = entry.ok_or_else(|| {
+                    format!("line {} has {word} outside an entry", line_of(start))
+                })?;
+                let (value, value_at) = netrc_word(text, at)
+                    .ok_or_else(|| format!("line {} has no value after {word}", line_of(start)))?;
+                at = value_at + value.len();
+                entry.end = at;
+            }
+            "macdef" => {
+                // Its name, then a body up to a blank line. The body can hold anything.
+                let body = &text[at..];
+                let end = at + body.find("\n\n").map_or(body.len(), |end| end + 2);
+                entries.push(NetrcEntry {
+                    host: None,
+                    is_default: false,
+                    start,
+                    end,
+                });
+                at = end;
+            }
+            _ => {
+                // Don't repeat the word: it could be a secret on a broken line.
+                return Err(format!("line {} has something unexpected", line_of(start)));
+            }
         }
     }
-    tokens
+    Ok(entries)
 }
 
 /// `.netrc`: one entry for this host, in place of any there were. go and curl use
 /// the first entry for a host, so adding a line after an old one would change
 /// nothing. Every other host's entry stays, as do comments.
-pub(super) fn netrc(existing: &str, host: &str, line: &str) -> String {
-    let tokens = netrc_tokens(existing);
-    let starts_entry = |token: &str| matches!(token, "machine" | "default" | "macdef");
-
-    // The spans of this host's entries: from `machine host` to the next entry.
-    let mut spans = Vec::new();
-    for (i, (start, token)) in tokens.iter().enumerate() {
-        if *token != "machine" || tokens.get(i + 1).map(|(_, name)| *name) != Some(host) {
-            continue;
-        }
-        // To the end of its last field, so a comment after it stays.
-        let fields = tokens[i + 2..]
-            .iter()
-            .take_while(|(_, token)| !starts_entry(token));
-        let last = fields.last().map_or(&tokens[i + 1], |field| field);
-        let mut end = last.0 + last.1.len();
-        if existing[end..].starts_with("\r\n") {
-            end += 2;
-        } else if existing[end..].starts_with('\n') {
-            end += 1;
-        }
-        spans.push((*start, end));
-    }
+pub(super) fn netrc(existing: &str, host: &str, line: &str) -> Result<String, String> {
+    let entries = netrc_entries(existing)?;
+    let ours: Vec<&NetrcEntry> = entries
+        .iter()
+        .filter(|entry| entry.host.as_deref() == Some(host))
+        .collect();
 
     let mut text = String::with_capacity(existing.len() + line.len() + 1);
     let mut copied = 0;
-    for (i, (start, end)) in spans.iter().enumerate() {
-        text.push_str(&existing[copied..*start]);
+    for (i, entry) in ours.iter().enumerate() {
+        text.push_str(&existing[copied..entry.start]);
         if i == 0 {
             text.push_str(line);
             text.push('\n');
         }
-        copied = *end;
+        // Its line ending goes with it, so a comment after it stays on its own line.
+        copied = entry.end;
+        if existing[copied..].starts_with("\r\n") {
+            copied += 2;
+        } else if existing[copied..].starts_with('\n') {
+            copied += 1;
+        }
     }
     text.push_str(&existing[copied..]);
-    if spans.is_empty() {
+    if ours.is_empty() {
         // `default` matches every host, and whatever follows it is never read.
-        let at = tokens
+        let at = entries
             .iter()
-            .find(|(_, token)| *token == "default")
-            .map_or(text.len(), |(start, _)| *start);
+            .find(|entry| entry.is_default)
+            .map_or(text.len(), |entry| entry.start);
         let mut new = format!("{line}\n");
         if at > 0 && !text[..at].ends_with('\n') {
             new.insert(0, '\n');
         }
         text.insert_str(at, &new);
     }
-    text
+    Ok(text)
 }
 
 /// Whether a file is one `setup` wrote: its template, line for line, apart from
@@ -557,6 +685,26 @@ mod tests {
     }
 
     #[test]
+    fn npmrc_leaves_a_section_with_the_same_key_alone() {
+        // npm reads this as `section.registry`, and it isn't the default registry.
+        let existing = "a=1\n[section]\nregistry=https://theirs.test/\n";
+        let merged = npmrc(existing, NPM_URL, NPM_AUTH, "t");
+        assert_eq!(
+            merged.text,
+            format!(
+                "a=1\nregistry={NPM_URL}\n{NPM_AUTH}=t\n[section]\nregistry=https://theirs.test/\n"
+            )
+        );
+        assert!(merged.replaced.is_empty());
+    }
+
+    #[test]
+    fn npmrc_reads_a_quoted_value() {
+        let merged = npmrc(&format!("registry=\"{NPM_URL}\"\n"), NPM_URL, NPM_AUTH, "t");
+        assert!(merged.replaced.is_empty());
+    }
+
+    #[test]
     fn npmrc_handles_a_last_line_with_no_ending_and_keeps_crlf() {
         assert_eq!(
             npmrc("a=1", NPM_URL, NPM_AUTH, "t").text,
@@ -572,10 +720,12 @@ mod tests {
 
     #[test]
     fn pip_from_nothing() {
-        let merged = pip_conf("", PIP_URL, None);
+        let merged = pip_conf("", PIP_URL, None).unwrap();
         assert_eq!(merged.text, format!("[global]\nindex-url = {PIP_URL}\n"));
         assert_eq!(
-            pip_conf("", "http://ak.test/", Some("ak.test")).text,
+            pip_conf("", "http://ak.test/", Some("ak.test"))
+                .unwrap()
+                .text,
             "[global]\nindex-url = http://ak.test/\ntrusted-host = ak.test\n"
         );
     }
@@ -585,7 +735,7 @@ mod tests {
         let existing = "# mine\n[global]\ntimeout = 30\nindex_url = https://corp.test/simple/\n\
                         extra-index-url = https://u:corp-secret@other.test/simple/\n\n\
                         [install]\nno-deps = true\n";
-        let merged = pip_conf(existing, PIP_URL, None);
+        let merged = pip_conf(existing, PIP_URL, None).unwrap();
         assert_eq!(
             merged.text,
             format!(
@@ -599,30 +749,101 @@ mod tests {
 
     #[test]
     fn pip_a_new_token_is_not_a_new_index() {
-        let first = pip_conf("", PIP_URL, None).text;
-        let second = pip_conf(&first, &PIP_URL.replace(":tok@", ":new@"), None);
+        let first = pip_conf("", PIP_URL, None).unwrap().text;
+        let second = pip_conf(&first, &PIP_URL.replace(":tok@", ":new@"), None).unwrap();
         assert!(second.replaced.is_empty());
         assert!(second.text.contains(":new@"));
         assert!(!second.text.contains(":tok@"));
     }
 
     #[test]
-    fn pip_adds_global_when_there_is_none_and_ignores_other_sections() {
-        let existing = "[install]\nindex-url = https://theirs.test/\n";
-        let text = pip_conf(existing, PIP_URL, None).text;
+    fn pip_adds_global_when_there_is_none() {
+        let existing = "[install]\nno-deps = true\n";
+        assert_eq!(
+            pip_conf(existing, PIP_URL, None).unwrap().text,
+            format!("[install]\nno-deps = true\n\n[global]\nindex-url = {PIP_URL}\n")
+        );
+    }
+
+    #[test]
+    fn pip_finds_a_header_with_a_comment_after_it() {
+        // A second [global] makes pip refuse every command.
+        let text = pip_conf("[global] # mine\ntimeout = 3\n", PIP_URL, None)
+            .unwrap()
+            .text;
         assert_eq!(
             text,
-            format!(
-                "[install]\nindex-url = https://theirs.test/\n\n[global]\nindex-url = {PIP_URL}\n"
-            )
+            format!("[global] # mine\ntimeout = 3\nindex-url = {PIP_URL}\n")
         );
+    }
+
+    #[test]
+    fn pip_doesnt_swallow_indented_keys_into_its_value() {
+        let text = pip_conf(
+            "[global]\n    timeout = 3\n    retries = 1\n",
+            PIP_URL,
+            None,
+        )
+        .unwrap()
+        .text;
+        assert_eq!(
+            text,
+            format!("[global]\n    timeout = 3\n    retries = 1\nindex-url = {PIP_URL}\n")
+        );
+
+        // Replaced in place, at its indent, for the same reason.
+        let text = pip_conf(
+            "[global]\n    index-url = https://a.test/\n    timeout = 3\n",
+            PIP_URL,
+            None,
+        )
+        .unwrap()
+        .text;
+        assert_eq!(
+            text,
+            format!("[global]\n    index-url = {PIP_URL}\n    timeout = 3\n")
+        );
+    }
+
+    #[test]
+    fn pip_keeps_trailing_blank_lines_outside_its_section() {
+        let text = pip_conf(
+            "[global]\ntimeout = 3\n\n[install]\nno-deps = true\n",
+            PIP_URL,
+            None,
+        )
+        .unwrap()
+        .text;
+        assert_eq!(
+            text,
+            format!("[global]\ntimeout = 3\nindex-url = {PIP_URL}\n\n[install]\nno-deps = true\n")
+        );
+    }
+
+    #[test]
+    fn pip_refuses_what_it_cant_safely_edit() {
+        for (existing, reason) in [
+            ("timeout = 3\n", "outside any section"),
+            (
+                "[global]\na = 1\n[global]\nb = 2\n",
+                "more than one [global]",
+            ),
+            ("[global]\na = 1\na = 2\n", "appears twice"),
+            ("[global]\njust words\n", "no value"),
+            ("[install]\nindex-url = https://t.test/\n", "would override"),
+        ] {
+            let Err(err) = pip_conf(existing, PIP_URL, None) else {
+                panic!("{existing:?} should be refused");
+            };
+            assert!(err.contains(reason), "{existing:?}: {err}");
+        }
     }
 
     #[test]
     fn pip_replaces_a_value_that_spans_lines() {
         let existing = "[global]\nindex-url = https://a.test/\n    continued\ntimeout = 3\n";
         assert_eq!(
-            pip_conf(existing, PIP_URL, None).text,
+            pip_conf(existing, PIP_URL, None).unwrap().text,
             format!("[global]\nindex-url = {PIP_URL}\ntimeout = 3\n")
         );
     }
@@ -630,12 +851,16 @@ mod tests {
     #[test]
     fn pip_adds_to_trusted_hosts_rather_than_replacing_them() {
         let existing = "[global]\ntrusted-host = a.test\n    b.test\ntimeout = 3\n";
-        let once = pip_conf(existing, "http://ak.test/", Some("ak.test")).text;
+        let once = pip_conf(existing, "http://ak.test/", Some("ak.test"))
+            .unwrap()
+            .text;
         assert!(
             once.contains("trusted-host = a.test\n    b.test\n    ak.test\n"),
             "{once}"
         );
-        let twice = pip_conf(&once, "http://ak.test/", Some("ak.test")).text;
+        let twice = pip_conf(&once, "http://ak.test/", Some("ak.test"))
+            .unwrap()
+            .text;
         assert_eq!(once, twice);
     }
 
@@ -643,7 +868,10 @@ mod tests {
 
     #[test]
     fn netrc_from_nothing() {
-        assert_eq!(netrc("", "ak.test", NETRC_LINE), format!("{NETRC_LINE}\n"));
+        assert_eq!(
+            netrc("", "ak.test", NETRC_LINE).unwrap(),
+            format!("{NETRC_LINE}\n")
+        );
     }
 
     #[test]
@@ -652,7 +880,7 @@ mod tests {
                         machine ak.test login __token__ password old\n\
                         machine b.test login v password p2\n";
         assert_eq!(
-            netrc(existing, "ak.test", NETRC_LINE),
+            netrc(existing, "ak.test", NETRC_LINE).unwrap(),
             format!(
                 "# mine\nmachine a.test login u password p1\n{NETRC_LINE}\n\
                  machine b.test login v password p2\n"
@@ -665,7 +893,7 @@ mod tests {
         let existing = "machine ak.test\n  login u\n  password old\nmachine b.test login v password p\n\
                         machine ak.test login w password older\n";
         assert_eq!(
-            netrc(existing, "ak.test", NETRC_LINE),
+            netrc(existing, "ak.test", NETRC_LINE).unwrap(),
             format!("{NETRC_LINE}\nmachine b.test login v password p\n")
         );
     }
@@ -673,7 +901,7 @@ mod tests {
     #[test]
     fn netrc_handles_entries_sharing_a_line() {
         let existing = "machine a.test login u password p machine ak.test login x password old machine b.test login v password q\n";
-        let text = netrc(existing, "ak.test", NETRC_LINE);
+        let text = netrc(existing, "ak.test", NETRC_LINE).unwrap();
         assert!(text.contains("machine a.test login u password p"), "{text}");
         assert!(text.contains("machine b.test login v password q"), "{text}");
         assert!(text.contains(NETRC_LINE), "{text}");
@@ -685,7 +913,7 @@ mod tests {
         let existing =
             "machine ak.test login u password old\n# about b\nmachine b.test login v password p\n";
         assert_eq!(
-            netrc(existing, "ak.test", NETRC_LINE),
+            netrc(existing, "ak.test", NETRC_LINE).unwrap(),
             format!("{NETRC_LINE}\n# about b\nmachine b.test login v password p\n")
         );
     }
@@ -694,7 +922,7 @@ mod tests {
     fn netrc_goes_before_a_default_entry_which_ends_the_search() {
         let existing = "machine a.test login u password p\ndefault login d password dd\n";
         assert_eq!(
-            netrc(existing, "ak.test", NETRC_LINE),
+            netrc(existing, "ak.test", NETRC_LINE).unwrap(),
             format!(
                 "machine a.test login u password p\n{NETRC_LINE}\ndefault login d password dd\n"
             )
@@ -706,7 +934,7 @@ mod tests {
         let existing = "# machine ak.test login c password comment\n\
                         macdef init\nmachine ak.test login m password macro\n\n\
                         machine b.test login v password p\n";
-        let text = netrc(existing, "ak.test", NETRC_LINE);
+        let text = netrc(existing, "ak.test", NETRC_LINE).unwrap();
         assert!(text.contains("password comment"), "{text}");
         assert!(text.contains("password macro"), "{text}");
         assert!(text.ends_with(&format!("{NETRC_LINE}\n")), "{text}");
@@ -716,15 +944,54 @@ mod tests {
     fn netrc_only_matches_the_whole_host() {
         let existing =
             "machine ak.test:8443 login u password p\nmachine xak.test login v password q\n";
-        let text = netrc(existing, "ak.test", NETRC_LINE);
+        let text = netrc(existing, "ak.test", NETRC_LINE).unwrap();
         assert!(text.starts_with(existing), "{text}");
         assert!(text.contains(NETRC_LINE), "{text}");
     }
 
     #[test]
+    fn netrc_doesnt_read_a_value_as_a_keyword() {
+        // These all look like the start of something else.
+        let existing = "machine a.test login default password machine\n\
+                        machine b.test login macdef password #hash\n\
+                        machine ak.test login login password default\n\
+                        machine c.test login u password p\n";
+        assert_eq!(
+            netrc(existing, "ak.test", NETRC_LINE).unwrap(),
+            format!(
+                "machine a.test login default password machine\n\
+                 machine b.test login macdef password #hash\n\
+                 {NETRC_LINE}\n\
+                 machine c.test login u password p\n"
+            )
+        );
+    }
+
+    #[test]
+    fn netrc_a_password_equal_to_the_host_isnt_an_entry() {
+        let existing = "machine a.test login machine password ak.test\n";
+        let text = netrc(existing, "ak.test", NETRC_LINE).unwrap();
+        assert_eq!(text, format!("{existing}{NETRC_LINE}\n"));
+    }
+
+    #[test]
+    fn netrc_refuses_what_it_cant_read_without_quoting_it() {
+        for existing in [
+            "machine a.test login u password p secret-word\n",
+            "login u password secret-word\n",
+            "machine a.test login\n",
+            "machine\n",
+        ] {
+            let err = netrc(existing, "ak.test", NETRC_LINE).unwrap_err();
+            assert!(!err.contains("secret-word"), "{err}");
+            assert!(err.contains("line 1"), "{err}");
+        }
+    }
+
+    #[test]
     fn netrc_a_last_line_with_no_ending() {
         assert_eq!(
-            netrc("machine a.test login u password p", "ak.test", NETRC_LINE),
+            netrc("machine a.test login u password p", "ak.test", NETRC_LINE).unwrap(),
             format!("machine a.test login u password p\n{NETRC_LINE}\n")
         );
     }

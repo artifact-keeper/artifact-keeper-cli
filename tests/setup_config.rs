@@ -500,6 +500,88 @@ async fn cargo_leaves_both_files_alone_if_either_cannot_be_merged() {
     assert!(!stderr(&output).contains("secret-in-a-broken-file"));
 }
 
+/// A pip config that pip itself would refuse, or that this would break, is left
+/// alone with the lines to add, and no token is minted for it.
+#[tokio::test]
+async fn pip_leaves_a_file_it_cant_safely_edit() {
+    let sandbox = Sandbox::new(None).await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/auth/tokens"))
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
+        .mount(&sandbox.server)
+        .await;
+    let session = jwt_expiring_in(1800);
+    let file = "home/.config/pip/pip.conf";
+    std::fs::create_dir_all(sandbox.path(file).parent().unwrap()).unwrap();
+
+    for original in [
+        "timeout = 3\n",
+        "[global]\na = 1\n[global]\nb = 2\n",
+        "[install]\nindex-url = https://theirs.test/\n",
+    ] {
+        std::fs::write(sandbox.path(file), original).unwrap();
+        let output = sandbox.run(&session, &["pip", "--repo", "r"]);
+        assert_eq!(output.status.code(), Some(1), "{original:?}");
+        assert_eq!(sandbox.read(file), original);
+        let err = stderr(&output);
+        assert!(err.contains("index-url = "), "no snippet in {err}");
+        assert!(!err.contains("now configured"), "{err}");
+        assert!(!err.contains(&session), "the token was printed");
+    }
+}
+
+/// Cargo reads `config` over `config.toml`, so writing the second changes nothing.
+#[tokio::test]
+async fn cargo_leaves_a_legacy_config_file_it_would_lose_to() {
+    let sandbox = Sandbox::new(None).await;
+    for legacy in ["home/.cargo/config", "home/.cargo/credentials"] {
+        std::fs::create_dir_all(sandbox.path(legacy).parent().unwrap()).unwrap();
+        std::fs::write(sandbox.path(legacy), "# old name\n").unwrap();
+
+        let output = sandbox.run("lasting-token", &["cargo", "--repo", "r"]);
+        assert_eq!(output.status.code(), Some(1), "{legacy}");
+        assert!(
+            !sandbox.path("home/.cargo/config.toml").exists(),
+            "{legacy}"
+        );
+        assert!(
+            !sandbox.path("home/.cargo/credentials.toml").exists(),
+            "{legacy}"
+        );
+        std::fs::remove_file(sandbox.path(legacy)).unwrap();
+    }
+}
+
+/// A default registry with no token breaks every cargo command, so if the second
+/// write can fail, it mustn't be the credentials.
+#[cfg(unix)]
+#[tokio::test]
+async fn cargo_doesnt_change_the_default_registry_if_the_token_cant_be_written() {
+    use std::os::unix::fs::PermissionsExt;
+    let sandbox = Sandbox::new(None).await;
+    let original = "[registries.other]\nindex = \"sparse+https://other.test/\"\n";
+    let cargo_home = sandbox.path("home/.cargo");
+    std::fs::create_dir_all(&cargo_home).unwrap();
+    std::fs::write(cargo_home.join("config.toml"), original).unwrap();
+    // A credentials file kept somewhere that can't be written to.
+    let locked = sandbox.path("locked");
+    std::fs::create_dir(&locked).unwrap();
+    std::fs::write(locked.join("credentials.toml"), "# mine\n").unwrap();
+    std::os::unix::fs::symlink(
+        locked.join("credentials.toml"),
+        cargo_home.join("credentials.toml"),
+    )
+    .unwrap();
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o500)).unwrap();
+
+    let output = sandbox.run("lasting-token", &["cargo", "--repo", "r"]);
+
+    std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(output.status.code(), Some(1), "{}", stderr(&output));
+    assert_eq!(sandbox.read("home/.cargo/config.toml"), original);
+}
+
 /// Files that are XML: untouched unless `setup` wrote them or `--replace` says to,
 /// and no token is minted for a file that won't be written.
 #[tokio::test]
