@@ -119,9 +119,11 @@ async fn a_failed_store_is_a_failed_publish() {
         &[],
     )
     .await;
-    assert_eq!(run.code, Some(1));
+    assert_eq!(run.code, Some(7));
     assert!(run.stderr.contains("disk full"), "{}", run.stderr);
-    assert!(run.stderr.contains(SESSION), "{}", run.stderr);
+    // miette wraps long lines, at a hyphen too, and draws a border in the wrap.
+    let unwrapped: String = run.stderr.replace('│', "").split_whitespace().collect();
+    assert!(unwrapped.contains(SESSION), "{}", run.stderr);
 }
 
 #[tokio::test]
@@ -131,7 +133,7 @@ async fn a_session_handed_back_is_a_failed_publish() {
         &[],
     )
     .await;
-    assert_eq!(run.code, Some(1));
+    assert_eq!(run.code, Some(7));
     assert!(run.stderr.contains("storage hiccup"), "{}", run.stderr);
 }
 
@@ -142,7 +144,7 @@ async fn it_gives_up_at_the_timeout_and_says_how_to_look() {
         &["--wait-timeout", "0"],
     )
     .await;
-    assert_eq!(run.code, Some(1));
+    assert_eq!(run.code, Some(6));
     assert!(run.stderr.contains("still storing"), "{}", run.stderr);
     assert!(run.stderr.contains("/incus/r/uploads/"), "{}", run.stderr);
 }
