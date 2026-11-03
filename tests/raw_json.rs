@@ -51,6 +51,10 @@ async fn run(route: &str, verb: &str, body: &Value, args: &[&str]) -> Output {
         .respond_with(ResponseTemplate::new(200).set_body_json(body))
         .mount(&server)
         .await;
+    run_against(&server, args)
+}
+
+fn run_against(server: &MockServer, args: &[&str]) -> Output {
     let dir = TempDir::new().expect("temp dir");
     std::fs::write(
         dir.path().join("config.toml"),
@@ -375,4 +379,292 @@ fn repo_settings_commands() {
             .expect("runtime")
             .block_on(assert_prints_the_body(&route, verb, body, &args));
     }
+}
+
+fn admin_user() -> Value {
+    json!({
+        "id": UUID, "username": "alice", "email": "alice@example.com", "is_admin": false,
+        "is_active": true, "is_service_account": false, "must_change_password": false,
+        "auth_provider": "local", "created_at": "2026-01-15T12:00:00Z",
+        "from_a_newer_server": {"nested": [1, 2]}
+    })
+}
+
+fn plugin_install() -> Value {
+    json!({
+        "plugin_id": UUID, "name": "p", "version": "1.0.0", "format_key": "f",
+        "message": "Installed", "from_a_newer_server": true
+    })
+}
+
+fn gate() -> Value {
+    json!({
+        "id": UUID, "name": "g", "action": "warn", "is_enabled": true,
+        "enforce_on_download": false, "enforce_on_promotion": false, "required_checks": [],
+        "created_at": "2026-01-15T12:00:00Z", "updated_at": "2026-01-15T12:00:00Z",
+        "from_a_newer_server": {"nested": [1, 2]}
+    })
+}
+
+fn age_gate_config() -> Value {
+    json!({
+        "repository_key": "r", "enabled": true, "min_age_days": 3, "mode": "block",
+        "from_a_newer_server": true
+    })
+}
+
+fn package() -> Value {
+    json!({
+        "id": UUID, "name": "p", "version": "1.0.0", "format": "generic",
+        "repository_key": "r", "size_bytes": 3, "download_count": 0, "metadata": {},
+        "created_at": "2026-01-15T12:00:00Z", "updated_at": "2026-01-15T12:00:00Z",
+        "from_a_newer_server": {"nested": [1, 2]}
+    })
+}
+
+#[tokio::test]
+async fn admin_reads() {
+    assert_prints_the_body(
+        "/api/v1/admin/stats",
+        "GET",
+        json!({
+            "active_peers": 0, "pending_sync_tasks": 0, "proxy_artifact_count": 0,
+            "proxy_storage_bytes": 0, "total_artifacts": 1, "total_downloads": 2,
+            "total_repositories": 3, "total_storage_bytes": 4, "total_users": 5,
+            "from_a_newer_server": true
+        }),
+        &["admin", "stats"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/api/v1/users",
+        "GET",
+        list_of(admin_user()),
+        &["admin", "users", "list"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("/api/v1/users/{UUID}"),
+        "GET",
+        admin_user(),
+        &["admin", "users", "show", UUID],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn admin_mutations() {
+    assert_prints_the_body(
+        &format!("/api/v1/users/{UUID}"),
+        "PATCH",
+        admin_user(),
+        &["admin", "users", "update", UUID, "--email", "a@example.com"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("/api/v1/admin/backups/{UUID}/restore"),
+        "POST",
+        json!({
+            "artifacts_restored": 1, "errors": [], "integrity_anchor": "none",
+            "tables_restored": ["t"], "from_a_newer_server": true
+        }),
+        &["admin", "backup", "restore", UUID],
+    )
+    .await;
+}
+
+/// These printed nothing on stdout in JSON mode, so their response was lost.
+#[tokio::test]
+async fn mutations_that_used_to_lose_the_body() {
+    assert_prints_the_body(
+        "/api/v1/plugins/install/git",
+        "POST",
+        plugin_install(),
+        &["admin", "plugins", "install", "https://example.com/p.git"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("/api/v1/users/{UUID}/password/reset"),
+        "POST",
+        json!({"temporary_password": "not-a-real-password", "from_a_newer_server": true}),
+        &["admin", "users", "reset-password", UUID],
+    )
+    .await;
+
+    let dir = TempDir::new().expect("temp dir");
+    let zip = dir.path().join("p.zip");
+    std::fs::write(&zip, b"PK").expect("write zip");
+    assert_prints_the_body(
+        "/api/v1/plugins/install/zip",
+        "POST",
+        plugin_install(),
+        &[
+            "admin",
+            "plugins",
+            "install-zip",
+            zip.to_str().expect("utf-8 path"),
+        ],
+    )
+    .await;
+}
+
+/// An update reads the settings first. What's printed is the update's response.
+#[tokio::test]
+async fn telemetry_update_prints_the_update_not_the_read_before_it() {
+    let server = MockServer::start().await;
+    let settings = |marker: &str| {
+        json!({
+            "enabled": true, "include_logs": false, "review_before_send": true,
+            "scrub_level": "standard", "from_a_newer_server": marker
+        })
+    };
+    Mock::given(method("GET"))
+        .and(path("/api/v1/admin/telemetry/settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(settings("read")))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/admin/telemetry/settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(settings("update")))
+        .mount(&server)
+        .await;
+    let output = run_against(
+        &server,
+        &["admin", "telemetry", "update", "--format", "json"],
+    );
+    let shown: Value = serde_json::from_slice(&output.stdout).expect("JSON");
+    assert_eq!(shown, settings("update"));
+}
+
+#[tokio::test]
+async fn quality_gate_commands() {
+    assert_prints_the_body(
+        "/api/v1/quality/gates",
+        "GET",
+        json!([gate()]),
+        &["quality-gate", "list"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/api/v1/quality/gates",
+        "POST",
+        gate(),
+        &["quality-gate", "create", "g"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("/api/v1/quality/gates/{UUID}"),
+        "DELETE",
+        json!({"deleted": true, "from_a_newer_server": 1}),
+        &["quality-gate", "delete", UUID, "--yes"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/api/v1/quality/gates",
+        "GET",
+        json!([]),
+        &["quality-gate", "list"],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn age_gate_commands() {
+    assert_prints_the_body(
+        "/api/v1/repositories/r/age-gate",
+        "GET",
+        age_gate_config(),
+        &["age-gate", "get", "r"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/api/v1/repositories/r/age-gate",
+        "PUT",
+        age_gate_config(),
+        &["age-gate", "set", "r", "--min-age-days", "3"],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn package_commands() {
+    assert_prints_the_body(
+        "/api/v1/packages",
+        "GET",
+        list_of(package()),
+        &["packages", "list"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("/api/v1/packages/{UUID}"),
+        "GET",
+        package(),
+        &["packages", "show", UUID],
+    )
+    .await;
+}
+
+/// Moving these onto `emit_mutation_raw` must not change what people see.
+#[tokio::test]
+async fn human_and_quiet_output_of_moved_mutations_is_unchanged() {
+    let route = format!("/api/v1/users/{UUID}/password/reset");
+    let body = json!({"temporary_password": "not-a-real-password"});
+    let reset = ["admin", "users", "reset-password", UUID];
+
+    let output = run(
+        &route,
+        "POST",
+        &body,
+        &[&reset[..], &["--format", "table"]].concat(),
+    )
+    .await;
+    assert!(output.stdout.is_empty());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        format!(
+            "Password reset for user {UUID}.\nTemporary password: not-a-real-password\n\
+             (User will be prompted to change on first login.)\n"
+        )
+    );
+
+    let output = run(
+        &route,
+        "POST",
+        &body,
+        &[&reset[..], &["--format", "quiet"]].concat(),
+    )
+    .await;
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "not-a-real-password\n"
+    );
+
+    let install = [
+        "admin",
+        "plugins",
+        "install",
+        "https://example.com/p.git",
+        "--format",
+    ];
+    let route = "/api/v1/plugins/install/git";
+    let output = run(
+        route,
+        "POST",
+        &plugin_install(),
+        &[&install[..], &["table"]].concat(),
+    )
+    .await;
+    assert!(output.stdout.is_empty());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stderr),
+        "Plugin 'p' v1.0.0 installed (format: f).\nInstalled\n"
+    );
+    let output = run(
+        route,
+        "POST",
+        &plugin_install(),
+        &[&install[..], &["quiet"]].concat(),
+    )
+    .await;
+    assert_eq!(String::from_utf8_lossy(&output.stdout), format!("{UUID}\n"));
 }

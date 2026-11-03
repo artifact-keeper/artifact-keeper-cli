@@ -123,12 +123,9 @@ async fn get_config(repo: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching age-gate configuration...");
 
-    let config = client
-        .get_repo_age_gate()
-        .key(repo)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get age-gate configuration", e))?;
+    let (config, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_repo_age_gate().key(repo).send()).await;
+    let config = config.map_err(|e| sdk_err("get age-gate configuration", e))?;
 
     spinner.finish_and_clear();
 
@@ -139,7 +136,10 @@ async fn get_config(repo: &str, global: &GlobalArgs) -> Result<()> {
     });
 
     let table_str = format_config_detail(&info);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -164,13 +164,11 @@ async fn set_config(
         mode: None,
     };
 
-    let config = client
-        .update_repo_age_gate()
-        .key(repo)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update age-gate configuration", e))?;
+    let (config, raw) = artifact_keeper_sdk::raw::capture(
+        client.update_repo_age_gate().key(repo).body(body).send(),
+    )
+    .await;
+    let config = config.map_err(|e| sdk_err("update age-gate configuration", e))?;
 
     spinner.finish_and_clear();
 
@@ -192,7 +190,10 @@ async fn set_config(
     });
 
     let table_str = format_config_detail(&info);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -215,14 +216,12 @@ async fn list_reviews(
         req = req.status(s);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list age-gate reviews", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list age-gate reviews", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No age-gate reviews found.");
         return Ok(());
     }
@@ -281,7 +280,7 @@ async fn list_reviews(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     if resp.pagination.total_pages > 1 {
@@ -300,12 +299,9 @@ async fn show_review(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching age-gate review...");
 
-    let review = client
-        .get_review()
-        .id(review_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get age-gate review", e))?;
+    let (review, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_review().id(review_id).send()).await;
+    let review = review.map_err(|e| sdk_err("get age-gate review", e))?;
 
     spinner.finish_and_clear();
 
@@ -325,7 +321,10 @@ async fn show_review(id: &str, global: &GlobalArgs) -> Result<()> {
     });
 
     let table_str = format_review_detail(&info);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
