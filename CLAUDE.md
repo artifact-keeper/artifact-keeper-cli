@@ -92,6 +92,9 @@ The CLI minor tracks the API minor it's generated from. `ak` supports servers on
 - **Config path**: `$AK_CONFIG_DIR` or `~/.config/artifact-keeper/config.toml`
 - **Error handling**: `miette::Result` throughout, `AkError` with diagnostic codes and help text
 - **Async**: All commands are async via tokio
+- **`ak api`**: `src/commands/api.rs` sends any request. The instance's token goes only to the instance's own origin. A new route is reachable through it from day one, before it has a command
+- **SDK errors**: `sdk/src/error.rs`, swapped into generated code by xtask. `{e}` gives `<status>: <server message>` and can't print a header. Use `sdk_err` for SDK calls and `helpers::raw_err` for raw HTTP
+- **Repository and artifact arguments**: `helpers::resolve_repo_id` and `resolve_artifact_id` take a key or a UUID. Use them rather than `parse_uuid` for any repository parameter
 
 ### Environment Variables
 

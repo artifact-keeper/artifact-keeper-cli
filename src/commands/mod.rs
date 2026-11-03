@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod age_gate;
 pub mod analytics;
+pub mod api;
 pub mod approval;
 pub mod artifact;
 pub mod auth;
