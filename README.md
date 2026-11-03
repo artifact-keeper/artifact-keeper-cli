@@ -78,6 +78,10 @@ release workflow, pass
 instead. The same command works for the `.deb`/`.rpm` packages and the completions/man-page
 tarballs — substitute the file name.
 
+## Supported Servers
+
+Each `ak` minor version supports the server minor it's built for and the one before: `ak` 1.11 supports servers on 1.11 and 1.10. Other versions aren't tested, and `ak doctor` warns about them.
+
 ## Quick Start
 
 ```bash
