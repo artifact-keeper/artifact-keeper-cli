@@ -9,6 +9,7 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
+use super::helpers::resolve_repo_id;
 use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -215,7 +216,7 @@ pub enum PeerSubscriptionCommand {
         /// Peer ID
         id: String,
 
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
     },
 
@@ -224,7 +225,7 @@ pub enum PeerSubscriptionCommand {
         /// Peer ID
         id: String,
 
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
 
         /// Replication mode (e.g. pull, push)
@@ -245,7 +246,7 @@ pub enum PeerSubscriptionCommand {
         /// Peer ID
         id: String,
 
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
 
         /// Skip confirmation prompt
@@ -258,7 +259,7 @@ pub enum PeerSubscriptionCommand {
         /// Peer ID
         id: String,
 
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
     },
 }
@@ -1124,20 +1125,42 @@ async fn list_subscriptions(id: &str, global: &GlobalArgs) -> Result<()> {
 
     if matches!(global.format, OutputFormat::Quiet) {
         for r in &repos {
-            println!("{r}");
+            println!("{}", r.repository_id);
         }
         return Ok(());
     }
 
     let entries: Vec<Value> = repos
         .iter()
-        .map(|r| serde_json::json!({ "repository_id": r.to_string() }))
+        .map(|r| {
+            serde_json::json!({
+                "repository_id": r.repository_id.to_string(),
+                "sync_enabled": r.sync_enabled,
+                "replication_mode": r.replication_mode,
+                "replication_schedule": r.replication_schedule,
+                "last_replicated_at": r.last_replicated_at.map(|t| t.to_rfc3339()),
+            })
+        })
         .collect();
 
     let table_str = {
-        let mut table = new_table(vec!["REPOSITORY ID"]);
+        let mut table = new_table(vec!["REPOSITORY ID", "SYNC", "MODE", "LAST REPLICATED"]);
         for r in &repos {
-            table.add_row(vec![r.to_string()]);
+            table.add_row(vec![
+                r.repository_id.to_string(),
+                if r.sync_enabled {
+                    "enabled"
+                } else {
+                    "disabled"
+                }
+                .to_string(),
+                r.replication_mode
+                    .clone()
+                    .unwrap_or_else(|| "-".to_string()),
+                r.last_replicated_at
+                    .map(|t| t.format("%Y-%m-%d %H:%M UTC").to_string())
+                    .unwrap_or_else(|| "-".to_string()),
+            ]);
         }
         table.to_string()
     };
@@ -1151,10 +1174,10 @@ async fn list_subscriptions(id: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 async fn show_subscription(id: &str, repo_id: &str, global: &GlobalArgs) -> Result<()> {
-    let peer_id = parse_uuid(id, "peer")?;
-    let repository_id = parse_uuid(repo_id, "repository")?;
-
     let client = client_for(global)?;
+    let peer_id = parse_uuid(id, "peer")?;
+    let repository_id = resolve_repo_id(&client, repo_id).await?;
+
     let spinner = output::spinner("Fetching subscription...");
 
     let sub = client
@@ -1181,10 +1204,10 @@ async fn assign_repo(
     sync_enabled: Option<bool>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let peer_id = parse_uuid(id, "peer")?;
-    let repository_id = parse_uuid(repo_id, "repository")?;
-
     let client = client_for(global)?;
+    let peer_id = parse_uuid(id, "peer")?;
+    let repository_id = resolve_repo_id(&client, repo_id).await?;
+
     let spinner = output::spinner("Assigning repository...");
 
     let body = artifact_keeper_sdk::types::AssignRepoRequest {
@@ -1220,8 +1243,9 @@ async fn unassign_repo(
     skip_confirm: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let client = client_for(global)?;
     let peer_id = parse_uuid(id, "peer")?;
-    let repository_id = parse_uuid(repo_id, "repository")?;
+    let repository_id = resolve_repo_id(&client, repo_id).await?;
 
     if !confirm_action(
         &format!("Unassign repository {repo_id} from peer {id}?"),
@@ -1231,7 +1255,6 @@ async fn unassign_repo(
         return Ok(());
     }
 
-    let client = client_for(global)?;
     let spinner = output::spinner("Unassigning repository...");
 
     client
@@ -1254,10 +1277,10 @@ async fn unassign_repo(
 }
 
 async fn run_subscription(id: &str, repo_id: &str, global: &GlobalArgs) -> Result<()> {
-    let peer_id = parse_uuid(id, "peer")?;
-    let repository_id = parse_uuid(repo_id, "repository")?;
-
     let client = client_for(global)?;
+    let peer_id = parse_uuid(id, "peer")?;
+    let repository_id = resolve_repo_id(&client, repo_id).await?;
+
     let spinner = output::spinner("Running subscription sync...");
 
     let result = client
@@ -4064,7 +4087,7 @@ mod tests {
             &server,
             "GET",
             format!("/api/v1/peers/{NIL_UUID}/repositories"),
-            json!([OTHER_UUID]),
+            json!([subscription_json()]),
         )
         .await;
         let global = crate::test_utils::test_global(OutputFormat::Json);

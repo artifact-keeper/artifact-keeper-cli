@@ -525,7 +525,7 @@ async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) 
     let client = build_client(&instance_name, instance_cfg, Some(&jwt_cred))?;
 
     let body = artifact_keeper_sdk::types::CiTokenRequest {
-        provider_id: provider,
+        provider_id: Some(provider),
     };
 
     let resp = client
@@ -593,11 +593,9 @@ async fn setup_status(global: &GlobalArgs) -> Result<()> {
 async fn whoami(global: &GlobalArgs) -> Result<()> {
     let (instance_name, instance, client) = authenticated_client(global)?;
 
-    let user = client
-        .get_current_user()
-        .send()
-        .await
-        .map_err(|e| AkError::NotAuthenticated(format!("Failed to get user info: {e}")))?;
+    let (user, raw) = artifact_keeper_sdk::raw::capture(client.get_current_user().send()).await;
+    let user =
+        user.map_err(|e| AkError::NotAuthenticated(format!("Failed to get user info: {e}")))?;
 
     let info = serde_json::json!({
         "username": user.username,
@@ -629,7 +627,10 @@ async fn whoami(global: &GlobalArgs) -> Result<()> {
         instance.url,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -656,6 +657,7 @@ async fn token_create(
         name,
         scopes: vec!["*".to_string()],
         expires_in_days: Some(i64::from(expires_in)),
+        repo_selector: None,
     };
 
     let resp = client
@@ -793,7 +795,8 @@ mod tests {
                 "token_prefix": "ak_test_",
                 "scopes": ["*"],
                 "created_at": "2026-01-15T12:00:00Z",
-                "expires_at": "2026-04-15T12:00:00Z"
+                "expires_at": "2026-04-15T12:00:00Z",
+                "policy_applied": false
             })))
             .mount(&server)
             .await;
@@ -818,7 +821,8 @@ mod tests {
                 "token_prefix": "ak_test_",
                 "scopes": ["*"],
                 "created_at": "2026-01-15T12:00:00Z",
-                "expires_at": "2026-04-15T12:00:00Z"
+                "expires_at": "2026-04-15T12:00:00Z",
+                "policy_applied": false
             })))
             .mount(&server)
             .await;
@@ -1388,14 +1392,11 @@ async fn token_list(global: &GlobalArgs) -> Result<()> {
         .await
         .map_err(|e| AkError::NotAuthenticated(format!("Failed to get user info: {e}")))?;
 
-    let tokens = client
-        .list_user_tokens()
-        .id(user.id)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list tokens: {e}")))?;
+    let (tokens, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_user_tokens().id(user.id).send()).await;
+    let tokens = tokens.map_err(|e| AkError::ServerError(format!("Failed to list tokens: {e}")))?;
 
-    if tokens.items.is_empty() {
+    if tokens.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No API tokens found. Run `ak auth token create` to create one.");
         return Ok(());
     }
@@ -1453,7 +1454,7 @@ async fn token_list(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())

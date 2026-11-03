@@ -463,6 +463,8 @@ impl SsoUpdateCommand {
                     group_base_dn,
                     group_filter,
                     admin_group_dn,
+                    ca_certificate: None,
+                    insecure_skip_verify: None,
                     use_starttls,
                     priority,
                     is_enabled,
@@ -493,6 +495,7 @@ impl SsoUpdateCommand {
                     global.no_input,
                 )?;
                 let body = UpdateOidcConfigRequest {
+                    admin_group: None,
                     name,
                     issuer_url,
                     client_id,
@@ -533,6 +536,8 @@ impl SsoUpdateCommand {
                     name_id_format,
                     admin_group,
                     attribute_mapping: None,
+                    map_groups_to_groups: None,
+                    slug: None,
                     sign_requests,
                     require_signed_assertions,
                     use_absolute_acs_url,
@@ -661,6 +666,8 @@ async fn create_ldap(
         bind_dn: bind_dn.map(|s| s.to_string()),
         bind_password,
         use_starttls: Some(use_starttls),
+        ca_certificate: None,
+        insecure_skip_verify: None,
         user_filter: None,
         username_attribute: None,
         email_attribute: None,
@@ -714,6 +721,7 @@ async fn create_oidc(
     let spinner = output::spinner("Creating OIDC provider...");
 
     let body = CreateOidcConfigRequest {
+        admin_group: None,
         name: name.to_string(),
         issuer_url: issuer_url.to_string(),
         client_id: client_id.to_string(),
@@ -763,6 +771,8 @@ async fn create_saml(
         sso_url: sso_url.to_string(),
         certificate: certificate.to_string(),
         sign_requests: Some(sign_requests),
+        map_groups_to_groups: None,
+        slug: None,
         sp_entity_id: None,
         slo_url: None,
         attribute_mapping: None,
@@ -1782,6 +1792,8 @@ mod tests {
 
     fn make_ldap(name: &str, enabled: bool) -> LdapConfigResponse {
         LdapConfigResponse {
+            has_ca_certificate: false,
+            insecure_skip_verify: false,
             id: Uuid::nil(),
             name: name.to_string(),
             server_url: "ldaps://ldap.example.com".to_string(),
@@ -1825,6 +1837,8 @@ mod tests {
 
     fn make_saml(name: &str, enabled: bool) -> SamlConfigResponse {
         SamlConfigResponse {
+            map_groups_to_groups: false,
+            slug: None,
             id: Uuid::nil(),
             name: name.to_string(),
             entity_id: "https://idp.example.com".to_string(),
@@ -2048,7 +2062,9 @@ mod tests {
             "is_enabled": true,
             "priority": 10,
             "created_at": "2026-01-01T00:00:00Z",
-            "updated_at": "2026-01-15T12:00:00Z"
+            "updated_at": "2026-01-15T12:00:00Z",
+            "insecure_skip_verify": false,
+            "has_ca_certificate": false
         })
     }
 
@@ -2088,7 +2104,8 @@ mod tests {
             "use_absolute_acs_url": false,
             "is_enabled": true,
             "created_at": "2026-01-01T00:00:00Z",
-            "updated_at": "2026-01-15T12:00:00Z"
+            "updated_at": "2026-01-15T12:00:00Z",
+            "map_groups_to_groups": false
         })
     }
 
@@ -2486,6 +2503,7 @@ mod tests {
             .await;
 
         let body = UpdateOidcConfigRequest {
+            admin_group: None,
             name: None,
             issuer_url: Some("https://new.okta.com".to_string()),
             client_id: None,
@@ -2518,6 +2536,8 @@ mod tests {
             .await;
 
         let body = UpdateLdapConfigRequest {
+            ca_certificate: None,
+            insecure_skip_verify: None,
             name: None,
             server_url: None,
             user_base_dn: None,
@@ -2554,6 +2574,8 @@ mod tests {
             .await;
 
         let body = UpdateSamlConfigRequest {
+            map_groups_to_groups: None,
+            slug: None,
             name: None,
             entity_id: None,
             sso_url: Some("https://idp/sso".to_string()),

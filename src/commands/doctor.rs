@@ -1,12 +1,11 @@
 use std::time::Duration;
 
 use artifact_keeper_sdk::{ClientAuthExt, ClientRepositoriesExt};
-use base64::Engine;
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use console::style;
 use miette::Result;
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
+use super::helpers::decode_jwt_expiry;
 use crate::config::credentials::{StoredCredential, get_credential};
 use crate::config::{AppConfig, InstanceConfig};
 
@@ -18,6 +17,9 @@ const DOT: &str = "-";
 /// Shorter timeouts than the normal SDK client -- diagnostics should fail fast.
 const DIAG_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const DIAG_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// The server API version this build of `ak` is generated from.
+const AK_API_VERSION: &str = include_str!("../../API_VERSION").trim_ascii();
 
 #[derive(Default)]
 struct DiagResult {
@@ -66,6 +68,7 @@ pub async fn execute(_global: &crate::cli::GlobalArgs) -> Result<()> {
     eprintln!("  {}", style("Instances").bold().underlined());
     for (name, instance) in &config.instances {
         check_instance(name, instance, &mut diag).await;
+        check_server_version(name, instance, &mut diag).await;
     }
     eprintln!();
 
@@ -168,7 +171,14 @@ fn build_diag_client_with_auth(
 }
 
 async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagResult) {
-    let client = match build_diag_client(instance) {
+    // With credentials the count means something: without them, the server only
+    // counts public repositories, which read as "0 repos" on a private instance.
+    let cred = get_credential(name).ok();
+    let built = match &cred {
+        Some(cred) => build_diag_client_with_auth(instance, cred),
+        None => build_diag_client(instance),
+    };
+    let client = match built {
         Ok(c) => c,
         Err(e) => {
             diag.fail(&format!(
@@ -183,8 +193,9 @@ async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagRe
     // and validates connectivity, API routing, and database access in one call.
     match client.list_repositories().page(1).per_page(1).send().await {
         Ok(resp) => {
+            let scope = if cred.is_some() { "" } else { "public " };
             diag.pass(&format!(
-                "{name} ({}) -- reachable, {} repos",
+                "{name} ({}) -- reachable, {} {scope}repos",
                 instance.url, resp.pagination.total
             ));
         }
@@ -196,6 +207,92 @@ async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagRe
             ));
         }
     }
+}
+
+/// Fetch the server version from `/health`.
+///
+/// This reads the one field it needs instead of using the generated client, so
+/// it still works on an old server whose response no longer fits the SDK types,
+/// which is exactly when the answer matters.
+async fn fetch_server_version(instance: &InstanceConfig) -> std::result::Result<String, String> {
+    let builder = reqwest::ClientBuilder::new()
+        .connect_timeout(DIAG_CONNECT_TIMEOUT)
+        .timeout(DIAG_REQUEST_TIMEOUT);
+    let http = crate::transport::apply_custom_ca(builder)
+        .map_err(|e| e.to_string())?
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = format!("{}/health", instance.url.trim_end_matches('/'));
+    let body: serde_json::Value = http
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .json()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    body.get("version")
+        .and_then(|v| v.as_str())
+        .map(str::to_string)
+        .ok_or_else(|| "no version in the /health response".to_string())
+}
+
+async fn check_server_version(name: &str, instance: &InstanceConfig, diag: &mut DiagResult) {
+    match fetch_server_version(instance).await {
+        Ok(server) => match server_support(&server, AK_API_VERSION) {
+            ServerSupport::Supported => {
+                diag.pass(&format!("{name} -- server version {server}"));
+            }
+            ServerSupport::TooOld => diag.warn(&format!(
+                "{name} -- server version {server} is unsupported by ak {} \
+                 (built for API {AK_API_VERSION}), upgrade the server",
+                env!("CARGO_PKG_VERSION"),
+            )),
+            ServerSupport::TooNew => diag.warn(&format!(
+                "{name} -- server version {server} is newer than ak {} \
+                 (built for API {AK_API_VERSION}), upgrade ak",
+                env!("CARGO_PKG_VERSION"),
+            )),
+            ServerSupport::Unknown => diag.warn(&format!(
+                "{name} -- could not interpret server version '{server}'"
+            )),
+        },
+        Err(e) => diag.warn(&format!(
+            "{name} -- could not read the server version: {}",
+            classify_connection_error(&e)
+        )),
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ServerSupport {
+    Supported,
+    TooOld,
+    TooNew,
+    Unknown,
+}
+
+/// `ak` supports the server minor it is built for and the one before it.
+fn server_support(server: &str, api: &str) -> ServerSupport {
+    let (Some(server), Some(api)) = (major_minor(server), major_minor(api)) else {
+        return ServerSupport::Unknown;
+    };
+    if server > api {
+        ServerSupport::TooNew
+    } else if server.0 == api.0 && server.1 + 1 >= api.1 {
+        ServerSupport::Supported
+    } else {
+        ServerSupport::TooOld
+    }
+}
+
+fn major_minor(version: &str) -> Option<(u64, u64)> {
+    let mut parts = version.trim().trim_start_matches('v').split('.');
+    let major = parts.next()?.parse().ok()?;
+    let minor = parts.next()?.parse().ok()?;
+    Some((major, minor))
 }
 
 /// Turn a raw error string into a concise diagnostic message.
@@ -263,32 +360,54 @@ async fn check_auth(name: &str, instance: &InstanceConfig, diag: &mut DiagResult
     }
 
     if let Some(exp) = decode_jwt_expiry(&cred.access_token) {
-        let now = chrono::Utc::now().timestamp();
-        let days_left = (exp - now) / 86400;
-        if days_left < 0 {
-            diag.fail(&format!(
-                "{name} -- token expired (run: ak auth login --instance {name})"
-            ));
-            return;
-        } else if days_left <= 7 {
-            diag.warn(&format!(
-                "{name} -- {details}, token expires in {days_left} days (run: ak auth login --instance {name})"
-            ));
-            return;
-        } else {
-            details.push_str(&format!(", token expires in {days_left} days"));
+        let seconds_left = exp - chrono::Utc::now().timestamp();
+        match token_expiry_status(seconds_left) {
+            TokenExpiry::Expired => {
+                diag.fail(&format!(
+                    "{name} -- token expired (run: ak auth login --instance {name})"
+                ));
+                return;
+            }
+            TokenExpiry::Session(minutes) => {
+                details.push_str(&format!(", login session expires in {minutes} minutes"));
+            }
+            TokenExpiry::Soon(days) => {
+                diag.warn(&format!(
+                    "{name} -- {details}, token expires in {days} days (run: ak auth login --instance {name})"
+                ));
+                return;
+            }
+            TokenExpiry::Later(days) => {
+                details.push_str(&format!(", token expires in {days} days"));
+            }
         }
     }
 
     diag.pass(&format!("{name} -- {details}"));
 }
 
-/// Decode JWT expiry claim without verifying the signature.
-fn decode_jwt_expiry(token: &str) -> Option<i64> {
-    let payload = token.split('.').nth(1)?;
-    let bytes = URL_SAFE_NO_PAD.decode(payload).ok()?;
-    let json: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
-    json.get("exp")?.as_i64()
+#[derive(Debug, PartialEq, Eq)]
+enum TokenExpiry {
+    Expired,
+    /// A login token, under a day: minutes left. These are short-lived by design,
+    /// so this isn't a warning.
+    Session(i64),
+    /// A longer-lived token within a week of expiring: days left.
+    Soon(i64),
+    Later(i64),
+}
+
+fn token_expiry_status(seconds_left: i64) -> TokenExpiry {
+    const DAY: i64 = 86_400;
+    if seconds_left < 0 {
+        TokenExpiry::Expired
+    } else if seconds_left < DAY {
+        TokenExpiry::Session(seconds_left / 60)
+    } else if seconds_left <= 7 * DAY {
+        TokenExpiry::Soon(seconds_left / DAY)
+    } else {
+        TokenExpiry::Later(seconds_left / DAY)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -302,42 +421,52 @@ fn check_package_configs(config: &AppConfig, diag: &mut DiagResult) {
 
     let pip_filename = if cfg!(windows) { "pip.ini" } else { "pip.conf" };
 
-    let configs: &[(&str, &str, Vec<std::path::PathBuf>)] = &[
+    // The last field is the route that tool's endpoints are mounted at.
+    let configs: &[(&str, &str, Vec<std::path::PathBuf>, &str)] = &[
         (
             "npm",
             ".npmrc",
             vec![cwd.join(".npmrc"), home.join(".npmrc")],
+            "npm",
         ),
         (
             "pip",
             pip_filename,
             vec![config_base.join("pip").join(pip_filename)],
+            "pypi",
         ),
         (
             "cargo",
             "config.toml",
             vec![home.join(".cargo/config.toml")],
+            "cargo",
         ),
-        ("maven", "settings.xml", vec![home.join(".m2/settings.xml")]),
+        (
+            "maven",
+            "settings.xml",
+            vec![home.join(".m2/settings.xml")],
+            "maven",
+        ),
     ];
 
     let instance_urls: Vec<&str> = config.instances.values().map(|i| i.url.as_str()).collect();
 
-    for (name, desc, paths) in configs {
+    for (name, desc, paths, route) in configs {
         match paths.iter().find(|p| p.exists()) {
             Some(path) => {
                 let content = std::fs::read_to_string(path).unwrap_or_default();
-                let points_to_ak = instance_urls.iter().any(|url| content.contains(url));
-
-                if points_to_ak {
-                    diag.pass(&format!(
+                match config_reference(&content, &instance_urls, route) {
+                    ConfigReference::Working => diag.pass(&format!(
                         "{name} ({desc}) -- configured, points to Artifact Keeper"
-                    ));
-                } else {
-                    diag.warn(&format!(
+                    )),
+                    ConfigReference::WrongRoute => diag.warn(&format!(
+                        "{name} ({desc}) -- points at an instance, but not at its /{route}/ route, \
+                         so it won't work (run: ak setup {name})"
+                    )),
+                    ConfigReference::None => diag.warn(&format!(
                         "{name} ({desc}) -- found at {} but doesn't reference any configured instance",
                         path.display()
-                    ));
+                    )),
                 }
             }
             None => {
@@ -347,6 +476,39 @@ fn check_package_configs(config: &AppConfig, diag: &mut DiagResult) {
     }
 
     check_docker_config(&home, &instance_urls, diag);
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ConfigReference {
+    Working,
+    /// Mentions the instance at some other path, such as the `/api/v1/<format>/`
+    /// URLs that older versions of `ak setup` wrote.
+    WrongRoute,
+    None,
+}
+
+/// How a package manager's config relates to the configured instances. Compares
+/// host and port rather than the URL, because a config can have credentials
+/// between the scheme and the host.
+fn config_reference(content: &str, instance_urls: &[&str], route: &str) -> ConfigReference {
+    let mut mentioned = false;
+    for url in instance_urls {
+        let Some(authority) = url::Url::parse(url).ok().and_then(|u| {
+            u.host_str()
+                .map(|h| u.port().map_or(h.to_string(), |p| format!("{h}:{p}")))
+        }) else {
+            continue;
+        };
+        if content.contains(&format!("{authority}/{route}/")) {
+            return ConfigReference::Working;
+        }
+        mentioned |= content.contains(&authority);
+    }
+    if mentioned {
+        ConfigReference::WrongRoute
+    } else {
+        ConfigReference::None
+    }
 }
 
 fn check_docker_config(home: &std::path::Path, instance_urls: &[&str], diag: &mut DiagResult) {
@@ -446,6 +608,95 @@ fn check_cli(diag: &mut DiagResult) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---- server version support ----
+
+    #[test]
+    fn server_support_allows_current_and_previous_minor() {
+        assert_eq!(
+            server_support("1.11.10", "1.11.10"),
+            ServerSupport::Supported
+        );
+        assert_eq!(
+            server_support("1.11.0", "1.11.10"),
+            ServerSupport::Supported
+        );
+        assert_eq!(
+            server_support("1.11.99", "1.11.10"),
+            ServerSupport::Supported
+        );
+        assert_eq!(
+            server_support("1.10.2", "1.11.10"),
+            ServerSupport::Supported
+        );
+        assert_eq!(
+            server_support("v1.10.2", "1.11.10"),
+            ServerSupport::Supported
+        );
+    }
+
+    #[test]
+    fn server_support_flags_old_servers() {
+        assert_eq!(server_support("1.9.1", "1.11.10"), ServerSupport::TooOld);
+        assert_eq!(server_support("0.11.0", "1.11.10"), ServerSupport::TooOld);
+        assert_eq!(server_support("1.99.0", "2.0.0"), ServerSupport::TooOld);
+    }
+
+    #[test]
+    fn server_support_flags_new_servers() {
+        assert_eq!(server_support("1.12.0", "1.11.10"), ServerSupport::TooNew);
+        assert_eq!(server_support("2.0.0", "1.11.10"), ServerSupport::TooNew);
+    }
+
+    #[test]
+    fn server_support_unknown_on_unparseable_version() {
+        assert_eq!(server_support("dev", "1.11.10"), ServerSupport::Unknown);
+        assert_eq!(server_support("", "1.11.10"), ServerSupport::Unknown);
+    }
+
+    #[test]
+    fn api_version_is_pinned() {
+        assert!(major_minor(AK_API_VERSION).is_some());
+    }
+
+    async fn version_check_diag(body: serde_json::Value) -> DiagResult {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, MockServer, ResponseTemplate};
+
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+        let instance = InstanceConfig {
+            url: server.uri(),
+            api_version: "v1".to_string(),
+            allow_insecure_http: true,
+        };
+        let mut diag = DiagResult::default();
+        check_server_version("test", &instance, &mut diag).await;
+        diag
+    }
+
+    #[tokio::test]
+    async fn check_server_version_passes_current_server() {
+        let diag = version_check_diag(serde_json::json!({ "version": AK_API_VERSION })).await;
+        assert_eq!((diag.passes, diag.warnings), (1, 0));
+    }
+
+    #[tokio::test]
+    async fn check_server_version_warns_on_old_server() {
+        // Only `version` is present: an old server may not fit the SDK's types.
+        let diag = version_check_diag(serde_json::json!({ "version": "0.1.0" })).await;
+        assert_eq!((diag.passes, diag.warnings), (0, 1));
+    }
+
+    #[tokio::test]
+    async fn check_server_version_warns_without_version() {
+        let diag = version_check_diag(serde_json::json!({ "status": "healthy" })).await;
+        assert_eq!((diag.passes, diag.warnings), (0, 1));
+    }
 
     // ---- DiagResult ----
 
@@ -580,6 +831,62 @@ mod tests {
         assert_eq!(
             classify_connection_error("something else happened"),
             "something else happened"
+        );
+    }
+
+    // ---- token_expiry_status ----
+
+    #[test]
+    fn a_login_token_is_not_a_warning_about_zero_days() {
+        assert_eq!(token_expiry_status(1800), TokenExpiry::Session(30));
+        assert_eq!(token_expiry_status(86_399), TokenExpiry::Session(1439));
+    }
+
+    #[test]
+    fn longer_tokens_warn_within_a_week() {
+        assert_eq!(token_expiry_status(-1), TokenExpiry::Expired);
+        assert_eq!(token_expiry_status(3 * 86_400), TokenExpiry::Soon(3));
+        assert_eq!(token_expiry_status(30 * 86_400), TokenExpiry::Later(30));
+    }
+
+    // ---- config_reference ----
+
+    #[test]
+    fn a_config_with_the_real_route_is_working() {
+        let urls = ["http://ak.test:8080"];
+        assert_eq!(
+            config_reference("registry=http://ak.test:8080/npm/r/\n", &urls, "npm"),
+            ConfigReference::Working
+        );
+        // Credentials between the scheme and the host.
+        assert_eq!(
+            config_reference(
+                "index-url = http://__token__:x@ak.test:8080/pypi/r/simple/\n",
+                &urls,
+                "pypi"
+            ),
+            ConfigReference::Working
+        );
+    }
+
+    #[test]
+    fn a_config_from_the_old_setup_is_not_reported_as_working() {
+        let urls = ["https://ak.test"];
+        assert_eq!(
+            config_reference("registry=https://ak.test/api/v1/npm/r/\n", &urls, "npm"),
+            ConfigReference::WrongRoute
+        );
+    }
+
+    #[test]
+    fn a_config_for_another_registry_is_no_reference() {
+        assert_eq!(
+            config_reference(
+                "registry=https://registry.npmjs.org/\n",
+                &["https://ak.test"],
+                "npm"
+            ),
+            ConfigReference::None
         );
     }
 

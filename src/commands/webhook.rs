@@ -7,8 +7,9 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
+use super::helpers::resolve_optional_repo_id;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, resolve_secret,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, resolve_secret,
     sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
@@ -18,7 +19,7 @@ use crate::output::{self, OutputFormat};
 pub enum WebhookCommand {
     /// List webhooks
     List {
-        /// Filter by repository ID
+        /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
 
@@ -174,9 +175,9 @@ async fn list_webhooks(
     enabled: Option<bool>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repo_id = parse_optional_uuid(repo, "repository")?;
-
     let client = client_for(global)?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
+
     let spinner = output::spinner("Fetching webhooks...");
 
     let mut req = client.list_webhooks();
@@ -187,11 +188,12 @@ async fn list_webhooks(
         req = req.enabled(e);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("list webhooks", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list webhooks", e))?;
     let list = resp.into_inner();
     spinner.finish_and_clear();
 
-    if list.items.is_empty() {
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No webhooks found.");
         return Ok(());
     }
@@ -206,7 +208,7 @@ async fn list_webhooks(
     let (entries, table_str) = format_webhooks_table(&list.items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -218,17 +220,17 @@ async fn show_webhook(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching webhook...");
 
-    let webhook = client
-        .get_webhook()
-        .id(webhook_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get webhook", e))?;
+    let (webhook, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_webhook().id(webhook_id).send()).await;
+    let webhook = webhook.map_err(|e| sdk_err("get webhook", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = format_webhook_detail(&webhook);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -241,9 +243,9 @@ async fn create_webhook(
     repo: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repo_id = parse_optional_uuid(repo, "repository")?;
-
     let client = client_for(global)?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
+
     let spinner = output::spinner("Creating webhook...");
 
     let body = CreateWebhookRequest {
@@ -255,18 +257,17 @@ async fn create_webhook(
         headers: None,
         event_schema_version: None,
         payload_template: None,
+        signing_mode: None,
     };
 
-    let webhook = client
-        .create_webhook()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create webhook", e))?;
+    let (webhook, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_webhook().body(body).send()).await;
+    let webhook = webhook.map_err(|e| sdk_err("create webhook", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*webhook,
         &webhook.id.to_string(),
         &format!("Webhook '{}' created (ID: {}).", webhook.name, webhook.id),
@@ -400,25 +401,22 @@ async fn rotate_webhook_secret(id: &str, global: &GlobalArgs) -> Result<()> {
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", resp.secret);
+        println!("{}", resp.id);
         return Ok(());
     }
 
     let info = serde_json::json!({
         "id": resp.id.to_string(),
-        "secret": resp.secret,
         "secret_digest": resp.secret_digest,
         "previous_secret_expires_at": resp.previous_secret_expires_at.to_rfc3339(),
     });
 
     let table_str = format!(
-        "Webhook secret rotated. Store the new secret now — it is shown only once.\n\n\
+        "Webhook secret rotated. The server does not return the new secret.\n\n\
          Webhook:              {}\n\
-         New Secret:           {}\n\
          Secret Digest:        {}\n\
          Previous Secret Until: {}",
         resp.id,
-        resp.secret,
         resp.secret_digest,
         resp.previous_secret_expires_at
             .format("%Y-%m-%d %H:%M:%S UTC"),
@@ -1058,6 +1056,7 @@ mod tests {
 
     fn make_test_webhook(name: &str, enabled: bool) -> WebhookResponse {
         WebhookResponse {
+            signing_mode: Some(artifact_keeper_sdk::types::SigningMode::Hmac),
             id: Uuid::nil(),
             name: name.to_string(),
             url: "https://ci.example.com/hook".to_string(),
@@ -1365,7 +1364,8 @@ mod tests {
             "last_triggered_at": null,
             "created_at": "2026-01-15T12:00:00Z",
             "event_schema_version": "2026-04-01",
-            "payload_template": "generic"
+            "payload_template": "generic",
+            "signing_mode": "hmac"
         })
     }
 

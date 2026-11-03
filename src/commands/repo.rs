@@ -5,7 +5,7 @@ use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
 use super::client::{client_for, client_for_optional_auth};
-use super::helpers::{confirm_action, emit_mutation, new_table, sdk_err};
+use super::helpers::{confirm_action, emit_mutation, emit_mutation_raw, new_table, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -417,6 +417,7 @@ impl RepoCommand {
                         index_upstream_url,
                         pypi_upstream_index_path,
                         release_repository_key,
+                        ..Default::default()
                     },
                     global,
                 )
@@ -508,14 +509,13 @@ async fn list_repos(
         req = req.q(q);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list repositories: {e}")))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp =
+        resp.map_err(|e| AkError::ServerError(format!("Failed to list repositories: {e}")))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No repositories found.");
         return Ok(());
     }
@@ -532,13 +532,15 @@ async fn list_repos(
         .iter()
         .map(|r| {
             serde_json::json!({
+                "id": r.id,
                 "key": r.key,
                 "name": r.name,
                 "format": r.format,
                 "type": r.repo_type,
                 "public": r.is_public,
-                "storage_used": format_bytes(r.storage_used_bytes),
+                "storage_used": format_bytes(displayed_storage_bytes(r)),
                 "storage_used_bytes": r.storage_used_bytes,
+                "member_storage_used_bytes": r.member_storage_used_bytes,
                 "description": r.description,
             })
         })
@@ -553,7 +555,7 @@ async fn list_repos(
 
         for r in &resp.items {
             let public = if r.is_public { "yes" } else { "no" };
-            let storage = format_bytes(r.storage_used_bytes);
+            let storage = storage_label(r);
             table.add_row(vec![
                 r.key.as_str(),
                 r.name.as_str(),
@@ -569,7 +571,7 @@ async fn list_repos(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     // Show pagination info on stderr
@@ -583,17 +585,35 @@ async fn list_repos(
     Ok(())
 }
 
+/// The size to show for a repository. A virtual repository stores nothing of
+/// its own (`storage_used_bytes` is 0), so show the total of its members. Sums
+/// across repositories must keep using `storage_used_bytes`, or they count
+/// those bytes twice.
+pub(super) fn displayed_storage_bytes(
+    repo: &artifact_keeper_sdk::types::RepositoryResponse,
+) -> i64 {
+    repo.member_storage_used_bytes
+        .unwrap_or(repo.storage_used_bytes)
+}
+
+fn storage_label(repo: &artifact_keeper_sdk::types::RepositoryResponse) -> String {
+    let size = format_bytes(displayed_storage_bytes(repo));
+    if repo.member_storage_used_bytes.is_some() {
+        format!("{size} (members)")
+    } else {
+        size
+    }
+}
+
 async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
 
-    let repo = client
-        .get_repository()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get repository: {e}")))?;
+    let (repo, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_repository().key(key).send()).await;
+    let repo = repo.map_err(|e| AkError::ServerError(format!("Failed to get repository: {e}")))?;
 
     let info = serde_json::json!({
+        "id": repo.id,
         "key": repo.key,
         "name": repo.name,
         "format": repo.format,
@@ -601,15 +621,17 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         "upstream_url": repo.upstream_url,
         "public": repo.is_public,
         "description": repo.description,
-        "storage_used": format_bytes(repo.storage_used_bytes),
+        "storage_used": format_bytes(displayed_storage_bytes(&repo)),
         "storage_used_bytes": repo.storage_used_bytes,
+        "member_storage_used_bytes": repo.member_storage_used_bytes,
         "quota_bytes": repo.quota_bytes,
         "created_at": repo.created_at.to_rfc3339(),
         "updated_at": repo.updated_at.to_rfc3339(),
     });
 
     let table_str = format!(
-        "Key:          {}\n\
+        "ID:           {}\n\
+         Key:          {}\n\
          Name:         {}\n\
          Format:       {}\n\
          Type:         {}\n\
@@ -620,6 +642,7 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
          Quota:        {}\n\
          Created:      {}\n\
          Updated:      {}",
+        repo.id,
         repo.key,
         repo.name,
         repo.format,
@@ -627,7 +650,7 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         repo.upstream_url.as_deref().unwrap_or("-"),
         if repo.is_public { "yes" } else { "no" },
         repo.description.as_deref().unwrap_or("-"),
-        format_bytes(repo.storage_used_bytes),
+        storage_label(&repo),
         repo.quota_bytes
             .map(format_bytes)
             .unwrap_or_else(|| "unlimited".into()),
@@ -635,7 +658,10 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         repo.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -670,16 +696,33 @@ async fn create_repo(
         upstream_auth_type: None,
         upstream_username: None,
         upstream_password: None,
+        allow_public_with_upstream_credentials: None,
+        apt_description: None,
+        apt_label: None,
+        apt_origin: None,
+        apt_release_version: None,
+        curation_allow_unverified: None,
+        custom_user_agent: None,
+        debian: None,
+        npm_allow_unscoped: None,
+        npm_allowed_name_patterns: None,
+        npm_allowed_scopes: None,
+        oci_trusted_bearer_realms: None,
+        npm_virtual_isolate_hosted_names: None,
+        project_id: None,
+        repodata_depth: None,
+        trusted_gpg_key: None,
+        versioning_enabled: None,
+        visibility: None,
     };
 
-    let resp = client
-        .create_repository()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create repository: {e}")))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_repository().body(body).send()).await;
+    let resp =
+        resp.map_err(|e| AkError::ServerError(format!("Failed to create repository: {e}")))?;
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*resp,
         &resp.key,
         &format!(
@@ -781,13 +824,10 @@ async fn update_repo(
     let client = client_for(global)?;
     let spinner = output::spinner("Updating repository...");
 
-    let resp = client
-        .update_repository()
-        .key(key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update repository", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_repository().key(key).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("update repository", e))?;
 
     spinner.finish_and_clear();
 
@@ -806,7 +846,8 @@ async fn update_repo(
         "upstream_url": resp.upstream_url,
     });
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &info,
         &resp.key,
         &format!("Updated repository '{}'.", resp.key),
@@ -820,16 +861,13 @@ async fn list_members(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching members...");
 
-    let resp = client
-        .list_virtual_members()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list virtual members", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_virtual_members().key(key).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list virtual members", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.members.is_empty() {
+    if resp.members.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No members on virtual repository '{key}'.");
         return Ok(());
     }
@@ -870,7 +908,7 @@ async fn list_members(key: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1327,6 +1365,8 @@ async fn set_upstream_auth(
             auth_type: auth_type.to_string(),
             username,
             password,
+            allow_public_with_upstream_credentials: None,
+            aws: None,
         })
         .send()
         .await
@@ -2020,6 +2060,44 @@ mod tests {
     use wiremock::matchers::{method, path, path_regex};
     use wiremock::{Mock, ResponseTemplate};
 
+    #[test]
+    fn storage_label_uses_member_total_for_virtual_repos() {
+        let mut virtual_repo = repo_json("v");
+        virtual_repo["repo_type"] = serde_json::json!("virtual");
+        virtual_repo["storage_used_bytes"] = serde_json::json!(0);
+        virtual_repo["member_storage_used_bytes"] = serde_json::json!(2048);
+        let virtual_repo: artifact_keeper_sdk::types::RepositoryResponse =
+            serde_json::from_value(virtual_repo).unwrap();
+        assert_eq!(displayed_storage_bytes(&virtual_repo), 2048);
+        assert_eq!(storage_label(&virtual_repo), "2.0 KB (members)");
+
+        let local_repo: artifact_keeper_sdk::types::RepositoryResponse =
+            serde_json::from_value(repo_json("l")).unwrap();
+        assert_eq!(displayed_storage_bytes(&local_repo), 1024);
+        assert_eq!(storage_label(&local_repo), "1.0 KB");
+    }
+
+    /// A 1.10 server doesn't send the fields 1.11 added.
+    #[test]
+    fn repo_response_parses_without_fields_new_in_1_11() {
+        let mut repo = repo_json("r");
+        let fields = repo.as_object_mut().unwrap();
+        for field in [
+            "allow_public_with_upstream_credentials",
+            "public_with_upstream_credentials",
+            "repodata_depth",
+            "repodata_depth_editable",
+            "storage_backend",
+            "upstream_url_has_credentials",
+            "visibility",
+        ] {
+            fields.remove(field);
+        }
+        assert!(
+            serde_json::from_value::<artifact_keeper_sdk::types::RepositoryResponse>(repo).is_ok()
+        );
+    }
+
     fn repo_json(key: &str) -> serde_json::Value {
         json!({
             "id": "00000000-0000-0000-0000-000000000001",
@@ -2037,7 +2115,18 @@ mod tests {
             "upstream_auth_type": null,
             "upstream_auth_configured": false,
             "created_at": "2026-01-15T12:00:00Z",
-            "updated_at": "2026-01-15T12:00:00Z"
+            "updated_at": "2026-01-15T12:00:00Z",
+            "repodata_depth": 0,
+            "repodata_depth_editable": true,
+            "visibility": "public",
+            "versioning_enabled": false,
+            "storage_backend": "filesystem",
+            "has_trusted_gpg_key": false,
+            "upstream_url_has_credentials": false,
+            "public_with_upstream_credentials": false,
+            "allow_public_with_upstream_credentials": false,
+            "curation_enabled": false,
+            "curation_default_action": "allow"
         })
     }
 
@@ -2217,7 +2306,8 @@ mod tests {
                     "analyzable": true,
                     "download_count": 0_i64,
                     "created_at": "2026-01-15T12:00:00Z",
-                    "repository_key": "npm-local"
+                    "repository_key": "npm-local",
+                    "quarantine_status": "not_quarantined"
                 }],
                 "pagination": { "page": 1, "per_page": 100, "total": 1_i64, "total_pages": 1 }
             })))

@@ -7,16 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - Unreleased
+
+The CLI minor version now tracks the server API minor it's generated from. This
+release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
+
 ### Added
 
+- `ak doctor` reports each server's version and warns when ak doesn't support it: older than the previous minor (upgrade the server) or newer than the minor ak is built for (upgrade ak).
 - `ak quarantine hold <artifact-id> [--reason]` to quarantine an artifact immediately, blocking downloads until an admin releases or rejects it (#156). `--reason` is optional; the server records a default when it is omitted.
+  Requires backend 1.7.0 or newer.
 - `ak auth login --oidc-device` (`--device` alias) signs in with Artifact Keeper's RFC 8628 device authorization grant, for headless hosts and SSO-backed instances. Requires backend 1.12.0 or newer. The CLI prints the verification URL and user code, polls at the server's interval, honours `authorization_pending` and `slow_down`, reports `expired_token`, `access_denied` and `invalid_grant` clearly, and stores the returned access and refresh tokens through the existing credential store. `--scope` selects AK scopes (default `read:artifacts`); `--no-input` keeps the flow non-interactive and never opens a browser. Tokens are never printed (artifact-keeper#3462)
+- `AK_CREDENTIAL_STORE=file` skips the OS keychain and keeps credentials in the 0600 credentials file.
+- Every command that takes a repository ID also takes its key (#180): `sign`, `lifecycle`, `license`, `curation`, `quality-gate`, `promotion`, `sbom`, `scan policy`, `webhook`, `analytics repo-trend`, `peer subscription`, `service-account`, `admin ci-oidc`, and `permission` with a repository target. `quarantine` commands take `<repo-key>/<path>` as well as an artifact ID. `repo show`, `repo list`, `artifact info`, `artifact list` and `artifact search` now include `id` in JSON, and `repo show` shows it in the table.
+- `ak api <METHOD> <path>` sends any HTTP request to the instance with its auth and TLS settings, so anything curl can do works here even without a first-class command: any method, repeatable `-H` and `-Q`, `--body` (JSON text, `@file`, `@-`), `--raw-body` (streamed), `--form` (multipart), `--urlencode`, `-o` (streamed), `--include`, `--head-only`, `--no-follow`, `--fail`, `--no-fail`, `--url`, `--anon` and `--max-time`. The instance's token goes only to the instance's own scheme, host and port. Run `ak api --help` for exit codes and examples.
+
+### Changed
+
+- Regenerated the SDK from the API 1.11.10 spec, adding the operations and fields new since 1.4.0. Two multipart operations (`POST /api/v1/plugins`, `POST /api/v1/plugins/install/zip`) remain outside the generated SDK.
+- `ak lifecycle create` without `--repo` creates a policy that applies to all repositories. Backend 1.11 made a policy with no repository dormant, so these policies never deleted anything. `ak lifecycle list` and `show` now show the scope.
+- `ak webhook rotate-secret` no longer shows a new secret, because the server no longer returns one. It shows the digest, and `--format quiet` prints the webhook ID.
+- `ak quality-gate checks` now requires `--artifact`, as the API does.
+- `ak scan scores`: the `UNSCANNED` column is now `OPEN`. It subtracted acknowledged findings from `total_findings`, which the server already counts as open findings only.
+- `ak peer subscription list` shows each subscription's sync state, mode and last replication.
+- `ak curation update-rule` keeps a rule's engine and config. An update used to reset them to the defaults.
+- `ak admin users role assign` warns that the role grants no repository access, since backend 1.11 deprecated the endpoint in favour of `ak permission create`.
+- `ak lifecycle update` and `ak email-subscriptions subscribe` use the generated SDK instead of raw HTTP.
+- `ak setup` no longer writes your 30-minute login token into permanent config files. It creates an API token named `ak-setup-<tool>-<repo>` with `read:artifacts` and `write:artifacts` that lasts 90 days (`--token-days`), and prints its ID and how to revoke it. `--session-token` keeps the old behavior with a warning. An API token in `AK_TOKEN` is used as it is.
+- For `--format json` and `yaml`, these commands now print the response body as the server sent it, including fields this version of the CLI does not know: `auth whoami`, `auth token list`, `repo list|show|create|update|members list`, `artifact list|info|show|metadata|stats|search`, `lifecycle list|show|create|update`, `webhook list|show|create`. **This changes their JSON shape**: lists are `{"items": [...], "pagination": {...}}` rather than a bare array, and fields use the API names (`repo_type` rather than `type`, `is_public` rather than `public`, `is_admin` rather than `admin`). `size` and `storage_used` strings and `whoami`'s `instance` and `url` are gone from JSON, and an empty list prints the body rather than nothing. Other commands keep their shape for now and move as their workstreams land. Table output is unchanged.
 
 ### Fixed
 
+- Virtual repositories show the size of their members in `ak repo list`, `ak repo show` and the TUI, rather than 0 (#181).
+- The `ak lifecycle create` help names the right config key for `size_quota_bytes`: `quota_bytes`.
+- `ak admin plugins install-local` explains that the server doesn't implement it and points to `install-zip`.
 - `ak artifact push` now sends a detected `Content-Type` instead of always using `application/octet-stream`, so the server stores a meaningful `content_type` for each artifact. The type is guessed from the file extension via `mime_guess`, with overrides for extensions its database gets wrong (for example `.rpm` is `application/x-rpm` and `.deb` is `application/vnd.debian.binary-package`) and an `application/octet-stream` fallback for unknown types. A new `--content-type` flag sets the type explicitly. Applies to both the single-PUT and chunked-upload paths. This changes only the stored `content_type`, not how the server classifies or indexes packages (#185)
 - Linux release binaries (and the `.deb`/`.rpm` packages that wrap them) are now fully static musl builds, so they run on any Linux distribution regardless of its glibc version: Debian 12, Ubuntu 22.04, RHEL/Alma/Rocky 8 and 9, Amazon Linux 2023, Alpine and distroless images. They were previously built on `ubuntu-latest` and required glibc 2.39. CI now fails if a dependency breaks static linking (#178)
 - `ak admin storage-gc run` now always sends `dry_run` explicitly, so a live run posts `{"dry_run": false}` instead of an empty body. Companion to artifact-keeper#3619, which makes `dry_run` required on the storage-GC endpoint and rejects unknown fields (422)
+- `ak setup` writes working URLs (#155). Package-manager endpoints are mounted at the server root, not under `/api/v1`. NuGet uses `/nuget/<repo>/v3/index.json`, apt uses `/debian/<repo>/`, and Cargo uses the sparse protocol. It no longer forces https on http instances, and `setup docker` keeps the port. For http instances it adds the setting each client needs (`allowInsecureProtocol`, `allowInsecureConnections`, `trusted-host`, a protocol on the apt `machine` line). `setup go` now says the go command will not send credentials over plain HTTP. `setup go` no longer suggests the nonexistent `GONOSUMCHECK`.
+- Failed commands now show the status and the server's own message, such as `409 Conflict: Artifact is quarantined and pending security review`, instead of response headers or a debug dump of the response. The SDK has its own error type for this, and it holds no headers.
+- `ak lifecycle create --repo` no longer creates a policy for every repository on a 1.10 server. It sent only `repository_ids`, which 1.10 ignores. If you created policies with `--repo` against 1.10 using a build of this release, check their scope with `ak lifecycle list`.
+- `ak artifact info` fetches the exact path. It used to search and take the first match, so `a.bin` could show `dir/a.bin.old`.
+- `ak doctor` no longer reports false problems: the repo count uses your credentials when it has them (it read "0 repos" on a private instance) and says "public" when it does not, a login token shows the minutes left rather than warning "expires in 0 days", and a package manager config that points at the instance but not at its real route (like one from an older `ak setup`) is a warning rather than "configured". It also recognises a pip config with credentials in its URL.
+- A prompt with no terminal now says to pass `--yes` or `--no-input`, rather than failing with `IO error: not a terminal`.
+- With `--no-input` or `AK_NO_INPUT`, a secret that was not given (such as `ak webhook create` without `--secret`) no longer waits on an open stdin. To pipe a secret with `--no-input`, use the command's `--<flag>-stdin`.
+- `ak import source list`, `import job list` and `import job items` work against 1.11 and 1.10. The server wraps these lists in `{"items": [...]}` while the spec declares an array (artifact-keeper-api#46), so the SDK could not parse them. In JSON and YAML they print the body as received.
 
 ### Removed
 
@@ -24,11 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- Updated `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338/0340 remote-peer panics, RUSTSEC-2026-0339/0341/0342 memory exhaustion)
+- Updated `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338/0340, RUSTSEC-2026-0339/0341/0342). `ak` doesn't compile `quinn-proto`, so it was never affected: this only clears `cargo audit` on `Cargo.lock`
 - Updated `rustls` to 0.23.46 (RUSTSEC-2026-0285 handshake messages accepted across encryption levels, RUSTSEC-2026-0346 TLS secrets in `Debug` output, RUSTSEC-2026-0348 pre-authentication allocation, RUSTSEC-2026-0349 ServerHello downgrade)
 - Updated `rustls-webpki` to 0.103.16 (RUSTSEC-2026-0382, distrusted intermediates accepted) and `webpki-root-certs` to 1.0.11 (RUSTSEC-2026-0383, distrusted emSign intermediates)
 - Updated `tokio` to 1.54.1 (RUSTSEC-2026-0386, `AsyncFd` I/O-safety unsoundness)
-- The patched `rustls`/`rustls-webpki` require `aws-lc-rs` >= 1.18 (now 1.19.0, with `aws-lc-sys` 0.47.0) and the patched `quinn-proto` requires `rand` 0.10, so those move too
+- The patched `rustls`/`rustls-webpki` require `aws-lc-rs` >= 1.18 (now 1.19.0, with `aws-lc-sys` 0.47.0) and the patched `quinn-proto` requires `rand` 0.10, so those move too (`rand` 0.10 is only in `Cargo.lock` as well)
+- `ak setup pip` no longer prints the access token to stderr (#207). `setup` previews are now built from templates that never hold the token, `setup helm` passes it on stdin instead of the command line, and config files and their backups are 0600 from the moment they exist. If you ran `ak setup pip` in a shared terminal or a CI job, treat that token as exposed.
 
 ## [1.2.0] - 2026-07-13
 

@@ -1,0 +1,318 @@
+//! Which `ak` command covers which server route.
+//!
+//! This is the data behind the coverage gate (WS-G in the coverage plan). A route
+//! is covered by a first-class command, or excluded with a reason and reachable
+//! through `ak api`. The list is compiled in, so the gate reads what the binary
+//! really has, and a test here checks that every `command` parses.
+//!
+//! # Adding an entry
+//!
+//! When you add or change a command, add a line per route it calls, in the group
+//! for that command:
+//!
+//! ```text
+//! covered("GET", "/api/v1/repositories/{key}", "repo show", &[]),
+//! ```
+//!
+//! - `method` and `path` are as in the backend's route table: `{name}` for a path
+//!   parameter, the same names as the OpenAPI spec.
+//! - `command` is the path of subcommands, as typed after `ak`, with no arguments.
+//! - `binds` lists every query and body field in the 1.11.10 schema that a flag or
+//!   positional can set. Path parameters aren't listed. The gate will compare this
+//!   with the schema, so leave out a field the command can't set. An empty list
+//!   today means "not checked yet", not "there are none".
+//!
+//! For a route that shouldn't have a command, use `excluded(method, path, reason)`.
+//! The reason is for a reviewer: say why a command adds nothing over `ak api`.
+//!
+//! A route with two commands gets two lines. The list doesn't need to be sorted
+//! within a group. The gate, not this file's order, decides what's missing.
+
+/// One route: covered by a command, or excluded with a reason.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Op {
+    pub method: &'static str,
+    pub path: &'static str,
+    /// Subcommand path after `ak`. Empty for an excluded route.
+    pub command: &'static str,
+    /// Query and body fields a flag or positional can set.
+    pub binds: &'static [&'static str],
+    /// Why this route has no first-class command.
+    pub excluded: Option<&'static str>,
+}
+
+const fn covered(
+    method: &'static str,
+    path: &'static str,
+    command: &'static str,
+    binds: &'static [&'static str],
+) -> Op {
+    Op {
+        method,
+        path,
+        command,
+        binds,
+        excluded: None,
+    }
+}
+
+const fn excluded(method: &'static str, path: &'static str, reason: &'static str) -> Op {
+    Op {
+        method,
+        path,
+        command: "",
+        binds: &[],
+        excluded: Some(reason),
+    }
+}
+
+const IDP_CALLBACK: &str = "An identity provider sends a browser here with a code or an \
+                            assertion. A CLI never starts this request";
+const SSO_REDIRECT: &str = "A 302 to the identity provider, which the planned \
+                            `auth login --sso` prints with --no-follow";
+const WASM_PASSTHROUGH: &str = "A WASM plugin defines what this does, so `ak api` is the \
+                                right interface";
+
+/// Every route with a known place in the CLI. Workstreams add to this. It isn't
+/// complete until the coverage gate says so.
+pub static COMMANDS: &[Op] = &[
+    // ---- auth ----
+    covered(
+        "POST",
+        "/api/v1/auth/login",
+        "auth login",
+        &["username", "password"],
+    ),
+    covered("POST", "/api/v1/auth/logout", "auth logout", &[]),
+    covered(
+        "POST",
+        "/api/v1/auth/refresh",
+        "auth refresh",
+        &["refresh_token"],
+    ),
+    covered("GET", "/api/v1/auth/me", "auth whoami", &[]),
+    covered(
+        "POST",
+        "/api/v1/auth/tokens",
+        "auth token create",
+        &["name", "expires_in_days"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/auth/tokens/{token_id}",
+        "auth revoke-token",
+        &[],
+    ),
+    // ---- repositories ----
+    covered(
+        "GET",
+        "/api/v1/repositories",
+        "repo list",
+        &["page", "per_page", "format", "type", "q"],
+    ),
+    covered("POST", "/api/v1/repositories", "repo create", &[]),
+    covered("GET", "/api/v1/repositories/{key}", "repo show", &[]),
+    covered("PATCH", "/api/v1/repositories/{key}", "repo update", &[]),
+    covered("DELETE", "/api/v1/repositories/{key}", "repo delete", &[]),
+    // ---- artifacts ----
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/artifacts",
+        "artifact list",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/artifacts/{path}",
+        "artifact info",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/repositories/{key}/artifacts/{path}",
+        "artifact push",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/repositories/{key}/artifacts/{path}",
+        "artifact delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/download/{path}",
+        "artifact pull",
+        &[],
+    ),
+    covered("GET", "/api/v1/artifacts/{id}", "artifact show", &[]),
+    covered(
+        "GET",
+        "/api/v1/artifacts/{id}/metadata",
+        "artifact metadata",
+        &[],
+    ),
+    covered("GET", "/api/v1/artifacts/{id}/stats", "artifact stats", &[]),
+    covered("GET", "/api/v1/search/advanced", "artifact search", &[]),
+    // ---- lifecycle ----
+    covered(
+        "GET",
+        "/api/v1/admin/lifecycle",
+        "lifecycle list",
+        &["repository_id"],
+    ),
+    covered("POST", "/api/v1/admin/lifecycle", "lifecycle create", &[]),
+    covered("GET", "/api/v1/admin/lifecycle/{id}", "lifecycle show", &[]),
+    covered(
+        "PATCH",
+        "/api/v1/admin/lifecycle/{id}",
+        "lifecycle update",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/admin/lifecycle/{id}",
+        "lifecycle delete",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/lifecycle/{id}/execute",
+        "lifecycle execute",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/lifecycle/{id}/preview",
+        "lifecycle preview",
+        &[],
+    ),
+    // ---- webhooks ----
+    covered("GET", "/api/v1/webhooks", "webhook list", &[]),
+    covered("POST", "/api/v1/webhooks", "webhook create", &[]),
+    covered("GET", "/api/v1/webhooks/{id}", "webhook show", &[]),
+    covered("DELETE", "/api/v1/webhooks/{id}", "webhook delete", &[]),
+    covered(
+        "POST",
+        "/api/v1/webhooks/{id}/enable",
+        "webhook enable",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/webhooks/{id}/disable",
+        "webhook disable",
+        &[],
+    ),
+    // ---- quarantine ----
+    covered(
+        "GET",
+        "/api/v1/quarantine/{artifact_id}",
+        "quarantine status",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/quarantine/{artifact_id}/quarantine",
+        "quarantine hold",
+        &["reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/quarantine/{artifact_id}/release",
+        "quarantine release",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/quarantine/{artifact_id}/reject",
+        "quarantine reject",
+        &["reason"],
+    ),
+    // ---- excluded: reachable with `ak api` ----
+    excluded("GET", "/api/v1/auth/sso/oidc/{id}/callback", IDP_CALLBACK),
+    excluded("GET", "/api/v1/auth/sso/oidc/callback", IDP_CALLBACK),
+    excluded("POST", "/api/v1/auth/sso/saml/{id}/acs", IDP_CALLBACK),
+    excluded("GET", "/api/v1/auth/sso/oidc/{id}/login", SSO_REDIRECT),
+    excluded("GET", "/api/v1/auth/sso/saml/{id}/login", SSO_REDIRECT),
+    excluded("ANY", "/ext/{format_key}/{repo_key}", WASM_PASSTHROUGH),
+    excluded(
+        "ANY",
+        "/ext/{format_key}/{repo_key}/{path}",
+        WASM_PASSTHROUGH,
+    ),
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::Cli;
+    use clap::CommandFactory;
+
+    const METHODS: &[&str] = &[
+        "GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "ANY",
+    ];
+
+    /// Walk the clap tree by subcommand name, the way a user would type it.
+    fn resolves(path: &str) -> bool {
+        let root = Cli::command();
+        let mut current = &root;
+        for name in path.split_whitespace() {
+            match current.find_subcommand(name) {
+                Some(next) => current = next,
+                None => return false,
+            }
+        }
+        true
+    }
+
+    #[test]
+    fn every_command_parses() {
+        let broken: Vec<_> = COMMANDS
+            .iter()
+            .filter(|op| op.excluded.is_none() && !resolves(op.command))
+            .map(|op| format!("{} {} -> ak {}", op.method, op.path, op.command))
+            .collect();
+        assert!(broken.is_empty(), "no such command: {broken:#?}");
+    }
+
+    #[test]
+    fn the_walk_rejects_a_command_that_does_not_exist() {
+        assert!(resolves("repo show"));
+        assert!(!resolves("repo no-such-command"));
+        assert!(!resolves("no-such-group"));
+    }
+
+    #[test]
+    fn every_entry_is_well_formed() {
+        for op in COMMANDS {
+            assert!(METHODS.contains(&op.method), "{op:?}");
+            assert!(op.path.starts_with('/'), "{op:?}");
+            match op.excluded {
+                Some(reason) => {
+                    assert!(
+                        !reason.trim().is_empty(),
+                        "an exclusion needs a reason: {op:?}"
+                    );
+                    assert!(
+                        op.command.is_empty(),
+                        "covered or excluded, not both: {op:?}"
+                    );
+                    assert!(op.binds.is_empty(), "{op:?}");
+                }
+                None => assert!(!op.command.is_empty(), "no command and no reason: {op:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn no_entry_is_listed_twice() {
+        let mut seen = std::collections::HashSet::new();
+        for op in COMMANDS {
+            assert!(
+                seen.insert((op.method, op.path, op.command)),
+                "listed twice: {op:?}"
+            );
+        }
+    }
+}

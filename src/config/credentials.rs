@@ -9,10 +9,34 @@ use crate::error::AkError;
 
 const KEYRING_SERVICE: &str = "artifact-keeper-cli";
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Set to `file` to skip the OS keychain and use the file store only: for
+/// headless machines and for anything that shouldn't leave entries in the
+/// keychain, such as test runs.
+const CREDENTIAL_STORE_ENV: &str = "AK_CREDENTIAL_STORE";
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct StoredCredential {
     pub access_token: String,
     pub refresh_token: Option<String>,
+}
+
+// Written by hand so `{:?}` can never put a token in a log or an error.
+impl std::fmt::Debug for StoredCredential {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StoredCredential")
+            .field("access_token", &"[redacted]")
+            .field(
+                "refresh_token",
+                &self.refresh_token.as_ref().map(|_| "[redacted]"),
+            )
+            .finish()
+    }
+}
+
+/// Unit tests never touch the real keychain: a credential stored there outlives
+/// the test run.
+fn keychain_enabled() -> bool {
+    !cfg!(test) && std::env::var(CREDENTIAL_STORE_ENV).as_deref() != Ok("file")
 }
 
 /// Store a credential for a given instance.
@@ -20,6 +44,10 @@ pub struct StoredCredential {
 /// Tries OS keychain first; falls back to a credential file.
 pub fn store_credential(instance: &str, cred: &StoredCredential) -> Result<()> {
     let json = serde_json::to_string(cred).into_diagnostic()?;
+
+    if !keychain_enabled() {
+        return store_to_file(instance, &json);
+    }
 
     let keychain_ok = keyring::Entry::new(KEYRING_SERVICE, instance)
         .and_then(|entry| entry.set_password(&json))
@@ -72,7 +100,9 @@ pub fn get_credential(instance: &str) -> Result<StoredCredential> {
 
 /// Delete credential for a given instance from all stores.
 pub fn delete_credential(instance: &str) -> Result<()> {
-    if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, instance) {
+    if keychain_enabled()
+        && let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, instance)
+    {
         let _ = entry.delete_credential();
     }
 
@@ -80,6 +110,9 @@ pub fn delete_credential(instance: &str) -> Result<()> {
 }
 
 fn get_from_keychain(instance: &str) -> Option<StoredCredential> {
+    if !keychain_enabled() {
+        return None;
+    }
     let entry = keyring::Entry::new(KEYRING_SERVICE, instance).ok()?;
     let json = entry.get_password().ok()?;
     serde_json::from_str(&json).ok()
@@ -147,6 +180,16 @@ mod tests {
         unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
         f();
         unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+    }
+
+    #[test]
+    fn stored_credential_debug_hides_tokens() {
+        let cred = StoredCredential {
+            access_token: "sentinel-access".into(),
+            refresh_token: Some("sentinel-refresh".into()),
+        };
+        let shown = format!("{cred:?}");
+        assert!(!shown.contains("sentinel"), "{shown}");
     }
 
     #[test]

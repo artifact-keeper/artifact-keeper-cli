@@ -95,7 +95,7 @@ pub enum TokenCommand {
         #[arg(long)]
         expires_in_days: Option<i64>,
 
-        /// Restrict to specific repository IDs (repeatable)
+        /// Restrict to specific repositories, by key or ID (repeatable)
         #[arg(long = "repository-id")]
         repository_ids: Vec<String>,
 
@@ -330,10 +330,10 @@ async fn create_account(name: &str, description: Option<&str>, global: &GlobalAr
         description: description.map(|s| s.to_string()),
     };
 
-    // Raw request instead of the generated SDK method: the backend responds
-    // `200 OK` here, but the generated client (`create_service_account`) only
-    // accepts `201`, so every successful create was reported as an error even
-    // though the account was created (#98). Accept any 2xx success status.
+    // Raw request instead of the generated SDK method: backend 1.11.10 still
+    // responds `200 OK` here while its spec declares `201`, so the generated
+    // client (`create_service_account`) reports every successful create as an
+    // error. Accept any 2xx success status.
     let result = super::client::raw_http_client()?
         .post(format!("{base_url}/api/v1/service-accounts"))
         .header(reqwest::header::AUTHORIZATION, &auth_header)
@@ -355,10 +355,7 @@ async fn create_account(name: &str, description: Option<&str>, global: &GlobalAr
         spinner.finish_and_clear();
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(AkError::ServerError(format!(
-            "Create service account failed ({status}): {text}"
-        ))
-        .into());
+        return Err(super::helpers::raw_err("Create service account failed", status, &text).into());
     }
 
     let sa: CreateAccountResponse = match resp.json().await {
@@ -558,10 +555,10 @@ async fn create_token(
     let repo_ids = if repository_ids.is_empty() {
         None
     } else {
-        let ids = repository_ids
-            .iter()
-            .map(|r| parse_uuid(r, "repository"))
-            .collect::<Result<Vec<_>>>()?;
+        let mut ids = Vec::with_capacity(repository_ids.len());
+        for repo in repository_ids {
+            ids.push(super::helpers::resolve_repo_id(&client, repo).await?);
+        }
         Some(ids)
     };
 
@@ -1154,7 +1151,8 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                 "id": TOK_ID,
                 "name": "deploy",
-                "token": "ak_secret_value"
+                "token": "ak_secret_value",
+                "policy_applied": false
             })))
             .mount(&server)
             .await;

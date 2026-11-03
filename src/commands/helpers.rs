@@ -1,3 +1,4 @@
+use artifact_keeper_sdk::ClientRepositoriesExt;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 use serde::Serialize;
@@ -26,6 +27,15 @@ pub fn sdk_err(action: &str, e: impl std::fmt::Display) -> AkError {
     AkError::ServerError(format!("Failed to {action}: {e}"))
 }
 
+/// An error for a failed raw HTTP call, in the form `sdk_err` gives SDK errors:
+/// the status and the server's message rather than its raw JSON.
+pub fn raw_err(action: &str, status: reqwest::StatusCode, body: &str) -> AkError {
+    match artifact_keeper_sdk::error::server_message(body.as_bytes()) {
+        Some(message) => AkError::ServerError(format!("{action}: {status}: {message}")),
+        None => AkError::ServerError(format!("{action}: {status}")),
+    }
+}
+
 /// Emit the result of a mutation (create/update/delete) honoring the output
 /// format so results are machine-consumable.
 ///
@@ -44,6 +54,37 @@ pub fn emit_mutation<T: Serialize>(value: &T, id: &str, human: &str, global: &Gl
     }
 }
 
+/// The `exp` claim of a JWT, read without verifying the signature, or `None` if
+/// the token isn't a JWT with one. Only for telling a user when their own token
+/// runs out: the server is what decides whether a token is good.
+pub fn decode_jwt_expiry(token: &str) -> Option<i64> {
+    use base64::Engine;
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+
+    let payload = token.split('.').nth(1)?;
+    let bytes = URL_SAFE_NO_PAD.decode(payload).ok()?;
+    let json: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    json.get("exp")?.as_i64()
+}
+
+/// [`emit_mutation`] for a response captured with
+/// `artifact_keeper_sdk::raw::capture`: JSON and YAML show the body the server sent.
+pub fn emit_mutation_raw<T: Serialize>(
+    raw: Option<&[u8]>,
+    value: &T,
+    id: &str,
+    human: &str,
+    global: &GlobalArgs,
+) {
+    match global.format {
+        OutputFormat::Quiet => println!("{id}"),
+        OutputFormat::Json | OutputFormat::Yaml => {
+            println!("{}", output::render_raw(raw, value, &global.format, None));
+        }
+        OutputFormat::Table => eprintln!("{human}"),
+    }
+}
+
 /// Parse a string as a UUID, returning a friendly error with the given label.
 pub fn parse_uuid(id: &str, label: &str) -> Result<uuid::Uuid> {
     id.parse()
@@ -53,6 +94,74 @@ pub fn parse_uuid(id: &str, label: &str) -> Result<uuid::Uuid> {
 /// Parse an optional string as a UUID.
 pub fn parse_optional_uuid(id: Option<&str>, label: &str) -> Result<Option<uuid::Uuid>> {
     id.map(|v| parse_uuid(v, label)).transpose()
+}
+
+/// Turn what a user typed for a repository into its ID: a UUID is used as it is,
+/// and anything else is looked up as a repository key. Use this for every
+/// UUID-typed repository parameter, so users can always pass the key they know.
+pub async fn resolve_repo_id(
+    client: &artifact_keeper_sdk::Client,
+    key_or_id: &str,
+) -> Result<uuid::Uuid> {
+    if let Ok(id) = key_or_id.parse() {
+        return Ok(id);
+    }
+    match client.get_repository().key(key_or_id).send().await {
+        Ok(repo) => Ok(repo.id),
+        Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => {
+            Err(AkError::ConfigError(format!(
+                "No repository with key '{key_or_id}'. Run `ak repo list` to see repositories."
+            ))
+            .into())
+        }
+        Err(e) => Err(sdk_err(&format!("look up repository '{key_or_id}'"), e).into()),
+    }
+}
+
+/// [`resolve_repo_id`] for an optional parameter.
+pub async fn resolve_optional_repo_id(
+    client: &artifact_keeper_sdk::Client,
+    key_or_id: Option<&str>,
+) -> Result<Option<uuid::Uuid>> {
+    match key_or_id {
+        Some(value) => resolve_repo_id(client, value).await.map(Some),
+        None => Ok(None),
+    }
+}
+
+/// Turn what a user typed for an artifact into its ID: a UUID is used as it is,
+/// and `<repo-key>/<path>` is looked up.
+pub async fn resolve_artifact_id(
+    client: &artifact_keeper_sdk::Client,
+    id_or_path: &str,
+) -> Result<uuid::Uuid> {
+    if let Ok(id) = id_or_path.parse() {
+        return Ok(id);
+    }
+    let Some((repo, path)) = id_or_path
+        .split_once('/')
+        .filter(|(r, p)| !r.is_empty() && !p.is_empty())
+    else {
+        return Err(AkError::ConfigError(format!(
+            "'{id_or_path}' isn't an artifact ID or a <repo-key>/<path>"
+        ))
+        .into());
+    };
+    match client
+        .get_repository_artifact_metadata()
+        .key(repo)
+        .path(path)
+        .send()
+        .await {
+        Ok(artifact) => Ok(artifact.id),
+        Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => {
+            Err(AkError::ConfigError(format!(
+                "No artifact '{path}' in repository '{repo}'. Run `ak artifact list {repo}` to see artifacts."
+            ))
+            .into())
+        }
+        Err(e) => Err(sdk_err(&format!("look up artifact '{id_or_path}'"), e).into()),
+    }
 }
 
 /// True when the given long option (e.g. `--password`) appears on the
@@ -93,11 +202,12 @@ fn read_secret<R: std::io::Read>(reader: &mut R) -> Result<String> {
 ///    When the value was visibly passed on argv, a soft warning is printed to
 ///    stderr since command-line values leak into shell history and process
 ///    listings.
-/// 3. If `prompt` is `Some` and stdin is not a TTY (piped/redirected input),
+/// 3. With `--no-input`, resolve to `None`. Stdin is read only if asked for by (1).
+/// 4. If `prompt` is `Some` and stdin is not a TTY (piped/redirected input),
 ///    read the secret from stdin.
-/// 4. If `prompt` is `Some`, stdin is a TTY, and `--no-input` was not given,
-///    prompt interactively with no echo. Empty input means "no secret".
-/// 5. Otherwise resolve to `None`.
+/// 5. If `prompt` is `Some` and stdin is a TTY, prompt interactively with no echo.
+///    Empty input means "no secret".
+/// 6. Otherwise resolve to `None`.
 ///
 /// Pass `prompt: None` for inputs that must never fall back to prompting or
 /// implicit stdin reads (e.g. update commands where an omitted secret means
@@ -144,13 +254,15 @@ fn resolve_secret_from<R: std::io::Read>(
     let Some(prompt) = prompt else {
         return Ok(None);
     };
+    // --no-input comes first: it promises not to wait for input, and a stdin that's
+    // open but silent would hang here. `--<flag>-stdin` is the explicit way in.
+    if no_input {
+        return Ok(None);
+    }
     if !stdin_is_tty {
         // Piped/redirected input: take the secret from stdin so it never has
         // to appear on the command line.
         return read_secret(&mut reader()).map(non_empty);
-    }
-    if no_input {
-        return Ok(None);
     }
     let entered = dialoguer::Password::new()
         .with_prompt(prompt)
@@ -315,6 +427,19 @@ mod tests {
     }
 
     // ---- sdk_err ----
+
+    #[test]
+    fn raw_err_shows_the_servers_message_and_not_its_json() {
+        let err = raw_err(
+            "Upload failed",
+            reqwest::StatusCode::CONFLICT,
+            r#"{"code":"CONFLICT","message":"Artifact is immutable"}"#,
+        );
+        assert_eq!(
+            err.to_string(),
+            "Server error: Upload failed: 409 Conflict: Artifact is immutable"
+        );
+    }
 
     #[test]
     fn sdk_err_message() {

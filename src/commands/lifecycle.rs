@@ -2,10 +2,11 @@ use artifact_keeper_sdk::ClientLifecycleExt;
 use clap::Subcommand;
 use miette::Result;
 
-use super::client::{client_for, resolve_base_url_and_auth};
+use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
 };
+use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -14,7 +15,7 @@ use crate::output::{self, OutputFormat, format_bytes};
 pub enum LifecycleCommand {
     /// List lifecycle policies
     List {
-        /// Filter by repository ID
+        /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
     },
@@ -38,7 +39,7 @@ pub enum LifecycleCommand {
         /// Policy configuration as a JSON object. Required keys by type:
         /// max_age_days / no_downloads_days => {"days": N};
         /// max_versions => {"keep": N};
-        /// size_quota_bytes => {"bytes": N};
+        /// size_quota_bytes => {"quota_bytes": N};
         /// tag_pattern_keep / tag_pattern_delete => {"pattern": "<regex>"}
         #[arg(long)]
         config: String,
@@ -51,8 +52,8 @@ pub enum LifecycleCommand {
         #[arg(long)]
         priority: Option<i32>,
 
-        /// Bind to a specific repository ID (required for max_versions and
-        /// size_quota_bytes)
+        /// Apply to one repository key or ID (required for max_versions and
+        /// size_quota_bytes). Without it, the policy applies to all repositories.
         #[arg(long)]
         repo: Option<String>,
 
@@ -184,19 +185,17 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
 
     let mut req = client.list_lifecycle_policies();
     if let Some(id) = repo_id {
-        let uid = parse_uuid(id, "repository")?;
+        let uid = resolve_repo_id(&client, id).await?;
         req = req.repository_id(uid);
     }
 
-    let policies = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list lifecycle policies", e))?;
+    let (policies, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let policies = policies.map_err(|e| sdk_err("list lifecycle policies", e))?;
 
     let policies = policies.into_inner();
     spinner.finish_and_clear();
 
-    if policies.is_empty() {
+    if policies.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No lifecycle policies found.");
         return Ok(());
     }
@@ -218,6 +217,8 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
                 "enabled": p.enabled,
                 "priority": p.priority,
                 "description": p.description,
+                "applies_to_all": p.applies_to_all,
+                "repository_ids": p.repository_ids,
                 "last_run_at": p.last_run_at.map(|t| t.to_rfc3339()),
                 "last_run_items_removed": p.last_run_items_removed,
             })
@@ -226,7 +227,7 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
 
     let table_str = {
         let mut table = new_table(vec![
-            "ID", "NAME", "TYPE", "ENABLED", "PRIORITY", "LAST RUN",
+            "ID", "NAME", "TYPE", "SCOPE", "ENABLED", "PRIORITY", "LAST RUN",
         ]);
 
         for p in &policies {
@@ -240,6 +241,7 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
                 &id_short,
                 &p.name,
                 &p.policy_type,
+                &policy_scope(p),
                 enabled,
                 &p.priority.to_string(),
                 &last_run,
@@ -251,10 +253,33 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
+}
+
+/// What a policy applies to. Since backend 1.11, a policy with no repository is
+/// dormant unless `applies_to_all` is set. A 1.10 server sends neither field, and
+/// there a policy with no `repository_id` is global.
+fn policy_scope(policy: &artifact_keeper_sdk::types::LifecyclePolicy) -> String {
+    let Some(applies_to_all) = policy.applies_to_all else {
+        return policy
+            .repository_id
+            .map_or_else(|| "all repositories".to_string(), |id| id.to_string());
+    };
+    if applies_to_all {
+        return "all repositories".to_string();
+    }
+    if policy.repository_ids.is_empty() {
+        return "none (dormant)".to_string();
+    }
+    policy
+        .repository_ids
+        .iter()
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
@@ -263,12 +288,9 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching lifecycle policy...");
 
-    let policy = client
-        .get_lifecycle_policy()
-        .id(policy_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get lifecycle policy", e))?;
+    let (policy, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_lifecycle_policy().id(policy_id).send()).await;
+    let policy = policy.map_err(|e| sdk_err("get lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -280,7 +302,8 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
         "priority": policy.priority,
         "description": policy.description,
         "config": policy.config,
-        "repository_id": policy.repository_id.map(|u| u.to_string()),
+        "applies_to_all": policy.applies_to_all,
+        "repository_ids": policy.repository_ids,
         "last_run_at": policy.last_run_at.map(|t| t.to_rfc3339()),
         "last_run_items_removed": policy.last_run_items_removed,
         "created_at": policy.created_at.to_rfc3339(),
@@ -294,7 +317,7 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
          Enabled:         {}\n\
          Priority:        {}\n\
          Description:     {}\n\
-         Repository:      {}\n\
+         Scope:           {}\n\
          Last Run:        {}\n\
          Items Removed:   {}\n\
          Created:         {}\n\
@@ -305,10 +328,7 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
         if policy.enabled { "yes" } else { "no" },
         policy.priority,
         policy.description.as_deref().unwrap_or("-"),
-        policy
-            .repository_id
-            .map(|u| u.to_string())
-            .unwrap_or_else(|| "all".to_string()),
+        policy_scope(&policy),
         policy
             .last_run_at
             .map(|t| t.format("%Y-%m-%d %H:%M:%S UTC").to_string())
@@ -321,7 +341,10 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
         policy.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -348,6 +371,7 @@ async fn create_policy(
     cron_schedule: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let client = client_for(global)?;
     if !VALID_POLICY_TYPES.contains(&policy_type) {
         return Err(AkError::ConfigError(format!(
             "Invalid policy type '{policy_type}'. Must be one of: {}",
@@ -356,98 +380,63 @@ async fn create_policy(
         .into());
     }
 
-    let config_json: serde_json::Value = serde_json::from_str(config)
-        .map_err(|e| AkError::ConfigError(format!("--config must be a JSON object: {e}")))?;
-    if !config_json.is_object() {
-        return Err(AkError::ConfigError("--config must be a JSON object".into()).into());
-    }
+    let config_map = parse_config(config)?;
+    let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
 
-    let repository_id = parse_optional_uuid(repo_id, "repository")?;
+    let body = artifact_keeper_sdk::types::CreateLifecyclePolicyRequest {
+        // Since backend 1.11, a policy with no repository and no `applies_to_all`
+        // is created dormant and never deletes anything.
+        applies_to_all: repository_id.is_none().then_some(true),
+        config: config_map,
+        cron_schedule: cron_schedule.map(str::to_string),
+        description: description.map(str::to_string),
+        enabled: None,
+        name: name.to_string(),
+        policy_type: policy_type.to_string(),
+        priority,
+        // The legacy single field, because it works on both supported minors:
+        // 1.10 ignores `repository_ids` and would create a policy for every
+        // repository, and 1.11 stores this as a one-element `repository_ids`.
+        repository_id,
+        repository_ids: None,
+    };
 
-    // The backend's CreatePolicyRequest (name/policy_type/config/...) is not
-    // the shape the generated SDK models, so build the request body directly.
-    let mut body = serde_json::json!({
-        "name": name,
-        "policy_type": policy_type,
-        "config": config_json,
-    });
-    if let Some(d) = description {
-        body["description"] = serde_json::Value::from(d);
-    }
-    if let Some(p) = priority {
-        body["priority"] = serde_json::Value::from(p);
-    }
-    if let Some(rid) = repository_id {
-        body["repository_id"] = serde_json::Value::from(rid.to_string());
-    }
-    if let Some(c) = cron_schedule {
-        body["cron_schedule"] = serde_json::Value::from(c);
-    }
-
-    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
     let spinner = output::spinner("Creating lifecycle policy...");
 
-    let http = super::client::raw_http_client()?;
-    let resp = http
-        .post(format!(
-            "{}/api/v1/admin/lifecycle",
-            base_url.trim_end_matches('/')
-        ))
-        .header(reqwest::header::AUTHORIZATION, auth_header)
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create lifecycle policy", e))?;
-
-    let status = resp.status();
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| sdk_err("create lifecycle policy", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_lifecycle_policy().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("create lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
-    if !status.is_success() {
-        let msg = serde_json::from_str::<serde_json::Value>(&text)
-            .ok()
-            .and_then(|v| {
-                v.get("message")
-                    .and_then(|m| m.as_str())
-                    .map(str::to_string)
-            })
-            .unwrap_or(text);
-        return Err(AkError::ServerError(format!(
-            "create lifecycle policy failed (HTTP {}): {msg}",
-            status.as_u16()
-        ))
-        .into());
-    }
+    let policy = resp.into_inner();
+    let id = policy.id.to_string();
 
-    let policy: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| sdk_err("parse lifecycle policy response", e))?;
-    let id = policy["id"].as_str().unwrap_or_default().to_string();
-    let pname = policy["name"].as_str().unwrap_or(name);
-
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &policy,
         &id,
-        &format!("Lifecycle policy '{pname}' created (ID: {id})."),
+        &format!(
+            "Lifecycle policy '{}' created (ID: {id}, scope: {}).",
+            policy.name,
+            policy_scope(&policy)
+        ),
         global,
     );
 
     Ok(())
 }
 
-// The lifecycle PATCH endpoint (`/api/v1/admin/lifecycle/:id`) is documented in
-// the OpenAPI spec as taking `UpdatePolicyRequest`, but that schema is a
-// quality-gate shape whose fields (is_enabled, max_artifact_age_days, ...) are
-// ignored by this endpoint. The endpoint actually accepts the lifecycle-policy
-// fields (name/enabled/priority/description/config/cron_schedule), so — as with
-// `create_policy` — build the request body directly rather than via the SDK.
-// TODO(#98): the backend spec-fidelity fix renames the PATCH body schema to
-// `UpdateLifecyclePolicyRequest` with the correct lifecycle fields; once that is
-// deployed in a release, this raw request can move to the strict SDK method.
-// Verified 2026-07-09: kept because the deployed rig predates that fix.
+/// Parse a `--config` value, which must be a JSON object.
+fn parse_config(config: &str) -> Result<serde_json::Map<String, serde_json::Value>> {
+    let value: serde_json::Value = serde_json::from_str(config)
+        .map_err(|e| AkError::ConfigError(format!("--config must be a JSON object: {e}")))?;
+    match value {
+        serde_json::Value::Object(map) => Ok(map),
+        _ => Err(AkError::ConfigError("--config must be a JSON object".into()).into()),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn update_policy(
     id: &str,
@@ -460,91 +449,66 @@ async fn update_policy(
     cron_schedule: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    parse_uuid(id, "policy")?;
+    let policy_id = parse_uuid(id, "policy")?;
 
-    let mut body = serde_json::Map::new();
-    if let Some(n) = name {
-        body.insert("name".to_string(), serde_json::Value::from(n));
-    }
     // `--enabled` / `--disabled` are mutually exclusive (enforced by clap); only
     // send the field when one was explicitly given.
-    if enabled {
-        body.insert("enabled".to_string(), serde_json::Value::from(true));
+    let enabled_field = if enabled {
+        Some(true)
     } else if disabled {
-        body.insert("enabled".to_string(), serde_json::Value::from(false));
-    }
-    if let Some(p) = priority {
-        body.insert("priority".to_string(), serde_json::Value::from(p));
-    }
-    if let Some(d) = description {
-        body.insert("description".to_string(), serde_json::Value::from(d));
-    }
-    if let Some(c) = config {
-        let config_json: serde_json::Value = serde_json::from_str(c)
-            .map_err(|e| AkError::ConfigError(format!("--config must be a JSON object: {e}")))?;
-        if !config_json.is_object() {
-            return Err(AkError::ConfigError("--config must be a JSON object".into()).into());
-        }
-        body.insert("config".to_string(), config_json);
-    }
-    if let Some(cs) = cron_schedule {
-        body.insert("cron_schedule".to_string(), serde_json::Value::from(cs));
-    }
+        Some(false)
+    } else {
+        None
+    };
 
-    if body.is_empty() {
+    let config_field = config.map(parse_config).transpose()?;
+
+    if name.is_none()
+        && enabled_field.is_none()
+        && priority.is_none()
+        && description.is_none()
+        && config_field.is_none()
+        && cron_schedule.is_none()
+    {
         return Err(AkError::ConfigError(
             "No fields to update; provide at least one of --name/--enabled/--disabled/--priority/--description/--config/--cron-schedule".into(),
         )
         .into());
     }
 
-    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
+    let body = artifact_keeper_sdk::types::UpdateLifecyclePolicyRequest {
+        applies_to_all: None,
+        config: config_field,
+        cron_schedule: cron_schedule.map(str::to_string),
+        description: description.map(str::to_string),
+        enabled: enabled_field,
+        name: name.map(str::to_string),
+        priority,
+        repository_ids: None,
+    };
+
+    let client = client_for(global)?;
     let spinner = output::spinner("Updating lifecycle policy...");
 
-    let http = super::client::raw_http_client()?;
-    let resp = http
-        .patch(format!(
-            "{}/api/v1/admin/lifecycle/{id}",
-            base_url.trim_end_matches('/')
-        ))
-        .header(reqwest::header::AUTHORIZATION, auth_header)
-        .json(&serde_json::Value::Object(body))
-        .send()
-        .await
-        .map_err(|e| sdk_err("update lifecycle policy", e))?;
-
-    let status = resp.status();
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| sdk_err("update lifecycle policy", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .update_lifecycle_policy()
+            .id(policy_id)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("update lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
-    if !status.is_success() {
-        let msg = serde_json::from_str::<serde_json::Value>(&text)
-            .ok()
-            .and_then(|v| {
-                v.get("message")
-                    .and_then(|m| m.as_str())
-                    .map(str::to_string)
-            })
-            .unwrap_or(text);
-        return Err(AkError::ServerError(format!(
-            "update lifecycle policy failed (HTTP {}): {msg}",
-            status.as_u16()
-        ))
-        .into());
-    }
+    let policy = resp.into_inner();
 
-    let policy: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| sdk_err("parse lifecycle policy response", e))?;
-    let pname = policy["name"].as_str().unwrap_or("");
-
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &policy,
         id,
-        &format!("Lifecycle policy '{pname}' updated (ID: {id})."),
+        &format!("Lifecycle policy '{}' updated (ID: {id}).", policy.name),
         global,
     );
 
@@ -1039,6 +1003,104 @@ mod tests {
 
     static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
 
+    fn policy_with(scope: serde_json::Value) -> artifact_keeper_sdk::types::LifecyclePolicy {
+        let mut policy = lifecycle_policy_json();
+        policy.as_object_mut().unwrap().remove("applies_to_all");
+        policy.as_object_mut().unwrap().remove("repository_ids");
+        for (key, value) in scope.as_object().unwrap() {
+            policy[key] = value.clone();
+        }
+        serde_json::from_value(policy).unwrap()
+    }
+
+    #[test]
+    fn policy_scope_describes_each_case() {
+        const ID: &str = "00000000-0000-0000-0000-000000000009";
+        let scope = |value| policy_scope(&policy_with(value));
+
+        assert_eq!(
+            scope(json!({ "applies_to_all": true, "repository_ids": [] })),
+            "all repositories"
+        );
+        assert_eq!(
+            scope(json!({ "applies_to_all": false, "repository_ids": [] })),
+            "none (dormant)"
+        );
+        assert_eq!(
+            scope(json!({ "applies_to_all": false, "repository_ids": [ID] })),
+            ID
+        );
+        // A 1.10 server sends neither field.
+        assert_eq!(scope(json!({ "repository_id": null })), "all repositories");
+        assert_eq!(scope(json!({ "repository_id": ID })), ID);
+    }
+
+    #[tokio::test]
+    async fn handler_create_policy_without_repo_applies_to_all() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .and(wiremock::matchers::body_partial_json(
+                json!({ "applies_to_all": true }),
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(lifecycle_policy_json()))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = create_policy(
+            "p",
+            "max_age_days",
+            r#"{"days":30}"#,
+            None,
+            None,
+            None,
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_create_policy_with_repo_sends_legacy_repository_id() {
+        const ID: &str = "00000000-0000-0000-0000-000000000009";
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .and(wiremock::matchers::body_json(json!({
+                "config": { "days": 30 },
+                "name": "p",
+                "policy_type": "max_age_days",
+                "repository_id": ID,
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(lifecycle_policy_json()))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = create_policy(
+            "p",
+            "max_age_days",
+            r#"{"days":30}"#,
+            None,
+            None,
+            Some(ID),
+            None,
+            &global,
+        )
+        .await;
+        assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
     fn lifecycle_policy_json() -> serde_json::Value {
         json!({
             "id": NIL_UUID,
@@ -1052,7 +1114,9 @@ mod tests {
             "last_run_at": null,
             "last_run_items_removed": null,
             "created_at": "2026-01-15T12:00:00Z",
-            "updated_at": "2026-01-15T12:00:00Z"
+            "updated_at": "2026-01-15T12:00:00Z",
+            "applies_to_all": true,
+            "repository_ids": []
         })
     }
 
@@ -1064,7 +1128,9 @@ mod tests {
             "artifacts_matched": 10,
             "artifacts_removed": 5,
             "bytes_freed": 1048576_i64,
-            "errors": []
+            "errors": [],
+            "bytes_matched": 2097152_i64,
+            "proxy_cache": {"entries_matched": 0, "entries_removed": 0, "bytes_matched": 0, "bytes_freed": 0}
         })
     }
 

@@ -4,7 +4,8 @@ use futures::StreamExt;
 use miette::Result;
 
 use super::client::{client_for, client_for_optional_auth};
-use super::helpers::{confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err};
+use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err};
+use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -12,7 +13,7 @@ use crate::output::{self, OutputFormat};
 pub enum CurationCommand {
     /// List packages awaiting curation in a staging repository
     Packages {
-        /// Staging repository ID (UUID)
+        /// Staging repository key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: String,
 
@@ -71,7 +72,7 @@ pub enum CurationCommand {
 
     /// Re-evaluate all pending packages in a staging repo against the rules
     ReEvaluate {
-        /// Staging repository ID (UUID)
+        /// Staging repository key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: String,
 
@@ -82,7 +83,7 @@ pub enum CurationCommand {
 
     /// List curation rules
     Rules {
-        /// Filter by staging repository ID (UUID)
+        /// Filter by staging repository key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: Option<String>,
     },
@@ -106,7 +107,7 @@ pub enum CurationCommand {
         #[arg(long)]
         reason: String,
 
-        /// Restrict the rule to a staging repository ID (UUID)
+        /// Restrict the rule to a staging repository, by key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: Option<String>,
 
@@ -173,7 +174,7 @@ pub enum CurationCommand {
 
     /// Show curation statistics for a staging repository
     Stats {
-        /// Staging repository ID (UUID)
+        /// Staging repository key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: String,
     },
@@ -262,7 +263,8 @@ async fn list_packages(
     offset: Option<i64>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let staging_id = parse_uuid(staging_repo, "staging repository")?;
+    let client = client_for(global)?;
+    let staging_id = resolve_repo_id(&client, staging_repo).await?;
 
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching curation packages...");
@@ -420,9 +422,9 @@ async fn bulk_decision(
 }
 
 async fn re_evaluate(staging_repo: &str, default_action: &str, global: &GlobalArgs) -> Result<()> {
-    let staging_id = parse_uuid(staging_repo, "staging repository")?;
-
     let client = client_for(global)?;
+    let staging_id = resolve_repo_id(&client, staging_repo).await?;
+
     let spinner = output::spinner("Re-evaluating packages against curation rules...");
 
     let body = artifact_keeper_sdk::types::ReEvaluateRequest {
@@ -457,7 +459,8 @@ async fn re_evaluate(staging_repo: &str, default_action: &str, global: &GlobalAr
 // ---------------------------------------------------------------------------
 
 async fn list_rules(staging_repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
-    let staging_id = parse_optional_uuid(staging_repo, "staging repository")?;
+    let client = client_for(global)?;
+    let staging_id = resolve_optional_repo_id(&client, staging_repo).await?;
 
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching curation rules...");
@@ -532,16 +535,19 @@ async fn create_rule(
     version_constraint: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let staging_id = parse_optional_uuid(staging_repo, "staging repository")?;
-
     let client = client_for(global)?;
+    let staging_id = resolve_optional_repo_id(&client, staging_repo).await?;
+
     let spinner = output::spinner("Creating curation rule...");
 
     let body = artifact_keeper_sdk::types::CurationCreateRuleRequest {
         action: action.to_string(),
-        package_pattern: package_pattern.to_string(),
+        package_pattern: Some(package_pattern.to_string()),
         reason: reason.to_string(),
         staging_repo_id: staging_id,
+        config: Default::default(),
+        rule_type: None,
+        scope: None,
         architecture: architecture.map(|s| s.to_string()),
         priority,
         version_constraint: version_constraint.map(|s| s.to_string()),
@@ -601,7 +607,19 @@ async fn update_rule(
     let client = client_for(global)?;
     let spinner = output::spinner("Updating curation rule...");
 
+    // PUT replaces the rule, and an omitted `rule_type` means `pattern`. Carry
+    // the current engine and its config over so a typed rule keeps them.
+    let existing = client
+        .get_curation_rule()
+        .id(rule_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get curation rule", e))?
+        .into_inner();
+
     let body = artifact_keeper_sdk::types::CurationUpdateRuleRequest {
+        config: existing.config,
+        rule_type: Some(existing.rule_type),
         action: action.to_string(),
         package_pattern: package_pattern.to_string(),
         reason: reason.to_string(),
@@ -675,7 +693,8 @@ async fn delete_rule(id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 async fn show_stats(staging_repo: &str, global: &GlobalArgs) -> Result<()> {
-    let staging_id = parse_uuid(staging_repo, "staging repository")?;
+    let client = client_for(global)?;
+    let staging_id = resolve_repo_id(&client, staging_repo).await?;
 
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching curation statistics...");
@@ -1204,6 +1223,7 @@ mod tests {
             "evaluation_reason": null,
             "first_seen_at": "2026-07-01T12:00:00Z",
             "metadata": {},
+            "attestation_state": "unverified",
         })
     }
 
@@ -1221,6 +1241,9 @@ mod tests {
             "created_by": null,
             "created_at": "2026-07-01T12:00:00Z",
             "updated_at": "2026-07-01T12:00:00Z",
+            "rule_type": "pattern",
+            "config": {},
+            "scope": "repository",
         })
     }
 
@@ -1297,7 +1320,8 @@ mod tests {
             "evaluated_by": null,
             "evaluation_reason": null,
             "first_seen_at": "2026-07-01T12:00:00Z",
-            "metadata": {}
+            "metadata": {},
+            "attestation_state": "unverified"
         })
     }
 
@@ -1314,7 +1338,10 @@ mod tests {
             "staging_repo_id": null,
             "created_by": null,
             "created_at": "2026-07-01T12:00:00Z",
-            "updated_at": "2026-07-01T12:00:00Z"
+            "updated_at": "2026-07-01T12:00:00Z",
+            "rule_type": "pattern",
+            "config": {},
+            "scope": "global"
         })
     }
 
@@ -1510,6 +1537,12 @@ mod tests {
     async fn handler_update_rule() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/curation/rules/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(rule_body()))
+            .mount(&server)
+            .await;
 
         Mock::given(method("PUT"))
             .and(path(format!("/api/v1/curation/rules/{NIL_UUID}")))

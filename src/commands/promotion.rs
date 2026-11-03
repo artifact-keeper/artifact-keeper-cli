@@ -3,6 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
+use super::helpers::resolve_repo_id;
 use super::helpers::{
     confirm_action, emit_mutation, new_table, parse_uuid, print_page_info, sdk_err, short_id,
 };
@@ -110,7 +111,7 @@ pub enum PromotionCommand {
 pub enum PromotionRuleCommand {
     /// List promotion rules
     List {
-        /// Filter by source repository ID
+        /// Filter by source repository key or ID
         #[arg(long)]
         from: Option<String>,
     },
@@ -126,11 +127,11 @@ pub enum PromotionRuleCommand {
         /// Rule name
         name: String,
 
-        /// Source repository ID
+        /// Source repository key or ID
         #[arg(long)]
         from: String,
 
-        /// Target repository ID
+        /// Target repository key or ID
         #[arg(long)]
         to: String,
 
@@ -390,7 +391,7 @@ async fn list_rules(source_repo_id: Option<&str>, global: &GlobalArgs) -> Result
 
     let mut req = client.list_rules();
     if let Some(id) = source_repo_id {
-        let uid = parse_uuid(id, "repository")?;
+        let uid = resolve_repo_id(&client, id).await?;
         req = req.source_repo_id(uid);
     }
 
@@ -462,10 +463,10 @@ async fn create_rule(
     auto: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let source_id = parse_uuid(from, "source repository")?;
-    let target_id = parse_uuid(to, "target repository")?;
-
     let client = client_for(global)?;
+    let source_id = resolve_repo_id(&client, from).await?;
+    let target_id = resolve_repo_id(&client, to).await?;
+
     let spinner = output::spinner("Creating promotion rule...");
 
     let body = artifact_keeper_sdk::types::CreateRuleRequest {
@@ -1346,7 +1347,8 @@ mod tests {
                 "target": "releases",
                 "message": "Promoted successfully",
                 "promotion_id": NIL_UUID,
-                "policy_violations": []
+                "policy_violations": [],
+                "gate_results": []
             })))
             .mount(&server)
             .await;
@@ -1371,7 +1373,8 @@ mod tests {
                 "source": "staging",
                 "target": "releases",
                 "promotion_id": NIL_UUID,
-                "policy_violations": []
+                "policy_violations": [],
+                "gate_results": []
             })))
             .mount(&server)
             .await;
@@ -1897,14 +1900,16 @@ mod tests {
                         "source": "staging",
                         "target": "releases",
                         "promotion_id": NIL_UUID,
-                        "policy_violations": []
+                        "policy_violations": [],
+                        "gate_results": []
                     },
                     {
                         "promoted": true,
                         "source": "staging",
                         "target": "releases",
                         "promotion_id": NIL_UUID,
-                        "policy_violations": []
+                        "policy_violations": [],
+                        "gate_results": []
                     }
                 ]
             })))
@@ -1934,7 +1939,8 @@ mod tests {
                     "source": "staging",
                     "target": "releases",
                     "promotion_id": NIL_UUID,
-                    "policy_violations": []
+                    "policy_violations": [],
+                    "gate_results": []
                 }]
             })))
             .mount(&server)

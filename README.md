@@ -24,18 +24,12 @@ Linux binaries and `.deb`/`.rpm` packages are statically linked against musl and
 brew install artifact-keeper/tap/ak
 ```
 
-### Cargo (from source)
+### From source
 
 Requires Rust 1.88+:
 
 ```bash
-cargo install artifact-keeper-cli
-```
-
-### Docker
-
-```bash
-docker run --rm ghcr.io/artifact-keeper/ak:latest --help
+cargo install --locked --git https://github.com/artifact-keeper/artifact-keeper-cli artifact-keeper-cli
 ```
 
 ### GitHub Releases
@@ -138,6 +132,7 @@ Core
   ak auth          Log in, manage tokens, check identity
   ak repo          List, show, create, and delete repositories
   ak artifact      Push, pull, list, search, copy, and delete artifacts
+  ak api           Send any HTTP request to the instance, with its auth and TLS settings
   ak setup         Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more
   ak doctor        Diagnose configuration and connectivity issues
   ak config        Get/set CLI configuration values

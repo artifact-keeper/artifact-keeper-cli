@@ -6,6 +6,7 @@ use super::client::client_for;
 use super::helpers::{
     confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
+use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -45,7 +46,7 @@ pub enum QualityGateCommand {
         #[arg(long)]
         description: Option<String>,
 
-        /// Bind to a specific repository ID
+        /// Bind to a specific repository key or ID
         #[arg(long)]
         repo: Option<String>,
 
@@ -95,18 +96,18 @@ pub enum QualityGateCommand {
         /// Artifact ID
         artifact: String,
 
-        /// Repository ID (optional)
+        /// Repository key or ID (optional)
         #[arg(long)]
         repo: Option<String>,
     },
 
-    /// List quality checks (optionally filtered by artifact or repository)
+    /// List the quality checks of an artifact
     Checks {
-        /// Filter by artifact ID
+        /// Artifact ID
         #[arg(long)]
-        artifact: Option<String>,
+        artifact: String,
 
-        /// Filter by repository ID
+        /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
     },
@@ -123,7 +124,7 @@ pub enum QualityGateCommand {
         #[arg(long)]
         artifact: Option<String>,
 
-        /// Repository ID to check
+        /// Repository key or ID to check
         #[arg(long)]
         repo: Option<String>,
     },
@@ -218,7 +219,7 @@ impl QualityGateCommand {
                 check_artifact(&artifact, repo.as_deref(), global).await
             }
             Self::Checks { artifact, repo } => {
-                list_checks(artifact.as_deref(), repo.as_deref(), global).await
+                list_checks(&artifact, repo.as_deref(), global).await
             }
             Self::CheckShow { id } => show_check(&id, global).await,
             Self::CheckTrigger { artifact, repo } => {
@@ -403,9 +404,9 @@ async fn create_gate(
     required_checks: Vec<String>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repository_id = parse_optional_uuid(repo_id, "repository")?;
-
     let client = client_for(global)?;
+    let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
+
     let spinner = output::spinner("Creating quality gate...");
 
     let body = artifact_keeper_sdk::types::CreateGateRequest {
@@ -538,7 +539,7 @@ async fn check_artifact(
 
     let mut req = client.evaluate_gate().artifact_id(aid);
     if let Some(rid) = repo_id {
-        req = req.repository_id(parse_uuid(rid, "repository")?);
+        req = req.repository_id(resolve_repo_id(&client, rid).await?);
     }
 
     let result = req
@@ -598,23 +599,16 @@ async fn check_artifact(
 
 // ---- quality checks ----
 
-async fn list_checks(
-    artifact: Option<&str>,
-    repo: Option<&str>,
-    global: &GlobalArgs,
-) -> Result<()> {
-    let artifact_id = parse_optional_uuid(artifact, "artifact")?;
-    let repository_id = parse_optional_uuid(repo, "repository")?;
-
+async fn list_checks(artifact: &str, repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
+    let artifact_id = parse_uuid(artifact, "artifact")?;
+    let repository_id = resolve_optional_repo_id(&client, repo).await?;
+
     let spinner = output::spinner("Fetching quality checks...");
 
-    let mut req = client.list_checks();
-    if let Some(a) = artifact_id {
-        req = req.artifact_id(a);
-    }
-
-    let checks = req
+    let checks = client
+        .list_checks()
+        .artifact_id(artifact_id)
         .send()
         .await
         .map_err(|e| sdk_err("list quality checks", e))?;
@@ -774,10 +768,10 @@ async fn trigger_checks(
     repo: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let artifact_id = parse_optional_uuid(artifact, "artifact")?;
-    let repository_id = parse_optional_uuid(repo, "repository")?;
-
     let client = client_for(global)?;
+    let artifact_id = parse_optional_uuid(artifact, "artifact")?;
+    let repository_id = resolve_optional_repo_id(&client, repo).await?;
+
     let spinner = output::spinner("Triggering quality checks...");
 
     let body = artifact_keeper_sdk::types::TriggerChecksRequest {
@@ -1619,10 +1613,10 @@ mod tests {
 
     #[test]
     fn parse_checks_minimal() {
-        let cli = parse(&["test", "checks"]);
+        let cli = parse(&["test", "checks", "--artifact", "a-id"]);
         match cli.command {
             QualityGateCommand::Checks { artifact, repo } => {
-                assert!(artifact.is_none());
+                assert_eq!(artifact, "a-id");
                 assert!(repo.is_none());
             }
             _ => panic!("expected Checks"),
@@ -1634,7 +1628,7 @@ mod tests {
         let cli = parse(&["test", "checks", "--artifact", "a-id", "--repo", "r-id"]);
         match cli.command {
             QualityGateCommand::Checks { artifact, repo } => {
-                assert_eq!(artifact.as_deref(), Some("a-id"));
+                assert_eq!(artifact, "a-id");
                 assert_eq!(repo.as_deref(), Some("r-id"));
             }
             _ => panic!("expected Checks"),
@@ -1797,7 +1791,7 @@ mod tests {
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         // artifact_id is now a required query parameter.
-        let result = list_checks(Some(NIL_UUID), None, &global).await;
+        let result = list_checks(NIL_UUID, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1814,7 +1808,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_checks(Some(NIL_UUID), None, &global).await;
+        let result = list_checks(NIL_UUID, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

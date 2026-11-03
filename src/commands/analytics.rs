@@ -8,7 +8,8 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::resolve_repo_id;
+use super::helpers::{new_table, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -63,7 +64,7 @@ pub enum AnalyticsCommand {
 
     /// Show download trend for a specific repository
     RepoTrend {
-        /// Repository ID
+        /// Repository key or ID
         id: String,
 
         /// Start date (YYYY-MM-DD)
@@ -290,9 +291,9 @@ async fn repo_trend(
     to: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repo_id = parse_uuid(id, "repository")?;
-
     let client = client_for(global)?;
+    let repo_id = resolve_repo_id(&client, id).await?;
+
     let spinner = output::spinner("Fetching repository trend...");
 
     let mut req = client.get_repository_trend().id(repo_id);
@@ -757,10 +758,12 @@ mod tests {
     fn format_downloads_table_with_data() {
         let items = vec![
             DownloadTrend {
+                proxy_download_count: None,
                 date: NaiveDate::from_ymd_opt(2026, 1, 1).unwrap(),
                 download_count: 42,
             },
             DownloadTrend {
+                proxy_download_count: None,
                 date: NaiveDate::from_ymd_opt(2026, 1, 2).unwrap(),
                 download_count: 100,
             },
@@ -788,6 +791,9 @@ mod tests {
     #[test]
     fn format_storage_table_with_data() {
         let items = vec![RepositoryStorageBreakdown {
+            proxy_artifact_count: None,
+            proxy_download_count: None,
+            proxy_storage_bytes: None,
             repository_id: Uuid::nil(),
             repository_key: "my-npm-repo".to_string(),
             repository_name: "My NPM Repo".to_string(),
@@ -898,6 +904,9 @@ mod tests {
     #[test]
     fn format_storage_trend_table_with_data() {
         let items = vec![StorageSnapshot {
+            proxy_artifact_count: None,
+            proxy_download_count: None,
+            proxy_storage_bytes: None,
             snapshot_date: NaiveDate::from_ymd_opt(2026, 1, 15).unwrap(),
             total_artifacts: 500,
             total_downloads: 10000,
@@ -939,6 +948,9 @@ mod tests {
     #[test]
     fn format_snapshot_detail_populated() {
         let snapshot = StorageSnapshot {
+            proxy_artifact_count: None,
+            proxy_download_count: None,
+            proxy_storage_bytes: None,
             snapshot_date: NaiveDate::from_ymd_opt(2026, 2, 21).unwrap(),
             total_artifacts: 1000,
             total_downloads: 50000,

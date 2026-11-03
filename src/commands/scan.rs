@@ -6,9 +6,8 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
-};
+use super::helpers::resolve_optional_repo_id;
+use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -157,7 +156,7 @@ pub enum ScanPolicyCommand {
         #[arg(long)]
         block_unscanned: bool,
 
-        /// Bind to a specific repository ID
+        /// Bind to a specific repository key or ID
         #[arg(long)]
         repo: Option<String>,
     },
@@ -1058,7 +1057,7 @@ async fn create_policy(
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let repo_id = parse_optional_uuid(repo, "repository")?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
 
     let spinner = crate::output::spinner("Creating security policy...");
 
@@ -1070,6 +1069,7 @@ async fn create_policy(
         repository_id: repo_id,
         max_artifact_age_days: None,
         min_staging_hours: None,
+        predicates: None,
         require_signature: None,
     };
 
@@ -1128,6 +1128,7 @@ async fn update_policy(
         is_enabled: Some(enabled.unwrap_or(existing.is_enabled)),
         max_artifact_age_days: existing.max_artifact_age_days,
         min_staging_hours: existing.min_staging_hours,
+        predicates: existing.predicates,
         require_signature: Some(existing.require_signature),
     };
 
@@ -1282,6 +1283,8 @@ async fn update_repo_security(
         scan_on_upload: Some(scan_on_upload),
         scan_on_proxy: Some(scan_on_proxy),
         block_on_policy_violation: Some(block_on_violation),
+        // Omitted keeps the repository's current action.
+        proxy_scan_action: None,
         severity_threshold: Some(severity_threshold.to_string()),
     };
 
@@ -1408,15 +1411,7 @@ fn format_scores_table(items: &[ScoreResponse]) -> (Vec<Value>, String) {
 
     let table_str = {
         let mut table = new_table(vec![
-            "REPO",
-            "GRADE",
-            "CRITICAL",
-            "HIGH",
-            "MEDIUM",
-            "LOW",
-            "SCANNED",
-            "UNSCANNED",
-            "UPDATED",
+            "REPO", "GRADE", "CRITICAL", "HIGH", "MEDIUM", "LOW", "SCANNED", "OPEN", "UPDATED",
         ]);
 
         for s in items {
@@ -1425,7 +1420,6 @@ fn format_scores_table(items: &[ScoreResponse]) -> (Vec<Value>, String) {
                 .last_scan_at
                 .map(|t| t.format("%Y-%m-%d").to_string())
                 .unwrap_or_else(|| "-".to_string());
-            let unscanned = s.total_findings - s.acknowledged_count;
             table.add_row(vec![
                 &repo_short,
                 &s.grade,
@@ -1434,7 +1428,7 @@ fn format_scores_table(items: &[ScoreResponse]) -> (Vec<Value>, String) {
                 &format_severity_count(s.medium_count, "MEDIUM"),
                 &s.low_count.to_string(),
                 &scanned,
-                &unscanned.to_string(),
+                &s.total_findings.to_string(),
                 &s.calculated_at.format("%Y-%m-%d").to_string(),
             ]);
         }
@@ -2120,6 +2114,7 @@ mod tests {
 
     fn make_test_score(grade: &str, critical: i32, high: i32) -> ScoreResponse {
         ScoreResponse {
+            has_uncataloged_scan: Some(false),
             id: Uuid::nil(),
             repository_id: Uuid::nil(),
             grade: grade.to_string(),
@@ -2138,6 +2133,7 @@ mod tests {
 
     fn make_test_scan_policy(name: &str, max_severity: &str) -> PolicyResponse {
         PolicyResponse {
+            predicates: Default::default(),
             id: Uuid::nil(),
             name: name.to_string(),
             max_severity: max_severity.to_string(),
@@ -2349,7 +2345,8 @@ mod tests {
                     "is_reused": false,
                     "artifact_name": "pkg.jar",
                     "artifact_version": "1.0",
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "scan_completeness": "complete"
                 }],
                 "total": 1_i64
             })))
@@ -2426,7 +2423,8 @@ mod tests {
                     "is_reused": false,
                     "artifact_name": "pkg.jar",
                     "artifact_version": "1.0",
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "scan_completeness": "complete"
                 }],
                 "total": 1_i64
             })))
@@ -2536,7 +2534,8 @@ mod tests {
                     "acknowledged_count": 2,
                     "has_failed_scan": false,
                     "last_scan_at": "2026-01-15T10:00:00Z",
-                    "calculated_at": "2026-01-15T10:00:00Z"
+                    "calculated_at": "2026-01-15T10:00:00Z",
+                    "has_uncataloged_scan": false
                 }])),
             )
             .mount(&server)
@@ -2582,7 +2581,8 @@ mod tests {
                     "block_on_policy_violation": true,
                     "severity_threshold": "HIGH",
                     "created_at": "2026-01-15T10:00:00Z",
-                    "updated_at": "2026-01-15T10:00:00Z"
+                    "updated_at": "2026-01-15T10:00:00Z",
+                    "proxy_scan_action": "fail_open"
                 }])),
             )
             .mount(&server)
@@ -2631,7 +2631,8 @@ mod tests {
                     "max_artifact_age_days": null,
                     "min_staging_hours": null,
                     "created_at": "2026-01-15T10:00:00Z",
-                    "updated_at": "2026-01-15T10:00:00Z"
+                    "updated_at": "2026-01-15T10:00:00Z",
+                    "predicates": {}
                 }])),
             )
             .mount(&server)
@@ -2662,7 +2663,8 @@ mod tests {
                 "max_artifact_age_days": null,
                 "min_staging_hours": null,
                 "created_at": "2026-01-15T10:00:00Z",
-                "updated_at": "2026-01-15T10:00:00Z"
+                "updated_at": "2026-01-15T10:00:00Z",
+                "predicates": {}
             })))
             .mount(&server)
             .await;
@@ -2692,7 +2694,8 @@ mod tests {
                 "max_artifact_age_days": null,
                 "min_staging_hours": null,
                 "created_at": "2026-01-15T10:00:00Z",
-                "updated_at": "2026-01-15T10:00:00Z"
+                "updated_at": "2026-01-15T10:00:00Z",
+                "predicates": {}
             })))
             .mount(&server)
             .await;
@@ -2741,7 +2744,8 @@ mod tests {
                 "is_acknowledged": true,
                 "acknowledged_reason": "Accepted risk",
                 "scan_result_id": "00000000-0000-0000-0000-000000000002",
-                "created_at": "2026-01-15T10:00:00Z"
+                "created_at": "2026-01-15T10:00:00Z",
+                "finding_class": "vulnerability"
             })))
             .mount(&server)
             .await;
@@ -2777,7 +2781,8 @@ mod tests {
                 "is_acknowledged": false,
                 "acknowledged_reason": null,
                 "scan_result_id": "00000000-0000-0000-0000-000000000002",
-                "created_at": "2026-01-15T10:00:00Z"
+                "created_at": "2026-01-15T10:00:00Z",
+                "finding_class": "vulnerability"
             })))
             .mount(&server)
             .await;
@@ -2805,7 +2810,8 @@ mod tests {
                     "block_on_policy_violation": true,
                     "severity_threshold": "HIGH",
                     "created_at": "2026-01-15T10:00:00Z",
-                    "updated_at": "2026-01-15T10:00:00Z"
+                    "updated_at": "2026-01-15T10:00:00Z",
+                    "proxy_scan_action": "fail_open"
                 },
                 "score": {
                     "id": "00000000-0000-0000-0000-000000000003",
@@ -2820,7 +2826,8 @@ mod tests {
                     "acknowledged_count": 2,
                     "has_failed_scan": false,
                     "last_scan_at": "2026-01-15T10:00:00Z",
-                    "calculated_at": "2026-01-15T10:00:00Z"
+                    "calculated_at": "2026-01-15T10:00:00Z",
+                    "has_uncataloged_scan": false
                 }
             })))
             .mount(&server)
@@ -2848,7 +2855,8 @@ mod tests {
                 "block_on_policy_violation": true,
                 "severity_threshold": "CRITICAL",
                 "created_at": "2026-01-15T10:00:00Z",
-                "updated_at": "2026-01-15T12:00:00Z"
+                "updated_at": "2026-01-15T12:00:00Z",
+                "proxy_scan_action": "fail_open"
             })))
             .mount(&server)
             .await;
@@ -2885,7 +2893,8 @@ mod tests {
                 "is_reused": false,
                 "artifact_name": "pkg.jar",
                 "artifact_version": "1.0",
-                "created_at": "2026-01-15T10:00:00Z"
+                "created_at": "2026-01-15T10:00:00Z",
+                "scan_completeness": "complete"
             })))
             .mount(&server)
             .await;
@@ -2907,7 +2916,8 @@ mod tests {
                     "is_acknowledged": false,
                     "acknowledged_reason": null,
                     "scan_result_id": scan_id,
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "finding_class": "vulnerability"
                 }],
                 "total": 1_i64
             })))
@@ -2939,7 +2949,8 @@ mod tests {
                     "analyzable": true,
                     "download_count": 5_i64,
                     "repository_key": "my-repo",
-                    "created_at": "2026-01-15T10:00:00Z"
+                    "created_at": "2026-01-15T10:00:00Z",
+                    "quarantine_status": "not_quarantined"
                 }],
                 "pagination": { "page": 1, "per_page": 1, "total_pages": 1, "total": 1_i64 }
             })))
@@ -2984,7 +2995,8 @@ mod tests {
                 "max_artifact_age_days": null,
                 "min_staging_hours": null,
                 "created_at": "2026-01-15T10:00:00Z",
-                "updated_at": "2026-01-15T10:00:00Z"
+                "updated_at": "2026-01-15T10:00:00Z",
+                "predicates": {}
             })))
             .mount(&server)
             .await;
@@ -3004,7 +3016,8 @@ mod tests {
                 "max_artifact_age_days": null,
                 "min_staging_hours": null,
                 "created_at": "2026-01-15T10:00:00Z",
-                "updated_at": "2026-01-15T12:00:00Z"
+                "updated_at": "2026-01-15T12:00:00Z",
+                "predicates": {}
             })))
             .mount(&server)
             .await;
