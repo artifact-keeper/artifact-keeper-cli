@@ -76,7 +76,7 @@ pub async fn execute(command: MavenCommand, global: &GlobalArgs) -> Result<()> {
     } = command;
     let wire = Wire::new(global)?;
     let upload = Upload::open(&file)?;
-    let content = upload.read()?;
+    let content = upload.read().await?;
 
     if let Some(path) = path {
         put_with_checksums(&wire, &repo, &path, &content).await?;
@@ -109,7 +109,8 @@ pub async fn execute(command: MavenCommand, global: &GlobalArgs) -> Result<()> {
     // A classifier's artifact belongs to a POM that's already there.
     if !is_pom && !no_pom && (classifier.is_none() || pom.is_some()) {
         let pom_body = match &pom {
-            Some(path) => std::fs::read(path)
+            Some(path) => tokio::fs::read(path)
+                .await
                 .map_err(|e| AkError::ConfigError(format!("Can't read {}: {e}", path.display())))?,
             None => minimal_pom(&group, &artifact, &version, &ext).into_bytes(),
         };

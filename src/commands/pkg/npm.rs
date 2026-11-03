@@ -251,7 +251,7 @@ async fn publish(
     })?;
     let manifest: Value = serde_json::from_slice(&manifest)
         .map_err(|e| AkError::ConfigError(format!("The package.json in the tarball: {e}")))?;
-    let tarball = upload.read()?;
+    let tarball = upload.read().await?;
     let tarball_url = wire.url(&[]).to_string();
     let document = publish_document(manifest, &tarball, tag, repo, &tarball_url)?;
     let name = document["name"].as_str().unwrap_or_default().to_string();

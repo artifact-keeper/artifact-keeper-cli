@@ -77,7 +77,7 @@ pub async fn execute(command: CargoCommand, global: &GlobalArgs) -> Result<()> {
     }
     let name = metadata["name"].as_str().unwrap_or_default().to_string();
     let version = metadata["vers"].as_str().unwrap_or_default().to_string();
-    let body = frame(&metadata, &upload.read()?)?;
+    let body = frame(&metadata, &upload.read().await?)?;
     let segments: &[&str] = match endpoint {
         Endpoint::Cargo => &["cargo", &repo, "api", "v1", "crates", "new"],
         Endpoint::ApiCargo => &["api", "cargo", &repo, "api", "v1", "crates", "new"],
