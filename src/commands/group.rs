@@ -4,7 +4,8 @@ use miette::Result;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_uuid, print_page_info, sdk_err, short_id,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, print_page_info,
+    sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -30,6 +31,14 @@ pub enum GroupCommand {
     Show {
         /// Group ID
         id: String,
+
+        /// Most members to include
+        #[arg(long)]
+        member_limit: Option<i64>,
+
+        /// Members to skip
+        #[arg(long)]
+        member_offset: Option<i64>,
     },
 
     /// Create a new group
@@ -92,7 +101,11 @@ impl GroupCommand {
                 page,
                 per_page,
             } => list_groups(search.as_deref(), page, per_page, global).await,
-            Self::Show { id } => show_group(&id, global).await,
+            Self::Show {
+                id,
+                member_limit,
+                member_offset,
+            } => show_group(&id, member_limit, member_offset, global).await,
             Self::Create { name, description } => {
                 create_group(&name, description.as_deref(), global).await
             }
@@ -122,11 +135,12 @@ async fn list_groups(
         req = req.search(s);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("list groups", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list groups", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No groups found.");
         return Ok(());
     }
@@ -173,7 +187,7 @@ async fn list_groups(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     print_page_info(
@@ -186,17 +200,25 @@ async fn list_groups(
     Ok(())
 }
 
-async fn show_group(id: &str, global: &GlobalArgs) -> Result<()> {
+async fn show_group(
+    id: &str,
+    member_limit: Option<i64>,
+    member_offset: Option<i64>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
     let group_id = parse_uuid(id, "group")?;
 
     let spinner = output::spinner("Fetching group...");
-    let group = client
-        .get_group()
-        .id(group_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get group", e))?;
+    let mut req = client.get_group().id(group_id);
+    if let Some(limit) = member_limit {
+        req = req.member_limit(limit);
+    }
+    if let Some(offset) = member_offset {
+        req = req.member_offset(offset);
+    }
+    let (group, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let group = group.map_err(|e| sdk_err("get group", e))?;
     spinner.finish_and_clear();
 
     let info = serde_json::json!({
@@ -223,7 +245,10 @@ async fn show_group(id: &str, global: &GlobalArgs) -> Result<()> {
         group.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -237,16 +262,14 @@ async fn create_group(name: &str, description: Option<&str>, global: &GlobalArgs
         description: description.map(|s| s.to_string()),
     };
 
-    let group = client
-        .create_group()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create group", e))?;
+    let (group, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_group().body(body).send()).await;
+    let group = group.map_err(|e| sdk_err("create group", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*group,
         &group.id.to_string(),
         &format!("Group '{}' created (ID: {}).", group.name, group.id),
@@ -272,17 +295,15 @@ async fn update_group(
         description: description.map(|s| s.to_string()),
     };
 
-    let group = client
-        .update_group()
-        .id(group_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update group", e))?;
+    let (group, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_group().id(group_id).body(body).send())
+            .await;
+    let group = group.map_err(|e| sdk_err("update group", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*group,
         &group.id.to_string(),
         &format!("Group '{}' updated (ID: {}).", group.name, group.id),
@@ -452,7 +473,7 @@ mod tests {
     fn parse_show() {
         let cli = parse(&["test", "show", "00000000-0000-0000-0000-000000000001"]);
         match cli.command {
-            GroupCommand::Show { id } => {
+            GroupCommand::Show { id, .. } => {
                 assert_eq!(id, "00000000-0000-0000-0000-000000000001");
             }
             _ => panic!("expected Show"),
@@ -723,7 +744,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = show_group(NIL_UUID, &global).await;
+        let result = show_group(NIL_UUID, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

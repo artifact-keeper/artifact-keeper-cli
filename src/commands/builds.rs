@@ -84,6 +84,10 @@ pub enum BuildsCommand {
         /// Metadata as a JSON object (e.g. '{"pipeline":"ci"}')
         #[arg(long)]
         metadata: Option<String>,
+
+        /// When the build started, as an RFC 3339 time. Defaults to now on the server
+        #[arg(long)]
+        started_at: Option<chrono::DateTime<chrono::Utc>>,
     },
 
     /// Update build status
@@ -144,6 +148,7 @@ impl BuildsCommand {
                 vcs_url,
                 vcs_message,
                 metadata,
+                started_at,
             } => {
                 create_build(
                     &name,
@@ -154,6 +159,7 @@ impl BuildsCommand {
                     vcs_url.as_deref(),
                     vcs_message.as_deref(),
                     metadata.as_deref(),
+                    started_at,
                     global,
                 )
                 .await
@@ -194,11 +200,12 @@ async fn list_builds(
         req = req.sort_order(o);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("list builds", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list builds", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No builds found.");
         return Ok(());
     }
@@ -258,7 +265,7 @@ async fn list_builds(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     print_page_info(
@@ -277,12 +284,9 @@ async fn show_build(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching build...");
 
-    let build = client
-        .get_build()
-        .id(build_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get build", e))?;
+    let (build, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_build().id(build_id).send()).await;
+    let build = build.map_err(|e| sdk_err("get build", e))?;
 
     spinner.finish_and_clear();
 
@@ -355,7 +359,10 @@ async fn show_build(id: &str, global: &GlobalArgs) -> Result<()> {
         build.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -367,13 +374,10 @@ async fn diff_builds(build_a: &str, build_b: &str, global: &GlobalArgs) -> Resul
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Computing build diff...");
 
-    let diff = client
-        .get_build_diff()
-        .build_a(a)
-        .build_b(b)
-        .send()
-        .await
-        .map_err(|e| sdk_err("diff builds", e))?;
+    let (diff, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_build_diff().build_a(a).build_b(b).send())
+            .await;
+    let diff = diff.map_err(|e| sdk_err("diff builds", e))?;
 
     spinner.finish_and_clear();
 
@@ -437,7 +441,10 @@ async fn diff_builds(build_a: &str, build_b: &str, global: &GlobalArgs) -> Resul
         table.to_string()
     };
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     eprintln!(
         "{} added, {} removed, {} modified.",
@@ -459,6 +466,7 @@ async fn create_build(
     vcs_url: Option<&str>,
     vcs_message: Option<&str>,
     metadata: Option<&str>,
+    started_at: Option<chrono::DateTime<chrono::Utc>>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let metadata_map = parse_metadata(metadata)?;
@@ -474,27 +482,25 @@ async fn create_build(
         vcs_revision: vcs_revision.map(|s| s.to_string()),
         vcs_url: vcs_url.map(|s| s.to_string()),
         vcs_message: vcs_message.map(|s| s.to_string()),
-        started_at: None,
+        started_at,
         metadata: metadata_map,
     };
 
-    let build = client
-        .create_build()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create build", e))?;
+    let (build, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_build().body(body).send()).await;
+    let build = build.map_err(|e| sdk_err("create build", e))?;
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", build.id);
-        return Ok(());
-    }
-
-    eprintln!(
-        "Recorded build '{}' #{} (ID: {}, status: {}).",
-        build.name, build.number, build.id, build.status
+    super::helpers::emit_mutation_raw(
+        raw.as_deref(),
+        &*build,
+        &build.id.to_string(),
+        &format!(
+            "Recorded build '{}' #{} (ID: {}, status: {}).",
+            build.name, build.number, build.id, build.status
+        ),
+        global,
     );
 
     Ok(())
@@ -517,22 +523,20 @@ async fn update_build(
         finished_at: finished,
     };
 
-    let build = client
-        .update_build()
-        .id(build_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update build", e))?;
+    let (build, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_build().id(build_id).body(body).send())
+            .await;
+    let build = build.map_err(|e| sdk_err("update build", e))?;
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", build.id);
-        return Ok(());
-    }
-
-    eprintln!("Build {} updated (status: {}).", build.id, build.status);
+    super::helpers::emit_mutation_raw(
+        raw.as_deref(),
+        &*build,
+        &build.id.to_string(),
+        &format!("Build {} updated (status: {}).", build.id, build.status),
+        global,
+    );
 
     Ok(())
 }
@@ -552,13 +556,11 @@ async fn add_artifacts(id: &str, artifacts: &[String], global: &GlobalArgs) -> R
         artifacts: payloads,
     };
 
-    let resp = client
-        .add_build_artifacts()
-        .id(build_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("add build artifacts", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client.add_build_artifacts().id(build_id).body(body).send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("add build artifacts", e))?;
 
     spinner.finish_and_clear();
 
@@ -569,7 +571,7 @@ async fn add_artifacts(id: &str, artifacts: &[String], global: &GlobalArgs) -> R
         return Ok(());
     }
 
-    if resp.artifacts.is_empty() {
+    if resp.artifacts.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No artifacts attached.");
         return Ok(());
     }
@@ -602,7 +604,7 @@ async fn add_artifacts(id: &str, artifacts: &[String], global: &GlobalArgs) -> R
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} artifact(s) attached.", resp.artifacts.len());
@@ -1104,7 +1106,10 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = create_build("nightly", 42, None, None, None, None, None, None, &global).await;
+        let result = create_build(
+            "nightly", 42, None, None, None, None, None, None, None, &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

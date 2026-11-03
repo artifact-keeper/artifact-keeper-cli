@@ -1,6 +1,6 @@
 //! Fields that a plain backend can't show working, against a mock server. Contract, not
-//! E2E: restoring a backup needs a finished archive, and these others need keys or
-//! groups the E2E stack doesn't set up.
+//! E2E: restoring a backup needs a finished archive, and these others need keys,
+//! groups, remote repositories or peers the E2E stack doesn't set up.
 
 #[path = "common/mock.rs"]
 mod mock;
@@ -212,4 +212,73 @@ async fn webhook_header_needs_a_name_and_a_value() {
     ]);
     assert_eq!(output.status.code(), Some(1));
     assert!(m.server.received_requests().await.unwrap().is_empty());
+}
+
+/// The body doesn't parse as the SDK's type, so these commands fail after sending.
+/// That's fine here: this checks only what was sent.
+#[tokio::test]
+async fn flags_with_no_e2e_reach_the_request() {
+    let m = Mocked::start().await;
+    let unparseable = json!({});
+
+    m.respond(
+        "PUT",
+        "/api/v1/repositories/r/age-gate",
+        200,
+        unparseable.clone(),
+    )
+    .await;
+    m.ak(&[
+        "age-gate",
+        "set",
+        "r",
+        "--min-age-days",
+        "3",
+        "--mode",
+        "published",
+    ]);
+    let (_, body) = m.last("PUT").await;
+    assert_eq!(body["mode"], "published");
+
+    let probe = format!("/api/v1/peers/{ID}/connections/probe");
+    m.respond("POST", &probe, 200, unparseable.clone()).await;
+    m.ak(&[
+        "peer",
+        "test",
+        ID,
+        "--latency-ms",
+        "12",
+        "--bandwidth-estimate-bps",
+        "1000",
+    ]);
+    let (_, body) = m.last("POST").await;
+    assert_eq!(body["latency_ms"], 12);
+    assert_eq!(body["bandwidth_estimate_bps"], 1000);
+
+    let package = format!("/api/v1/packages/{ID}");
+    m.respond("GET", &package, 200, unparseable.clone()).await;
+    m.ak(&["packages", "show", ID, "--repo", "r"]);
+    let (query, _) = m.last("GET").await;
+    assert_eq!(query, vec![("repository_key".to_string(), "r".to_string())]);
+
+    m.respond("GET", "/api/v1/plugins", 200, unparseable.clone())
+        .await;
+    m.ak(&[
+        "admin", "plugins", "list", "--status", "active", "--type", "format",
+    ]);
+    let (query, _) = m.last("GET").await;
+    assert!(
+        query.contains(&("status".to_string(), "active".to_string())),
+        "{query:?}"
+    );
+    assert!(
+        query.contains(&("type".to_string(), "format".to_string())),
+        "{query:?}"
+    );
+
+    let approve = format!("/api/v1/approval/{ID}/approve");
+    m.respond("POST", &approve, 200, unparseable).await;
+    m.ak(&["approval", "approve", ID, "--skip-policy-check"]);
+    let (_, body) = m.last("POST").await;
+    assert_eq!(body["skip_policy_check"], true);
 }

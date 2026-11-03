@@ -10,6 +10,34 @@ use super::helpers::{
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
+/// The scores a gate requires, and where it's enforced.
+#[derive(clap::Args, Default)]
+pub struct GateThresholds {
+    /// Minimum overall health score
+    #[arg(long)]
+    min_health_score: Option<i32>,
+
+    /// Minimum metadata score
+    #[arg(long)]
+    min_metadata_score: Option<i32>,
+
+    /// Minimum quality score
+    #[arg(long)]
+    min_quality_score: Option<i32>,
+
+    /// Minimum security score
+    #[arg(long)]
+    min_security_score: Option<i32>,
+
+    /// Enforce on download (true/false)
+    #[arg(long)]
+    enforce_on_download: Option<bool>,
+
+    /// Enforce on promotion (true/false)
+    #[arg(long)]
+    enforce_on_promotion: Option<bool>,
+}
+
 #[derive(Subcommand)]
 pub enum QualityGateCommand {
     /// List all quality gates
@@ -53,6 +81,9 @@ pub enum QualityGateCommand {
         /// Required checks (comma-separated)
         #[arg(long, value_delimiter = ',')]
         required_checks: Vec<String>,
+
+        #[command(flatten)]
+        thresholds: GateThresholds,
     },
 
     /// Update a quality gate
@@ -79,6 +110,21 @@ pub enum QualityGateCommand {
         /// Enable or disable
         #[arg(long)]
         enabled: Option<bool>,
+
+        /// Maximum medium issues allowed
+        #[arg(long)]
+        max_medium: Option<i32>,
+
+        /// Description
+        #[arg(long)]
+        description: Option<String>,
+
+        /// Required checks (comma-separated), replacing the current ones
+        #[arg(long, value_delimiter = ',')]
+        required_checks: Option<Vec<String>>,
+
+        #[command(flatten)]
+        thresholds: GateThresholds,
     },
 
     /// Delete a quality gate
@@ -197,6 +243,7 @@ impl QualityGateCommand {
                 description,
                 repo,
                 required_checks,
+                thresholds,
             } => {
                 create_gate(
                     &name,
@@ -207,6 +254,7 @@ impl QualityGateCommand {
                     description.as_deref(),
                     repo.as_deref(),
                     required_checks,
+                    thresholds,
                     global,
                 )
                 .await
@@ -218,6 +266,10 @@ impl QualityGateCommand {
                 max_high,
                 action,
                 enabled,
+                max_medium,
+                description,
+                required_checks,
+                thresholds,
             } => {
                 update_gate(
                     &id,
@@ -226,6 +278,12 @@ impl QualityGateCommand {
                     max_high,
                     action.as_deref(),
                     enabled,
+                    GateUpdate {
+                        max_medium,
+                        description,
+                        required_checks,
+                        thresholds,
+                    },
                     global,
                 )
                 .await
@@ -432,6 +490,7 @@ async fn create_gate(
     description: Option<&str>,
     repo_id: Option<&str>,
     required_checks: Vec<String>,
+    thresholds: GateThresholds,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -446,12 +505,12 @@ async fn create_gate(
         max_critical_issues: max_critical,
         max_high_issues: max_high,
         max_medium_issues: max_medium,
-        min_health_score: None,
-        min_metadata_score: None,
-        min_quality_score: None,
-        min_security_score: None,
-        enforce_on_download: None,
-        enforce_on_promotion: None,
+        min_health_score: thresholds.min_health_score,
+        min_metadata_score: thresholds.min_metadata_score,
+        min_quality_score: thresholds.min_quality_score,
+        min_security_score: thresholds.min_security_score,
+        enforce_on_download: thresholds.enforce_on_download,
+        enforce_on_promotion: thresholds.enforce_on_promotion,
         repository_id,
         required_checks,
     };
@@ -473,6 +532,16 @@ async fn create_gate(
     Ok(())
 }
 
+/// The fields of a gate update beyond the common ones.
+#[derive(Default)]
+struct GateUpdate {
+    max_medium: Option<i32>,
+    description: Option<String>,
+    required_checks: Option<Vec<String>>,
+    thresholds: GateThresholds,
+}
+
+#[allow(clippy::too_many_arguments)]
 async fn update_gate(
     id: &str,
     name: Option<&str>,
@@ -480,6 +549,7 @@ async fn update_gate(
     max_high: Option<i32>,
     action: Option<&str>,
     enabled: Option<bool>,
+    update: GateUpdate,
     global: &GlobalArgs,
 ) -> Result<()> {
     let gate_id = parse_uuid(id, "quality gate")?;
@@ -492,16 +562,16 @@ async fn update_gate(
         action: action.map(|s| s.to_string()),
         max_critical_issues: max_critical,
         max_high_issues: max_high,
-        max_medium_issues: None,
+        max_medium_issues: update.max_medium,
         is_enabled: enabled,
-        description: None,
-        enforce_on_download: None,
-        enforce_on_promotion: None,
-        min_health_score: None,
-        min_metadata_score: None,
-        min_quality_score: None,
-        min_security_score: None,
-        required_checks: None,
+        description: update.description,
+        enforce_on_download: update.thresholds.enforce_on_download,
+        enforce_on_promotion: update.thresholds.enforce_on_promotion,
+        min_health_score: update.thresholds.min_health_score,
+        min_metadata_score: update.thresholds.min_metadata_score,
+        min_quality_score: update.thresholds.min_quality_score,
+        min_security_score: update.thresholds.min_security_score,
+        required_checks: update.required_checks,
     };
 
     let (gate, raw) =
@@ -1289,6 +1359,7 @@ mod tests {
                 description,
                 repo,
                 required_checks,
+                ..
             } => {
                 assert_eq!(name, "security-gate");
                 assert!(max_critical.is_none());
@@ -1334,6 +1405,7 @@ mod tests {
                 description,
                 repo,
                 required_checks,
+                ..
             } => {
                 assert_eq!(name, "strict-gate");
                 assert_eq!(max_critical, Some(0));
@@ -1380,6 +1452,7 @@ mod tests {
                 max_high,
                 action,
                 enabled,
+                ..
             } => {
                 assert_eq!(id, "gate-id");
                 assert!(name.is_none());
@@ -1417,6 +1490,7 @@ mod tests {
                 max_high,
                 action,
                 enabled,
+                ..
             } => {
                 assert_eq!(id, "gate-id");
                 assert_eq!(name.as_deref(), Some("new-name"));
@@ -1630,6 +1704,7 @@ mod tests {
             None,
             None,
             vec![],
+            Default::default(),
             &global,
         )
         .await;
@@ -1649,7 +1724,17 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = update_gate(NIL_UUID, Some("renamed"), None, None, None, None, &global).await;
+        let result = update_gate(
+            NIL_UUID,
+            Some("renamed"),
+            None,
+            None,
+            None,
+            None,
+            Default::default(),
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
