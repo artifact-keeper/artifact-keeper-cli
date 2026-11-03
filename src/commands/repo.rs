@@ -9,6 +9,9 @@ use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, raw_err,
     read_inline_or_file, resolve_secret, sdk_err,
 };
+use super::repo_settings::{
+    self, AllowlistCommand, EgressProxyCommand, NpmScopePolicyCommand, UpstreamFilterCommand,
+};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -28,6 +31,10 @@ pub enum RepoCommand {
         /// Search by name
         #[arg(long)]
         search: Option<String>,
+
+        /// Only repositories in this project (ID)
+        #[arg(long)]
+        project: Option<uuid::Uuid>,
 
         /// Page number
         #[arg(long, default_value = "1")]
@@ -256,12 +263,75 @@ pub enum RepoCommand {
         command: PypiTracksCommand,
     },
 
+    /// Manage the package allowlist of a virtual conda repository
+    Allowlist {
+        #[command(subcommand)]
+        command: AllowlistCommand,
+    },
+
+    /// Manage which paths a remote repository may fetch from its upstream
+    UpstreamFilter {
+        #[command(subcommand)]
+        command: UpstreamFilterCommand,
+    },
+
+    /// Manage the outbound proxy of a remote repository
+    EgressProxy {
+        #[command(subcommand)]
+        command: EgressProxyCommand,
+    },
+
+    /// Manage which npm names can resolve through a remote repository
+    NpmScopePolicy {
+        #[command(subcommand)]
+        command: NpmScopePolicyCommand,
+    },
+
+    /// Show what this server's repositories support
+    Capabilities,
+
+    /// Show a repository's storage use, deduplicated
+    Storage {
+        /// Repository key
+        key: String,
+
+        /// Show use per folder rather than the totals
+        #[arg(long)]
+        tree: bool,
+
+        /// Folder to start from
+        #[arg(long, requires = "tree")]
+        prefix: Option<String>,
+
+        /// How many folder levels to show below the start
+        #[arg(long, requires = "tree")]
+        depth: Option<i32>,
+
+        /// The most folders to list
+        #[arg(long, requires = "tree")]
+        limit: Option<i64>,
+    },
+
+    /// Delete a repository's unreferenced storage objects
+    StorageGc {
+        /// Repository key
+        key: String,
+
+        /// Report what would be deleted, without deleting it
+        #[arg(long)]
+        dry_run: bool,
+
+        /// Skip confirmation prompt
+        #[arg(long)]
+        yes: bool,
+    },
+
     /// Set or remove upstream auth for a remote repository
     UpstreamAuth {
         /// Repository key
         key: String,
 
-        /// Auth type: basic, bearer, or none (removes stored auth)
+        /// Auth type: basic, bearer, aws_ecr, aws_codeartifact, or none (removes stored auth)
         #[arg(long = "type", name = "type")]
         auth_type: String,
 
@@ -272,6 +342,19 @@ pub enum RepoCommand {
         /// Password (basic) or token (bearer); prompted if omitted for basic/bearer
         #[arg(long)]
         password: Option<String>,
+
+        /// Read the password or token from stdin
+        #[arg(long = "password-stdin", conflicts_with = "password")]
+        password_stdin: bool,
+
+        /// Provider settings for aws_ecr and aws_codeartifact, as JSON text, @file
+        /// or @-: `{region, domain, domain_owner, duration_seconds, registry_id}`
+        #[arg(long)]
+        aws: Option<String>,
+
+        /// Accept upstream credentials on a public repository (true/false)
+        #[arg(long = "allow-public-with-upstream-credentials")]
+        allow_public_with_upstream_credentials: Option<bool>,
     },
 
     /// Test connectivity to a remote repository's upstream URL
@@ -607,6 +690,7 @@ impl RepoCommand {
                 pkg_format,
                 repo_type,
                 search,
+                project,
                 page,
                 per_page,
             } => {
@@ -614,6 +698,7 @@ impl RepoCommand {
                     pkg_format.as_deref(),
                     repo_type.as_deref(),
                     search.as_deref(),
+                    project,
                     page,
                     per_page,
                     global,
@@ -794,7 +879,52 @@ impl RepoCommand {
                 auth_type,
                 username,
                 password,
-            } => set_upstream_auth(&key, &auth_type, username, password, global).await,
+                password_stdin,
+                aws,
+                allow_public_with_upstream_credentials,
+            } => {
+                let needs_secret = matches!(auth_type.as_str(), "basic" | "bearer");
+                let password = resolve_secret(
+                    password,
+                    password_stdin,
+                    "--password",
+                    needs_secret.then_some("Upstream password/token"),
+                    global.no_input,
+                )?;
+                let aws = aws
+                    .as_deref()
+                    .map(|v| parse_json_arg(v, "--aws"))
+                    .transpose()?;
+                let body = artifact_keeper_sdk::types::UpstreamAuthRequest {
+                    auth_type,
+                    username,
+                    password,
+                    allow_public_with_upstream_credentials,
+                    aws,
+                };
+                set_upstream_auth(&key, body, global).await
+            }
+            Self::Allowlist { command } => command.execute(global).await,
+            Self::UpstreamFilter { command } => command.execute(global).await,
+            Self::EgressProxy { command } => command.execute(global).await,
+            Self::NpmScopePolicy { command } => command.execute(global).await,
+            Self::Capabilities => repo_settings::capabilities(global).await,
+            Self::Storage {
+                key,
+                tree,
+                prefix,
+                depth,
+                limit,
+            } => {
+                if tree {
+                    repo_settings::storage_tree(&key, prefix.as_deref(), depth, limit, global).await
+                } else {
+                    repo_settings::storage(&key, global).await
+                }
+            }
+            Self::StorageGc { key, dry_run, yes } => {
+                repo_settings::storage_gc(&key, dry_run, yes, global).await
+            }
             Self::TestUpstream { key } => test_upstream(&key, global).await,
             Self::Tree {
                 key,
@@ -814,6 +944,7 @@ async fn list_repos(
     format_filter: Option<&str>,
     type_filter: Option<&str>,
     search: Option<&str>,
+    project: Option<uuid::Uuid>,
     page: i32,
     per_page: i32,
     global: &GlobalArgs,
@@ -832,6 +963,9 @@ async fn list_repos(
     }
     if let Some(q) = search {
         req = req.q(q);
+    }
+    if let Some(project) = project {
+        req = req.project(project);
     }
 
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
@@ -910,6 +1044,47 @@ async fn list_repos(
     Ok(())
 }
 
+/// Send a request over raw HTTP and return the body of a success response, for
+/// what the SDK can't do: send a `null`, or keep a body its spec doesn't describe.
+async fn raw_json_call(
+    method: reqwest::Method,
+    segments: &[&str],
+    body: Option<&serde_json::Value>,
+    action: &str,
+    global: &GlobalArgs,
+) -> Result<Vec<u8>> {
+    let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
+    let mut url = reqwest::Url::parse(&base_url)
+        .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
+    url.path_segments_mut()
+        .map_err(|_| AkError::ConfigError(format!("Invalid instance URL: {base_url}")))?
+        .pop_if_empty()
+        .extend(["api", "v1"])
+        .extend(segments);
+
+    let mut request = super::client::raw_http_client()?
+        .request(method, url)
+        .header(reqwest::header::AUTHORIZATION, auth_header);
+    if let Some(body) = body {
+        request = request.json(body);
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Failed to {action}: {e}")))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let text = response.text().await.unwrap_or_default();
+        return Err(raw_err(&format!("Failed to {action}"), status, &text).into());
+    }
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Failed to {action}: {e}")))?;
+    Ok(bytes.to_vec())
+}
+
 /// PATCH a repository with fields set to `null`, which is how the API clears
 /// them. The SDK's types can't say this: they leave a `None` out, and leaving a
 /// field out means "keep it".
@@ -926,35 +1101,17 @@ async fn patch_with_nulls(
     for field in clear {
         json[*field] = serde_json::Value::Null;
     }
-
-    let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
-    let mut url = reqwest::Url::parse(&base_url)
-        .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
-    url.path_segments_mut()
-        .map_err(|_| AkError::ConfigError(format!("Invalid instance URL: {base_url}")))?
-        .pop_if_empty()
-        .extend(["api", "v1", "repositories", key]);
-
-    let response = super::client::raw_http_client()?
-        .patch(url)
-        .header(reqwest::header::AUTHORIZATION, auth_header)
-        .json(&json)
-        .send()
-        .await
-        .map_err(|e| AkError::NetworkError(format!("Failed to update repository: {e}")))?;
-
-    let status = response.status();
-    if !status.is_success() {
-        let text = response.text().await.unwrap_or_default();
-        return Err(raw_err("Failed to update repository", status, &text).into());
-    }
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| AkError::NetworkError(format!("Failed to update repository: {e}")))?;
+    let bytes = raw_json_call(
+        reqwest::Method::PATCH,
+        &["repositories", key],
+        Some(&json),
+        "update repository",
+        global,
+    )
+    .await?;
     let parsed = serde_json::from_slice(&bytes)
         .map_err(|e| AkError::ServerError(format!("Invalid update response: {e}")))?;
-    Ok((parsed, Some(bytes.to_vec())))
+    Ok((parsed, Some(bytes)))
 }
 
 /// The size to show for a repository. A virtual repository stores nothing of
@@ -1410,17 +1567,15 @@ async fn add_member(
         priority,
     };
 
-    let resp = client
-        .add_virtual_member()
-        .key(key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("add virtual member", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.add_virtual_member().key(key).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("add virtual member", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*resp,
         &resp.member_repo_key,
         &format!(
@@ -1474,15 +1629,17 @@ async fn reorder_members(key: &str, members: &[String], global: &GlobalArgs) -> 
     let client = client_for(global)?;
     let spinner = output::spinner("Reordering members...");
 
-    let resp = client
-        .update_virtual_members()
-        .key(key)
-        .body(artifact_keeper_sdk::types::UpdateVirtualMembersRequest {
-            members: priorities,
-        })
-        .send()
-        .await
-        .map_err(|e| sdk_err("reorder virtual members", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .update_virtual_members()
+            .key(key)
+            .body(artifact_keeper_sdk::types::UpdateVirtualMembersRequest {
+                members: priorities,
+            })
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("reorder virtual members", e))?;
 
     spinner.finish_and_clear();
 
@@ -1493,7 +1650,8 @@ async fn reorder_members(key: &str, members: &[String], global: &GlobalArgs) -> 
         })).collect::<Vec<_>>(),
     });
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &info,
         key,
         &format!("Reordered {} member(s) on '{key}'.", resp.members.len()),
@@ -1507,16 +1665,13 @@ async fn get_routing_rules(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching routing rules...");
 
-    let resp = client
-        .get_routing_rules()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get routing rules", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_routing_rules().key(key).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get routing rules", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.rules.is_empty() {
+    if resp.rules.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No routing rules on repository '{key}'.");
         return Ok(());
     }
@@ -1542,7 +1697,7 @@ async fn get_routing_rules(key: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1565,13 +1720,15 @@ async fn set_routing_rules(key: &str, rules: &[String], global: &GlobalArgs) -> 
     let client = client_for(global)?;
     let spinner = output::spinner("Setting routing rules...");
 
-    let resp = client
-        .set_routing_rules()
-        .key(key)
-        .body(artifact_keeper_sdk::types::SetRoutingRulesRequest { rules: parsed })
-        .send()
-        .await
-        .map_err(|e| sdk_err("set routing rules", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .set_routing_rules()
+            .key(key)
+            .body(artifact_keeper_sdk::types::SetRoutingRulesRequest { rules: parsed })
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("set routing rules", e))?;
 
     spinner.finish_and_clear();
 
@@ -1583,7 +1740,8 @@ async fn set_routing_rules(key: &str, rules: &[String], global: &GlobalArgs) -> 
         })).collect::<Vec<_>>(),
     });
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &info,
         &resp.repository_key,
         &format!("Set {} routing rule(s) on '{key}'.", resp.rules.len()),
@@ -1602,16 +1760,19 @@ async fn delete_routing_rules(key: &str, skip_confirm: bool, global: &GlobalArgs
         return Ok(());
     }
 
-    let client = client_for(global)?;
+    // Raw: the spec gives this route no response body, so the SDK drops the one
+    // the server sends.
+    let raw = raw_json_call(
+        reqwest::Method::DELETE,
+        &["repositories", key, "routing-rules"],
+        None,
+        "delete routing rules",
+        global,
+    )
+    .await?;
 
-    client
-        .delete_routing_rules()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("delete routing rules", e))?;
-
-    emit_mutation(
+    emit_mutation_raw(
+        Some(&raw),
         &serde_json::json!({ "key": key, "status": "deleted" }),
         key,
         &format!("Deleted routing rules for '{key}'."),
@@ -1624,12 +1785,9 @@ async fn delete_routing_rules(key: &str, skip_confirm: bool, global: &GlobalArgs
 async fn get_cache_ttl(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
-    let resp = client
-        .get_cache_ttl()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get cache TTL", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_cache_ttl().key(key).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get cache TTL", e))?;
 
     let info = serde_json::json!({
         "repository_key": resp.repository_key,
@@ -1641,7 +1799,10 @@ async fn get_cache_ttl(key: &str, global: &GlobalArgs) -> Result<()> {
         resp.repository_key, resp.cache_ttl_seconds
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1649,22 +1810,25 @@ async fn get_cache_ttl(key: &str, global: &GlobalArgs) -> Result<()> {
 async fn set_cache_ttl(key: &str, seconds: i64, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
-    let resp = client
-        .set_cache_ttl()
-        .key(key)
-        .body(artifact_keeper_sdk::types::SetCacheTtlRequest {
-            cache_ttl_seconds: seconds,
-        })
-        .send()
-        .await
-        .map_err(|e| sdk_err("set cache TTL", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .set_cache_ttl()
+            .key(key)
+            .body(artifact_keeper_sdk::types::SetCacheTtlRequest {
+                cache_ttl_seconds: seconds,
+            })
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("set cache TTL", e))?;
 
     let info = serde_json::json!({
         "repository_key": resp.repository_key,
         "cache_ttl_seconds": resp.cache_ttl_seconds,
     });
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &info,
         &resp.repository_key,
         &format!(
@@ -1680,13 +1844,10 @@ async fn set_cache_ttl(key: &str, seconds: i64, global: &GlobalArgs) -> Result<(
 async fn invalidate_cache(key: &str, path: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
-    let resp = client
-        .invalidate_cache()
-        .key(key)
-        .path(path)
-        .send()
-        .await
-        .map_err(|e| sdk_err("invalidate cache", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.invalidate_cache().key(key).path(path).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("invalidate cache", e))?;
 
     let info = serde_json::json!({
         "repository_key": resp.repository_key,
@@ -1694,7 +1855,8 @@ async fn invalidate_cache(key: &str, path: &str, global: &GlobalArgs) -> Result<
         "invalidated": resp.invalidated,
     });
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &info,
         &resp.path,
         &format!(
@@ -1711,16 +1873,13 @@ async fn list_pypi_tracks(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching PyPI tracks...");
 
-    let resp = client
-        .list_pypi_tracks()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list PyPI tracks", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_pypi_tracks().key(key).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list PyPI tracks", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No PyPI tracks declared on repository '{key}'.");
         return Ok(());
     }
@@ -1754,7 +1913,7 @@ async fn list_pypi_tracks(key: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1768,16 +1927,18 @@ async fn put_pypi_track(
 ) -> Result<()> {
     let client = client_for(global)?;
 
-    let resp = client
-        .put_pypi_track()
-        .key(key)
-        .project(project)
-        .body(artifact_keeper_sdk::types::PypiTrackRequest {
-            tracks_url: tracks_url.to_string(),
-        })
-        .send()
-        .await
-        .map_err(|e| sdk_err("set PyPI track", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .put_pypi_track()
+            .key(key)
+            .project(project)
+            .body(artifact_keeper_sdk::types::PypiTrackRequest {
+                tracks_url: tracks_url.to_string(),
+            })
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("set PyPI track", e))?;
 
     let info = serde_json::json!({
         "normalized_name": resp.normalized_name,
@@ -1785,7 +1946,8 @@ async fn put_pypi_track(
         "repository_key": resp.repository_key,
     });
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &info,
         &resp.normalized_name,
         &format!(
@@ -1821,38 +1983,21 @@ async fn delete_pypi_track(key: &str, project: &str, global: &GlobalArgs) -> Res
 
 async fn set_upstream_auth(
     key: &str,
-    auth_type: &str,
-    username: Option<String>,
-    password: Option<String>,
+    body: artifact_keeper_sdk::types::UpstreamAuthRequest,
     global: &GlobalArgs,
 ) -> Result<()> {
-    // Prompt for the secret when setting basic/bearer auth and none was provided.
-    let password = match password {
-        Some(p) => Some(p),
-        None if matches!(auth_type, "basic" | "bearer") && !global.no_input => Some(
-            dialoguer::Password::new()
-                .with_prompt("Upstream password/token")
-                .interact()
-                .into_diagnostic()?,
-        ),
-        None => None,
-    };
-
-    let client = client_for(global)?;
-
-    client
-        .set_upstream_auth()
-        .key(key)
-        .body(artifact_keeper_sdk::types::UpstreamAuthRequest {
-            auth_type: auth_type.to_string(),
-            username,
-            password,
-            allow_public_with_upstream_credentials: None,
-            aws: None,
-        })
-        .send()
-        .await
-        .map_err(|e| sdk_err("set upstream auth", e))?;
+    let auth_type = body.auth_type.clone();
+    let json = serde_json::to_value(&body).into_diagnostic()?;
+    // Raw: the spec gives this route no response body, so the SDK drops the one
+    // the server sends.
+    let raw = raw_json_call(
+        reqwest::Method::PUT,
+        &["repositories", key, "upstream-auth"],
+        Some(&json),
+        "set upstream auth",
+        global,
+    )
+    .await?;
 
     let action = if auth_type == "none" {
         format!("Removed upstream auth from '{key}'.")
@@ -1860,7 +2005,8 @@ async fn set_upstream_auth(
         format!("Set upstream auth ({auth_type}) on '{key}'.")
     };
 
-    emit_mutation(
+    emit_mutation_raw(
+        Some(&raw),
         &serde_json::json!({ "key": key, "auth_type": auth_type }),
         key,
         &action,
@@ -1871,19 +2017,23 @@ async fn set_upstream_auth(
 }
 
 async fn test_upstream(key: &str, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
     let spinner = output::spinner("Testing upstream connectivity...");
 
-    client
-        .test_upstream()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("test upstream", e))?;
-
+    // Raw: the spec gives this route no response body, so the SDK drops the one
+    // the server sends.
+    let raw = raw_json_call(
+        reqwest::Method::POST,
+        &["repositories", key, "test-upstream"],
+        None,
+        "test upstream",
+        global,
+    )
+    .await;
     spinner.finish_and_clear();
+    let raw = raw?;
 
-    emit_mutation(
+    emit_mutation_raw(
+        Some(&raw),
         &serde_json::json!({ "key": key, "upstream": "reachable" }),
         key,
         &format!("Upstream for '{key}' is reachable."),
@@ -1910,11 +2060,12 @@ async fn browse_tree(
         req = req.include_metadata(true);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("browse tree", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("browse tree", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.nodes.is_empty() {
+    if resp.nodes.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No nodes under '{key}'.");
         return Ok(());
     }
@@ -1956,7 +2107,7 @@ async fn browse_tree(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -2031,6 +2182,7 @@ mod tests {
             search,
             page,
             per_page,
+            ..
         } = cli.command
         {
             assert!(pkg_format.is_none());
@@ -2106,6 +2258,7 @@ mod tests {
             search,
             page,
             per_page,
+            ..
         } = cli.command
         {
             assert_eq!(pkg_format.as_deref(), Some("maven"));
@@ -2472,6 +2625,7 @@ mod tests {
             auth_type,
             username,
             password,
+            ..
         } = cli.command
         {
             assert_eq!(key, "r");
@@ -2629,7 +2783,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_repos(None, None, None, 1, 50, &global).await;
+        let result = list_repos(None, None, None, None, 1, 50, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2649,7 +2803,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_repos(None, None, None, 1, 50, &global).await;
+        let result = list_repos(None, None, None, None, 1, 50, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2669,7 +2823,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = list_repos(None, None, None, 1, 50, &global).await;
+        let result = list_repos(None, None, None, None, 1, 50, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -3078,9 +3232,14 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
         assert!(
-            set_upstream_auth("remote", "bearer", None, Some("tok".into()), &global)
-                .await
-                .is_ok()
+            set_upstream_auth(
+                "remote",
+                serde_json::from_value(json!({"auth_type": "bearer", "password": "tok"}))
+                    .expect("valid request"),
+                &global,
+            )
+            .await
+            .is_ok()
         );
         assert!(test_upstream("remote", &global).await.is_ok());
         crate::test_utils::teardown_env();
