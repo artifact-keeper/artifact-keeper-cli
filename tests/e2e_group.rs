@@ -58,3 +58,45 @@ fn group_create_show_delete_lifecycle() {
         .assert()
         .success();
 }
+
+fn json_of(cmd: &mut assert_cmd::Command) -> serde_json::Value {
+    let output = cmd.output().expect("run ak");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    serde_json::from_slice(&output.stdout).expect("JSON")
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn show_pages_through_members() {
+    let env = common::TestEnv::setup();
+    let name = format!("e2e-group-pages-{}", std::process::id());
+    let group = json_of(env.ak_cmd().args(["group", "create", &name]));
+    let id = group["id"].as_str().unwrap().to_string();
+    let me = json_of(env.ak_cmd().args(["auth", "whoami"]));
+    let me = me["id"].as_str().unwrap().to_string();
+    env.ak_cmd()
+        .args(["group", "add-member", &id, &me])
+        .assert()
+        .success();
+    let all = json_of(env.ak_cmd().args(["group", "show", &id]));
+    assert_eq!(all["members"].as_array().unwrap().len(), 1, "{all}");
+    // Past the end there are no members, though the total still counts one.
+    let past = json_of(env.ak_cmd().args([
+        "group",
+        "show",
+        &id,
+        "--member-limit",
+        "1",
+        "--member-offset",
+        "1",
+    ]));
+    assert!(past["members"].as_array().unwrap().is_empty(), "{past}");
+    env.ak_cmd()
+        .args(["group", "delete", &id, "--yes"])
+        .assert()
+        .success();
+}

@@ -3,6 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
+use super::helpers::emit_mutation_raw;
 use super::helpers::{new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -64,6 +65,10 @@ pub enum ApprovalCommand {
         /// Review notes
         #[arg(long)]
         comment: Option<String>,
+
+        /// Skip the promotion policy check
+        #[arg(long)]
+        skip_policy_check: bool,
     },
 
     /// Reject a pending promotion
@@ -74,6 +79,10 @@ pub enum ApprovalCommand {
         /// Review notes
         #[arg(long)]
         comment: Option<String>,
+
+        /// Skip the promotion policy check
+        #[arg(long)]
+        skip_policy_check: bool,
     },
 }
 
@@ -104,12 +113,16 @@ impl ApprovalCommand {
                 .await
             }
             Self::Show { id } => show_approval(&id, global).await,
-            Self::Approve { id, comment } => {
-                review_promotion(&id, comment.as_deref(), true, global).await
-            }
-            Self::Reject { id, comment } => {
-                review_promotion(&id, comment.as_deref(), false, global).await
-            }
+            Self::Approve {
+                id,
+                comment,
+                skip_policy_check,
+            } => review_promotion(&id, comment.as_deref(), true, skip_policy_check, global).await,
+            Self::Reject {
+                id,
+                comment,
+                skip_policy_check,
+            } => review_promotion(&id, comment.as_deref(), false, skip_policy_check, global).await,
         }
     }
 }
@@ -125,7 +138,7 @@ async fn list_approvals(
     let spinner = output::spinner("Fetching approvals...");
 
     // Use history endpoint when filtering by status, pending endpoint otherwise
-    let resp = if status.is_some() {
+    let (resp, raw) = if status.is_some() {
         let mut req = client.list_approval_history().page(page).per_page(per_page);
         if let Some(s) = status {
             req = req.status(s);
@@ -133,7 +146,7 @@ async fn list_approvals(
         if let Some(r) = repo {
             req = req.source_repository(r);
         }
-        req.send().await.map_err(|e| sdk_err("list approvals", e))?
+        artifact_keeper_sdk::raw::capture(req.send()).await
     } else {
         let mut req = client
             .list_pending_approvals()
@@ -142,12 +155,13 @@ async fn list_approvals(
         if let Some(r) = repo {
             req = req.source_repository(r);
         }
-        req.send().await.map_err(|e| sdk_err("list approvals", e))?
+        artifact_keeper_sdk::raw::capture(req.send()).await
     };
+    let resp = resp.map_err(|e| sdk_err("list approvals", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No approvals found.");
         return Ok(());
     }
@@ -195,7 +209,7 @@ async fn list_approvals(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     if resp.pagination.total_pages > 1 {
@@ -229,11 +243,9 @@ async fn request_approval(
         skip_policy_check: skip_policy_check.then_some(true),
     };
 
-    let approval = client
-        .request_approval()
-        .body(body)
-        .send()
-        .await
+    let (approval, raw) =
+        artifact_keeper_sdk::raw::capture(client.request_approval().body(body).send()).await;
+    let approval = approval
         .map_err(|e| sdk_err("request approval", e))?
         .into_inner();
 
@@ -259,7 +271,10 @@ async fn request_approval(
     });
 
     let table_str = format_approval_detail(&info);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -270,12 +285,9 @@ async fn show_approval(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching approval...");
 
-    let approval = client
-        .get_approval()
-        .id(approval_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get approval", e))?;
+    let (approval, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_approval().id(approval_id).send()).await;
+    let approval = approval.map_err(|e| sdk_err("get approval", e))?;
 
     spinner.finish_and_clear();
 
@@ -324,7 +336,10 @@ async fn show_approval(id: &str, global: &GlobalArgs) -> Result<()> {
         approval.review_notes.as_deref().unwrap_or("-"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -360,6 +375,7 @@ async fn review_promotion(
     id: &str,
     comment: Option<&str>,
     approve: bool,
+    skip_policy_check: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
     let approval_id = parse_uuid(id, "approval")?;
@@ -370,32 +386,33 @@ async fn review_promotion(
 
     let body = artifact_keeper_sdk::types::ReviewRequest {
         notes: comment.map(|s| s.to_string()),
-        skip_policy_check: None,
+        skip_policy_check: skip_policy_check.then_some(true),
     };
 
-    let resp = if approve {
-        client
-            .approve_promotion()
-            .id(approval_id)
-            .body(body)
-            .send()
-            .await
-            .map_err(|e| sdk_err("approve promotion", e))?
+    let (resp, raw) = if approve {
+        artifact_keeper_sdk::raw::capture(
+            client.approve_promotion().id(approval_id).body(body).send(),
+        )
+        .await
     } else {
-        client
-            .reject_promotion()
-            .id(approval_id)
-            .body(body)
-            .send()
-            .await
-            .map_err(|e| sdk_err("reject promotion", e))?
+        artifact_keeper_sdk::raw::capture(
+            client.reject_promotion().id(approval_id).body(body).send(),
+        )
+        .await
     };
+    let resp = resp.map_err(|e| sdk_err("review promotion", e))?;
 
     spinner.finish_and_clear();
     let verb = if approve { "approved" } else { "rejected" };
-    eprintln!(
-        "Approval {} {verb} (artifact {} -> {}).",
-        resp.id, resp.source_repository, resp.target_repository
+    emit_mutation_raw(
+        raw.as_deref(),
+        &*resp,
+        &resp.id.to_string(),
+        &format!(
+            "Approval {} {verb} (artifact {} -> {}).",
+            resp.id, resp.source_repository, resp.target_repository
+        ),
+        global,
     );
 
     Ok(())
@@ -559,7 +576,7 @@ mod tests {
     fn parse_approve_no_comment() {
         let cli = parse(&["test", "approve", "some-id"]);
         match cli.command {
-            ApprovalCommand::Approve { id, comment } => {
+            ApprovalCommand::Approve { id, comment, .. } => {
                 assert_eq!(id, "some-id");
                 assert!(comment.is_none());
             }
@@ -571,7 +588,7 @@ mod tests {
     fn parse_approve_with_comment() {
         let cli = parse(&["test", "approve", "some-id", "--comment", "Looks good"]);
         match cli.command {
-            ApprovalCommand::Approve { id, comment } => {
+            ApprovalCommand::Approve { id, comment, .. } => {
                 assert_eq!(id, "some-id");
                 assert_eq!(comment.as_deref(), Some("Looks good"));
             }
@@ -591,7 +608,7 @@ mod tests {
     fn parse_reject_no_comment() {
         let cli = parse(&["test", "reject", "some-id"]);
         match cli.command {
-            ApprovalCommand::Reject { id, comment } => {
+            ApprovalCommand::Reject { id, comment, .. } => {
                 assert_eq!(id, "some-id");
                 assert!(comment.is_none());
             }
@@ -609,7 +626,7 @@ mod tests {
             "Needs security review",
         ]);
         match cli.command {
-            ApprovalCommand::Reject { id, comment } => {
+            ApprovalCommand::Reject { id, comment, .. } => {
                 assert_eq!(id, "some-id");
                 assert_eq!(comment.as_deref(), Some("Needs security review"));
             }
@@ -876,7 +893,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = review_promotion(NIL_UUID, Some("LGTM"), true, &global).await;
+        let result = review_promotion(NIL_UUID, Some("LGTM"), true, false, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -896,7 +913,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = review_promotion(NIL_UUID, Some("Needs changes"), false, &global).await;
+        let result = review_promotion(NIL_UUID, Some("Needs changes"), false, false, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

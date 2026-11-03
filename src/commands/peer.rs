@@ -10,7 +10,9 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::resolve_repo_id;
-use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -25,6 +27,14 @@ pub enum PeerCommand {
         /// Filter by region
         #[arg(long)]
         region: Option<String>,
+
+        /// Page number
+        #[arg(long)]
+        page: Option<i32>,
+
+        /// Results per page
+        #[arg(long)]
+        per_page: Option<i32>,
     },
 
     /// Show peer instance details
@@ -42,9 +52,22 @@ pub enum PeerCommand {
         #[arg(long)]
         url: String,
 
-        /// API key for authenticating with the peer
+        /// API key for authenticating with the peer. Prefer --api-key-stdin or
+        /// AK_PEER_API_KEY
+        #[arg(long, env = "AK_PEER_API_KEY", hide_env_values = true)]
+        api_key: Option<String>,
+
+        /// Read the API key from stdin
         #[arg(long)]
-        api_key: String,
+        api_key_stdin: bool,
+
+        /// Cache size to give the peer, in bytes
+        #[arg(long)]
+        cache_size_bytes: Option<i64>,
+
+        /// Which artifacts to sync, as a JSON object: the text, @file or @-
+        #[arg(long)]
+        sync_filter: Option<String>,
 
         /// Geographic region of the peer
         #[arg(long)]
@@ -65,6 +88,14 @@ pub enum PeerCommand {
     Test {
         /// Peer ID
         id: String,
+
+        /// Latency to report for the probe, in milliseconds
+        #[arg(long, default_value_t = 0)]
+        latency_ms: i32,
+
+        /// Bandwidth estimate to report, in bits per second
+        #[arg(long)]
+        bandwidth_estimate_bps: Option<i64>,
     },
 
     /// Trigger sync for a peer instance
@@ -81,6 +112,18 @@ pub enum PeerCommand {
         /// Filter by task status
         #[arg(long)]
         status: Option<String>,
+
+        /// Filter by region
+        #[arg(long)]
+        region: Option<String>,
+
+        /// Page number
+        #[arg(long)]
+        page: Option<i32>,
+
+        /// Results per page
+        #[arg(long)]
+        per_page: Option<i32>,
     },
 
     /// Announce this instance to a federation (self-registration)
@@ -239,6 +282,10 @@ pub enum PeerSubscriptionCommand {
         /// Enable sync for this subscription
         #[arg(long)]
         sync_enabled: Option<bool>,
+
+        /// Which artifacts to replicate, as a JSON object: the text, @file or @-
+        #[arg(long)]
+        replication_filter: Option<String>,
     },
 
     /// Unassign a repository from a peer
@@ -464,20 +511,72 @@ pub enum PeerTransferCommand {
 impl PeerCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
-            Self::List { status, region } => {
-                list_peers(status.as_deref(), region.as_deref(), global).await
-            }
+            Self::List {
+                status,
+                region,
+                page,
+                per_page,
+            } => list_peers(status.as_deref(), region.as_deref(), page, per_page, global).await,
             Self::Show { id } => show_peer(&id, global).await,
             Self::Register {
                 name,
                 url,
                 api_key,
+                api_key_stdin,
+                cache_size_bytes,
+                sync_filter,
                 region,
-            } => register_peer(&name, &url, &api_key, region.as_deref(), global).await,
+            } => {
+                let api_key = super::helpers::require_secret(
+                    super::helpers::resolve_secret(
+                        api_key,
+                        api_key_stdin,
+                        "--api-key",
+                        Some("Peer API key"),
+                        global.no_input,
+                    )?,
+                    "The peer's API key",
+                    "--api-key-stdin or AK_PEER_API_KEY",
+                )?;
+                let sync_filter = sync_filter
+                    .map(|value| super::helpers::parse_json_arg(&value, "--sync-filter"))
+                    .transpose()?
+                    .unwrap_or_default();
+                register_peer(
+                    &name,
+                    &url,
+                    &api_key,
+                    region.as_deref(),
+                    cache_size_bytes,
+                    sync_filter,
+                    global,
+                )
+                .await
+            }
             Self::Unregister { id, yes } => unregister_peer(&id, yes, global).await,
-            Self::Test { id } => test_peer(&id, global).await,
+            Self::Test {
+                id,
+                latency_ms,
+                bandwidth_estimate_bps,
+            } => test_peer(&id, latency_ms, bandwidth_estimate_bps, global).await,
             Self::Sync { id } => sync_peer(&id, global).await,
-            Self::Tasks { id, status } => list_tasks(&id, status.as_deref(), global).await,
+            Self::Tasks {
+                id,
+                status,
+                region,
+                page,
+                per_page,
+            } => {
+                list_tasks(
+                    &id,
+                    status.as_deref(),
+                    region.as_deref(),
+                    page,
+                    per_page,
+                    global,
+                )
+                .await
+            }
             Self::Announce {
                 name,
                 url,
@@ -539,6 +638,7 @@ impl PeerSubscriptionCommand {
                 mode,
                 schedule,
                 sync_enabled,
+                replication_filter,
             } => {
                 assign_repo(
                     &id,
@@ -546,6 +646,7 @@ impl PeerSubscriptionCommand {
                     mode.as_deref(),
                     schedule.as_deref(),
                     sync_enabled,
+                    replication_filter.as_deref(),
                     global,
                 )
                 .await
@@ -637,7 +738,13 @@ impl PeerTransferCommand {
     }
 }
 
-async fn list_peers(status: Option<&str>, region: Option<&str>, global: &GlobalArgs) -> Result<()> {
+async fn list_peers(
+    status: Option<&str>,
+    region: Option<&str>,
+    page: Option<i32>,
+    per_page: Option<i32>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching peers...");
 
@@ -648,12 +755,19 @@ async fn list_peers(status: Option<&str>, region: Option<&str>, global: &GlobalA
     if let Some(r) = region {
         req = req.region(r);
     }
+    if let Some(page) = page {
+        req = req.page(page);
+    }
+    if let Some(per_page) = per_page {
+        req = req.per_page(per_page);
+    }
 
-    let resp = req.send().await.map_err(|e| sdk_err("list peers", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list peers", e))?;
     let list = resp.into_inner();
     spinner.finish_and_clear();
 
-    if list.items.is_empty() {
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No peers found.");
         return Ok(());
     }
@@ -668,7 +782,7 @@ async fn list_peers(status: Option<&str>, region: Option<&str>, global: &GlobalA
     let (entries, table_str) = format_peers_table(&list.items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -680,17 +794,16 @@ async fn show_peer(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching peer...");
 
-    let peer = client
-        .get_peer()
-        .id(peer_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get peer", e))?;
+    let (peer, raw) = artifact_keeper_sdk::raw::capture(client.get_peer().id(peer_id).send()).await;
+    let peer = peer.map_err(|e| sdk_err("get peer", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = format_peer_detail(&peer);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -700,6 +813,8 @@ async fn register_peer(
     url: &str,
     api_key: &str,
     region: Option<&str>,
+    cache_size_bytes: Option<i64>,
+    sync_filter: serde_json::Map<String, serde_json::Value>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -710,20 +825,18 @@ async fn register_peer(
         endpoint_url: url.to_string(),
         api_key: api_key.to_string(),
         region: region.map(|r| r.to_string()),
-        sync_filter: serde_json::Map::new(),
-        cache_size_bytes: None,
+        sync_filter,
+        cache_size_bytes,
     };
 
-    let peer = client
-        .register_peer()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("register peer", e))?;
+    let (peer, raw) =
+        artifact_keeper_sdk::raw::capture(client.register_peer().body(body).send()).await;
+    let peer = peer.map_err(|e| sdk_err("register peer", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*peer,
         &peer.id.to_string(),
         &format!("Peer '{}' registered (ID: {}).", peer.name, peer.id),
@@ -765,7 +878,12 @@ async fn unregister_peer(id: &str, skip_confirm: bool, global: &GlobalArgs) -> R
     Ok(())
 }
 
-async fn test_peer(id: &str, global: &GlobalArgs) -> Result<()> {
+async fn test_peer(
+    id: &str,
+    latency_ms: i32,
+    bandwidth_estimate_bps: Option<i64>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let peer_id = parse_uuid(id, "peer")?;
 
     let client = client_for(global)?;
@@ -773,17 +891,13 @@ async fn test_peer(id: &str, global: &GlobalArgs) -> Result<()> {
 
     let body = artifact_keeper_sdk::types::ProbeBody {
         target_peer_id: peer_id,
-        latency_ms: 0,
-        bandwidth_estimate_bps: None,
+        latency_ms,
+        bandwidth_estimate_bps,
     };
 
-    let probe = client
-        .probe_peer()
-        .id(peer_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("test peer connectivity", e))?;
+    let (probe, raw) =
+        artifact_keeper_sdk::raw::capture(client.probe_peer().id(peer_id).body(body).send()).await;
+    let probe = probe.map_err(|e| sdk_err("test peer connectivity", e))?;
 
     spinner.finish_and_clear();
 
@@ -793,7 +907,10 @@ async fn test_peer(id: &str, global: &GlobalArgs) -> Result<()> {
     }
 
     let (info, table_str) = format_probe_result(&probe);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -817,7 +934,14 @@ async fn sync_peer(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
-async fn list_tasks(id: &str, status: Option<&str>, global: &GlobalArgs) -> Result<()> {
+async fn list_tasks(
+    id: &str,
+    status: Option<&str>,
+    region: Option<&str>,
+    page: Option<i32>,
+    per_page: Option<i32>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let peer_id = parse_uuid(id, "peer")?;
 
     let client = client_for(global)?;
@@ -827,16 +951,23 @@ async fn list_tasks(id: &str, status: Option<&str>, global: &GlobalArgs) -> Resu
     if let Some(s) = status {
         req = req.status(s);
     }
+    if let Some(r) = region {
+        req = req.region(r);
+    }
+    if let Some(page) = page {
+        req = req.page(page);
+    }
+    if let Some(per_page) = per_page {
+        req = req.per_page(per_page);
+    }
 
-    let tasks = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list sync tasks", e))?;
+    let (tasks, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let tasks = tasks.map_err(|e| sdk_err("list sync tasks", e))?;
 
     let tasks = tasks.into_inner();
     spinner.finish_and_clear();
 
-    if tasks.is_empty() {
+    if tasks.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No sync tasks found.");
         return Ok(());
     }
@@ -851,7 +982,7 @@ async fn list_tasks(id: &str, status: Option<&str>, global: &GlobalArgs) -> Resu
     let (entries, table_str) = format_tasks_table(&tasks);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -880,17 +1011,15 @@ async fn announce_instance(
         peer_id: pid,
     };
 
-    let resp = client
-        .announce_peer()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("announce peer", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.announce_peer().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("announce peer", e))?;
 
     spinner.finish_and_clear();
 
     let map = resp.into_inner();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &map,
         &pid.to_string(),
         &format!("Peer '{name}' announced ({pid})."),
@@ -904,16 +1033,16 @@ async fn show_identity(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching identity...");
 
-    let identity = client
-        .get_identity()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get identity", e))?;
+    let (identity, raw) = artifact_keeper_sdk::raw::capture(client.get_identity().send()).await;
+    let identity = identity.map_err(|e| sdk_err("get identity", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = format_identity(&identity);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1009,14 +1138,12 @@ async fn list_connections(id: &str, status: Option<&str>, global: &GlobalArgs) -
         req = req.status(s);
     }
 
-    let conns = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list peer connections", e))?;
+    let (conns, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let conns = conns.map_err(|e| sdk_err("list peer connections", e))?;
     let conns = conns.into_inner();
     spinner.finish_and_clear();
 
-    if conns.is_empty() {
+    if conns.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No connections found.");
         return Ok(());
     }
@@ -1031,7 +1158,7 @@ async fn list_connections(id: &str, status: Option<&str>, global: &GlobalArgs) -
     let (entries, table_str) = format_connections_table(&conns);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1043,16 +1170,13 @@ async fn discover_peers(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Discovering peers...");
 
-    let peers = client
-        .discover_peers()
-        .id(peer_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("discover peers", e))?;
+    let (peers, raw) =
+        artifact_keeper_sdk::raw::capture(client.discover_peers().id(peer_id).send()).await;
+    let peers = peers.map_err(|e| sdk_err("discover peers", e))?;
     let peers = peers.into_inner();
     spinner.finish_and_clear();
 
-    if peers.is_empty() {
+    if peers.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No discoverable peers found.");
         return Ok(());
     }
@@ -1067,7 +1191,7 @@ async fn discover_peers(id: &str, global: &GlobalArgs) -> Result<()> {
     let (entries, table_str) = format_discoverable_table(&peers);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1109,16 +1233,13 @@ async fn list_subscriptions(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching assigned repositories...");
 
-    let repos = client
-        .get_assigned_repos()
-        .id(peer_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list assigned repositories", e))?;
+    let (repos, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_assigned_repos().id(peer_id).send()).await;
+    let repos = repos.map_err(|e| sdk_err("list assigned repositories", e))?;
     let repos = repos.into_inner();
     spinner.finish_and_clear();
 
-    if repos.is_empty() {
+    if repos.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No repositories assigned.");
         return Ok(());
     }
@@ -1167,7 +1288,7 @@ async fn list_subscriptions(id: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1180,18 +1301,23 @@ async fn show_subscription(id: &str, repo_id: &str, global: &GlobalArgs) -> Resu
 
     let spinner = output::spinner("Fetching subscription...");
 
-    let sub = client
-        .get_subscription()
-        .id(peer_id)
-        .repo_id(repository_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get subscription", e))?;
+    let (sub, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .get_subscription()
+            .id(peer_id)
+            .repo_id(repository_id)
+            .send(),
+    )
+    .await;
+    let sub = sub.map_err(|e| sdk_err("get subscription", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = format_subscription(&sub);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1202,8 +1328,13 @@ async fn assign_repo(
     mode: Option<&str>,
     schedule: Option<&str>,
     sync_enabled: Option<bool>,
+    replication_filter: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let replication_filter = replication_filter
+        .map(|value| super::helpers::parse_json_arg(value, "--replication-filter"))
+        .transpose()?
+        .unwrap_or_default();
     let client = client_for(global)?;
     let peer_id = parse_uuid(id, "peer")?;
     let repository_id = resolve_repo_id(&client, repo_id).await?;
@@ -1211,7 +1342,7 @@ async fn assign_repo(
     let spinner = output::spinner("Assigning repository...");
 
     let body = artifact_keeper_sdk::types::AssignRepoRequest {
-        replication_filter: serde_json::Map::new(),
+        replication_filter,
         replication_mode: mode.map(|s| s.to_string()),
         replication_schedule: schedule.map(|s| s.to_string()),
         repository_id,
@@ -1283,13 +1414,15 @@ async fn run_subscription(id: &str, repo_id: &str, global: &GlobalArgs) -> Resul
 
     let spinner = output::spinner("Running subscription sync...");
 
-    let result = client
-        .run_subscription_now()
-        .id(peer_id)
-        .repo_id(repository_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("run subscription", e))?;
+    let (result, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .run_subscription_now()
+            .id(peer_id)
+            .repo_id(repository_id)
+            .send(),
+    )
+    .await;
+    let result = result.map_err(|e| sdk_err("run subscription", e))?;
 
     spinner.finish_and_clear();
 
@@ -1300,7 +1433,10 @@ async fn run_subscription(id: &str, repo_id: &str, global: &GlobalArgs) -> Resul
     }
 
     let (info, table_str) = format_run_now(&result);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1316,18 +1452,23 @@ async fn show_chunk_availability(id: &str, artifact_id: &str, global: &GlobalArg
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching chunk availability...");
 
-    let avail = client
-        .get_chunk_availability()
-        .id(peer_id)
-        .artifact_id(art_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get chunk availability", e))?;
+    let (avail, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .get_chunk_availability()
+            .id(peer_id)
+            .artifact_id(art_id)
+            .send(),
+    )
+    .await;
+    let avail = avail.map_err(|e| sdk_err("get chunk availability", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = format_chunk_availability(&avail);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1378,17 +1519,19 @@ async fn list_peers_with_chunks(id: &str, artifact_id: &str, global: &GlobalArgs
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching peers with chunks...");
 
-    let peers = client
-        .get_peers_with_chunks()
-        .id(peer_id)
-        .artifact_id(art_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list peers with chunks", e))?;
+    let (peers, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .get_peers_with_chunks()
+            .id(peer_id)
+            .artifact_id(art_id)
+            .send(),
+    )
+    .await;
+    let peers = peers.map_err(|e| sdk_err("list peers with chunks", e))?;
     let peers = peers.into_inner();
     spinner.finish_and_clear();
 
-    if peers.is_empty() {
+    if peers.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No peers hold chunks for this artifact.");
         return Ok(());
     }
@@ -1403,7 +1546,7 @@ async fn list_peers_with_chunks(id: &str, artifact_id: &str, global: &GlobalArgs
     let (entries, table_str) = format_chunk_availability_table(&peers);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1416,17 +1559,19 @@ async fn list_scored_peers(id: &str, artifact_id: &str, global: &GlobalArgs) -> 
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching scored peers...");
 
-    let peers = client
-        .get_scored_peers()
-        .id(peer_id)
-        .artifact_id(art_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list scored peers", e))?;
+    let (peers, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .get_scored_peers()
+            .id(peer_id)
+            .artifact_id(art_id)
+            .send(),
+    )
+    .await;
+    let peers = peers.map_err(|e| sdk_err("list scored peers", e))?;
     let peers = peers.into_inner();
     spinner.finish_and_clear();
 
-    if peers.is_empty() {
+    if peers.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No scored peers found.");
         return Ok(());
     }
@@ -1441,7 +1586,7 @@ async fn list_scored_peers(id: &str, artifact_id: &str, global: &GlobalArgs) -> 
     let (entries, table_str) = format_scored_peers_table(&peers);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1457,16 +1602,13 @@ async fn list_labels(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching labels...");
 
-    let resp = client
-        .list_labels()
-        .id(peer_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list labels", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_labels().id(peer_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list labels", e))?;
     let list = resp.into_inner();
     spinner.finish_and_clear();
 
-    if list.items.is_empty() {
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No labels found.");
         return Ok(());
     }
@@ -1481,7 +1623,7 @@ async fn list_labels(id: &str, global: &GlobalArgs) -> Result<()> {
     let (entries, table_str) = format_labels_table(&list.items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1496,17 +1638,14 @@ async fn set_labels(id: &str, labels: &[String], global: &GlobalArgs) -> Result<
 
     let body = artifact_keeper_sdk::types::SetPeerLabelsRequest { labels: entries };
 
-    let resp = client
-        .set_labels()
-        .id(peer_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("set labels", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.set_labels().id(peer_id).body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("set labels", e))?;
     let list = resp.into_inner();
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &list,
         id,
         &format!("Labels updated for peer {id} ({} total).", list.total),
@@ -1526,17 +1665,20 @@ async fn add_label(id: &str, key: &str, value: Option<&str>, global: &GlobalArgs
         value: value.map(|s| s.to_string()),
     };
 
-    let label = client
-        .add_label()
-        .id(peer_id)
-        .label_key(key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("add label", e))?;
+    let (label, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .add_label()
+            .id(peer_id)
+            .label_key(key)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let label = label.map_err(|e| sdk_err("add label", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*label,
         &label.key,
         &format!("Label '{}' added to peer {id}.", label.key),
@@ -1600,13 +1742,10 @@ async fn init_transfer(
         chunk_size,
     };
 
-    let session = client
-        .init_transfer()
-        .id(peer_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("initialize transfer", e))?;
+    let (session, raw) =
+        artifact_keeper_sdk::raw::capture(client.init_transfer().id(peer_id).body(body).send())
+            .await;
+    let session = session.map_err(|e| sdk_err("initialize transfer", e))?;
 
     spinner.finish_and_clear();
 
@@ -1619,7 +1758,10 @@ async fn init_transfer(
     if matches!(global.format, OutputFormat::Table) {
         eprintln!("Transfer session {} initialized.", session.id);
     }
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1631,18 +1773,18 @@ async fn show_session(id: &str, session_id: &str, global: &GlobalArgs) -> Result
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching transfer session...");
 
-    let session = client
-        .get_session()
-        .id(peer_id)
-        .session_id(sid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get transfer session", e))?;
+    let (session, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_session().id(peer_id).session_id(sid).send())
+            .await;
+    let session = session.map_err(|e| sdk_err("get transfer session", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = format_transfer_session(&session);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1654,13 +1796,15 @@ async fn show_manifest(id: &str, session_id: &str, global: &GlobalArgs) -> Resul
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching chunk manifest...");
 
-    let manifest = client
-        .get_chunk_manifest()
-        .id(peer_id)
-        .session_id(sid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get chunk manifest", e))?;
+    let (manifest, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .get_chunk_manifest()
+            .id(peer_id)
+            .session_id(sid)
+            .send(),
+    )
+    .await;
+    let manifest = manifest.map_err(|e| sdk_err("get chunk manifest", e))?;
 
     spinner.finish_and_clear();
 
@@ -1668,7 +1812,7 @@ async fn show_manifest(id: &str, session_id: &str, global: &GlobalArgs) -> Resul
     let (entries, table_str) = format_manifest(&manifest);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -2408,7 +2552,7 @@ mod tests {
     #[test]
     fn parse_list_no_args() {
         let cli = parse(&["test", "list"]);
-        if let PeerCommand::List { status, region } = cli.command {
+        if let PeerCommand::List { status, region, .. } = cli.command {
             assert!(status.is_none());
             assert!(region.is_none());
         } else {
@@ -2419,7 +2563,7 @@ mod tests {
     #[test]
     fn parse_list_with_status() {
         let cli = parse(&["test", "list", "--status", "active"]);
-        if let PeerCommand::List { status, region } = cli.command {
+        if let PeerCommand::List { status, region, .. } = cli.command {
             assert_eq!(status.unwrap(), "active");
             assert!(region.is_none());
         } else {
@@ -2430,7 +2574,7 @@ mod tests {
     #[test]
     fn parse_list_with_region() {
         let cli = parse(&["test", "list", "--region", "us-east-1"]);
-        if let PeerCommand::List { status, region } = cli.command {
+        if let PeerCommand::List { status, region, .. } = cli.command {
             assert!(status.is_none());
             assert_eq!(region.unwrap(), "us-east-1");
         } else {
@@ -2448,7 +2592,7 @@ mod tests {
             "--region",
             "eu-west-1",
         ]);
-        if let PeerCommand::List { status, region } = cli.command {
+        if let PeerCommand::List { status, region, .. } = cli.command {
             assert_eq!(status.unwrap(), "active");
             assert_eq!(region.unwrap(), "eu-west-1");
         } else {
@@ -2488,11 +2632,12 @@ mod tests {
             url,
             api_key,
             region,
+            ..
         } = cli.command
         {
             assert_eq!(name, "my-peer");
             assert_eq!(url, "https://peer.example.com");
-            assert_eq!(api_key, "secret-key");
+            assert_eq!(api_key.as_deref(), Some("secret-key"));
             assert!(region.is_none());
         } else {
             panic!("Expected Register");
@@ -2517,11 +2662,12 @@ mod tests {
             url,
             api_key,
             region,
+            ..
         } = cli.command
         {
             assert_eq!(name, "my-peer");
             assert_eq!(url, "https://peer.example.com");
-            assert_eq!(api_key, "secret-key");
+            assert_eq!(api_key.as_deref(), Some("secret-key"));
             assert_eq!(region.unwrap(), "us-west-2");
         } else {
             panic!("Expected Register with region");
@@ -2535,15 +2681,22 @@ mod tests {
     }
 
     #[test]
-    fn parse_register_missing_api_key() {
-        let result = try_parse(&[
+    fn parse_register_takes_the_api_key_from_stdin() {
+        let cli = parse(&[
             "test",
             "register",
-            "my-peer",
+            "p",
             "--url",
-            "https://peer.example.com",
+            "https://p",
+            "--api-key-stdin",
         ]);
-        assert!(result.is_err());
+        assert!(matches!(
+            cli.command,
+            PeerCommand::Register {
+                api_key_stdin: true,
+                ..
+            }
+        ));
     }
 
     #[test]
@@ -2590,7 +2743,7 @@ mod tests {
     #[test]
     fn parse_test() {
         let cli = parse(&["test", "test", "peer-id"]);
-        if let PeerCommand::Test { id } = cli.command {
+        if let PeerCommand::Test { id, .. } = cli.command {
             assert_eq!(id, "peer-id");
         } else {
             panic!("Expected Test");
@@ -2622,7 +2775,7 @@ mod tests {
     #[test]
     fn parse_tasks() {
         let cli = parse(&["test", "tasks", "peer-id"]);
-        if let PeerCommand::Tasks { id, status } = cli.command {
+        if let PeerCommand::Tasks { id, status, .. } = cli.command {
             assert_eq!(id, "peer-id");
             assert!(status.is_none());
         } else {
@@ -2633,7 +2786,7 @@ mod tests {
     #[test]
     fn parse_tasks_with_status() {
         let cli = parse(&["test", "tasks", "peer-id", "--status", "pending"]);
-        if let PeerCommand::Tasks { id, status } = cli.command {
+        if let PeerCommand::Tasks { id, status, .. } = cli.command {
             assert_eq!(id, "peer-id");
             assert_eq!(status.unwrap(), "pending");
         } else {
@@ -2954,7 +3107,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_peers(None, None, &global).await;
+        let result = list_peers(None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2974,7 +3127,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_peers(None, None, &global).await;
+        let result = list_peers(None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2994,7 +3147,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = list_peers(None, None, &global).await;
+        let result = list_peers(None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -3033,6 +3186,8 @@ mod tests {
             "https://peer.example.com",
             "secret-key",
             Some("us-east-1"),
+            None,
+            Default::default(),
             &global,
         )
         .await;
@@ -3057,6 +3212,8 @@ mod tests {
             "https://peer.example.com",
             "key",
             None,
+            None,
+            Default::default(),
             &global,
         )
         .await;
@@ -3093,7 +3250,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = test_peer(NIL_UUID, &global).await;
+        let result = test_peer(NIL_UUID, 0, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -3110,7 +3267,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = test_peer(NIL_UUID, &global).await;
+        let result = test_peer(NIL_UUID, 0, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -3144,7 +3301,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_tasks(NIL_UUID, None, &global).await;
+        let result = list_tasks(NIL_UUID, None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -3161,7 +3318,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_tasks(NIL_UUID, None, &global).await;
+        let result = list_tasks(NIL_UUID, None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -3178,7 +3335,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = list_tasks(NIL_UUID, None, &global).await;
+        let result = list_tasks(NIL_UUID, None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -4133,6 +4290,7 @@ mod tests {
             Some("pull"),
             None,
             Some(true),
+            None,
             &global,
         )
         .await;

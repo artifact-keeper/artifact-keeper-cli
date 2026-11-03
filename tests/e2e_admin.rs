@@ -173,3 +173,83 @@ fn ci_oidc_static_keys_reach_the_server_or_are_refused_before_1_11() {
         .failure()
         .stderr(predicates::str::contains(expected));
 }
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn cleanup_stale_uploads_reaches_the_server() {
+    let env = common::TestEnv::setup();
+    let cleaned = admin_json(env.ak_cmd().args(["admin", "cleanup", "--stale-uploads"]));
+    assert!(cleaned["stale_uploads_deleted"].is_number(), "{cleaned}");
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn builds_create_takes_a_start_time() {
+    let env = common::TestEnv::setup();
+    let name = format!("e2e-build-{}", std::process::id());
+    let build = admin_json(env.ak_cmd().args([
+        "builds",
+        "create",
+        &name,
+        "--number",
+        "1",
+        "--started-at",
+        "2026-01-01T00:00:00Z",
+    ]));
+    assert!(
+        build["started_at"]
+            .as_str()
+            .unwrap()
+            .starts_with("2026-01-01T00:00:00"),
+        "{build}"
+    );
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn peer_register_takes_its_key_from_stdin_and_list_pages() {
+    let env = common::TestEnv::setup();
+    let name = format!("e2e-peer-{}", std::process::id());
+    let output = env
+        .ak_cmd()
+        .args(["peer", "register", &name])
+        .args(["--url", "https://peer.example.com"])
+        .arg("--api-key-stdin")
+        .args(["--cache-size-bytes", "1048576"])
+        .args(["--sync-filter", r#"{"a":1}"#])
+        .write_stdin("the-peer-api-key")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let all = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!all.contains("the-peer-api-key"), "{all}");
+    let peer: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(peer["cache_size_bytes"], 1048576);
+
+    let page = admin_json(
+        env.ak_cmd()
+            .args(["peer", "list", "--page", "1", "--per-page", "1"]),
+    );
+    assert_eq!(page["items"].as_array().unwrap().len(), 1, "{page}");
+    assert!(page["total"].as_i64().unwrap() >= 2, "{page}");
+
+    let id = peer["id"].as_str().unwrap();
+    let tasks =
+        admin_json(
+            env.ak_cmd()
+                .args(["peer", "tasks", id, "--page", "1", "--per-page", "5"]),
+        );
+    assert!(tasks.is_array() || tasks["items"].is_array(), "{tasks}");
+    env.ak_cmd()
+        .args(["peer", "unregister", id, "--yes"])
+        .assert()
+        .success();
+}

@@ -38,6 +38,10 @@ pub enum PackagesCommand {
     Show {
         /// Package ID
         id: String,
+
+        /// The repository to look in, by key
+        #[arg(long)]
+        repo: Option<String>,
     },
 
     /// List the versions of a package
@@ -98,7 +102,7 @@ impl PackagesCommand {
                 )
                 .await
             }
-            Self::Show { id } => show_package(&id, global).await,
+            Self::Show { id, repo } => show_package(&id, repo.as_deref(), global).await,
             Self::Versions { id } => list_versions(&id, global).await,
             Self::Tree {
                 repo,
@@ -214,14 +218,17 @@ async fn list_packages(
     Ok(())
 }
 
-async fn show_package(id: &str, global: &GlobalArgs) -> Result<()> {
+async fn show_package(id: &str, repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let package_id = parse_uuid(id, "package")?;
 
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching package...");
 
-    let (pkg, raw) =
-        artifact_keeper_sdk::raw::capture(client.get_package().id(package_id).send()).await;
+    let mut req = client.get_package().id(package_id);
+    if let Some(repo) = repo {
+        req = req.repository_key(repo);
+    }
+    let (pkg, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
     let pkg = pkg.map_err(|e| sdk_err("get package", e))?;
 
     spinner.finish_and_clear();
@@ -577,7 +584,7 @@ mod tests {
     fn parse_show() {
         let cli = parse(&["test", "show", "00000000-0000-0000-0000-000000000001"]);
         match cli.command {
-            PackagesCommand::Show { id } => {
+            PackagesCommand::Show { id, .. } => {
                 assert_eq!(id, "00000000-0000-0000-0000-000000000001");
             }
             _ => panic!("expected Show"),
@@ -820,7 +827,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = show_package(NIL_UUID, &global).await;
+        let result = show_package(NIL_UUID, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

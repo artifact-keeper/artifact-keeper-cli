@@ -8,7 +8,9 @@ use miette::{Result, miette};
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -55,6 +57,14 @@ pub enum SyncPolicyCommand {
         /// Artifact filter as JSON object
         #[arg(long, value_name = "JSON")]
         artifact_filter: Option<String>,
+
+        /// Precedence among policies that match the same artifact
+        #[arg(long)]
+        precedence: Option<i32>,
+
+        /// A filter expression over artifacts
+        #[arg(long)]
+        filter: Option<String>,
     },
 
     /// Update an existing sync policy
@@ -77,6 +87,26 @@ pub enum SyncPolicyCommand {
         /// New priority
         #[arg(long)]
         priority: Option<i32>,
+
+        /// New precedence
+        #[arg(long)]
+        precedence: Option<i32>,
+
+        /// Enable or disable the policy (true/false)
+        #[arg(long)]
+        enabled: Option<bool>,
+
+        /// New repository selector as JSON object
+        #[arg(long, value_name = "JSON")]
+        repo_selector: Option<String>,
+
+        /// New peer selector as JSON object
+        #[arg(long, value_name = "JSON")]
+        peer_selector: Option<String>,
+
+        /// New artifact filter as JSON object
+        #[arg(long, value_name = "JSON")]
+        artifact_filter: Option<String>,
     },
 
     /// Delete a sync policy
@@ -123,6 +153,26 @@ pub enum SyncPolicyCommand {
         /// Artifact filter as JSON object
         #[arg(long, value_name = "JSON")]
         artifact_filter: Option<String>,
+
+        /// Replication mode (push, pull, or mirror)
+        #[arg(long)]
+        mode: Option<String>,
+
+        /// Description of the policy
+        #[arg(long)]
+        description: Option<String>,
+
+        /// Priority of the policy
+        #[arg(long)]
+        priority: Option<i32>,
+
+        /// Precedence of the policy
+        #[arg(long)]
+        precedence: Option<i32>,
+
+        /// Whether the policy would be enabled
+        #[arg(long)]
+        enabled: Option<bool>,
     },
 }
 
@@ -140,6 +190,8 @@ impl SyncPolicyCommand {
                 repo_selector,
                 peer_selector,
                 artifact_filter,
+                precedence,
+                filter,
             } => {
                 create_policy(
                     &name,
@@ -150,6 +202,8 @@ impl SyncPolicyCommand {
                     repo_selector.as_deref(),
                     peer_selector.as_deref(),
                     artifact_filter.as_deref(),
+                    precedence,
+                    filter,
                     global,
                 )
                 .await
@@ -160,6 +214,11 @@ impl SyncPolicyCommand {
                 mode,
                 description,
                 priority,
+                precedence,
+                enabled,
+                repo_selector,
+                peer_selector,
+                artifact_filter,
             } => {
                 update_policy(
                     &id,
@@ -167,6 +226,11 @@ impl SyncPolicyCommand {
                     mode.as_deref(),
                     description.as_deref(),
                     priority,
+                    precedence,
+                    enabled,
+                    repo_selector.as_deref(),
+                    peer_selector.as_deref(),
+                    artifact_filter.as_deref(),
                     global,
                 )
                 .await
@@ -183,12 +247,24 @@ impl SyncPolicyCommand {
                 repo_selector,
                 peer_selector,
                 artifact_filter,
+                mode,
+                description,
+                priority,
+                precedence,
+                enabled,
             } => {
                 preview_policy(
                     name.as_deref(),
                     repo_selector.as_deref(),
                     peer_selector.as_deref(),
                     artifact_filter.as_deref(),
+                    PreviewOptions {
+                        mode,
+                        description,
+                        priority,
+                        precedence,
+                        enabled,
+                    },
                     global,
                 )
                 .await
@@ -223,16 +299,13 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching sync policies...");
 
-    let resp = client
-        .list_sync_policies()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list sync policies", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.list_sync_policies().send()).await;
+    let resp = resp.map_err(|e| sdk_err("list sync policies", e))?;
 
     let list = resp.into_inner();
     spinner.finish_and_clear();
 
-    if list.items.is_empty() {
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No sync policies found.");
         return Ok(());
     }
@@ -247,7 +320,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
     let (entries, table_str) = format_policies_table(&list.items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -259,17 +332,17 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching sync policy...");
 
-    let policy = client
-        .get_sync_policy()
-        .id(policy_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get sync policy", e))?;
+    let (policy, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_sync_policy().id(policy_id).send()).await;
+    let policy = policy.map_err(|e| sdk_err("get sync policy", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = format_policy_detail(&policy);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -284,6 +357,8 @@ async fn create_policy(
     repo_selector: Option<&str>,
     peer_selector: Option<&str>,
     artifact_filter: Option<&str>,
+    precedence: Option<i32>,
+    filter: Option<String>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let repo_sel = parse_json_map(repo_selector)?;
@@ -298,24 +373,22 @@ async fn create_policy(
         replication_mode: mode.map(|m| m.to_string()),
         description: description.map(|d| d.to_string()),
         priority,
-        precedence: None,
+        precedence,
         enabled,
         repo_selector: repo_sel,
         peer_selector: peer_sel,
         artifact_filter: art_filter,
-        filter: None,
+        filter,
     };
 
-    let policy = client
-        .create_sync_policy()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create sync policy", e))?;
+    let (policy, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_sync_policy().body(body).send()).await;
+    let policy = policy.map_err(|e| sdk_err("create sync policy", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*policy,
         &policy.id.to_string(),
         &format!("Sync policy '{}' created (ID: {}).", policy.name, policy.id),
@@ -325,15 +398,25 @@ async fn create_policy(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn update_policy(
     id: &str,
     name: Option<&str>,
     mode: Option<&str>,
     description: Option<&str>,
     priority: Option<i32>,
+    precedence: Option<i32>,
+    enabled: Option<bool>,
+    repo_selector: Option<&str>,
+    peer_selector: Option<&str>,
+    artifact_filter: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let policy_id = parse_uuid(id, "sync policy")?;
+    // An empty map isn't sent, so a selector not given stays as it is.
+    let repo_selector = parse_json_map(repo_selector)?;
+    let peer_selector = parse_json_map(peer_selector)?;
+    let artifact_filter = parse_json_map(artifact_filter)?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Updating sync policy...");
@@ -343,24 +426,23 @@ async fn update_policy(
         replication_mode: mode.map(|m| m.to_string()),
         description: description.map(|d| d.to_string()),
         priority,
-        precedence: None,
-        enabled: None,
-        repo_selector: serde_json::Map::new(),
-        peer_selector: serde_json::Map::new(),
-        artifact_filter: serde_json::Map::new(),
+        precedence,
+        enabled,
+        repo_selector,
+        peer_selector,
+        artifact_filter,
     };
 
-    let policy = client
-        .update_sync_policy()
-        .id(policy_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update sync policy", e))?;
+    let (policy, raw) = artifact_keeper_sdk::raw::capture(
+        client.update_sync_policy().id(policy_id).body(body).send(),
+    )
+    .await;
+    let policy = policy.map_err(|e| sdk_err("update sync policy", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*policy,
         &policy.id.to_string(),
         &format!("Sync policy '{}' updated.", policy.name),
@@ -418,13 +500,10 @@ async fn toggle_policy(id: &str, enable: bool, disable: bool, global: &GlobalArg
 
     let body = TogglePolicyPayload { enabled };
 
-    let policy = client
-        .toggle_policy()
-        .id(policy_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("toggle sync policy", e))?;
+    let (policy, raw) =
+        artifact_keeper_sdk::raw::capture(client.toggle_policy().id(policy_id).body(body).send())
+            .await;
+    let policy = policy.map_err(|e| sdk_err("toggle sync policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -433,7 +512,8 @@ async fn toggle_policy(id: &str, enable: bool, disable: bool, global: &GlobalArg
     } else {
         "disabled"
     };
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*policy,
         &policy.id.to_string(),
         &format!("Sync policy '{}' {state}.", policy.name),
@@ -447,11 +527,8 @@ async fn evaluate_policies(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Evaluating sync policies...");
 
-    let result = client
-        .evaluate_policies()
-        .send()
-        .await
-        .map_err(|e| sdk_err("evaluate sync policies", e))?;
+    let (result, raw) = artifact_keeper_sdk::raw::capture(client.evaluate_policies().send()).await;
+    let result = result.map_err(|e| sdk_err("evaluate sync policies", e))?;
 
     let result = result.into_inner();
     spinner.finish_and_clear();
@@ -462,9 +539,22 @@ async fn evaluate_policies(global: &GlobalArgs) -> Result<()> {
     }
 
     let (info, table_str) = format_evaluation_result(&result);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
+}
+
+/// The rest of a policy being previewed.
+#[derive(Default)]
+struct PreviewOptions {
+    mode: Option<String>,
+    description: Option<String>,
+    priority: Option<i32>,
+    precedence: Option<i32>,
+    enabled: Option<bool>,
 }
 
 async fn preview_policy(
@@ -472,6 +562,7 @@ async fn preview_policy(
     repo_selector: Option<&str>,
     peer_selector: Option<&str>,
     artifact_filter: Option<&str>,
+    options: PreviewOptions,
     global: &GlobalArgs,
 ) -> Result<()> {
     let repo_sel = parse_json_map(repo_selector)?;
@@ -483,22 +574,19 @@ async fn preview_policy(
 
     let body = PreviewPolicyPayload {
         name: name.unwrap_or("preview").to_string(),
-        replication_mode: None,
-        description: None,
-        priority: None,
-        precedence: None,
-        enabled: None,
+        replication_mode: options.mode,
+        description: options.description,
+        priority: options.priority,
+        precedence: options.precedence,
+        enabled: options.enabled,
         repo_selector: repo_sel,
         peer_selector: peer_sel,
         artifact_filter: art_filter,
     };
 
-    let result = client
-        .preview_sync_policy()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("preview sync policy", e))?;
+    let (result, raw) =
+        artifact_keeper_sdk::raw::capture(client.preview_sync_policy().body(body).send()).await;
+    let result = result.map_err(|e| sdk_err("preview sync policy", e))?;
 
     let result = result.into_inner();
     spinner.finish_and_clear();
@@ -509,7 +597,10 @@ async fn preview_policy(
     }
 
     let (info, table_str) = format_preview_result(&result);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -761,6 +852,7 @@ mod tests {
             repo_selector,
             peer_selector,
             artifact_filter,
+            ..
         } = cli.command
         {
             assert_eq!(name, "my-policy");
@@ -817,6 +909,7 @@ mod tests {
             repo_selector,
             peer_selector,
             artifact_filter,
+            ..
         } = cli.command
         {
             assert_eq!(name, "my-policy");
@@ -847,6 +940,7 @@ mod tests {
             mode,
             description,
             priority,
+            ..
         } = cli.command
         {
             assert_eq!(id, "policy-id");
@@ -880,6 +974,7 @@ mod tests {
             mode,
             description,
             priority,
+            ..
         } = cli.command
         {
             assert_eq!(id, "policy-id");
@@ -1458,6 +1553,8 @@ mod tests {
             None,
             None,
             None,
+            None,
+            None,
             &global,
         )
         .await;
@@ -1486,6 +1583,8 @@ mod tests {
             Some(r#"{"match_keys":["npm-*"]}"#),
             Some(r#"{"regions":["us-east-1"]}"#),
             Some(r#"{"formats":["npm"]}"#),
+            None,
+            None,
             &global,
         )
         .await;
@@ -1511,6 +1610,11 @@ mod tests {
             Some("pull"),
             Some("Updated description"),
             Some(20),
+            None,
+            None,
+            None,
+            None,
+            None,
             &global,
         )
         .await;
@@ -1530,7 +1634,10 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = update_policy(NIL_UUID, None, None, None, None, &global).await;
+        let result = update_policy(
+            NIL_UUID, None, None, None, None, None, None, None, None, None, &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1664,7 +1771,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = preview_policy(None, None, None, None, &global).await;
+        let result = preview_policy(None, None, None, None, Default::default(), &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1686,6 +1793,7 @@ mod tests {
             Some(r#"{"match_keys":["npm-*"]}"#),
             Some(r#"{"regions":["us-east-1"]}"#),
             Some(r#"{"formats":["npm"]}"#),
+            Default::default(),
             &global,
         )
         .await;
@@ -1705,7 +1813,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = preview_policy(None, None, None, None, &global).await;
+        let result = preview_policy(None, None, None, None, Default::default(), &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

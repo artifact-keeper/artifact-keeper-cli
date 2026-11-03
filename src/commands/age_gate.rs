@@ -31,6 +31,11 @@ pub enum AgeGateCommand {
         /// Disable the age gate
         #[arg(long, conflicts_with = "enabled")]
         disabled: bool,
+
+        /// Where the package age comes from. Without it the repository keeps its
+        /// current mode
+        #[arg(long)]
+        mode: Option<String>,
     },
 
     /// List age-gate review requests in the admin queue
@@ -98,7 +103,8 @@ impl AgeGateCommand {
                 min_age_days,
                 enabled,
                 disabled,
-            } => set_config(&repo, min_age_days, enabled, disabled, global).await,
+                mode,
+            } => set_config(&repo, min_age_days, enabled, disabled, mode, global).await,
             Self::Reviews {
                 repo,
                 status,
@@ -149,6 +155,7 @@ async fn set_config(
     min_age_days: i32,
     enabled: bool,
     disabled: bool,
+    mode: Option<String>,
     global: &GlobalArgs,
 ) -> Result<()> {
     // Default to enabled unless --disabled was explicitly given.
@@ -161,7 +168,7 @@ async fn set_config(
         enabled: is_enabled,
         min_age_days,
         // Omitted keeps the repository's current mode.
-        mode: None,
+        mode,
     };
 
     let (config, raw) = artifact_keeper_sdk::raw::capture(
@@ -493,6 +500,7 @@ mod tests {
                 min_age_days,
                 enabled,
                 disabled,
+                ..
             } => {
                 assert_eq!(repo, "npm-proxy");
                 assert_eq!(min_age_days, 7);
@@ -776,7 +784,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = set_config("npm-proxy", 7, true, false, &global).await;
+        let result = set_config("npm-proxy", 7, true, false, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

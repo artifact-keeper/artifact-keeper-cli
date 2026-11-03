@@ -99,6 +99,10 @@ pub enum PromotionCommand {
         #[arg(long)]
         status: Option<String>,
 
+        /// Only this artifact: an ID or <repo-key>/<path>
+        #[arg(long)]
+        artifact: Option<String>,
+
         /// Page number
         #[arg(long, default_value = "1")]
         page: i32,
@@ -107,6 +111,38 @@ pub enum PromotionCommand {
         #[arg(long, default_value = "20")]
         per_page: i32,
     },
+}
+
+/// What a new promotion rule requires of an artifact.
+#[derive(clap::Args, Default)]
+pub struct RuleChecks {
+    /// Create the rule disabled
+    #[arg(long)]
+    disabled: bool,
+
+    /// Minimum hours in staging
+    #[arg(long)]
+    min_staging_hours: Option<i32>,
+
+    /// Maximum artifact age in days
+    #[arg(long)]
+    max_artifact_age_days: Option<i32>,
+
+    /// Highest CVE severity allowed
+    #[arg(long)]
+    max_cve_severity: Option<String>,
+
+    /// Minimum health score
+    #[arg(long)]
+    min_health_score: Option<i32>,
+
+    /// Allowed licenses (comma-separated)
+    #[arg(long, value_delimiter = ',')]
+    allowed_licenses: Option<Vec<String>>,
+
+    /// Require a signature (true/false)
+    #[arg(long)]
+    require_signature: Option<bool>,
 }
 
 #[derive(Subcommand)]
@@ -140,6 +176,9 @@ pub enum PromotionRuleCommand {
         /// Enable auto-promotion
         #[arg(long)]
         auto: bool,
+
+        #[command(flatten)]
+        checks: RuleChecks,
     },
 
     /// Update a promotion rule
@@ -265,7 +304,8 @@ impl PromotionCommand {
                     from,
                     to,
                     auto,
-                } => create_rule(&name, &from, &to, auto, global).await,
+                    checks,
+                } => create_rule(&name, &from, &to, auto, checks, global).await,
                 PromotionRuleCommand::Update {
                     id,
                     name,
@@ -307,9 +347,20 @@ impl PromotionCommand {
             Self::History {
                 repo,
                 status,
+                artifact,
                 page,
                 per_page,
-            } => promotion_history(&repo, status.as_deref(), page, per_page, global).await,
+            } => {
+                promotion_history(
+                    &repo,
+                    status.as_deref(),
+                    artifact.as_deref(),
+                    page,
+                    per_page,
+                    global,
+                )
+                .await
+            }
         }
     }
 }
@@ -385,6 +436,14 @@ async fn promote_artifact(
         .unwrap_or_default();
     emit_mutation_raw(raw.as_deref(), &resp, &id, &human, global);
 
+    // A blocked promotion is a 200 from the server, but the artifact didn't move.
+    if !resp.promoted {
+        return Err(crate::error::AkError::ServerError(format!(
+            "The promotion from {from} to {to} was blocked."
+        ))
+        .into());
+    }
+
     Ok(())
 }
 
@@ -427,14 +486,12 @@ async fn list_rules(source_repo_id: Option<&str>, global: &GlobalArgs) -> Result
         req = req.source_repo_id(uid);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list promotion rules", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list promotion rules", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No promotion rules found.");
         return Ok(());
     }
@@ -480,7 +537,7 @@ async fn list_rules(source_repo_id: Option<&str>, global: &GlobalArgs) -> Result
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} rules total.", resp.total);
@@ -493,6 +550,7 @@ async fn create_rule(
     from: &str,
     to: &str,
     auto: bool,
+    checks: RuleChecks,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -506,25 +564,23 @@ async fn create_rule(
         source_repo_id: source_id,
         target_repo_id: target_id,
         auto_promote: auto.then_some(true),
-        is_enabled: Some(true),
-        min_staging_hours: None,
-        max_artifact_age_days: None,
-        max_cve_severity: None,
-        min_health_score: None,
-        allowed_licenses: None,
-        require_signature: None,
+        is_enabled: Some(!checks.disabled),
+        min_staging_hours: checks.min_staging_hours,
+        max_artifact_age_days: checks.max_artifact_age_days,
+        max_cve_severity: checks.max_cve_severity,
+        min_health_score: checks.min_health_score,
+        allowed_licenses: checks.allowed_licenses,
+        require_signature: checks.require_signature,
     };
 
-    let rule = client
-        .create_rule()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create promotion rule", e))?;
+    let (rule, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_rule().body(body).send()).await;
+    let rule = rule.map_err(|e| sdk_err("create promotion rule", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*rule,
         &rule.id.to_string(),
         &format!("Promotion rule '{}' created (ID: {}).", rule.name, rule.id),
@@ -639,17 +695,16 @@ async fn get_rule(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching promotion rule...");
 
-    let rule = client
-        .get_rule()
-        .id(rule_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get promotion rule", e))?;
+    let (rule, raw) = artifact_keeper_sdk::raw::capture(client.get_rule().id(rule_id).send()).await;
+    let rule = rule.map_err(|e| sdk_err("get promotion rule", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = rule_detail(&rule);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -672,17 +727,14 @@ async fn update_rule(id: &str, update: RuleUpdate, global: &GlobalArgs) -> Resul
         require_signature: update.require_signature,
     };
 
-    let rule = client
-        .update_rule()
-        .id(rule_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update promotion rule", e))?;
+    let (rule, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_rule().id(rule_id).body(body).send()).await;
+    let rule = rule.map_err(|e| sdk_err("update promotion rule", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*rule,
         &rule.id.to_string(),
         &format!("Promotion rule '{}' updated (ID: {}).", rule.name, rule.id),
@@ -698,12 +750,9 @@ async fn evaluate_rule(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Evaluating promotion rule...");
 
-    let resp = client
-        .evaluate_rule()
-        .id(rule_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("evaluate promotion rule", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.evaluate_rule().id(rule_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("evaluate promotion rule", e))?;
 
     spinner.finish_and_clear();
 
@@ -743,7 +792,7 @@ async fn evaluate_rule(id: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!(
@@ -859,18 +908,21 @@ async fn reject_artifact(
         notes: notes.map(|s| s.to_string()),
     };
 
-    let resp = client
-        .reject_artifact()
-        .key(from)
-        .artifact_id(aid)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("reject artifact", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .reject_artifact()
+            .key(from)
+            .artifact_id(aid)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("reject artifact", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*resp,
         &resp.rejection_id.to_string(),
         &format!(
@@ -883,21 +935,31 @@ async fn reject_artifact(
     Ok(())
 }
 
+/// A history response with only one artifact's entries, otherwise as the server sent it.
+fn only_artifact(raw: &[u8], id: uuid::Uuid) -> Option<Vec<u8>> {
+    let mut body: serde_json::Value = serde_json::from_slice(raw).ok()?;
+    let wanted = id.to_string();
+    body.get_mut("items")?
+        .as_array_mut()?
+        .retain(|entry| entry["artifact_id"] == wanted.as_str());
+    serde_json::to_vec(&body).ok()
+}
+
 async fn get_release_target(repo: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching release target...");
 
-    let resp = client
-        .get_release_target()
-        .key(repo)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get release target", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_release_target().key(repo).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get release target", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = release_target_detail(&resp);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -919,13 +981,10 @@ async fn set_release_target(
         release_repository_key: release_repo.map(|s| s.to_string()),
     };
 
-    let resp = client
-        .set_release_target()
-        .key(repo)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("set release target", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.set_release_target().key(repo).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("set release target", e))?;
 
     spinner.finish_and_clear();
 
@@ -940,7 +999,7 @@ async fn set_release_target(
     };
 
     let (info, _table) = release_target_detail(&resp);
-    emit_mutation(&info, repo, &human, global);
+    emit_mutation_raw(raw.as_deref(), &info, repo, &human, global);
 
     Ok(())
 }
@@ -971,11 +1030,16 @@ fn release_target_detail(
 async fn promotion_history(
     repo: &str,
     status: Option<&str>,
+    artifact: Option<&str>,
     page: i32,
     per_page: i32,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
+    let artifact_id = match artifact {
+        Some(artifact) => Some(super::helpers::resolve_artifact_id(&client, artifact).await?),
+        None => None,
+    };
     let spinner = output::spinner("Fetching promotion history...");
 
     let mut req = client
@@ -984,18 +1048,33 @@ async fn promotion_history(
         .page(page)
         .per_page(per_page);
 
+    if let Some(id) = artifact_id {
+        req = req.artifact_id(id);
+    }
     if let Some(s) = status {
         req = req.status(s);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("fetch promotion history", e))?;
+    let (resp, mut raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let mut resp = resp
+        .map_err(|e| sdk_err("fetch promotion history", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    // Servers up to at least 1.11.10 accept `artifact_id` and ignore it.
+    if let Some(id) = artifact_id
+        && resp.items.iter().any(|entry| entry.artifact_id != id)
+    {
+        eprintln!(
+            "warning: this server ignored --artifact, so this shows the matches on this page \
+             only, and the page's totals count everything"
+        );
+        resp.items.retain(|entry| entry.artifact_id == id);
+        raw = raw.and_then(|bytes| only_artifact(&bytes, id));
+    }
+
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No promotion history found.");
         return Ok(());
     }
@@ -1044,7 +1123,7 @@ async fn promotion_history(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     print_page_info(
@@ -1210,6 +1289,7 @@ mod tests {
                         from,
                         to,
                         auto,
+                        ..
                     },
             } => {
                 assert_eq!(name, "staging-to-prod");
@@ -1296,6 +1376,7 @@ mod tests {
                 status,
                 page,
                 per_page,
+                ..
             } => {
                 assert_eq!(repo, "maven-releases");
                 assert!(status.is_none());
@@ -1326,6 +1407,7 @@ mod tests {
                 status,
                 page,
                 per_page,
+                ..
             } => {
                 assert_eq!(repo, "npm-local");
                 assert_eq!(status.as_deref(), Some("completed"));
@@ -1617,7 +1699,15 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = create_rule("staging-to-prod", NIL_UUID, NIL_UUID, false, &global).await;
+        let result = create_rule(
+            "staging-to-prod",
+            NIL_UUID,
+            NIL_UUID,
+            false,
+            Default::default(),
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1656,7 +1746,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = promotion_history("maven-releases", None, 1, 20, &global).await;
+        let result = promotion_history("maven-releases", None, None, 1, 20, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1687,7 +1777,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = promotion_history("maven-releases", None, 1, 20, &global).await;
+        let result = promotion_history("maven-releases", None, None, 1, 20, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

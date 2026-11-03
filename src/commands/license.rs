@@ -6,7 +6,9 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::resolve_optional_repo_id;
-use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -132,16 +134,14 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching license policies...");
 
-    let policies = client
-        .list_license_policies()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list license policies", e))?;
+    let (policies, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_license_policies().send()).await;
+    let policies = policies.map_err(|e| sdk_err("list license policies", e))?;
 
     let policies = policies.into_inner();
     spinner.finish_and_clear();
 
-    if policies.is_empty() {
+    if policies.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No license policies found.");
         return Ok(());
     }
@@ -157,7 +157,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -169,18 +169,18 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching license policy...");
 
-    let policy = client
-        .get_license_policy()
-        .id(policy_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get license policy", e))?;
+    let (policy, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_license_policy().id(policy_id).send()).await;
+    let policy = policy.map_err(|e| sdk_err("get license policy", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = format_policy_detail(&policy);
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -213,16 +213,14 @@ async fn create_policy(
         repository_id,
     };
 
-    let policy = client
-        .upsert_license_policy()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create license policy", e))?;
+    let (policy, raw) =
+        artifact_keeper_sdk::raw::capture(client.upsert_license_policy().body(body).send()).await;
+    let policy = policy.map_err(|e| sdk_err("create license policy", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*policy,
         &policy.id.to_string(),
         &format!(
@@ -282,12 +280,10 @@ async fn check_compliance(
         repository_id,
     };
 
-    let result = client
-        .check_license_compliance()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("check license compliance", e))?;
+    let (result, raw) =
+        artifact_keeper_sdk::raw::capture(client.check_license_compliance().body(body).send())
+            .await;
+    let result = result.map_err(|e| sdk_err("check license compliance", e))?;
 
     let result = result.into_inner();
     spinner.finish_and_clear();
@@ -317,7 +313,10 @@ async fn check_compliance(
             }
         }
     } else {
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     }
 
     if !result.compliant {

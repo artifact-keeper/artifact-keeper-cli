@@ -63,6 +63,10 @@ pub enum AdminCommand {
         /// Mark stale peers as offline
         #[arg(long)]
         stale_peers: bool,
+
+        /// Clean up abandoned uploads
+        #[arg(long)]
+        stale_uploads: bool,
     },
 
     /// Show server metrics
@@ -488,7 +492,15 @@ pub enum UserTokenCommand {
 #[derive(Subcommand)]
 pub enum PluginsCommand {
     /// List installed plugins
-    List,
+    List {
+        /// Only plugins with this status
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Only plugins of this type
+        #[arg(long)]
+        r#type: Option<String>,
+    },
     /// Install a plugin from a manifest file, a ZIP package or a git repository
     Install {
         /// A local JSON manifest or ZIP file, or a git repository URL
@@ -1085,7 +1097,8 @@ impl AdminCommand {
                 audit_logs,
                 old_backups,
                 stale_peers,
-            } => run_cleanup(audit_logs, old_backups, stale_peers, global).await,
+                stale_uploads,
+            } => run_cleanup(audit_logs, old_backups, stale_peers, stale_uploads, global).await,
             Self::Metrics => show_metrics(global).await,
             Self::Users { command } => match command {
                 UsersCommand::List {
@@ -1177,7 +1190,9 @@ impl AdminCommand {
                 },
             },
             Self::Plugins { command } => match command {
-                PluginsCommand::List => list_plugins(global).await,
+                PluginsCommand::List { status, r#type } => {
+                    list_plugins(status.as_deref(), r#type.as_deref(), global).await
+                }
                 PluginsCommand::Install { url, r#ref } => {
                     plugin_install::install(&url, r#ref.as_deref(), global).await
                 }
@@ -1619,6 +1634,7 @@ async fn run_cleanup(
     audit_logs: bool,
     old_backups: bool,
     stale_peers: bool,
+    stale_uploads: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -1628,7 +1644,7 @@ async fn run_cleanup(
         cleanup_audit_logs: audit_logs.then_some(true),
         cleanup_old_backups: old_backups.then_some(true),
         cleanup_stale_peers: stale_peers.then_some(true),
-        cleanup_stale_uploads: None,
+        cleanup_stale_uploads: stale_uploads.then_some(true),
     };
 
     let (resp, raw) =
@@ -1925,11 +1941,22 @@ async fn delete_user(user_id: &str, skip_confirm: bool, global: &GlobalArgs) -> 
     Ok(())
 }
 
-async fn list_plugins(global: &GlobalArgs) -> Result<()> {
+async fn list_plugins(
+    status: Option<&str>,
+    plugin_type: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching plugins...");
 
-    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.list_plugins().send()).await;
+    let mut req = client.list_plugins();
+    if let Some(status) = status {
+        req = req.status(status);
+    }
+    if let Some(plugin_type) = plugin_type {
+        req = req.type_(plugin_type);
+    }
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
     let resp = resp.map_err(|e| sdk_err("list plugins", e))?;
 
     spinner.finish_and_clear();
@@ -4915,6 +4942,7 @@ mod tests {
             audit_logs,
             old_backups,
             stale_peers,
+            ..
         } = cli.command
         {
             assert!(!audit_logs);
@@ -4938,6 +4966,7 @@ mod tests {
             audit_logs,
             old_backups,
             stale_peers,
+            ..
         } = cli.command
         {
             assert!(audit_logs);
@@ -4955,6 +4984,7 @@ mod tests {
             audit_logs,
             old_backups,
             stale_peers,
+            ..
         } = cli.command
         {
             assert!(audit_logs);
@@ -5367,7 +5397,7 @@ mod tests {
         assert!(matches!(
             cli.command,
             AdminCommand::Plugins {
-                command: PluginsCommand::List
+                command: PluginsCommand::List { .. }
             }
         ));
     }
@@ -6252,7 +6282,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = run_cleanup(true, true, true, &global).await;
+        let result = run_cleanup(true, true, true, false, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -6669,7 +6699,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_plugins(&global).await;
+        let result = list_plugins(None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -6698,7 +6728,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_plugins(&global).await;
+        let result = list_plugins(None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
