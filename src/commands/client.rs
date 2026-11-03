@@ -55,8 +55,10 @@ fn credential_body_redirect_policy() -> reqwest::redirect::Policy {
 /// `chain` is every URL requested so far, the one that redirected last.
 fn unsafe_redirect(chain: &[Url], to: &Url) -> Option<&'static str> {
     let (origin, from) = (chain.first()?, chain.last()?);
-    // reqwest drops the header on any other hop, so nothing to protect there. On
-    // this kind of hop it sends the header, even if the hop before dropped it.
+    // reqwest drops the header on a hop to another host or port, so nothing to
+    // protect there. On this kind of hop it sends the header, even if the hop before
+    // dropped it. Since 0.13.4 it also drops it on a change of scheme. This doesn't
+    // rely on that: a downgrade is refused either way.
     let header_sent = from.host_str() == to.host_str()
         && from.port_or_known_default() == to.port_or_known_default();
     if !header_sent {
