@@ -1,31 +1,56 @@
-use artifact_keeper_sdk::types::{DashboardResponse, PolicyResponse, ScanResponse, ScoreResponse};
-use artifact_keeper_sdk::{ClientRepositoriesExt, ClientSecurityExt};
+use artifact_keeper_sdk::ClientSecurityExt;
+use artifact_keeper_sdk::raw::capture;
+use artifact_keeper_sdk::types::{
+    DashboardResponse, ExternalFindingInput, PolicyPredicates, PolicyResponse, ProxyScanEntry,
+    ScanResponse, ScoreResponse,
+};
 use clap::Subcommand;
 use console::style;
 use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::resolve_optional_repo_id;
-use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation_raw, new_table, parse_json_arg, parse_uuid,
+    refuse_flags_before_1_11, resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id,
+    sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
 pub enum ScanCommand {
-    /// Trigger a security scan on an artifact
+    /// Trigger a security scan on an artifact, or on a whole repository
     Run {
         /// Repository key
         repo: String,
-        /// Artifact path
-        path: String,
+
+        /// Artifact path. Leave it out to scan every artifact in the repository
+        path: Option<String>,
+
+        /// Scan again even if an identical artifact has a result to reuse
+        #[arg(long)]
+        bypass_dedup: bool,
     },
 
     /// List recent scan results
     List {
-        /// Filter by repository
+        /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
+
+        /// Filter by artifact ID, or <repo-key>/<path>
+        #[arg(long)]
+        artifact: Option<String>,
+
+        /// Filter by scan status
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Filter by scan type
+        #[arg(long)]
+        scan_type: Option<String>,
 
         /// Page number
         #[arg(long, default_value = "1")]
@@ -41,9 +66,25 @@ pub enum ScanCommand {
         /// Scan ID
         id: String,
 
-        /// Filter by minimum severity (CRITICAL, HIGH, MEDIUM, LOW, INFO)
+        /// Filter by minimum severity (CRITICAL, HIGH, MEDIUM, LOW, INFO), within the page
         #[arg(long)]
         severity: Option<String>,
+
+        /// Ask the server for this severity only
+        #[arg(long, value_name = "SEVERITY", conflicts_with = "severity")]
+        exact_severity: Option<String>,
+
+        /// Filter by the scanner that reported the finding
+        #[arg(long)]
+        source: Option<String>,
+
+        /// Filter by CVE ID
+        #[arg(long)]
+        cve: Option<String>,
+
+        /// Filter by finding class (needs a 1.11 server)
+        #[arg(long)]
+        finding_class: Option<String>,
 
         /// Page number
         #[arg(long, default_value = "1")]
@@ -54,9 +95,9 @@ pub enum ScanCommand {
         per_page: i64,
     },
 
-    /// List scans for a specific artifact (by global artifact ID)
+    /// List scans for a specific artifact
     Artifact {
-        /// Artifact ID
+        /// Artifact ID, or <repo-key>/<path>
         artifact_id: String,
 
         /// Filter by scan status
@@ -84,7 +125,8 @@ pub enum ScanCommand {
         command: ScanConfigCommand,
     },
 
-    /// Manage scan findings (acknowledge/revoke)
+    /// Manage scan findings (acknowledge, revoke, ingest)
+    #[command(visible_alias = "findings")]
     Finding {
         #[command(subcommand)]
         command: ScanFindingCommand,
@@ -100,6 +142,43 @@ pub enum ScanCommand {
     Security {
         #[command(subcommand)]
         command: ScanSecurityCommand,
+    },
+
+    /// See and rescan what a remote repository has cached from its upstream
+    Proxy {
+        #[command(subcommand)]
+        command: ScanProxyCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ScanProxyCommand {
+    /// List the scan verdict of each cached path, or show one path's CVEs
+    List {
+        /// Remote repository key
+        repo: String,
+
+        /// Show this cached path, with the findings behind its counts
+        #[arg(long)]
+        path: Option<String>,
+
+        /// Page number
+        #[arg(long)]
+        page: Option<i64>,
+
+        /// Results per page
+        #[arg(long)]
+        per_page: Option<i64>,
+    },
+
+    /// Scan a cached path again now, and record the new verdict
+    Rescan {
+        /// Remote repository key
+        repo: String,
+
+        /// Cached path
+        #[arg(long)]
+        path: String,
     },
 }
 
@@ -119,12 +198,47 @@ pub enum ScanFindingCommand {
         /// Reason for acknowledging the finding
         #[arg(long)]
         reason: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Revoke a previously acknowledged finding
     Revoke {
         /// Finding ID
         id: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
+
+    /// Record an external scanner's findings against an artifact (admin only)
+    ///
+    /// Every gate reads the result, so a finding can block downloads. Submitting again
+    /// supersedes the scanner's earlier verdict.
+    Ingest {
+        /// JSON array of findings, in a file or - for stdin. Each one needs `title` and
+        /// `severity`, and can have `affected_component`, `affected_version`, `cve_id`,
+        /// `description`, `fixed_version`, `source` and `source_url`
+        file: String,
+
+        /// Artifact ID, or <repo-key>/<path>
+        #[arg(long)]
+        artifact: String,
+
+        /// Name of the scanner that reported these
+        #[arg(long)]
+        scanner: String,
+
+        /// Version of the scanner
+        #[arg(long)]
+        scanner_version: Option<String>,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 }
 
@@ -159,6 +273,23 @@ pub enum ScanPolicyCommand {
         /// Bind to a specific repository key or ID
         #[arg(long)]
         repo: Option<String>,
+
+        /// Block artifacts with no signature
+        #[arg(long)]
+        require_signature: bool,
+
+        /// Block artifacts staged for fewer than this many hours
+        #[arg(long)]
+        min_staging_hours: Option<i32>,
+
+        /// Block artifacts older than this many days
+        #[arg(long)]
+        max_artifact_age_days: Option<i32>,
+
+        /// Conda and origin checks: a JSON object as text, @file, or @- for stdin (needs a
+        /// 1.11 server)
+        #[arg(long, value_name = "JSON")]
+        predicates: Option<String>,
     },
 
     /// Update a security policy
@@ -185,6 +316,23 @@ pub enum ScanPolicyCommand {
         /// Enable or disable the policy
         #[arg(long)]
         enabled: Option<bool>,
+
+        /// Block artifacts with no signature
+        #[arg(long)]
+        require_signature: Option<bool>,
+
+        /// Block artifacts staged for fewer than this many hours
+        #[arg(long)]
+        min_staging_hours: Option<i32>,
+
+        /// Block artifacts older than this many days
+        #[arg(long)]
+        max_artifact_age_days: Option<i32>,
+
+        /// Conda and origin checks, replacing the current ones: a JSON object as text,
+        /// @file, or @- for stdin (needs a 1.11 server)
+        #[arg(long, value_name = "JSON")]
+        predicates: Option<String>,
     },
 
     /// Delete a security policy
@@ -206,48 +354,122 @@ pub enum ScanSecurityCommand {
         repo_key: String,
     },
 
-    /// Update repository security configuration
+    /// Update repository security configuration. Only what you pass changes
     Update {
         /// Repository key
         repo_key: String,
 
-        /// Enable or disable scanning
-        #[arg(long)]
-        scanning_enabled: bool,
+        /// Enable or disable scanning. On its own, the flag means true
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        scanning_enabled: Option<bool>,
 
-        /// Scan artifacts on upload
-        #[arg(long)]
-        scan_on_upload: bool,
+        /// Scan artifacts on upload. On its own, the flag means true
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        scan_on_upload: Option<bool>,
 
-        /// Scan proxied artifacts
-        #[arg(long)]
-        scan_on_proxy: bool,
+        /// Scan proxied artifacts. On its own, the flag means true
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        scan_on_proxy: Option<bool>,
 
-        /// Block on policy violation
-        #[arg(long)]
-        block_on_violation: bool,
+        /// Block on policy violation. On its own, the flag means true
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        block_on_violation: Option<bool>,
 
         /// Minimum severity to report (e.g. CRITICAL, HIGH, MEDIUM, LOW)
-        #[arg(long, default_value = "HIGH")]
-        severity_threshold: String,
+        #[arg(long)]
+        severity_threshold: Option<String>,
+
+        /// What a vulnerable proxied artifact does, such as fail_open or record_only (needs a
+        /// 1.11 server)
+        #[arg(long)]
+        proxy_scan_action: Option<String>,
     },
+}
+
+/// The optional fields of `scan policy create` and `update`.
+#[derive(Default)]
+struct PolicyLimits {
+    min_staging_hours: Option<i32>,
+    max_artifact_age_days: Option<i32>,
+    predicates: Option<String>,
+}
+
+impl PolicyLimits {
+    /// The predicates to send. They need a 1.11 server: an older one answers 200 and
+    /// drops them, leaving a policy weaker than the one asked for.
+    async fn parse_predicates(&self, global: &GlobalArgs) -> Result<Option<PolicyPredicates>> {
+        let Some(predicates) = self.predicates.as_deref() else {
+            return Ok(None);
+        };
+        let parsed = parse_json_arg(predicates, "--predicates")?;
+        refuse_flags_before_1_11(&["--predicates"], global).await?;
+        Ok(Some(parsed))
+    }
+}
+
+/// The settings `scan security update` can change.
+#[derive(Default)]
+struct SecuritySettings {
+    scanning_enabled: Option<bool>,
+    scan_on_upload: Option<bool>,
+    scan_on_proxy: Option<bool>,
+    block_on_violation: Option<bool>,
+    severity_threshold: Option<String>,
+    proxy_scan_action: Option<String>,
 }
 
 impl ScanCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
-            Self::Run { repo, path } => run_scan(&repo, &path, global).await,
+            Self::Run {
+                repo,
+                path,
+                bypass_dedup,
+            } => run_scan(&repo, path.as_deref(), bypass_dedup, global).await,
             Self::List {
                 repo,
+                artifact,
+                status,
+                scan_type,
                 page,
                 per_page,
-            } => list_scans(repo.as_deref(), page, per_page, global).await,
+            } => {
+                list_scans(
+                    repo.as_deref(),
+                    artifact.as_deref(),
+                    status.as_deref(),
+                    scan_type.as_deref(),
+                    page,
+                    per_page,
+                    global,
+                )
+                .await
+            }
             Self::Show {
                 id,
                 severity,
+                exact_severity,
+                source,
+                cve,
+                finding_class,
                 page,
                 per_page,
-            } => show_findings(&id, severity.as_deref(), page, per_page, global).await,
+            } => {
+                show_findings(
+                    &id,
+                    severity.as_deref(),
+                    FindingFilters {
+                        severity: exact_severity,
+                        source,
+                        cve_id: cve,
+                        finding_class,
+                    },
+                    page,
+                    per_page,
+                    global,
+                )
+                .await
+            }
             Self::Artifact {
                 artifact_id,
                 status,
@@ -260,10 +482,19 @@ impl ScanCommand {
                 ScanConfigCommand::List => list_scan_configs(global).await,
             },
             Self::Finding { command } => match command {
-                ScanFindingCommand::Ack { id, reason } => {
-                    acknowledge_finding(&id, &reason, global).await
+                ScanFindingCommand::Ack { id, reason, yes } => {
+                    acknowledge_finding(&id, &reason, yes, global).await
                 }
-                ScanFindingCommand::Revoke { id } => revoke_finding(&id, global).await,
+                ScanFindingCommand::Revoke { id, yes } => revoke_finding(&id, yes, global).await,
+                ScanFindingCommand::Ingest {
+                    file,
+                    artifact,
+                    scanner,
+                    scanner_version,
+                    yes,
+                } => {
+                    ingest_findings(&file, &artifact, &scanner, scanner_version, yes, global).await
+                }
             },
             Self::Policy { command } => match command {
                 ScanPolicyCommand::List => list_policies(global).await,
@@ -274,6 +505,10 @@ impl ScanCommand {
                     block_on_fail,
                     block_unscanned,
                     repo,
+                    require_signature,
+                    min_staging_hours,
+                    max_artifact_age_days,
+                    predicates,
                 } => {
                     create_policy(
                         &name,
@@ -281,6 +516,12 @@ impl ScanCommand {
                         block_on_fail,
                         block_unscanned,
                         repo.as_deref(),
+                        require_signature,
+                        PolicyLimits {
+                            min_staging_hours,
+                            max_artifact_age_days,
+                            predicates,
+                        },
                         global,
                     )
                     .await
@@ -292,14 +533,25 @@ impl ScanCommand {
                     block_on_fail,
                     block_unscanned,
                     enabled,
+                    require_signature,
+                    min_staging_hours,
+                    max_artifact_age_days,
+                    predicates,
                 } => {
                     update_policy(
                         &id,
-                        name.as_deref(),
-                        max_severity.as_deref(),
-                        block_on_fail,
-                        block_unscanned,
-                        enabled,
+                        artifact_keeper_sdk::types::UpdatePolicyRequest {
+                            name,
+                            max_severity,
+                            block_on_fail,
+                            block_unscanned,
+                            is_enabled: enabled,
+                            require_signature,
+                            min_staging_hours,
+                            max_artifact_age_days,
+                            predicates: None,
+                        },
+                        predicates,
                         global,
                     )
                     .await
@@ -317,17 +569,32 @@ impl ScanCommand {
                     scan_on_proxy,
                     block_on_violation,
                     severity_threshold,
+                    proxy_scan_action,
                 } => {
                     update_repo_security(
                         &repo_key,
-                        scanning_enabled,
-                        scan_on_upload,
-                        scan_on_proxy,
-                        block_on_violation,
-                        &severity_threshold,
+                        SecuritySettings {
+                            scanning_enabled,
+                            scan_on_upload,
+                            scan_on_proxy,
+                            block_on_violation,
+                            severity_threshold,
+                            proxy_scan_action,
+                        },
                         global,
                     )
                     .await
+                }
+            },
+            Self::Proxy { command } => match command {
+                ScanProxyCommand::List {
+                    repo,
+                    path,
+                    page,
+                    per_page,
+                } => list_proxy_scans(&repo, path.as_deref(), page, per_page, global).await,
+                ScanProxyCommand::Rescan { repo, path } => {
+                    rescan_proxy_path(&repo, &path, global).await
                 }
             },
         }
@@ -338,111 +605,140 @@ impl ScanCommand {
 // Existing handlers
 // ---------------------------------------------------------------------------
 
-async fn run_scan(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Result<()> {
+async fn run_scan(
+    repo: &str,
+    artifact_path: Option<&str>,
+    bypass_dedup: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
 
-    let spinner = crate::output::spinner("Finding artifact...");
+    let spinner = crate::output::spinner("Finding what to scan...");
 
-    let artifacts = client
-        .list_artifacts()
-        .key(repo)
-        .q(artifact_path)
-        .per_page(1)
-        .send()
-        .await
-        .map_err(|e| sdk_err("find artifact", e))?;
-
-    let artifact = artifacts.items.first().ok_or_else(|| {
-        sdk_err(
-            "find artifact",
-            format!("'{artifact_path}' not found in '{repo}'"),
-        )
-    })?;
+    let (artifact_id, repository_id) = match artifact_path {
+        Some(path) => (
+            Some(resolve_artifact_id(&client, &format!("{repo}/{path}")).await?),
+            None,
+        ),
+        None => (None, Some(resolve_repo_id(&client, repo).await?)),
+    };
 
     spinner.set_message("Triggering scan...");
 
     let body = artifact_keeper_sdk::types::TriggerScanRequest {
-        artifact_id: Some(artifact.id),
-        repository_id: None,
-        bypass_dedup: None,
+        artifact_id,
+        repository_id,
+        bypass_dedup: bypass_dedup.then_some(true),
     };
 
-    let scan = client
-        .trigger_scan()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("trigger scan", e))?;
+    let (resp, raw) = capture(client.trigger_scan().body(body).send()).await;
+    let scan = resp.map_err(|e| sdk_err("trigger scan", e))?.into_inner();
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", scan.artifacts_queued);
-        return Ok(());
-    }
-
-    eprintln!(
-        "Scan triggered: {} ({} artifact(s) queued)",
-        scan.message, scan.artifacts_queued
+    emit_mutation_raw(
+        raw.as_deref(),
+        &scan,
+        &scan.artifacts_queued.to_string(),
+        &format!(
+            "Scan triggered: {} ({} artifact(s) queued)\n\
+             Run `ak scan list --repo {repo}` to check scan status.",
+            scan.message, scan.artifacts_queued
+        ),
+        global,
     );
-    eprintln!("Run `ak scan list --repo {repo}` to check scan status.");
 
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn list_scans(
     repo: Option<&str>,
+    artifact: Option<&str>,
+    status: Option<&str>,
+    scan_type: Option<&str>,
     page: i64,
     per_page: i64,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
+    let artifact_id = match artifact {
+        Some(artifact) => Some(resolve_artifact_id(&client, artifact).await?),
+        None => None,
+    };
 
     let spinner = crate::output::spinner("Fetching scans...");
 
-    let resp = if let Some(repo_key) = repo {
-        client
+    // A key goes in the route that takes one. An ID goes in the filter on all scans.
+    let repo_key = repo.filter(|r| uuid::Uuid::parse_str(r).is_err());
+    let (resp, raw) = if let Some(repo_key) = repo_key {
+        let mut req = client
             .list_repo_scans()
             .key(repo_key)
             .page(page)
-            .per_page(per_page)
-            .send()
-            .await
-            .map_err(|e| sdk_err("list scans", e))?
+            .per_page(per_page);
+        if let Some(id) = artifact_id {
+            req = req.artifact_id(id);
+        }
+        if let Some(status) = status {
+            req = req.status(status);
+        }
+        if let Some(scan_type) = scan_type {
+            req = req.scan_type(scan_type);
+        }
+        capture(req.send()).await
     } else {
-        client
-            .list_scans()
-            .page(page)
-            .per_page(per_page)
-            .send()
-            .await
-            .map_err(|e| sdk_err("list scans", e))?
+        let mut req = client.list_scans().page(page).per_page(per_page);
+        if let Some(id) = repo.and_then(|r| uuid::Uuid::parse_str(r).ok()) {
+            req = req.repository_id(id);
+        }
+        if let Some(id) = artifact_id {
+            req = req.artifact_id(id);
+        }
+        if let Some(status) = status {
+            req = req.status(status);
+        }
+        if let Some(scan_type) = scan_type {
+            req = req.scan_type(scan_type);
+        }
+        capture(req.send()).await
     };
+    let resp = resp.map_err(|e| sdk_err("list scans", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
-        eprintln!("No scans found.");
-        return Ok(());
+    print_scans(raw.as_deref(), &resp, "No scans found.", global);
+
+    Ok(())
+}
+
+/// Print a page of scans: the server's body as JSON or YAML, otherwise a table.
+fn print_scans(
+    raw: Option<&[u8]>,
+    resp: &artifact_keeper_sdk::types::ScanListResponse,
+    empty: &str,
+    global: &GlobalArgs,
+) {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
+        eprintln!("{empty}");
+        return;
     }
 
     if matches!(global.format, OutputFormat::Quiet) {
         for scan in &resp.items {
             println!("{}", scan.id);
         }
-        return Ok(());
+        return;
     }
 
     let (entries, table_str) = format_scans_table(&resp.items);
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw, &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} scans total.", resp.total);
-
-    Ok(())
 }
 
 async fn list_artifact_scans(
@@ -453,7 +749,7 @@ async fn list_artifact_scans(
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let aid = parse_uuid(artifact_id, "artifact")?;
+    let aid = resolve_artifact_id(&client, artifact_id).await?;
 
     let spinner = crate::output::spinner("Fetching artifact scans...");
 
@@ -466,33 +762,17 @@ async fn list_artifact_scans(
         req = req.status(s);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list artifact scans", e))?;
+    let (resp, raw) = capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list artifact scans", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
-        eprintln!("No scans found for artifact.");
-        return Ok(());
-    }
-
-    if matches!(global.format, OutputFormat::Quiet) {
-        for scan in &resp.items {
-            println!("{}", scan.id);
-        }
-        return Ok(());
-    }
-
-    let (entries, table_str) = format_scans_table(&resp.items);
-
-    println!(
-        "{}",
-        output::render(&entries, &global.format, Some(table_str))
+    print_scans(
+        raw.as_deref(),
+        &resp,
+        "No scans found for artifact.",
+        global,
     );
-
-    eprintln!("{} scans total.", resp.total);
 
     Ok(())
 }
@@ -542,9 +822,19 @@ fn format_scans_table(items: &[ScanResponse]) -> (Vec<Value>, String) {
     (entries, table.to_string())
 }
 
+/// What `scan show` asks the server to filter on.
+#[derive(Default)]
+struct FindingFilters {
+    severity: Option<String>,
+    source: Option<String>,
+    cve_id: Option<String>,
+    finding_class: Option<String>,
+}
+
 async fn show_findings(
     scan_id: &str,
     severity_filter: Option<&str>,
+    filters: FindingFilters,
     page: i64,
     per_page: i64,
     global: &GlobalArgs,
@@ -552,6 +842,11 @@ async fn show_findings(
     let client = client_for(global)?;
 
     let id = parse_uuid(scan_id, "scan")?;
+
+    if filters.finding_class.is_some() {
+        // An older server ignores this filter, and every finding looks like a match.
+        refuse_flags_before_1_11(&["--finding-class"], global).await?;
+    }
 
     let spinner = crate::output::spinner("Fetching scan details...");
 
@@ -562,14 +857,21 @@ async fn show_findings(
         .await
         .map_err(|e| sdk_err("get scan", e))?;
 
-    let findings = client
-        .list_findings()
-        .id(id)
-        .page(page)
-        .per_page(per_page)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get findings", e))?;
+    let mut req = client.list_findings().id(id).page(page).per_page(per_page);
+    if let Some(severity) = filters.severity {
+        req = req.severity(severity);
+    }
+    if let Some(source) = filters.source {
+        req = req.source(source);
+    }
+    if let Some(cve_id) = filters.cve_id {
+        req = req.cve_id(cve_id);
+    }
+    if let Some(finding_class) = filters.finding_class {
+        req = req.finding_class(finding_class);
+    }
+    let (resp, raw) = capture(req.send()).await;
+    let findings = resp.map_err(|e| sdk_err("get findings", e))?;
 
     spinner.finish_and_clear();
 
@@ -608,7 +910,24 @@ async fn show_findings(
         })
         .collect();
 
-    if filtered.is_empty() {
+    // `--severity` filters here, so the printed body has to lose the same findings.
+    let raw = match raw.as_deref().map(serde_json::from_slice::<Value>) {
+        Some(Ok(mut body)) if !severity_levels.is_empty() => {
+            if let Some(items) = body.get_mut("items").and_then(Value::as_array_mut) {
+                items.retain(|item| {
+                    item["severity"].as_str().is_some_and(|severity| {
+                        severity_levels
+                            .iter()
+                            .any(|s| s.eq_ignore_ascii_case(severity))
+                    })
+                });
+            }
+            serde_json::to_vec(&body).ok()
+        }
+        _ => raw,
+    };
+
+    if filtered.is_empty() && !output::is_machine_format(&global.format) {
         let msg = if severity_filter.is_some() {
             "No findings match the severity filter."
         } else {
@@ -667,7 +986,7 @@ async fn show_findings(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     let has_critical_or_high = filtered.iter().any(|f| {
@@ -696,11 +1015,8 @@ async fn show_dashboard(global: &GlobalArgs) -> Result<()> {
 
     let spinner = crate::output::spinner("Fetching security dashboard...");
 
-    let dash = client
-        .get_dashboard()
-        .send()
-        .await
-        .map_err(|e| sdk_err("fetch dashboard", e))?;
+    let (dash, raw) = capture(client.get_dashboard().send()).await;
+    let dash = dash.map_err(|e| sdk_err("fetch dashboard", e))?;
 
     spinner.finish_and_clear();
 
@@ -715,7 +1031,7 @@ async fn show_dashboard(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -726,17 +1042,14 @@ async fn show_scores(global: &GlobalArgs) -> Result<()> {
 
     let spinner = crate::output::spinner("Fetching security scores...");
 
-    let scores = client
-        .get_all_scores()
-        .send()
-        .await
-        .map_err(|e| sdk_err("fetch scores", e))?;
+    let (scores, raw) = capture(client.get_all_scores().send()).await;
+    let scores = scores.map_err(|e| sdk_err("fetch scores", e))?;
 
     spinner.finish_and_clear();
 
     let items = scores.into_inner();
 
-    if items.is_empty() {
+    if items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No security scores available.");
         return Ok(());
     }
@@ -752,7 +1065,7 @@ async fn show_scores(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -767,17 +1080,14 @@ async fn list_scan_configs(global: &GlobalArgs) -> Result<()> {
 
     let spinner = crate::output::spinner("Fetching scan configurations...");
 
-    let configs = client
-        .list_scan_configs()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list scan configs", e))?;
+    let (configs, raw) = capture(client.list_scan_configs().send()).await;
+    let configs = configs.map_err(|e| sdk_err("list scan configs", e))?;
 
     spinner.finish_and_clear();
 
     let items = configs.into_inner();
 
-    if items.is_empty() {
+    if items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No scan configurations found.");
         return Ok(());
     }
@@ -839,7 +1149,7 @@ async fn list_scan_configs(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -849,9 +1159,23 @@ async fn list_scan_configs(global: &GlobalArgs) -> Result<()> {
 // Finding management
 // ---------------------------------------------------------------------------
 
-async fn acknowledge_finding(finding_id: &str, reason: &str, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
+async fn acknowledge_finding(
+    finding_id: &str,
+    reason: &str,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
     let id = parse_uuid(finding_id, "finding")?;
+
+    if !confirm_action(
+        &format!("Accept the risk of finding {finding_id}? It stops counting against the gates."),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let client = client_for(global)?;
 
     let spinner = crate::output::spinner("Acknowledging finding...");
 
@@ -859,73 +1183,258 @@ async fn acknowledge_finding(finding_id: &str, reason: &str, global: &GlobalArgs
         reason: reason.to_string(),
     };
 
-    let finding = client
-        .acknowledge_finding()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("acknowledge finding", e))?;
+    let (resp, raw) = capture(client.acknowledge_finding().id(id).body(body).send()).await;
+    let finding = resp
+        .map_err(|e| sdk_err("acknowledge finding", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", finding.id);
-        return Ok(());
-    }
-
-    let entry = serde_json::json!({
-        "id": finding.id.to_string(),
-        "severity": finding.severity,
-        "title": finding.title,
-        "is_acknowledged": finding.is_acknowledged,
-        "acknowledged_reason": finding.acknowledged_reason,
-    });
-
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        println!("{}", output::render(&[entry], &global.format, None));
-    } else {
-        eprintln!("Finding {} acknowledged: {}", short_id(&finding.id), reason);
-    }
+    emit_mutation_raw(
+        raw.as_deref(),
+        &finding,
+        &finding.id.to_string(),
+        &format!("Finding {} acknowledged: {}", short_id(&finding.id), reason),
+        global,
+    );
 
     Ok(())
 }
 
-async fn revoke_finding(finding_id: &str, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
+async fn revoke_finding(finding_id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
     let id = parse_uuid(finding_id, "finding")?;
+
+    if !confirm_action(
+        &format!(
+            "Revoke the acknowledgment of finding {finding_id}? It counts against the gates again."
+        ),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let client = client_for(global)?;
 
     let spinner = crate::output::spinner("Revoking acknowledgment...");
 
-    let finding = client
-        .revoke_acknowledgment()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("revoke acknowledgment", e))?;
+    let (resp, raw) = capture(client.revoke_acknowledgment().id(id).send()).await;
+    let finding = resp
+        .map_err(|e| sdk_err("revoke acknowledgment", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &finding,
+        &finding.id.to_string(),
+        &format!(
+            "Acknowledgment revoked for finding {}.",
+            short_id(&finding.id)
+        ),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn ingest_findings(
+    file: &str,
+    artifact: &str,
+    scanner: &str,
+    scanner_version: Option<String>,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let source = if file == "-" {
+        "@-".to_string()
+    } else {
+        format!("@{file}")
+    };
+    let findings: Vec<ExternalFindingInput> = parse_json_arg(&source, "the findings file")?;
+
+    let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, artifact).await?;
+
+    if !confirm_action(
+        &format!(
+            "Record {} finding(s) from '{scanner}' against {artifact}? They can block downloads \
+             of it.",
+            findings.len()
+        ),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let spinner = crate::output::spinner("Ingesting findings...");
+
+    let body = artifact_keeper_sdk::types::IngestExternalFindingsRequest {
+        artifact_id,
+        findings,
+        scanner: scanner.to_string(),
+        scanner_version,
+    };
+
+    let (resp, raw) = capture(client.ingest_external_findings().body(body).send()).await;
+    let result = resp
+        .map_err(|e| sdk_err("ingest findings", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &result,
+        &result.scan_id.to_string(),
+        &format!(
+            "Ingested {} finding(s) as scan {}. The repository's score is now {} (grade {}).",
+            result.findings_ingested,
+            short_id(&result.scan_id),
+            result.score,
+            result.grade
+        ),
+        global,
+    );
+
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Proxy scans
+// ---------------------------------------------------------------------------
+
+async fn list_proxy_scans(
+    repo: &str,
+    path: Option<&str>,
+    page: Option<i64>,
+    per_page: Option<i64>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+
+    let spinner = crate::output::spinner("Fetching proxy scans...");
+
+    let mut req = client.get_repo_proxy_scans().key(repo);
+    if let Some(path) = path {
+        req = req.path(path);
+    }
+    if let Some(page) = page {
+        req = req.page(page);
+    }
+    if let Some(per_page) = per_page {
+        req = req.per_page(per_page);
+    }
+    let (resp, raw) = capture(req.send()).await;
+    let resp = resp
+        .map_err(|e| sdk_err("list proxy scans", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", finding.id);
+        for entry in &resp.items {
+            println!("{}", entry.path);
+        }
         return Ok(());
     }
 
-    let entry = serde_json::json!({
-        "id": finding.id.to_string(),
-        "severity": finding.severity,
-        "title": finding.title,
-        "is_acknowledged": finding.is_acknowledged,
-    });
-
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        println!("{}", output::render(&[entry], &global.format, None));
+    let table_str = if resp.items.is_empty() {
+        format!("Nothing is cached in '{repo}'.")
     } else {
-        eprintln!(
-            "Acknowledgment revoked for finding {}.",
-            short_id(&finding.id)
-        );
+        let mut lines = vec![format_proxy_scans_table(&resp.items)];
+        lines.push(format!(
+            "Scan on proxy: {}. Action: {}. {} path(s) total.",
+            resp.scan_on_proxy, resp.proxy_scan_action, resp.total
+        ));
+        if let Some(summary) = &resp.summary {
+            lines.push(format!(
+                "Digests: {} clean, {} vulnerable, {} not scanned.",
+                summary.clean, summary.vulnerable, summary.not_scanned
+            ));
+        }
+        lines.extend(resp.items.iter().flat_map(|entry| {
+            entry.findings.iter().flatten().map(|f| {
+                format!(
+                    "{} {} {} {}",
+                    format_severity(&f.severity),
+                    f.cve_id,
+                    f.package_name.as_deref().unwrap_or("-"),
+                    f.fixed_version.as_deref().unwrap_or("-")
+                )
+            })
+        }));
+        lines.join("\n")
+    };
+
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &resp, &global.format, Some(table_str))
+    );
+
+    Ok(())
+}
+
+fn format_proxy_scans_table(items: &[ProxyScanEntry]) -> String {
+    let mut table = new_table(vec![
+        "PATH", "STATE", "FINDINGS", "C", "H", "M", "L", "CACHED",
+    ]);
+    let count = |n: Option<i32>| n.map_or_else(|| "-".to_string(), |n| n.to_string());
+    for entry in items {
+        table.add_row(vec![
+            entry.path.clone(),
+            entry.state.clone(),
+            count(entry.findings_count),
+            count(entry.critical_count),
+            count(entry.high_count),
+            count(entry.medium_count),
+            count(entry.low_count),
+            entry.cached_at.format("%Y-%m-%d %H:%M").to_string(),
+        ]);
     }
+    table.to_string()
+}
+
+async fn rescan_proxy_path(repo: &str, path: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+
+    let spinner = crate::output::spinner("Rescanning cached path...");
+
+    let body = artifact_keeper_sdk::types::ProxyRescanRequest {
+        path: path.to_string(),
+    };
+    let (resp, raw) = capture(
+        client
+            .rescan_proxy_cached_path()
+            .key(repo)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let verdict = resp
+        .map_err(|e| sdk_err("rescan cached path", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &verdict,
+        &verdict.state,
+        &format!(
+            "{}: {} ({} finding(s): C:{} H:{} M:{} L:{}).",
+            verdict.path,
+            verdict.state,
+            verdict.findings_count,
+            verdict.critical_count,
+            verdict.high_count,
+            verdict.medium_count,
+            verdict.low_count
+        ),
+        global,
+    );
 
     Ok(())
 }
@@ -939,17 +1448,14 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
 
     let spinner = crate::output::spinner("Fetching security policies...");
 
-    let policies = client
-        .list_policies()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list policies", e))?;
+    let (policies, raw) = capture(client.list_policies().send()).await;
+    let policies = policies.map_err(|e| sdk_err("list policies", e))?;
 
     spinner.finish_and_clear();
 
     let items = policies.into_inner();
 
-    if items.is_empty() {
+    if items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No security policies found.");
         return Ok(());
     }
@@ -965,7 +1471,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -977,12 +1483,8 @@ async fn show_policy(policy_id: &str, global: &GlobalArgs) -> Result<()> {
 
     let spinner = crate::output::spinner("Fetching policy...");
 
-    let policy = client
-        .get_policy()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get policy", e))?;
+    let (policy, raw) = capture(client.get_policy().id(id).send()).await;
+    let policy = policy.map_err(|e| sdk_err("get policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -1042,20 +1544,25 @@ async fn show_policy(policy_id: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&[entry], &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &[entry], &global.format, Some(table_str))
     );
 
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn create_policy(
     name: &str,
     max_severity: &str,
     block_on_fail: bool,
     block_unscanned: bool,
     repo: Option<&str>,
+    require_signature: bool,
+    limits: PolicyLimits,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let predicates = limits.parse_predicates(global).await?;
+
     let client = client_for(global)?;
     let repo_id = resolve_optional_repo_id(&client, repo).await?;
 
@@ -1067,24 +1574,21 @@ async fn create_policy(
         block_on_fail,
         block_unscanned: Some(block_unscanned),
         repository_id: repo_id,
-        max_artifact_age_days: None,
-        min_staging_hours: None,
-        predicates: None,
-        require_signature: None,
+        max_artifact_age_days: limits.max_artifact_age_days,
+        min_staging_hours: limits.min_staging_hours,
+        predicates,
+        require_signature: require_signature.then_some(true),
     };
 
-    let policy = client
-        .create_policy()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create policy", e))?;
+    let (policy, raw) = capture(client.create_policy().body(body).send()).await;
+    let p = policy
+        .map_err(|e| sdk_err("create policy", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    let p = policy.into_inner();
-
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &p,
         &p.id.to_string(),
         &format!("Policy '{}' created (ID: {}).", p.name, short_id(&p.id)),
@@ -1096,55 +1600,34 @@ async fn create_policy(
 
 async fn update_policy(
     policy_id: &str,
-    name: Option<&str>,
-    max_severity: Option<&str>,
-    block_on_fail: Option<bool>,
-    block_unscanned: Option<bool>,
-    enabled: Option<bool>,
+    mut body: artifact_keeper_sdk::types::UpdatePolicyRequest,
+    predicates: Option<String>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
     let id = parse_uuid(policy_id, "policy")?;
+    body.predicates = PolicyLimits {
+        predicates,
+        ..PolicyLimits::default()
+    }
+    .parse_predicates(global)
+    .await?;
 
-    let spinner = crate::output::spinner("Fetching current policy...");
+    let client = client_for(global)?;
 
-    // Fetch existing policy first since UpdatePolicyRequest has required fields
-    let existing = client
-        .get_policy()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get policy", e))?;
+    let spinner = crate::output::spinner("Updating policy...");
 
-    let existing = existing.into_inner();
-
-    spinner.set_message("Updating policy...");
-
-    let body = artifact_keeper_sdk::types::UpdatePolicyRequest {
-        name: Some(name.unwrap_or(&existing.name).to_string()),
-        max_severity: Some(max_severity.unwrap_or(&existing.max_severity).to_string()),
-        block_on_fail: Some(block_on_fail.unwrap_or(existing.block_on_fail)),
-        block_unscanned: Some(block_unscanned.unwrap_or(existing.block_unscanned)),
-        is_enabled: Some(enabled.unwrap_or(existing.is_enabled)),
-        max_artifact_age_days: existing.max_artifact_age_days,
-        min_staging_hours: existing.min_staging_hours,
-        predicates: existing.predicates,
-        require_signature: Some(existing.require_signature),
-    };
-
-    let policy = client
-        .update_policy()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update policy", e))?;
+    // Every field is optional and an omitted one keeps its value, so only what was
+    // asked for is sent. Echoing the current policy back would drop any part of its
+    // predicates this SDK doesn't know about.
+    let (policy, raw) = capture(client.update_policy().id(id).body(body).send()).await;
+    let p = policy
+        .map_err(|e| sdk_err("update policy", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    let p = policy.into_inner();
-
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &p,
         &p.id.to_string(),
         &format!("Policy '{}' updated (ID: {}).", p.name, short_id(&p.id)),
@@ -1164,16 +1647,13 @@ async fn delete_policy(policy_id: &str, yes: bool, global: &GlobalArgs) -> Resul
 
     let spinner = crate::output::spinner("Deleting policy...");
 
-    client
-        .delete_policy()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("delete policy", e))?;
+    let (resp, raw) = capture(client.delete_policy().id(id).send()).await;
+    resp.map_err(|e| sdk_err("delete policy", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({ "id": policy_id, "status": "deleted" }),
         policy_id,
         &format!("Policy {} deleted.", policy_id),
@@ -1192,12 +1672,8 @@ async fn show_repo_security(repo_key: &str, global: &GlobalArgs) -> Result<()> {
 
     let spinner = crate::output::spinner("Fetching repository security config...");
 
-    let resp = client
-        .get_repo_security()
-        .key(repo_key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get repo security", e))?;
+    let (resp, raw) = capture(client.get_repo_security().key(repo_key).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get repo security", e))?;
 
     spinner.finish_and_clear();
 
@@ -1242,6 +1718,10 @@ async fn show_repo_security(repo_key: &str, global: &GlobalArgs) -> Result<()> {
                 "  Severity Threshold:      {}",
                 c.severity_threshold
             ));
+            lines.push(format!(
+                "  Proxy Scan Action:       {}",
+                c.proxy_scan_action
+            ));
         } else {
             lines.push("  No scan configuration.".to_string());
         }
@@ -1259,7 +1739,7 @@ async fn show_repo_security(repo_key: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&[entry], &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &[entry], &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1267,39 +1747,58 @@ async fn show_repo_security(repo_key: &str, global: &GlobalArgs) -> Result<()> {
 
 async fn update_repo_security(
     repo_key: &str,
-    scanning_enabled: bool,
-    scan_on_upload: bool,
-    scan_on_proxy: bool,
-    block_on_violation: bool,
-    severity_threshold: &str,
+    settings: SecuritySettings,
     global: &GlobalArgs,
 ) -> Result<()> {
+    // Sending a false for every flag that wasn't given would turn scanning and
+    // blocking off on a repository, as a side effect of changing something else.
+    if settings.scanning_enabled.is_none()
+        && settings.scan_on_upload.is_none()
+        && settings.scan_on_proxy.is_none()
+        && settings.block_on_violation.is_none()
+        && settings.severity_threshold.is_none()
+        && settings.proxy_scan_action.is_none()
+    {
+        return Err(AkError::ConfigError(
+            "Nothing to update. Pass at least one setting, such as --scanning-enabled true."
+                .to_string(),
+        )
+        .into());
+    }
+    if settings.proxy_scan_action.is_some() {
+        refuse_flags_before_1_11(&["--proxy-scan-action"], global).await?;
+    }
+
     let client = client_for(global)?;
 
     let spinner = crate::output::spinner("Updating repository security config...");
 
     let body = artifact_keeper_sdk::types::UpsertScanConfigRequest {
-        scan_enabled: Some(scanning_enabled),
-        scan_on_upload: Some(scan_on_upload),
-        scan_on_proxy: Some(scan_on_proxy),
-        block_on_policy_violation: Some(block_on_violation),
-        // Omitted keeps the repository's current action.
-        proxy_scan_action: None,
-        severity_threshold: Some(severity_threshold.to_string()),
+        scan_enabled: settings.scanning_enabled,
+        scan_on_upload: settings.scan_on_upload,
+        scan_on_proxy: settings.scan_on_proxy,
+        block_on_policy_violation: settings.block_on_violation,
+        proxy_scan_action: settings.proxy_scan_action,
+        severity_threshold: settings.severity_threshold,
     };
 
-    client
-        .update_repo_security()
-        .key(repo_key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update repo security", e))?;
+    let (resp, raw) = capture(
+        client
+            .update_repo_security()
+            .key(repo_key)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let config = resp
+        .map_err(|e| sdk_err("update repo security", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    emit_mutation(
-        &serde_json::json!({ "repo_key": repo_key, "status": "updated" }),
+    emit_mutation_raw(
+        raw.as_deref(),
+        &config,
         repo_key,
         &format!("Security config updated for repository '{repo_key}'."),
         global,
@@ -1515,9 +2014,9 @@ mod tests {
     #[test]
     fn parse_run() {
         let cli = parse_scan(&["test", "run", "my-repo", "pkg/foo-1.0.tar.gz"]);
-        if let ScanCommand::Run { repo, path } = cli.command {
+        if let ScanCommand::Run { repo, path, .. } = cli.command {
             assert_eq!(repo, "my-repo");
-            assert_eq!(path, "pkg/foo-1.0.tar.gz");
+            assert_eq!(path.as_deref(), Some("pkg/foo-1.0.tar.gz"));
         } else {
             panic!("Expected Run");
         }
@@ -1530,6 +2029,7 @@ mod tests {
             repo,
             page,
             per_page,
+            ..
         } = cli.command
         {
             assert!(repo.is_none());
@@ -1601,6 +2101,7 @@ mod tests {
             repo,
             page,
             per_page,
+            ..
         } = cli.command
         {
             assert_eq!(repo.unwrap(), "my-repo");
@@ -1619,6 +2120,7 @@ mod tests {
             severity,
             page,
             per_page,
+            ..
         } = cli.command
         {
             assert_eq!(id, "scan-id-123");
@@ -1680,7 +2182,7 @@ mod tests {
             "Accepted risk",
         ]);
         if let ScanCommand::Finding {
-            command: ScanFindingCommand::Ack { id, reason },
+            command: ScanFindingCommand::Ack { id, reason, .. },
         } = cli.command
         {
             assert_eq!(id, "finding-id-123");
@@ -1700,7 +2202,7 @@ mod tests {
     fn parse_finding_revoke() {
         let cli = parse_scan(&["test", "finding", "revoke", "finding-id-123"]);
         if let ScanCommand::Finding {
-            command: ScanFindingCommand::Revoke { id },
+            command: ScanFindingCommand::Revoke { id, .. },
         } = cli.command
         {
             assert_eq!(id, "finding-id-123");
@@ -1755,6 +2257,7 @@ mod tests {
                     block_on_fail,
                     block_unscanned,
                     repo,
+                    ..
                 },
         } = cli.command
         {
@@ -1821,6 +2324,7 @@ mod tests {
                     block_on_fail,
                     block_unscanned,
                     enabled,
+                    ..
                 },
         } = cli.command
         {
@@ -1889,15 +2393,17 @@ mod tests {
                     scan_on_proxy,
                     block_on_violation,
                     severity_threshold,
+                    proxy_scan_action,
                 },
         } = cli.command
         {
             assert_eq!(repo_key, "my-repo");
-            assert!(!scanning_enabled);
-            assert!(!scan_on_upload);
-            assert!(!scan_on_proxy);
-            assert!(!block_on_violation);
-            assert_eq!(severity_threshold, "HIGH");
+            assert!(scanning_enabled.is_none());
+            assert!(scan_on_upload.is_none());
+            assert!(scan_on_proxy.is_none());
+            assert!(block_on_violation.is_none());
+            assert!(severity_threshold.is_none());
+            assert!(proxy_scan_action.is_none());
         } else {
             panic!("Expected Security Update");
         }
@@ -1929,11 +2435,11 @@ mod tests {
                 },
         } = cli.command
         {
-            assert!(scanning_enabled);
-            assert!(scan_on_upload);
-            assert!(scan_on_proxy);
-            assert!(block_on_violation);
-            assert_eq!(severity_threshold, "CRITICAL");
+            assert_eq!(scanning_enabled, Some(true));
+            assert_eq!(scan_on_upload, Some(true));
+            assert_eq!(scan_on_proxy, Some(true));
+            assert_eq!(block_on_violation, Some(true));
+            assert_eq!(severity_threshold.as_deref(), Some("CRITICAL"));
         } else {
             panic!("Expected Security Update with flags");
         }
@@ -2317,7 +2823,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_scans(None, 1, 20, &global).await;
+        let result = list_scans(None, None, None, None, 1, 20, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2354,7 +2860,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_scans(None, 1, 20, &global).await;
+        let result = list_scans(None, None, None, None, 1, 20, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2374,7 +2880,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = list_scans(Some("my-repo"), 1, 20, &global).await;
+        let result = list_scans(Some("my-repo"), None, None, None, 1, 20, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2701,7 +3207,17 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = create_policy("new-policy", "HIGH", true, false, None, &global).await;
+        let result = create_policy(
+            "new-policy",
+            "HIGH",
+            true,
+            false,
+            None,
+            false,
+            PolicyLimits::default(),
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2754,6 +3270,7 @@ mod tests {
         let result = acknowledge_finding(
             "00000000-0000-0000-0000-000000000001",
             "Accepted risk",
+            true,
             &global,
         )
         .await;
@@ -2788,7 +3305,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = revoke_finding("00000000-0000-0000-0000-000000000001", &global).await;
+        let result = revoke_finding("00000000-0000-0000-0000-000000000001", true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2862,8 +3379,16 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result =
-            update_repo_security("my-repo", true, true, true, true, "CRITICAL", &global).await;
+        let result = update_repo_security(
+            "my-repo",
+            SecuritySettings {
+                scanning_enabled: Some(true),
+                severity_threshold: Some("CRITICAL".to_string()),
+                ..SecuritySettings::default()
+            },
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2925,7 +3450,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = show_findings(scan_id, None, 1, 50, &global).await;
+        let result = show_findings(scan_id, None, FindingFilters::default(), 1, 50, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2935,24 +3460,21 @@ mod tests {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
 
-        // Mock for list_artifacts (finding the artifact)
+        // Mock for finding the artifact
         Mock::given(method("GET"))
-            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .and(path_regex("/api/v1/repositories/my-repo/artifacts/.+"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "items": [{
-                    "id": "00000000-0000-0000-0000-000000000099",
-                    "path": "pkg/foo-1.0.tar.gz",
-                    "name": "foo",
-                    "size_bytes": 1024_i64,
-                    "content_type": "application/gzip",
-                    "checksum_sha256": "abc123",
-                    "analyzable": true,
-                    "download_count": 5_i64,
-                    "repository_key": "my-repo",
-                    "created_at": "2026-01-15T10:00:00Z",
-                    "quarantine_status": "not_quarantined"
-                }],
-                "pagination": { "page": 1, "per_page": 1, "total_pages": 1, "total": 1_i64 }
+                "id": "00000000-0000-0000-0000-000000000099",
+                "path": "pkg/foo-1.0.tar.gz",
+                "name": "foo",
+                "size_bytes": 1024_i64,
+                "content_type": "application/gzip",
+                "checksum_sha256": "abc123",
+                "analyzable": true,
+                "download_count": 5_i64,
+                "repository_key": "my-repo",
+                "created_at": "2026-01-15T10:00:00Z",
+                "quarantine_status": "not_quarantined"
             })))
             .mount(&server)
             .await;
@@ -2968,7 +3490,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = run_scan("my-repo", "pkg/foo-1.0.tar.gz", &global).await;
+        let result = run_scan("my-repo", Some("pkg/foo-1.0.tar.gz"), false, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -3025,10 +3547,17 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = update_policy(
             policy_id,
-            Some("updated-name"),
-            Some("CRITICAL"),
-            Some(true),
-            None,
+            artifact_keeper_sdk::types::UpdatePolicyRequest {
+                name: Some("updated-name".to_string()),
+                max_severity: Some("CRITICAL".to_string()),
+                block_on_fail: Some(true),
+                block_unscanned: None,
+                is_enabled: None,
+                max_artifact_age_days: None,
+                min_staging_hours: None,
+                predicates: None,
+                require_signature: None,
+            },
             None,
             &global,
         )

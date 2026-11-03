@@ -182,8 +182,8 @@ pub fn read_inline_or_file(value: &str, flag: &str) -> Result<Vec<u8>> {
 }
 
 /// Parse a flag that takes a nested JSON object: text, `@file` or `@-`. A key the
-/// type doesn't have is an error rather than something to drop quietly, because
-/// the user would believe it had been set.
+/// type doesn't have, at any depth, is an error rather than something to drop quietly,
+/// because the user would believe it had been set.
 pub fn parse_json_arg<T>(value: &str, flag: &str) -> Result<T>
 where
     T: serde::de::DeserializeOwned + Serialize,
@@ -194,16 +194,43 @@ where
     let parsed: T = serde_json::from_value(given.clone())
         .map_err(|e| AkError::ConfigError(format!("{flag}: {e}")))?;
     let kept = serde_json::to_value(&parsed).into_diagnostic()?;
-    if let Some(given) = given.as_object() {
-        for (field, field_value) in given {
-            if !field_value.is_null() && kept.get(field).is_none() {
-                return Err(
-                    AkError::ConfigError(format!("{flag}: unknown field '{field}'")).into(),
-                );
-            }
-        }
+    if let Some(field) = dropped_field(&given, &kept) {
+        return Err(AkError::ConfigError(format!("{flag}: unknown field '{field}'")).into());
     }
     Ok(parsed)
+}
+
+/// The first field of `given`, as a dotted path, that parsing dropped. A field with
+/// no value doesn't count, because the type may leave out an empty one when it
+/// serializes, and dropping it changes nothing.
+fn dropped_field(given: &serde_json::Value, kept: &serde_json::Value) -> Option<String> {
+    use serde_json::Value;
+    match (given, kept) {
+        (Value::Object(given), Value::Object(kept)) => {
+            given
+                .iter()
+                .find_map(|(field, value)| match kept.get(field) {
+                    Some(kept) => {
+                        dropped_field(value, kept).map(|inner| format!("{field}.{inner}"))
+                    }
+                    None => (!has_no_value(value)).then(|| field.clone()),
+                })
+        }
+        (Value::Array(given), Value::Array(kept)) => given
+            .iter()
+            .zip(kept)
+            .find_map(|(given, kept)| dropped_field(given, kept)),
+        _ => None,
+    }
+}
+
+fn has_no_value(value: &serde_json::Value) -> bool {
+    match value {
+        serde_json::Value::Null => true,
+        serde_json::Value::Array(items) => items.is_empty(),
+        serde_json::Value::Object(fields) => fields.values().all(has_no_value),
+        _ => false,
+    }
 }
 
 /// Parse a string as a UUID, returning a friendly error with the given label.

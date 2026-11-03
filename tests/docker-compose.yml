@@ -24,6 +24,12 @@ services:
       DATABASE_URL: "postgresql://registry:registry@postgres:5432/artifact_registry_test"
       ADMIN_PASSWORD: "TestRunner!2026secure"
       JWT_SECRET: "${JWT_SECRET:?set by tests/start-backend.sh}"
+      # Tests of remote repositories use this backend as its own upstream.
+      UPSTREAM_ALLOW_PRIVATE_IPS: "true"
+    networks:
+      default:
+        aliases:
+          - ak-upstream
     ports:
       - "8081:8080"
     healthcheck:
