@@ -451,6 +451,12 @@ fn candidates(rig: &Rig, arg: &Arg) -> Vec<String> {
     let list_file = rig.file("list.json", "[ ]");
     let name = arg.id.as_str();
     let mut out: Vec<String> = Vec::new();
+    // `lifecycle create` sends one repository in its legacy field.
+    if name == "repos" {
+        out.push(
+            "00000000-0000-0000-0000-00000000000a,00000000-0000-0000-0000-00000000000b".to_string(),
+        );
+    }
     // `admin settings update` parses the whole of `SystemSettings`, so no fragment of
     // it would do. The second body differs in every field.
     let first_settings = "{\"storage_backend\":\"a\",\"storage_path\":\"a\",\

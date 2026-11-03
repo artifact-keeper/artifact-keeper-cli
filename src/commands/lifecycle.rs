@@ -458,13 +458,22 @@ async fn create_policy(
     }
 
     let config_map = parse_config(config)?;
-    let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
+    let mut repository_id = resolve_optional_repo_id(&client, repo_id).await?;
     // A 1.10 server ignores `repository_ids`, and there a policy with no repository
-    // deletes across every repository. So it mustn't get as far as being sent.
-    if !repos.is_empty() {
+    // deletes across every repository. So several mustn't get as far as being sent,
+    // and one goes in the legacy field, which both minors honour.
+    if repos.len() > 1 {
         refuse_flags_before_1_11(&["--repos"], global).await?;
     }
-    let repository_ids = resolve_repos(&client, repos).await?;
+    let mut repository_ids = resolve_repos(&client, repos).await?;
+    if let [only] = repository_ids[..] {
+        repository_id = Some(only);
+        repository_ids.clear();
+    }
+    let wanted: Vec<uuid::Uuid> = repository_id
+        .into_iter()
+        .chain(repository_ids.iter().copied())
+        .collect();
 
     // A 1.10 server ignores `enabled`, and the policy it then creates is live.
     if disabled {
@@ -501,19 +510,26 @@ async fn create_policy(
     let policy = resp.into_inner();
     let id = policy.id.to_string();
 
-    // The version check can't tell if the server's version couldn't be read. A
-    // policy that's live when it was asked not to be mustn't stay.
-    if disabled && policy.enabled {
+    // The version checks can't tell if the server's version couldn't be read. A
+    // policy that isn't what was asked for mustn't stay: it can delete within a minute.
+    let ignored = if !shows_scope(&policy, &wanted, all_repos) {
+        Some(format!(
+            "The server created this policy with the scope {}, not the one requested",
+            policy_scope(&policy)
+        ))
+    } else if disabled && policy.enabled {
+        Some("The server ignored --disabled and created an enabled policy".to_string())
+    } else {
+        None
+    };
+    if let Some(ignored) = ignored {
         let outcome = match client.delete_lifecycle_policy().id(policy.id).send().await {
             Ok(_) => "so it was deleted again".to_string(),
             Err(e) => format!(
                 "and it couldn't be deleted ({e}). IT IS LIVE: run `ak lifecycle delete {id} --yes`"
             ),
         };
-        return Err(AkError::ServerError(format!(
-            "The server ignored --disabled and created an enabled policy, {outcome}"
-        ))
-        .into());
+        return Err(AkError::ServerError(format!("{ignored}, {outcome}")).into());
     }
 
     emit_mutation_raw(
@@ -534,6 +550,34 @@ async fn create_policy(
     );
 
     Ok(())
+}
+
+/// Whether a policy the server returned has the scope that was asked for. A 1.10
+/// server sends only `repository_id`, and there no repository means every repository.
+fn shows_scope(
+    policy: &artifact_keeper_sdk::types::LifecyclePolicy,
+    wanted: &[uuid::Uuid],
+    all_repos: bool,
+) -> bool {
+    if all_repos {
+        return policy
+            .applies_to_all
+            .unwrap_or_else(|| policy.repository_id.is_none());
+    }
+    if policy.applies_to_all == Some(true) {
+        return false;
+    }
+    let mut found: Vec<uuid::Uuid> = if policy.repository_ids.is_empty() {
+        policy.repository_id.into_iter().collect()
+    } else {
+        policy.repository_ids.clone()
+    };
+    let mut wanted = wanted.to_vec();
+    found.sort_unstable();
+    found.dedup();
+    wanted.sort_unstable();
+    wanted.dedup();
+    found == wanted
 }
 
 /// The IDs of repositories given by key or ID.
@@ -618,6 +662,8 @@ async fn update_policy(
         None => None,
     };
 
+    let wanted_ids = repository_ids.clone();
+
     let body = artifact_keeper_sdk::types::UpdateLifecyclePolicyRequest {
         applies_to_all: all_repos,
         config: config_field,
@@ -644,6 +690,22 @@ async fn update_policy(
     spinner.finish_and_clear();
 
     let policy = resp.into_inner();
+
+    // The version check can't tell if the server's version couldn't be read. A 1.10
+    // server ignores these fields and answers 200.
+    let scope_applied = match (&wanted_ids, all_repos) {
+        (_, Some(true)) => policy.applies_to_all == Some(true),
+        (Some(ids), _) => shows_scope(&policy, ids, false),
+        (None, Some(false)) => policy.applies_to_all == Some(false),
+        (None, None) => true,
+    };
+    if !scope_applied {
+        return Err(AkError::ServerError(format!(
+            "The server didn't apply the scope change. This policy's scope is {}",
+            policy_scope(&policy)
+        ))
+        .into());
+    }
 
     emit_mutation_raw(
         raw.as_deref(),
@@ -1369,6 +1431,207 @@ mod tests {
         result
     }
 
+    fn policy_of(value: serde_json::Value) -> artifact_keeper_sdk::types::LifecyclePolicy {
+        let mut policy = lifecycle_policy_json();
+        for (key, field) in value.as_object().unwrap() {
+            policy[key] = field.clone();
+        }
+        // A 1.10 server sends neither of these.
+        for key in ["applies_to_all", "repository_ids"] {
+            if value.get(key) == Some(&json!("absent")) {
+                policy.as_object_mut().unwrap().remove(key);
+            }
+        }
+        serde_json::from_value(policy).unwrap()
+    }
+
+    #[test]
+    fn shows_scope_compares_what_came_back_with_what_was_asked() {
+        const A: &str = "00000000-0000-0000-0000-00000000000a";
+        const B: &str = "00000000-0000-0000-0000-00000000000b";
+        let (a, b): (uuid::Uuid, uuid::Uuid) = (A.parse().unwrap(), B.parse().unwrap());
+        let v110_global = json!({"applies_to_all": "absent", "repository_ids": "absent"});
+        let v110_one =
+            json!({"applies_to_all": "absent", "repository_ids": "absent", "repository_id": A});
+        let v111_two = json!({"applies_to_all": false, "repository_ids": [B, A]});
+        let v111_global = json!({"applies_to_all": true, "repository_ids": []});
+        let v111_dormant = json!({"applies_to_all": false, "repository_ids": []});
+
+        // The hole: --repos a,b on a 1.10 server gives a policy over everything.
+        assert!(!shows_scope(
+            &policy_of(v110_global.clone()),
+            &[a, b],
+            false
+        ));
+        assert!(!shows_scope(&policy_of(v110_global.clone()), &[a], false));
+        assert!(!shows_scope(
+            &policy_of(v111_global.clone()),
+            &[a, b],
+            false
+        ));
+        assert!(!shows_scope(&policy_of(v111_dormant.clone()), &[a], false));
+        assert!(!shows_scope(&policy_of(v111_two.clone()), &[a], false));
+        assert!(!shows_scope(&policy_of(v111_dormant), &[], true));
+        assert!(!shows_scope(&policy_of(v110_one.clone()), &[], true));
+
+        assert!(shows_scope(&policy_of(v111_two), &[a, b], false));
+        assert!(shows_scope(&policy_of(v110_one), &[a], false));
+        assert!(shows_scope(&policy_of(v111_global), &[], true));
+        assert!(shows_scope(&policy_of(v110_global), &[], true));
+    }
+
+    /// A 1.10 server behind something that hides `/health`: the version check can't
+    /// refuse, and the server creates a policy over every repository.
+    #[tokio::test]
+    async fn create_with_repos_deletes_a_policy_that_came_back_global() {
+        const A: &str = "00000000-0000-0000-0000-00000000000a";
+        const B: &str = "00000000-0000-0000-0000-00000000000b";
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(ResponseTemplate::new(503))
+            .mount(&server)
+            .await;
+        let mut policy = lifecycle_policy_json();
+        policy.as_object_mut().unwrap().remove("applies_to_all");
+        policy.as_object_mut().unwrap().remove("repository_ids");
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(policy))
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/admin/lifecycle/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let err = create_policy(
+            "p",
+            "max_age_days",
+            r#"{"days":30}"#,
+            None,
+            None,
+            None,
+            &[A.to_string(), B.to_string()],
+            false,
+            false,
+            None,
+            &global,
+        )
+        .await
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("deleted again"), "{err}");
+        server.verify().await;
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn create_with_one_repo_in_repos_sends_the_legacy_field() {
+        const A: &str = "00000000-0000-0000-0000-00000000000a";
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        let mut policy = lifecycle_policy_json();
+        policy["applies_to_all"] = json!(false);
+        policy["repository_id"] = json!(A);
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .and(wiremock::matchers::body_json(json!({
+                "config": { "days": 30 },
+                "name": "p",
+                "policy_type": "max_age_days",
+                "repository_id": A,
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(policy))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        create_policy(
+            "p",
+            "max_age_days",
+            r#"{"days":30}"#,
+            None,
+            None,
+            None,
+            &[A.to_string()],
+            false,
+            false,
+            None,
+            &global,
+        )
+        .await
+        .unwrap();
+        server.verify().await;
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn update_fails_when_the_server_ignored_the_scope() {
+        const A: &str = "00000000-0000-0000-0000-00000000000a";
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(ResponseTemplate::new(503))
+            .mount(&server)
+            .await;
+        let mut policy = lifecycle_policy_json();
+        policy.as_object_mut().unwrap().remove("applies_to_all");
+        policy.as_object_mut().unwrap().remove("repository_ids");
+        Mock::given(method("PATCH"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(policy))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let repos = [A.to_string()];
+        let err = update_policy(
+            NIL_UUID,
+            None,
+            false,
+            false,
+            None,
+            None,
+            None,
+            None,
+            Some(&repos),
+            None,
+            &global,
+        )
+        .await
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("didn't apply"), "{err}");
+        let err = update_policy(
+            NIL_UUID,
+            None,
+            false,
+            false,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(true),
+            &global,
+        )
+        .await
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("didn't apply"), "{err}");
+        crate::test_utils::teardown_env();
+    }
+
     #[tokio::test]
     async fn create_disabled_sends_enabled_false() {
         assert!(create_disabled("1.11.10", false, 1, 0).await.is_ok());
@@ -1433,7 +1696,12 @@ mod tests {
                 "policy_type": "max_age_days",
                 "repository_id": ID,
             })))
-            .respond_with(ResponseTemplate::new(200).set_body_json(lifecycle_policy_json()))
+            .respond_with(ResponseTemplate::new(200).set_body_json({
+                let mut policy = lifecycle_policy_json();
+                policy["applies_to_all"] = json!(false);
+                policy["repository_id"] = json!(ID);
+                policy
+            }))
             .expect(1)
             .mount(&server)
             .await;
