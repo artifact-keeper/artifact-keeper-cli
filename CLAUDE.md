@@ -46,6 +46,7 @@ src/                   # CLI binary (artifact-keeper-cli, bin: ak)
   cli.rs               # clap derive: Cli struct, Command enum, GlobalArgs
   error.rs             # miette diagnostics (AkError enum)
   transport.rs         # Plain-HTTP instance URL checks and warnings
+  registry.rs          # Which command covers which server route. Add a line for each route a new command calls
   output/mod.rs        # OutputFormat (table/json/yaml/quiet), render helpers
   config/
     mod.rs             # AppConfig (TOML), InstanceConfig, load/save
