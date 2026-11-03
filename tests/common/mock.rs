@@ -91,6 +91,44 @@ impl Mocked {
             .expect("run ak")
     }
 
+    /// Run `ak --no-input <args>` with this on stdin.
+    pub fn ak_stdin(&self, args: &[&str], stdin: &str) -> Output {
+        Command::cargo_bin("ak")
+            .expect("ak binary")
+            .env_remove("AK_FORMAT")
+            .env("AK_CONFIG_DIR", self.dir.path())
+            .env("AK_TOKEN", "t")
+            .env("AK_CREDENTIAL_STORE", "file")
+            .arg("--no-input")
+            .args(args)
+            .write_stdin(stdin)
+            .output()
+            .expect("run ak")
+    }
+
+    /// Run `ak --no-input <args>` with no token, the way a login starts.
+    pub fn ak_anon(&self, args: &[&str], stdin: &str, env: &[(&str, &str)]) -> Output {
+        let mut command = Command::cargo_bin("ak").expect("ak binary");
+        command
+            .env_remove("AK_FORMAT")
+            .env_remove("AK_TOKEN")
+            .env_remove("AK_TOTP_CODE")
+            .env("AK_CONFIG_DIR", self.dir.path())
+            .env("AK_CREDENTIAL_STORE", "file")
+            .arg("--no-input")
+            .args(args)
+            .write_stdin(stdin);
+        for (name, value) in env {
+            command.env(name, value);
+        }
+        command.output().expect("run ak")
+    }
+
+    /// The credentials file as text: empty if nothing has been stored.
+    pub fn stored_credentials(&self) -> String {
+        std::fs::read_to_string(self.dir.path().join("credentials.json")).unwrap_or_default()
+    }
+
     /// `ak --format json <args>`: it must succeed, and it must print the body as
     /// the server sent it.
     pub fn json(&self, args: &[&str]) -> Value {

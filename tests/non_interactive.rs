@@ -101,7 +101,12 @@ fn a_secret_prompt_with_no_terminal_says_what_to_do() {
             .output()
             .unwrap();
         assert!(!output.status.success());
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        // A diagnostic wraps its lines, which can fall inside the phrase.
+        let stderr = String::from_utf8_lossy(&output.stderr)
+            .split_whitespace()
+            .filter(|word| *word != "│")
+            .collect::<Vec<_>>()
+            .join(" ");
         assert!(stderr.contains("no terminal"), "{args:?}: {stderr}");
         assert!(!stderr.contains("IO error"), "{args:?}: {stderr}");
     }

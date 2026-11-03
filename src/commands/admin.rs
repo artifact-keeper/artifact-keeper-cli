@@ -4,7 +4,8 @@ use miette::Result;
 
 use super::client::{client_for, resolve_base_url_and_auth};
 use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, resolve_secret,
+    sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -304,6 +305,18 @@ pub enum UsersCommand {
         #[arg(long)]
         search: Option<String>,
 
+        /// Only active (true) or inactive (false) users
+        #[arg(long)]
+        is_active: Option<bool>,
+
+        /// Only admins (true) or non-admins (false)
+        #[arg(long)]
+        is_admin: Option<bool>,
+
+        /// Only service accounts (true) or people (false)
+        #[arg(long)]
+        is_service_account: Option<bool>,
+
         /// Page number
         #[arg(long, default_value = "1")]
         page: i32,
@@ -328,6 +341,15 @@ pub enum UsersCommand {
         /// Grant admin privileges
         #[arg(long)]
         admin: bool,
+
+        /// The user's password. Without it the server generates one and it's shown
+        /// once. Prefer --password-stdin or AK_USER_PASSWORD
+        #[arg(long, env = "AK_USER_PASSWORD", hide_env_values = true)]
+        password: Option<String>,
+
+        /// Read the password from stdin
+        #[arg(long)]
+        password_stdin: bool,
     },
     /// Update a user's details
     Update {
@@ -359,6 +381,15 @@ pub enum UsersCommand {
         /// Skip confirmation prompt
         #[arg(long)]
         yes: bool,
+    },
+
+    /// Set a user's password to one you choose
+    SetPassword {
+        /// User ID
+        id: String,
+
+        #[command(flatten)]
+        passwords: super::profile::PasswordArgs,
     },
 
     /// Reset a user's password (generates a temporary password)
@@ -1059,15 +1090,48 @@ impl AdminCommand {
             Self::Users { command } => match command {
                 UsersCommand::List {
                     search,
+                    is_active,
+                    is_admin,
+                    is_service_account,
                     page,
                     per_page,
-                } => list_users(search.as_deref(), page, per_page, global).await,
+                } => {
+                    let filters = UserFilters {
+                        search,
+                        is_active,
+                        is_admin,
+                        is_service_account,
+                    };
+                    list_users(filters, page, per_page, global).await
+                }
                 UsersCommand::Create {
                     username,
                     email,
                     display_name,
                     admin,
-                } => create_user(&username, &email, display_name.as_deref(), admin, global).await,
+                    password,
+                    password_stdin,
+                } => {
+                    let password = resolve_secret(
+                        password,
+                        password_stdin,
+                        "--password",
+                        None,
+                        global.no_input,
+                    )?;
+                    create_user(
+                        &username,
+                        &email,
+                        display_name.as_deref(),
+                        admin,
+                        password,
+                        global,
+                    )
+                    .await
+                }
+                UsersCommand::SetPassword { id, passwords } => {
+                    set_password(&id, passwords, global).await
+                }
                 UsersCommand::Update {
                     id,
                     email,
@@ -1638,8 +1702,15 @@ async fn show_metrics(global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+struct UserFilters {
+    search: Option<String>,
+    is_active: Option<bool>,
+    is_admin: Option<bool>,
+    is_service_account: Option<bool>,
+}
+
 async fn list_users(
-    search: Option<&str>,
+    filters: UserFilters,
     page: i32,
     per_page: i32,
     global: &GlobalArgs,
@@ -1648,8 +1719,17 @@ async fn list_users(
     let spinner = output::spinner("Fetching users...");
 
     let mut req = client.list_users().page(page).per_page(per_page);
-    if let Some(q) = search {
+    if let Some(q) = filters.search {
         req = req.search(q);
+    }
+    if let Some(value) = filters.is_active {
+        req = req.is_active(value);
+    }
+    if let Some(value) = filters.is_admin {
+        req = req.is_admin(value);
+    }
+    if let Some(value) = filters.is_service_account {
+        req = req.is_service_account(value);
     }
 
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
@@ -1735,6 +1815,7 @@ async fn create_user(
     email: &str,
     display_name: Option<&str>,
     admin: bool,
+    password: Option<String>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -1743,7 +1824,7 @@ async fn create_user(
     let body = artifact_keeper_sdk::types::CreateUserRequest {
         username: username.to_string(),
         email: email.to_string(),
-        password: None,
+        password,
         display_name: display_name.map(|s| s.to_string()),
         is_admin: admin.then_some(true),
     };
@@ -2671,6 +2752,30 @@ async fn install_plugin_zip(path: &str, global: &GlobalArgs) -> Result<()> {
         global,
     );
 
+    Ok(())
+}
+
+async fn set_password(
+    user_id: &str,
+    passwords: super::profile::PasswordArgs,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let id = parse_uuid(user_id, "user")?;
+    let body = passwords.resolve(false, global)?;
+    let client = client_for(global)?;
+    client
+        .change_password()
+        .id(id)
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("set password", e))?;
+    emit_mutation(
+        &serde_json::json!({ "id": user_id, "status": "password_set" }),
+        user_id,
+        &format!("Password set for user {user_id}."),
+        global,
+    );
     Ok(())
 }
 
@@ -4890,6 +4995,7 @@ mod tests {
                     search,
                     page,
                     per_page,
+                    ..
                 },
         } = cli.command
         {
@@ -4931,6 +5037,7 @@ mod tests {
                     email,
                     display_name,
                     admin,
+                    ..
                 },
         } = cli.command
         {
@@ -4963,6 +5070,7 @@ mod tests {
                     email,
                     display_name,
                     admin,
+                    ..
                 },
         } = cli.command
         {
@@ -6192,7 +6300,18 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_users(None, 1, 20, &global).await;
+        let result = list_users(
+            UserFilters {
+                search: None,
+                is_active: None,
+                is_admin: None,
+                is_service_account: None,
+            },
+            1,
+            20,
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -6223,7 +6342,18 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_users(None, 1, 20, &global).await;
+        let result = list_users(
+            UserFilters {
+                search: None,
+                is_active: None,
+                is_admin: None,
+                is_service_account: None,
+            },
+            1,
+            20,
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -6254,7 +6384,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = create_user("bob", "bob@example.com", None, false, &global).await;
+        let result = create_user("bob", "bob@example.com", None, false, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

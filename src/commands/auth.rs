@@ -1,10 +1,13 @@
-use artifact_keeper_sdk::{ClientAuthExt, ClientUsersExt};
+use artifact_keeper_sdk::{ClientAuthExt, ClientSsoExt, ClientUsersExt};
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 
 use super::client::{anon_client, authenticated_client, build_client, client_for, login_client};
-use super::helpers::{parse_uuid, resolve_secret, sdk_err};
+use super::helpers::{
+    parse_json_arg, parse_uuid, raw_err, refuse_flags_before_1_11, require_secret, resolve_secret,
+    sdk_err,
+};
 use crate::cli::GlobalArgs;
 use crate::config::credentials::{
     StoredCredential, delete_credential, get_credential, store_credential,
@@ -14,29 +17,74 @@ use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 use crate::transport;
 
+#[derive(clap::Args)]
+pub struct LoginArgs {
+    /// Instance URL (uses default instance if omitted)
+    url: Option<String>,
+
+    /// Skip interactive prompt and go straight to token authentication
+    #[arg(long, conflicts_with_all = ["oidc_device", "sso", "username"])]
+    token: bool,
+
+    /// Read the token from stdin rather than asking for it
+    #[arg(long, conflicts_with_all = ["token", "oidc_device", "sso", "username", "totp_code_stdin"])]
+    token_stdin: bool,
+
+    /// Sign in with the RFC 8628 device authorization grant instead of
+    /// prompting for a password or token. Prints a verification URL and a
+    /// short user code, then polls until the user approves it. Works
+    /// headlessly and with SSO-backed instances. Requires backend 1.12.0+.
+    #[arg(long = "oidc-device", visible_alias = "device", conflicts_with_all = ["sso", "username"])]
+    oidc_device: bool,
+
+    /// AK scopes to request with --oidc-device (repeatable, or
+    /// comma-separated). Defaults to `read:artifacts`.
+    #[arg(long, value_delimiter = ',', requires = "oidc_device")]
+    scope: Vec<String>,
+
+    /// Sign in through an SSO provider, as `ldap:<id>`, `oidc:<id>` or `saml:<id>`.
+    /// `ak sso providers` lists them. LDAP takes a username and password here. OIDC
+    /// and SAML print a URL to open in a browser, which ends at a callback URL with
+    /// a code to give to this command or to `ak auth sso-exchange`. An instance
+    /// serving the web UI redeems that code on the callback page, and it works only
+    /// once: use an API token or, on 1.12, --oidc-device there
+    #[arg(long, value_name = "TYPE:ID")]
+    sso: Option<String>,
+
+    /// The OIDC `prompt` value to send to the identity provider
+    #[arg(long, requires = "sso")]
+    prompt: Option<String>,
+
+    /// Username. With this there's no menu of login methods
+    #[arg(long)]
+    username: Option<String>,
+
+    /// Read the password from stdin rather than asking for it
+    #[arg(long, requires = "username", conflicts_with = "totp_code_stdin")]
+    password_stdin: bool,
+
+    /// The TOTP code, if the account has two-factor login. Without it you're asked
+    #[arg(long, env = "AK_TOTP_CODE", hide_env_values = true)]
+    totp_code: Option<String>,
+
+    /// Read the TOTP code from stdin
+    #[arg(long)]
+    totp_code_stdin: bool,
+
+    /// If the server asks for a TOTP code or for TOTP enrollment, print its one-time
+    /// ticket on stdout and stop, without logging in. Finish with `ak auth verify-totp`
+    /// or `ak totp enroll`
+    #[arg(long)]
+    print_totp_ticket: bool,
+}
+
 #[derive(Subcommand)]
 pub enum AuthCommand {
-    /// Log in to an Artifact Keeper instance
-    Login {
-        /// Instance URL (uses default instance if omitted)
-        url: Option<String>,
-
-        /// Skip interactive prompt and go straight to token authentication
-        #[arg(long, conflicts_with = "oidc_device")]
-        token: bool,
-
-        /// Sign in with the RFC 8628 device authorization grant instead of
-        /// prompting for a password or token. Prints a verification URL and a
-        /// short user code, then polls until the user approves it. Works
-        /// headlessly and with SSO-backed instances. Requires backend 1.12.0+.
-        #[arg(long = "oidc-device", visible_alias = "device")]
-        oidc_device: bool,
-
-        /// AK scopes to request with --oidc-device (repeatable, or
-        /// comma-separated). Defaults to `read:artifacts`.
-        #[arg(long, value_delimiter = ',', requires = "oidc_device")]
-        scope: Vec<String>,
-    },
+    /// Log in to an Artifact Keeper instance. The session is stored and never printed
+    #[command(
+        after_help = "Examples:\n  ak auth login\n  ak auth login --username alice --password-stdin < secret-file\n  ak auth login --token-stdin < token-file\n  ak auth login --sso ldap:<provider-id> --username alice\n  ak auth login --sso oidc:<provider-id>"
+    )]
+    Login(Box<LoginArgs>),
 
     /// Log out and remove stored credentials
     Logout {
@@ -53,9 +101,6 @@ pub enum AuthCommand {
     /// Show current authenticated user and instance
     Whoami,
 
-    /// Switch between accounts on the same instance
-    Switch,
-
     /// Refresh the stored access token using the saved refresh token
     Refresh {
         /// Instance to refresh (uses default if omitted)
@@ -70,12 +115,32 @@ pub enum AuthCommand {
 
     /// Verify a TOTP code to complete two-factor login
     VerifyTotp {
-        /// The code from your authenticator app
-        code: String,
+        /// The code from your authenticator app. Omit it to use --code-stdin or a
+        /// prompt
+        code: Option<String>,
 
-        /// The one-time totp_token returned by `ak auth login` when 2FA is required
+        /// Read the code from stdin
         #[arg(long)]
-        totp_token: String,
+        code_stdin: bool,
+
+        /// The one-time ticket from `ak auth login --print-totp-ticket`
+        #[arg(long, env = "AK_TOTP_TOKEN", hide_env_values = true)]
+        totp_token: Option<String>,
+
+        /// Read the ticket from stdin
+        #[arg(long, conflicts_with = "code_stdin")]
+        totp_token_stdin: bool,
+    },
+
+    /// Finish an OIDC or SAML login: trade the code from the callback URL for a session
+    SsoExchange {
+        /// The exchange code, or the whole callback URL
+        #[arg(long, env = "AK_SSO_CODE", hide_env_values = true)]
+        code: Option<String>,
+
+        /// Read the code or the URL from stdin
+        #[arg(long)]
+        code_stdin: bool,
     },
 
     /// Create a short-lived, single-use download ticket for a resource
@@ -119,6 +184,16 @@ pub enum TokenCommand {
         /// Expiration in days
         #[arg(long, default_value = "90")]
         expires_in: u32,
+
+        /// Scope to grant (repeatable, or comma-separated). Defaults to `*`, all of
+        /// your own access
+        #[arg(long = "scope", value_delimiter = ',')]
+        scopes: Vec<String>,
+
+        /// Restrict the token to the repositories this selector matches: JSON text,
+        /// @file or @-. It only ever narrows your own access
+        #[arg(long)]
+        repo_selector: Option<String>,
     },
 
     /// List active API tokens
@@ -128,16 +203,11 @@ pub enum TokenCommand {
 impl AuthCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
-            Self::Login {
-                url,
-                token,
-                oidc_device,
-                scope,
-            } => {
-                if oidc_device {
-                    login_with_device(url.as_deref(), &scope, global).await
+            Self::Login(args) => {
+                if args.oidc_device {
+                    login_with_device(args.url.as_deref(), &args.scope, global).await
                 } else {
-                    login(url.as_deref(), token, global).await
+                    login(&args, global).await
                 }
             }
             Self::Logout { instance } => logout(instance.as_deref(), global).await,
@@ -145,18 +215,65 @@ impl AuthCommand {
                 TokenCommand::Create {
                     description,
                     expires_in,
-                } => token_create(description.as_deref(), expires_in, global).await,
+                    scopes,
+                    repo_selector,
+                } => {
+                    let repo_selector = repo_selector
+                        .map(|value| parse_json_arg(&value, "--repo-selector"))
+                        .transpose()?;
+                    // A 1.10 server would drop the selector and make a token with
+                    // all of your access, which is the opposite of what was asked.
+                    if repo_selector.is_some() {
+                        refuse_flags_before_1_11(&["--repo-selector"], global).await?;
+                    }
+                    token_create(
+                        description.as_deref(),
+                        expires_in,
+                        scopes,
+                        repo_selector,
+                        global,
+                    )
+                    .await
+                }
                 TokenCommand::List => token_list(global).await,
             },
             Self::Whoami => whoami(global).await,
-            Self::Switch => {
-                eprintln!("Account switching is not yet implemented.");
-                eprintln!("Use `ak auth login` to log in with a different account.");
-                Ok(())
-            }
             Self::Refresh { instance } => refresh(instance.as_deref(), global).await,
             Self::RevokeToken { id } => revoke_token(&id, global).await,
-            Self::VerifyTotp { code, totp_token } => verify_totp(&code, &totp_token, global).await,
+            Self::VerifyTotp {
+                code,
+                code_stdin,
+                totp_token,
+                totp_token_stdin,
+            } => {
+                let totp_token = require_secret(
+                    resolve_secret(
+                        totp_token,
+                        totp_token_stdin,
+                        "--totp-token",
+                        None,
+                        global.no_input,
+                    )?,
+                    "The one-time TOTP ticket",
+                    "--totp-token-stdin or AK_TOTP_TOKEN",
+                )?;
+                let code = totp_code(code, code_stdin, "--code", "--code-stdin", global)?;
+                verify_totp(&code, &totp_token, global).await
+            }
+            Self::SsoExchange { code, code_stdin } => {
+                let code = require_secret(
+                    resolve_secret(
+                        code,
+                        code_stdin,
+                        "--code",
+                        Some("Exchange code"),
+                        global.no_input,
+                    )?,
+                    "The exchange code",
+                    "--code-stdin or AK_SSO_CODE",
+                )?;
+                sso_exchange(&code, global).await
+            }
             Self::DownloadTicket {
                 resource_path,
                 purpose,
@@ -200,20 +317,43 @@ fn resolve_login_instance(
     Ok((name.to_string(), instance.clone()))
 }
 
-async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Result<()> {
-    let (instance_name, instance) = resolve_login_instance(url, global)?;
+async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
+    let (instance_name, instance) = resolve_login_instance(args.url.as_deref(), global)?;
+
+    if let Some(sso) = &args.sso {
+        return match parse_sso(sso)? {
+            (SsoKind::Ldap, id) => {
+                login_with_ldap(&instance_name, &instance, id, args, global).await
+            }
+            (kind, id) => {
+                login_with_browser(&instance_name, &instance, kind, id, args, global).await
+            }
+        };
+    }
+    if args.token_stdin {
+        let token = require_secret(
+            resolve_secret(None, true, "--token", None, global.no_input)?,
+            "The token",
+            "--token-stdin",
+        )?;
+        return store_token(&instance_name, &instance, token).await;
+    }
+    if args.username.is_some() {
+        return login_with_password(&instance_name, &instance, args, global).await;
+    }
 
     if global.no_input {
-        let hint = if use_token {
-            "Cannot prompt for token in non-interactive mode. Set AK_TOKEN environment variable instead."
+        let hint = if args.token {
+            "Cannot prompt for token in non-interactive mode. Use `--token-stdin` or set AK_TOKEN."
         } else {
-            "Cannot prompt for credentials in non-interactive mode. Use `--token` flag or set AK_TOKEN."
+            "Cannot prompt for credentials in non-interactive mode. Use `--username` with \
+             `--password-stdin`, `--token-stdin`, or set AK_TOKEN."
         };
         return Err(AkError::ConfigError(hint.into()).into());
     }
 
     // If --token flag was explicitly passed, go straight to token flow
-    if use_token {
+    if args.token {
         return login_with_token(&instance_name, &instance).await;
     }
 
@@ -235,7 +375,7 @@ async fn login(url: Option<&str>, use_token: bool, global: &GlobalArgs) -> Resul
         .into_diagnostic()?;
 
     match selection {
-        0 => login_with_password(&instance_name, &instance).await,
+        0 => login_with_password(&instance_name, &instance, args, global).await,
         1 => login_with_token(&instance_name, &instance).await,
         _ => unreachable!(),
     }
@@ -263,7 +403,11 @@ async fn login_with_token(instance_name: &str, instance: &InstanceConfig) -> Res
         .with_prompt("Token")
         .interact()
         .into_diagnostic()?;
+    store_token(instance_name, instance, token).await
+}
 
+/// Check a token with the server, and keep it only if the server takes it.
+async fn store_token(instance_name: &str, instance: &InstanceConfig, token: String) -> Result<()> {
     let cred = StoredCredential {
         access_token: token.trim().to_string(),
         refresh_token: None,
@@ -284,27 +428,58 @@ async fn login_with_token(instance_name: &str, instance: &InstanceConfig) -> Res
     Ok(())
 }
 
-async fn login_with_password(instance_name: &str, instance: &InstanceConfig) -> Result<()> {
-    // A password sent over plaintext HTTP to a non-loopback host is readable
-    // by any on-path observer. Refuse unless the user explicitly opted in
-    // (`ak instance add --insecure-http` or AK_ALLOW_INSECURE_HTTP=1).
-    // Loopback (localhost/127.0.0.1/::1) is exempt: plain HTTP is the normal
-    // local development setup.
+/// A password sent over plaintext HTTP to a non-loopback host is readable by any
+/// on-path observer. Refuse unless the user explicitly opted in (`ak instance add
+/// --insecure-http` or AK_ALLOW_INSECURE_HTTP=1). Loopback (localhost/127.0.0.1/::1)
+/// is exempt: plain HTTP is the normal local development setup.
+fn refuse_cleartext_password(instance: &InstanceConfig) -> Result<()> {
     if transport::classify_url(&instance.url) == transport::TransportSecurity::HttpRemote
         && !transport::insecure_http_allowed(instance)
     {
         return Err(AkError::InsecureTransport(instance.url.clone()).into());
     }
+    Ok(())
+}
 
-    let username: String = dialoguer::Input::new()
-        .with_prompt("Username")
-        .interact_text()
-        .into_diagnostic()?;
+/// The username and password for a login, from the flags or by asking.
+fn login_credentials(args: &LoginArgs, global: &GlobalArgs) -> Result<(String, String)> {
+    let username = match &args.username {
+        Some(username) => username.clone(),
+        None if global.no_input => {
+            return Err(AkError::ConfigError(
+                "Cannot prompt for a username in non-interactive mode. Use `--username` with \
+                 `--password-stdin`."
+                    .into(),
+            )
+            .into());
+        }
+        None => dialoguer::Input::new()
+            .with_prompt("Username")
+            .interact_text()
+            .into_diagnostic()?,
+    };
+    let password = require_secret(
+        resolve_secret(
+            None,
+            args.password_stdin,
+            "--password",
+            Some("Password"),
+            global.no_input,
+        )?,
+        "The password",
+        "--password-stdin",
+    )?;
+    Ok((username, password))
+}
 
-    let password = dialoguer::Password::new()
-        .with_prompt("Password")
-        .interact()
-        .into_diagnostic()?;
+async fn login_with_password(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    args: &LoginArgs,
+    global: &GlobalArgs,
+) -> Result<()> {
+    refuse_cleartext_password(instance)?;
+    let (username, password) = login_credentials(args, global)?;
 
     let anon_client = login_client(&instance.url)?;
 
@@ -318,26 +493,367 @@ async fn login_with_password(instance_name: &str, instance: &InstanceConfig) -> 
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::NotAuthenticated(format!("Login failed: {e}")))?;
+        .map_err(|e| AkError::NotAuthenticated(format!("Login failed: {e}")))?
+        .into_inner();
 
-    if resp.totp_required == Some(true) {
-        eprintln!("TOTP verification is required but not yet supported in the CLI.");
-        eprintln!("Use `--token` with an API token instead.");
-        return Ok(());
+    // A server that wants a TOTP step first sends empty tokens, which must never be
+    // stored as a session.
+    if let Some(ticket) = resp.totp_token.as_deref() {
+        if resp.totp_enrollment_required == Some(true) {
+            return enroll_during_login(instance_name, instance, ticket, args, global).await;
+        }
+        if resp.totp_required == Some(true) {
+            return challenge_during_login(instance_name, instance, ticket, args, global).await;
+        }
+    }
+    if resp.access_token.is_empty() {
+        return Err(AkError::NotAuthenticated(
+            "The server accepted the password but sent no session. Check `ak doctor`.".into(),
+        )
+        .into());
     }
 
+    store_session(
+        instance_name,
+        resp.access_token,
+        resp.refresh_token,
+        resp.must_change_password,
+    )?;
+    eprintln!("Logged in to '{instance_name}' as {username}");
+    Ok(())
+}
+
+/// Keep a new session and say what the user must do about it. The tokens are never
+/// printed: to get one for a script, create an API token.
+fn store_session(
+    instance_name: &str,
+    access_token: String,
+    refresh_token: String,
+    must_change_password: bool,
+) -> Result<()> {
     let cred = StoredCredential {
-        access_token: resp.access_token.clone(),
-        refresh_token: Some(resp.refresh_token.clone()),
+        access_token,
+        refresh_token: Some(refresh_token),
     };
     store_credential(instance_name, &cred)?;
+    if must_change_password {
+        eprintln!("Warning: You must change your password. Run `ak profile change-password`.");
+    }
+    Ok(())
+}
 
+/// A TOTP code from the flag, stdin or a prompt that doesn't echo it.
+fn totp_code(
+    value: Option<String>,
+    from_stdin: bool,
+    flag: &str,
+    stdin_flag: &str,
+    global: &GlobalArgs,
+) -> Result<String> {
+    require_secret(
+        resolve_secret(value, from_stdin, flag, Some("TOTP code"), global.no_input)?,
+        "The TOTP code",
+        stdin_flag,
+    )
+}
+
+/// Print a one-time ticket for the user to finish the login with, if they asked.
+fn ticket_requested(ticket: &str, next: &str, args: &LoginArgs) -> bool {
+    if args.print_totp_ticket {
+        println!("{ticket}");
+        eprintln!("Not logged in yet. Finish with `{next}`.");
+    }
+    args.print_totp_ticket
+}
+
+async fn challenge_during_login(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    ticket: &str,
+    args: &LoginArgs,
+    global: &GlobalArgs,
+) -> Result<()> {
+    if ticket_requested(ticket, "ak auth verify-totp --totp-token-stdin", args) {
+        return Ok(());
+    }
+    let code = totp_code(
+        args.totp_code.clone(),
+        args.totp_code_stdin,
+        "--totp-code",
+        "--totp-code-stdin, AK_TOTP_CODE or --print-totp-ticket",
+        global,
+    )?;
+    complete_totp(instance_name, instance, &code, ticket).await
+}
+
+/// The server's policy wants this user on TOTP before it gives them a session.
+async fn enroll_during_login(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    ticket: &str,
+    args: &LoginArgs,
+    global: &GlobalArgs,
+) -> Result<()> {
+    if ticket_requested(ticket, "ak totp enroll setup --totp-token-stdin", args) {
+        return Ok(());
+    }
+    if global.no_input {
+        return Err(AkError::ConfigError(
+            "This server requires you to set up TOTP before logging in. Use \
+             --print-totp-ticket and `ak totp enroll`, or run this at a terminal."
+                .into(),
+        )
+        .into());
+    }
+    let client = login_client(&instance.url)?;
+    eprintln!("This server requires two-factor login, so set it up now.");
+    let setup = super::totp::enroll_setup_request(&client, ticket).await?;
+    eprintln!(
+        "TOTP secret:  {}\nQR code URL:  {}\n",
+        setup.secret, setup.qr_code_url
+    );
+    let code = totp_code(
+        args.totp_code.clone(),
+        args.totp_code_stdin,
+        "--totp-code",
+        "--totp-code-stdin or AK_TOTP_CODE",
+        global,
+    )?;
+    let done = super::totp::enroll_complete_request(&client, ticket, &code).await?;
+    store_session(
+        instance_name,
+        done.access_token.clone(),
+        done.refresh_token.clone(),
+        done.must_change_password,
+    )?;
+    eprintln!("Two-factor login is on, and you're logged in to '{instance_name}'.");
+    eprintln!("Backup codes (save these somewhere safe; each works once):");
+    for code in &done.backup_codes {
+        eprintln!("  {code}");
+    }
+    Ok(())
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SsoKind {
+    Ldap,
+    Oidc,
+    Saml,
+}
+
+impl SsoKind {
+    fn route(self) -> &'static str {
+        match self {
+            Self::Ldap => "ldap",
+            Self::Oidc => "oidc",
+            Self::Saml => "saml",
+        }
+    }
+}
+
+fn parse_sso(value: &str) -> Result<(SsoKind, uuid::Uuid)> {
+    let wrong = || {
+        AkError::ConfigError(format!(
+            "--sso: '{value}' isn't `ldap:<id>`, `oidc:<id>` or `saml:<id>`. Run `ak sso \
+             providers` to see them."
+        ))
+    };
+    let (kind, id) = value.split_once(':').ok_or_else(wrong)?;
+    let kind = match kind {
+        "ldap" => SsoKind::Ldap,
+        "oidc" => SsoKind::Oidc,
+        "saml" => SsoKind::Saml,
+        _ => return Err(wrong().into()),
+    };
+    Ok((kind, parse_uuid(id, "SSO provider")?))
+}
+
+/// What `POST /auth/sso/ldap/{id}/login` sends back. The spec gives this response no
+/// schema, so the SDK can't return it.
+#[derive(serde::Deserialize)]
+struct LdapSession {
+    access_token: String,
+    refresh_token: String,
+}
+
+async fn login_with_ldap(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    provider: uuid::Uuid,
+    args: &LoginArgs,
+    global: &GlobalArgs,
+) -> Result<()> {
+    refuse_cleartext_password(instance)?;
+    let (username, password) = login_credentials(args, global)?;
+
+    // Not the SDK, which drops this route's response. The body holds a password, and a
+    // 307 would resend it wherever it points.
+    let builder = super::client::raw_http_client_builder(reqwest::redirect::Policy::none());
+    let http = transport::apply_custom_ca(builder)?
+        .build()
+        .into_diagnostic()?;
+    let url = format!(
+        "{}/api/v1/auth/sso/ldap/{provider}/login",
+        instance.url.trim_end_matches('/')
+    );
+    let resp = http
+        .post(&url)
+        .timeout(std::time::Duration::from_secs(30))
+        .json(&artifact_keeper_sdk::types::LdapLoginRequest {
+            username: username.clone(),
+            password,
+        })
+        .send()
+        .await
+        .map_err(|e| AkError::NotAuthenticated(format!("LDAP login failed: {e}")))?;
+    let status = resp.status();
+    let bytes = resp.bytes().await.into_diagnostic()?;
+    if !status.is_success() {
+        let body = String::from_utf8_lossy(&bytes);
+        return Err(raw_err("LDAP login failed", status, &body).into());
+    }
+    let session: LdapSession = serde_json::from_slice(&bytes)
+        .map_err(|_| AkError::NotAuthenticated("LDAP login: the server sent no session".into()))?;
+    store_session(
+        instance_name,
+        session.access_token,
+        session.refresh_token,
+        false,
+    )?;
     eprintln!("Logged in to '{instance_name}' as {username}");
-    if resp.must_change_password {
-        eprintln!("Warning: You must change your password. Visit the web UI to update it.");
+    Ok(())
+}
+
+/// Where the server sends a browser to sign in with this provider. It answers with
+/// a redirect, which here is the answer rather than something to follow.
+async fn sso_login_url(
+    instance: &InstanceConfig,
+    kind: SsoKind,
+    provider: uuid::Uuid,
+    prompt: Option<&str>,
+) -> Result<String> {
+    let builder = super::client::raw_http_client_builder(reqwest::redirect::Policy::none());
+    let http = transport::apply_custom_ca(builder)?
+        .build()
+        .into_diagnostic()?;
+    let url = format!(
+        "{}/api/v1/auth/sso/{}/{provider}/login",
+        instance.url.trim_end_matches('/'),
+        kind.route()
+    );
+    let mut req = http.get(&url).timeout(std::time::Duration::from_secs(30));
+    if let Some(prompt) = prompt {
+        req = req.query(&[("prompt", prompt)]);
+    }
+    let resp = req
+        .send()
+        .await
+        .map_err(|e| sdk_err("start the SSO login", e))?;
+    let status = resp.status();
+    if !status.is_redirection() {
+        let body = resp.text().await.unwrap_or_default();
+        return Err(raw_err("Failed to start the SSO login", status, &body).into());
+    }
+    resp.headers()
+        .get(reqwest::header::LOCATION)
+        .and_then(|location| location.to_str().ok())
+        .map(str::to_string)
+        .ok_or_else(|| {
+            AkError::ServerError(format!(
+                "Failed to start the SSO login: {status} with no Location"
+            ))
+            .into()
+        })
+}
+
+async fn login_with_browser(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    kind: SsoKind,
+    provider: uuid::Uuid,
+    args: &LoginArgs,
+    global: &GlobalArgs,
+) -> Result<()> {
+    if kind == SsoKind::Saml && args.prompt.is_some() {
+        return Err(AkError::ConfigError("--prompt is for OIDC only.".into()).into());
+    }
+    let login_url = sso_login_url(instance, kind, provider, args.prompt.as_deref()).await?;
+    let info = serde_json::json!({
+        "login_url": login_url,
+        "provider_type": kind.route(),
+        "provider_id": provider,
+    });
+    match global.format {
+        OutputFormat::Quiet => println!("{login_url}"),
+        OutputFormat::Json | OutputFormat::Yaml => {
+            println!("{}", output::render(&info, &global.format, None));
+        }
+        OutputFormat::Table => {
+            eprintln!("Open this URL in a browser and sign in:\n\n{login_url}\n")
+        }
     }
 
+    let at_terminal = std::io::IsTerminal::is_terminal(&std::io::stdin());
+    if global.no_input || !at_terminal {
+        eprintln!(
+            "It ends at a URL with a `code`. Finish with `ak auth sso-exchange --code-stdin`."
+        );
+        return Ok(());
+    }
+    eprintln!("It ends at a URL with a `code`. Paste that URL or the code here.");
+    let code = dialoguer::Password::new()
+        .with_prompt("Code")
+        .interact()
+        .map_err(|e| super::helpers::prompt_err("Failed to read the code", e))?;
+    exchange_and_store(instance_name, instance, &code).await
+}
+
+/// The code in a callback URL, or the value itself if it isn't a URL with one.
+fn exchange_code_from(value: &str) -> String {
+    let value = value.trim();
+    reqwest::Url::parse(value)
+        .ok()
+        .and_then(|url| {
+            url.query_pairs()
+                .find(|(name, _)| name == "code")
+                .map(|(_, code)| code.into_owned())
+        })
+        .or_else(|| {
+            let query = value.split_once('?')?.1;
+            let (_, code) = query
+                .split('&')
+                .filter_map(|pair| pair.split_once('='))
+                .find(|(name, _)| *name == "code")?;
+            Some(code.to_string())
+        })
+        .unwrap_or_else(|| value.to_string())
+}
+
+async fn exchange_and_store(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    code: &str,
+) -> Result<()> {
+    let client = login_client(&instance.url)?;
+    let body = artifact_keeper_sdk::types::ExchangeCodeRequest {
+        code: exchange_code_from(code),
+    };
+    let resp = client
+        .exchange_code()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| AkError::NotAuthenticated(format!("SSO exchange failed: {e}")))?
+        .into_inner();
+    store_session(instance_name, resp.access_token, resp.refresh_token, false)?;
+    eprintln!("Logged in to '{instance_name}'.");
     Ok(())
+}
+
+async fn sso_exchange(code: &str, global: &GlobalArgs) -> Result<()> {
+    let config = AppConfig::load()?;
+    let (instance_name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    exchange_and_store(instance_name, instance, code).await
 }
 
 async fn logout(instance: Option<&str>, global: &GlobalArgs) -> Result<()> {
@@ -404,6 +920,8 @@ async fn refresh(instance: Option<&str>, global: &GlobalArgs) -> Result<()> {
         return Ok(());
     }
 
+    // Not the server's body: it holds the new tokens, which were just stored. `--format
+    // quiet` is the one way to ask for the token itself.
     let info = serde_json::json!({
         "instance": instance_name,
         "expires_in": resp.expires_in,
@@ -439,9 +957,17 @@ async fn revoke_token(id: &str, global: &GlobalArgs) -> Result<()> {
 async fn verify_totp(code: &str, totp_token: &str, global: &GlobalArgs) -> Result<()> {
     let config = AppConfig::load()?;
     let (instance_name, instance_cfg) = config.resolve_instance(global.instance.as_deref())?;
-    let instance_name = instance_name.to_string();
+    complete_totp(instance_name, instance_cfg, code, totp_token).await
+}
 
-    let anon_client = login_client(&instance_cfg.url)?;
+/// Trade a TOTP code and its login ticket for a session, and keep it.
+async fn complete_totp(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    code: &str,
+    totp_token: &str,
+) -> Result<()> {
+    let anon_client = login_client(&instance.url)?;
     let body = artifact_keeper_sdk::types::TotpVerifyRequest {
         code: code.to_string(),
         totp_token: totp_token.to_string(),
@@ -452,18 +978,16 @@ async fn verify_totp(code: &str, totp_token: &str, global: &GlobalArgs) -> Resul
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::NotAuthenticated(format!("TOTP verification failed: {e}")))?;
+        .map_err(|e| AkError::NotAuthenticated(format!("TOTP verification failed: {e}")))?
+        .into_inner();
 
-    let cred = StoredCredential {
-        access_token: resp.access_token.clone(),
-        refresh_token: Some(resp.refresh_token.clone()),
-    };
-    store_credential(&instance_name, &cred)?;
-
+    store_session(
+        instance_name,
+        resp.access_token,
+        resp.refresh_token,
+        resp.must_change_password,
+    )?;
     eprintln!("Two-factor verification succeeded; logged in to '{instance_name}'.");
-    if resp.must_change_password {
-        eprintln!("Warning: You must change your password. Visit the web UI to update it.");
-    }
     Ok(())
 }
 
@@ -474,12 +998,9 @@ async fn download_ticket(resource_path: &str, purpose: &str, global: &GlobalArgs
         resource_path: Some(resource_path.to_string()),
     };
 
-    let resp = client
-        .create_download_ticket()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create download ticket", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_download_ticket().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("create download ticket", e))?;
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", resp.ticket);
@@ -500,7 +1021,10 @@ async fn download_ticket(resource_path: &str, purpose: &str, global: &GlobalArgs
         resp.expires_in, resp.ticket, resource_path,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 
@@ -528,12 +1052,10 @@ async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) 
         provider_id: Some(provider),
     };
 
-    let resp = client
-        .exchange_ci_token()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| AkError::NotAuthenticated(format!("CI token exchange failed: {e}")))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.exchange_ci_token().body(body).send()).await;
+    let resp =
+        resp.map_err(|e| AkError::NotAuthenticated(format!("CI token exchange failed: {e}")))?;
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", resp.access_token);
@@ -555,7 +1077,10 @@ async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) 
         resp.username, resp.token_type, resp.expires_in, resp.access_token,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 
@@ -566,11 +1091,8 @@ async fn setup_status(global: &GlobalArgs) -> Result<()> {
     // Setup status is a pre-auth endpoint; no credentials required.
     let client = anon_client(&instance_cfg.url)?;
 
-    let resp = client
-        .setup_status()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get setup status", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.setup_status().send()).await;
+    let resp = resp.map_err(|e| sdk_err("get setup status", e))?;
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", resp.setup_required);
@@ -586,7 +1108,10 @@ async fn setup_status(global: &GlobalArgs) -> Result<()> {
         if resp.setup_required { "yes" } else { "no" },
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 
@@ -638,6 +1163,8 @@ async fn whoami(global: &GlobalArgs) -> Result<()> {
 async fn token_create(
     description: Option<&str>,
     expires_in: u32,
+    scopes: Vec<String>,
+    repo_selector: Option<serde_json::Map<String, serde_json::Value>>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -655,17 +1182,18 @@ async fn token_create(
 
     let body = artifact_keeper_sdk::types::CreateApiTokenRequest {
         name,
-        scopes: vec!["*".to_string()],
+        scopes: if scopes.is_empty() {
+            vec!["*".to_string()]
+        } else {
+            scopes
+        },
         expires_in_days: Some(i64::from(expires_in)),
-        repo_selector: None,
+        repo_selector,
     };
 
-    let resp = client
-        .create_api_token()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create token: {e}")))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_api_token().body(body).send()).await;
+    let resp = resp.map_err(|e| AkError::ServerError(format!("Failed to create token: {e}")))?;
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", resp.token);
@@ -687,7 +1215,10 @@ async fn token_create(
         resp.id, resp.name, resp.token,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -727,21 +1258,6 @@ mod tests {
             .unwrap();
         let result = format_optional_date(Some(date), "%+");
         assert!(result.contains("2026-01-15"));
-    }
-
-    // ---- AuthCommand enum ----
-
-    #[test]
-    fn auth_switch_stub() {
-        // Verify the switch command doesn't panic
-        let global = GlobalArgs {
-            format: crate::output::OutputFormat::Quiet,
-            instance: None,
-            no_input: true,
-        };
-        let cmd = AuthCommand::Switch;
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(cmd.execute(&global)).unwrap();
     }
 
     // ---- wiremock handler tests ----
@@ -802,7 +1318,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = token_create(Some("test token"), 90, &global).await;
+        let result = token_create(Some("test token"), 90, Vec::new(), None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -828,7 +1344,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = token_create(Some("test token"), 90, &global).await;
+        let result = token_create(Some("test token"), 90, Vec::new(), None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -932,7 +1448,10 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
         // no_input=true should produce an error for login
-        let result = login(None, false, &global).await;
+        let AuthCommand::Login(args) = parse_auth(&["auth", "login"]) else {
+            panic!("expected Login");
+        };
+        let result = login(&args, &global).await;
         assert!(result.is_err());
         crate::test_utils::teardown_env();
     }
@@ -962,15 +1481,10 @@ mod tests {
     #[test]
     fn parse_login_oidc_device() {
         match parse_auth(&["auth", "login", "--oidc-device"]) {
-            AuthCommand::Login {
-                oidc_device,
-                token,
-                scope,
-                ..
-            } => {
-                assert!(oidc_device);
-                assert!(!token);
-                assert!(scope.is_empty());
+            AuthCommand::Login(args) => {
+                assert!(args.oidc_device);
+                assert!(!args.token);
+                assert!(args.scope.is_empty());
             }
             _ => panic!("expected Login"),
         }
@@ -979,7 +1493,7 @@ mod tests {
     #[test]
     fn parse_login_device_alias() {
         match parse_auth(&["auth", "login", "--device"]) {
-            AuthCommand::Login { oidc_device, .. } => assert!(oidc_device),
+            AuthCommand::Login(args) => assert!(args.oidc_device),
             _ => panic!("expected Login"),
         }
     }
@@ -995,12 +1509,10 @@ mod tests {
             "--scope",
             "delete:artifacts",
         ]) {
-            AuthCommand::Login {
-                oidc_device, scope, ..
-            } => {
-                assert!(oidc_device);
+            AuthCommand::Login(args) => {
+                assert!(args.oidc_device);
                 assert_eq!(
-                    scope,
+                    args.scope,
                     vec!["read:artifacts", "write:artifacts", "delete:artifacts"]
                 );
             }
@@ -1034,17 +1546,33 @@ mod tests {
     #[test]
     fn parse_verify_totp() {
         match parse_auth(&["auth", "verify-totp", "123456", "--totp-token", "tok"]) {
-            AuthCommand::VerifyTotp { code, totp_token } => {
-                assert_eq!(code, "123456");
-                assert_eq!(totp_token, "tok");
+            AuthCommand::VerifyTotp {
+                code, totp_token, ..
+            } => {
+                assert_eq!(code.as_deref(), Some("123456"));
+                assert_eq!(totp_token.as_deref(), Some("tok"));
             }
             _ => panic!("expected VerifyTotp"),
         }
     }
 
     #[test]
-    fn parse_verify_totp_requires_totp_token() {
-        assert!(TestCli::try_parse_from(["auth", "verify-totp", "123456"]).is_err());
+    fn verify_totp_can_read_either_secret_from_stdin_but_not_both() {
+        assert!(
+            TestCli::try_parse_from(["auth", "verify-totp", "--code-stdin", "--totp-token-stdin"])
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn sso_login_names_a_type_and_a_provider() {
+        let id = "00000000-0000-0000-0000-000000000001";
+        assert_eq!(parse_sso(&format!("ldap:{id}")).unwrap().0, SsoKind::Ldap);
+        assert_eq!(parse_sso(&format!("oidc:{id}")).unwrap().0, SsoKind::Oidc);
+        assert_eq!(parse_sso(&format!("saml:{id}")).unwrap().0, SsoKind::Saml);
+        assert!(parse_sso(id).is_err());
+        assert!(parse_sso(&format!("github:{id}")).is_err());
+        assert!(parse_sso("ldap:corp").is_err());
     }
 
     #[test]

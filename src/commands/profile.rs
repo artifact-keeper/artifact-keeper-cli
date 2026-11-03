@@ -7,9 +7,13 @@ use artifact_keeper_sdk::types::{
 use clap::Subcommand;
 use miette::Result;
 use serde_json::Value;
+use std::io::IsTerminal;
 
-use super::client::client_for;
-use super::helpers::{emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::client::{client_for, raw_http_client, resolve_base_url_and_auth};
+use super::helpers::{
+    emit_mutation, new_table, parse_uuid, raw_err, require_secret, resolve_secret, sdk_err,
+    short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -33,13 +37,112 @@ pub enum ProfileCommand {
         email: Option<String>,
     },
 
-    /// Change your password (interactive)
-    ChangePassword,
+    /// Change your password. Asks at a terminal; otherwise see the flags
+    ChangePassword {
+        #[command(flatten)]
+        passwords: PasswordArgs,
+    },
 
     /// Manage API tokens
     Tokens {
         #[command(subcommand)]
         command: TokenCommand,
+    },
+
+    /// Manage API tokens through /profile/access-tokens, the route the web UI uses.
+    /// A token made here defaults to the read scope, and one made with `tokens` to
+    /// none
+    AccessTokens {
+        #[command(subcommand)]
+        command: AccessTokenCommand,
+    },
+}
+
+/// A change of password. A secret on the command line goes into shell history, so
+/// these flags warn: use the stdin flag, the variable or the prompt. Stdin can only
+/// carry one of the two.
+#[derive(clap::Args)]
+pub struct PasswordArgs {
+    /// Your current password. Admins don't need it
+    #[arg(long, env = "AK_CURRENT_PASSWORD", hide_env_values = true)]
+    current_password: Option<String>,
+
+    /// Read the current password from stdin
+    #[arg(long, conflicts_with = "new_password_stdin")]
+    current_password_stdin: bool,
+
+    /// The new password
+    #[arg(long, env = "AK_NEW_PASSWORD", hide_env_values = true)]
+    new_password: Option<String>,
+
+    /// Read the new password from stdin
+    #[arg(long)]
+    new_password_stdin: bool,
+}
+
+impl PasswordArgs {
+    /// The request to send. `ask_current` says whether to ask for a current password
+    /// that wasn't given: only your own change can need one.
+    pub fn resolve(self, ask_current: bool, global: &GlobalArgs) -> Result<ChangePasswordRequest> {
+        let current_password = resolve_secret(
+            self.current_password,
+            self.current_password_stdin,
+            "--current-password",
+            ask_current.then_some("Current password"),
+            // Stdin may be the new password, so only ask at a terminal.
+            global.no_input || !std::io::stdin().is_terminal(),
+        )?;
+        let at_terminal = !global.no_input && std::io::stdin().is_terminal();
+        let new_password = if self.new_password.is_none() && !self.new_password_stdin && at_terminal
+        {
+            dialoguer::Password::new()
+                .with_prompt("New password")
+                .with_confirmation("Confirm new password", "Passwords do not match")
+                .interact()
+                .map_err(|e| super::helpers::prompt_err("Failed to read password", e))?
+        } else {
+            require_secret(
+                resolve_secret(
+                    self.new_password,
+                    self.new_password_stdin,
+                    "--new-password",
+                    None,
+                    global.no_input,
+                )?,
+                "The new password",
+                "--new-password-stdin or AK_NEW_PASSWORD",
+            )?
+        };
+        Ok(ChangePasswordRequest {
+            current_password,
+            new_password,
+        })
+    }
+}
+
+#[derive(Subcommand)]
+pub enum AccessTokenCommand {
+    /// List your API tokens
+    List,
+
+    /// Create an API token
+    Create {
+        /// Token name
+        name: String,
+
+        /// Scope to grant (repeatable, or comma-separated)
+        #[arg(long = "scope", value_delimiter = ',')]
+        scopes: Vec<String>,
+
+        /// Number of days until the token expires
+        #[arg(long)]
+        expires_in_days: Option<i64>,
+    },
+
+    /// Revoke an API token
+    Revoke {
+        /// Token ID
+        id: String,
     },
 }
 
@@ -78,7 +181,16 @@ impl ProfileCommand {
                 display_name,
                 email,
             } => update_profile(display_name.as_deref(), email.as_deref(), global).await,
-            Self::ChangePassword => change_password(global).await,
+            Self::ChangePassword { passwords } => change_password(passwords, global).await,
+            Self::AccessTokens { command } => match command {
+                AccessTokenCommand::List => access_tokens_list(global).await,
+                AccessTokenCommand::Create {
+                    name,
+                    scopes,
+                    expires_in_days,
+                } => access_token_create(&name, scopes, expires_in_days, global).await,
+                AccessTokenCommand::Revoke { id } => access_token_revoke(&id, global).await,
+            },
             Self::Tokens { command } => match command {
                 TokenCommand::List => list_tokens(global).await,
                 TokenCommand::Create {
@@ -100,12 +212,10 @@ async fn show_profile(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching profile...");
 
-    let resp = client
-        .get_current_user()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get current user", e))?;
-    let user = resp.into_inner();
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.get_current_user().send()).await;
+    let user = resp
+        .map_err(|e| sdk_err("get current user", e))?
+        .into_inner();
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
@@ -114,7 +224,10 @@ async fn show_profile(global: &GlobalArgs) -> Result<()> {
     }
 
     let (info, table_str) = format_profile_detail(&user);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -123,12 +236,11 @@ async fn whoami(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching account record...");
 
-    let resp = client
-        .get_current_user_record()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get current user record", e))?;
-    let user = resp.into_inner();
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_current_user_record().send()).await;
+    let user = resp
+        .map_err(|e| sdk_err("get current user record", e))?
+        .into_inner();
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
@@ -137,7 +249,10 @@ async fn whoami(global: &GlobalArgs) -> Result<()> {
     }
 
     let (info, table_str) = format_whoami_detail(&user);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -191,32 +306,9 @@ async fn update_profile(
     Ok(())
 }
 
-async fn change_password(global: &GlobalArgs) -> Result<()> {
-    if global.no_input {
-        return Err(AkError::ConfigError(
-            "Password change requires interactive input. Remove --no-input to continue."
-                .to_string(),
-        )
-        .into());
-    }
-
-    let current = dialoguer::Password::new()
-        .with_prompt("Current password")
-        .interact()
-        .map_err(|e| super::helpers::prompt_err("Failed to read password", e))?;
-
-    let new_pass = dialoguer::Password::new()
-        .with_prompt("New password")
-        .with_confirmation("Confirm new password", "Passwords do not match")
-        .interact()
-        .map_err(|e| super::helpers::prompt_err("Failed to read password", e))?;
-
+async fn change_password(passwords: PasswordArgs, global: &GlobalArgs) -> Result<()> {
+    let body = passwords.resolve(true, global)?;
     let client = client_for(global)?;
-
-    let body = ChangePasswordRequest {
-        current_password: Some(current),
-        new_password: new_pass,
-    };
 
     let spinner = output::spinner("Changing password...");
     client
@@ -235,15 +327,14 @@ async fn list_tokens(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching API tokens...");
 
-    let resp = client
-        .list_current_user_tokens()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list API tokens", e))?;
-    let list = resp.into_inner();
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_current_user_tokens().send()).await;
+    let list = resp
+        .map_err(|e| sdk_err("list API tokens", e))?
+        .into_inner();
     spinner.finish_and_clear();
 
-    if list.items.is_empty() {
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No API tokens found.");
         return Ok(());
     }
@@ -258,7 +349,7 @@ async fn list_tokens(global: &GlobalArgs) -> Result<()> {
     let (entries, table_str) = format_tokens_table(&list.items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -283,13 +374,12 @@ async fn create_token(
     };
 
     let spinner = output::spinner("Creating API token...");
-    let resp = client
-        .create_current_user_api_token()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create API token", e))?;
-    let created = resp.into_inner();
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_current_user_api_token().body(body).send())
+            .await;
+    let created = resp
+        .map_err(|e| sdk_err("create API token", e))?
+        .into_inner();
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
@@ -298,7 +388,10 @@ async fn create_token(
     }
 
     let (info, table_str) = format_created_token(&created);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -317,6 +410,126 @@ async fn revoke_token(id: &str, global: &GlobalArgs) -> Result<()> {
         .map_err(|e| sdk_err("revoke API token", e))?;
     spinner.finish_and_clear();
 
+    emit_mutation(
+        &serde_json::json!({ "id": id, "status": "revoked" }),
+        id,
+        &format!("Token {id} revoked."),
+        global,
+    );
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// /profile/access-tokens. Not in the spec, so not in the SDK
+// ---------------------------------------------------------------------------
+
+/// Send a request to `/api/v1/profile/access-tokens<suffix>` and return its status
+/// and body, or an error with the server's message.
+async fn access_tokens_request(
+    method: reqwest::Method,
+    suffix: &str,
+    body: Option<&Value>,
+    action: &str,
+    global: &GlobalArgs,
+) -> Result<Vec<u8>> {
+    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
+    let url = format!(
+        "{}/api/v1/profile/access-tokens{suffix}",
+        base_url.trim_end_matches('/')
+    );
+    let mut req = raw_http_client()?
+        .request(method, &url)
+        .header(reqwest::header::AUTHORIZATION, auth_header)
+        .timeout(std::time::Duration::from_secs(30));
+    if let Some(body) = body {
+        req = req.json(body);
+    }
+    let resp = req.send().await.map_err(|e| sdk_err(action, e))?;
+    let status = resp.status();
+    let bytes = resp.bytes().await.map_err(|e| sdk_err(action, e))?;
+    if !status.is_success() {
+        let text = String::from_utf8_lossy(&bytes);
+        return Err(raw_err(&format!("Failed to {action}"), status, &text).into());
+    }
+    Ok(bytes.to_vec())
+}
+
+async fn access_tokens_list(global: &GlobalArgs) -> Result<()> {
+    let spinner = output::spinner("Fetching API tokens...");
+    let raw =
+        access_tokens_request(reqwest::Method::GET, "", None, "list API tokens", global).await?;
+    spinner.finish_and_clear();
+    let list: artifact_keeper_sdk::types::ApiTokenListResponse =
+        serde_json::from_slice(&raw).map_err(|e| sdk_err("read the API token list", e))?;
+
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
+        eprintln!("No API tokens found.");
+        return Ok(());
+    }
+    if matches!(global.format, OutputFormat::Quiet) {
+        for token in &list.items {
+            println!("{}", token.id);
+        }
+        return Ok(());
+    }
+    let (entries, table_str) = format_tokens_table(&list.items);
+    println!(
+        "{}",
+        output::render_raw(Some(&raw), &entries, &global.format, Some(table_str))
+    );
+    Ok(())
+}
+
+async fn access_token_create(
+    name: &str,
+    scopes: Vec<String>,
+    expires_in_days: Option<i64>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let mut body = serde_json::json!({ "name": name });
+    if !scopes.is_empty() {
+        body["scopes"] = scopes.into();
+    }
+    if let Some(days) = expires_in_days {
+        body["expires_in_days"] = days.into();
+    }
+    let spinner = output::spinner("Creating API token...");
+    let raw = access_tokens_request(
+        reqwest::Method::POST,
+        "",
+        Some(&body),
+        "create API token",
+        global,
+    )
+    .await?;
+    spinner.finish_and_clear();
+    let created: ApiTokenCreatedResponse =
+        serde_json::from_slice(&raw).map_err(|e| sdk_err("read the new API token", e))?;
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", created.token);
+        return Ok(());
+    }
+    let (info, table_str) = format_created_token(&created);
+    println!(
+        "{}",
+        output::render_raw(Some(&raw), &info, &global.format, Some(table_str))
+    );
+    Ok(())
+}
+
+async fn access_token_revoke(id: &str, global: &GlobalArgs) -> Result<()> {
+    let token_id = parse_uuid(id, "token")?;
+    let spinner = output::spinner("Revoking API token...");
+    access_tokens_request(
+        reqwest::Method::DELETE,
+        &format!("/{token_id}"),
+        None,
+        "revoke API token",
+        global,
+    )
+    .await?;
+    spinner.finish_and_clear();
     emit_mutation(
         &serde_json::json!({ "id": id, "status": "revoked" }),
         id,
@@ -557,7 +770,7 @@ mod tests {
     #[test]
     fn parse_change_password() {
         let cli = parse(&["test", "change-password"]);
-        assert!(matches!(cli.command, ProfileCommand::ChangePassword));
+        assert!(matches!(cli.command, ProfileCommand::ChangePassword { .. }));
     }
 
     #[test]

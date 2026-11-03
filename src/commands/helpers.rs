@@ -396,6 +396,17 @@ pub fn resolve_secret(
     })
 }
 
+/// A secret the command can't go on without. `what` is what it asked for, and
+/// `how` the flags or variables that give it without a terminal.
+pub fn require_secret(secret: Option<String>, what: &str, how: &str) -> Result<String> {
+    secret.ok_or_else(|| {
+        AkError::ConfigError(format!(
+            "{what} wasn't given, and there's no terminal to ask on. Use {how}."
+        ))
+        .into()
+    })
+}
+
 /// Testable core of [`resolve_secret`]; see its docs for the precedence rules.
 ///
 /// `reader` is only invoked on the branches that actually read stdin — it must
