@@ -168,6 +168,24 @@ const NEED_YES: &[&[&str]] = &[
     &["import", "job", "delete", ID],
     &["import", "source", "delete", ID],
     &["admin", "backup", "restore", ID],
+    &["admin", "plugins", "remove", ID],
+    &["admin", "cleanup", "--old-backups"],
+    &["admin", "cleanup"],
+    &["admin", "storage-gc", "run"],
+    &["lifecycle", "execute", ID],
+    &["lifecycle", "execute-all"],
+    &["lifecycle", "update", ID, "--all-repos", "true"],
+    &[
+        "lifecycle",
+        "create",
+        "p",
+        "--policy-type",
+        "max_age_days",
+        "--config",
+        "{\"days\":1}",
+        "--all-repos",
+    ],
+    &["pkg", "helm", "delete", "r", "chart", "1.0.0"],
 ];
 
 fn ak(dir: &TempDir, env_no_input: Option<&str>, args: &[&str]) -> std::process::Output {
@@ -236,6 +254,107 @@ async fn no_input_is_not_a_yes() {
         let sent = server.received_requests().await.unwrap();
         assert!(!sent.is_empty(), "{args:?} sent nothing with --yes");
     }
+}
+
+/// With a terminal these read from the server to word the prompt. With none, they
+/// fail before those reads.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_prompts_that_read_first_send_nothing_with_no_terminal() {
+    let server = MockServer::start().await;
+    let dir = TempDir::new().unwrap();
+    config(&dir, &server.uri());
+    let commands: [&[&str]; 5] = [
+        &["lifecycle", "execute", ID],
+        &["lifecycle", "execute-all"],
+        &["lifecycle", "update", ID, "--all-repos", "true"],
+        &["admin", "storage-gc", "run"],
+        &["admin", "cleanup", "--audit-logs"],
+    ];
+    for args in commands {
+        let output = ak(&dir, None, args);
+        assert_eq!(output.status.code(), Some(2), "{args:?}");
+        let sent = server.received_requests().await.unwrap();
+        assert!(sent.is_empty(), "{args:?} sent {sent:?}");
+    }
+}
+
+/// The same commands, where they don't reach everything, don't ask.
+#[tokio::test(flavor = "multi_thread")]
+async fn only_the_wide_forms_ask() {
+    let server = MockServer::start().await;
+    Mock::given(wiremock::matchers::any())
+        .respond_with(ResponseTemplate::new(500).set_body_json(json!({"message": "reached"})))
+        .mount(&server)
+        .await;
+    let dir = TempDir::new().unwrap();
+    config(&dir, &server.uri());
+    let commands: [&[&str]; 4] = [
+        &["--no-input", "admin", "storage-gc", "run", "--dry-run"],
+        &["--no-input", "lifecycle", "update", ID, "--priority", "1"],
+        &[
+            "--no-input",
+            "lifecycle",
+            "update",
+            ID,
+            "--all-repos",
+            "false",
+        ],
+        &[
+            "--no-input",
+            "lifecycle",
+            "create",
+            "p",
+            "--policy-type",
+            "max_age_days",
+            "--config",
+            "{\"days\":1}",
+            "--all-repos",
+            "--disabled",
+        ],
+    ];
+    for args in commands {
+        let output = ak(&dir, None, args);
+        let stderr = unwrapped(&output.stderr);
+        assert!(
+            !stderr.contains("confirmation_refused"),
+            "{args:?}: {stderr}"
+        );
+        assert!(
+            !server.received_requests().await.unwrap().is_empty(),
+            "{args:?}"
+        );
+        server.reset().await;
+        Mock::given(wiremock::matchers::any())
+            .respond_with(ResponseTemplate::new(500).set_body_json(json!({"message": "reached"})))
+            .mount(&server)
+            .await;
+    }
+}
+
+/// `instance remove` changes only local config, so it isn't in the registry's checks.
+#[test]
+fn instance_remove_needs_yes() {
+    let dir = TempDir::new().unwrap();
+    config(&dir, "http://127.0.0.1:1");
+    let saved = dir.path().join("config.toml");
+
+    let refused = ak(&dir, None, &["--no-input", "instance", "remove", "t"]);
+    assert_eq!(refused.status.code(), Some(2));
+    let by_env = ak(&dir, Some("1"), &["instance", "remove", "t"]);
+    assert_eq!(by_env.status.code(), Some(2));
+    assert!(
+        std::fs::read_to_string(&saved)
+            .unwrap()
+            .contains("[instances.t]")
+    );
+
+    let removed = ak(&dir, None, &["--no-input", "instance", "remove", "t", "-y"]);
+    assert!(removed.status.success());
+    assert!(
+        !std::fs::read_to_string(&saved)
+            .unwrap()
+            .contains("[instances.t]")
+    );
 }
 
 /// Only what decides something changes. `--no-input` still runs everything else.

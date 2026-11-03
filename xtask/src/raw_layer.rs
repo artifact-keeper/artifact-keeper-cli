@@ -26,6 +26,31 @@ const OPT_OUTS: &[(&str, &str, &str)] = &[
         "The SDK gives no proxied body to print, only the status",
     ),
     (
+        "admin.rs",
+        "confirm_cleanup",
+        "Reads the settings to word a prompt, and prints nothing",
+    ),
+    (
+        "admin.rs",
+        "confirm_storage_gc",
+        "A dry run to word a prompt, and prints nothing",
+    ),
+    (
+        "lifecycle.rs",
+        "confirm_execute",
+        "A preview to word a prompt, and prints nothing",
+    ),
+    (
+        "lifecycle.rs",
+        "confirm_execute_all",
+        "Previews to word a prompt, and prints nothing",
+    ),
+    (
+        "lifecycle.rs",
+        "confirm_update_all_repos",
+        "Reads the policy to word a prompt, and prints nothing",
+    ),
+    (
         "artifact.rs",
         "upload_sessions",
         "Sessions come from the local cache, not a server",

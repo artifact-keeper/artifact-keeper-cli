@@ -4,8 +4,9 @@ use miette::Result;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, fail_on_errors, new_table, parse_uuid,
-    refuse_flags_before_1_11, sdk_err, short_id, since_1_11, since_1_11_any_status,
+    confirm_action, emit_mutation, emit_mutation_raw, ensure_can_confirm, fail_on_errors,
+    new_table, parse_uuid, refuse_flags_before_1_11, sdk_err, short_id, since_1_11,
+    since_1_11_any_status,
 };
 use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
@@ -78,6 +79,10 @@ pub enum LifecycleCommand {
         /// Cron schedule for automatic execution (e.g. "0 2 * * *")
         #[arg(long)]
         cron_schedule: Option<String>,
+
+        /// Skip the confirmation prompt that --all-repos asks, unless it's --disabled
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Update a lifecycle policy (only provided fields are changed)
@@ -122,6 +127,10 @@ pub enum LifecycleCommand {
         /// server
         #[arg(long)]
         all_repos: Option<bool>,
+
+        /// Skip the confirmation prompt that --all-repos true asks
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Delete a lifecycle policy
@@ -134,8 +143,12 @@ pub enum LifecycleCommand {
         yes: bool,
     },
 
-    /// Execute all enabled policies now
-    ExecuteAll,
+    /// Execute all enabled policies now. Asks first, saying what each would delete
+    ExecuteAll {
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
 
     /// Preview what a policy would affect (dry-run)
     Preview {
@@ -147,6 +160,10 @@ pub enum LifecycleCommand {
     Execute {
         /// Policy ID
         id: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Add a repository to what a policy applies to. Needs a 1.11 server
@@ -187,7 +204,18 @@ impl LifecycleCommand {
                 all_repos,
                 disabled,
                 cron_schedule,
+                yes,
             } => {
+                if all_repos
+                    && !disabled
+                    && !confirm_action(
+                        &create_all_repos_prompt(&name, &policy_type),
+                        yes,
+                        global.no_input,
+                    )?
+                {
+                    return Ok(());
+                }
                 create_policy(
                     &name,
                     &policy_type,
@@ -214,7 +242,11 @@ impl LifecycleCommand {
                 cron_schedule,
                 repos,
                 all_repos,
+                yes,
             } => {
+                if all_repos == Some(true) && !confirm_update_all_repos(&id, yes, global).await? {
+                    return Ok(());
+                }
                 update_policy(
                     &id,
                     name.as_deref(),
@@ -231,9 +263,19 @@ impl LifecycleCommand {
                 .await
             }
             Self::Delete { id, yes } => delete_policy(&id, yes, global).await,
-            Self::ExecuteAll => execute_all_policies(global).await,
+            Self::ExecuteAll { yes } => {
+                if !confirm_execute_all(yes, global).await? {
+                    return Ok(());
+                }
+                execute_all_policies(global).await
+            }
             Self::Preview { id } => preview_policy(&id, global).await,
-            Self::Execute { id } => execute_policy(&id, global).await,
+            Self::Execute { id, yes } => {
+                if !confirm_execute(&id, yes, global).await? {
+                    return Ok(());
+                }
+                execute_policy(&id, global).await
+            }
             Self::Attach { id, repo } => change_scope(&id, &repo, true, global).await,
             Self::Detach { id, repo } => change_scope(&id, &repo, false, global).await,
             Self::Capabilities => capabilities(global).await,
@@ -716,6 +758,124 @@ async fn update_policy(
     );
 
     Ok(())
+}
+
+fn create_all_repos_prompt(name: &str, policy_type: &str) -> String {
+    format!(
+        "Create lifecycle policy '{name}' ({policy_type}) for every repository? It's live at \
+         once, and deletes across all of them when it runs"
+    )
+}
+
+fn count_of(count: i64, one: &str, many: &str) -> String {
+    format!("{count} {}", if count == 1 { one } else { many })
+}
+
+/// What a run would delete, going by its preview.
+fn would_delete(preview: &artifact_keeper_sdk::types::PolicyExecutionResult) -> String {
+    let mut text = format!(
+        "{} ({})",
+        count_of(preview.artifacts_matched, "artifact", "artifacts"),
+        format_bytes(preview.bytes_matched)
+    );
+    if let Some(cache) = preview
+        .proxy_cache
+        .as_ref()
+        .filter(|cache| cache.entries_matched > 0)
+    {
+        text.push_str(&format!(
+            " and {} ({})",
+            count_of(
+                cache.entries_matched,
+                "proxy cache entry",
+                "proxy cache entries"
+            ),
+            format_bytes(cache.bytes_matched)
+        ));
+    }
+    text
+}
+
+/// The prompt names what the policy would delete, from a preview. Its reads happen
+/// only when there's someone to ask.
+async fn confirm_execute(id: &str, yes: bool, global: &GlobalArgs) -> Result<bool> {
+    let policy_id = parse_uuid(id, "policy")?;
+    let plain = format!("Run lifecycle policy {id} now? It deletes what the policy matches");
+    ensure_can_confirm(&plain, yes, global.no_input)?;
+    if yes {
+        return Ok(true);
+    }
+    let client = client_for(global)?;
+    let prompt = match client.preview_policy().id(policy_id).send().await {
+        Ok(preview) => format!(
+            "Run lifecycle policy '{}' now? It deletes {}",
+            preview.policy_name,
+            would_delete(&preview)
+        ),
+        Err(e) => format!("{plain}, and its preview failed, so how much is unknown: {e}"),
+    };
+    confirm_action(&prompt, yes, global.no_input)
+}
+
+async fn confirm_execute_all(yes: bool, global: &GlobalArgs) -> Result<bool> {
+    let plain = "Run every enabled lifecycle policy now? Each deletes what it matches";
+    ensure_can_confirm(plain, yes, global.no_input)?;
+    if yes {
+        return Ok(true);
+    }
+    let client = client_for(global)?;
+    let policies = match client.list_lifecycle_policies().send().await {
+        Ok(policies) => policies.into_inner(),
+        Err(e) => {
+            let prompt = format!("{plain}, and listing them failed, so what's unknown: {e}");
+            return confirm_action(&prompt, yes, global.no_input);
+        }
+    };
+    let mut lines = Vec::new();
+    for policy in policies.iter().filter(|policy| policy.enabled) {
+        let line = match client.preview_policy().id(policy.id).send().await {
+            Ok(preview) => would_delete(&preview),
+            Err(e) => format!("its preview failed: {e}"),
+        };
+        lines.push(format!("  {}: {line}", policy.name));
+    }
+    if lines.is_empty() {
+        eprintln!("No lifecycle policy is enabled, so there's nothing to run.");
+        return Ok(false);
+    }
+    let prompt = format!(
+        "Run all enabled lifecycle policies now ({})? Each deletes what it matches:\n{}\n",
+        lines.len(),
+        lines.join("\n")
+    );
+    confirm_action(&prompt, yes, global.no_input)
+}
+
+async fn confirm_update_all_repos(id: &str, yes: bool, global: &GlobalArgs) -> Result<bool> {
+    let policy_id = parse_uuid(id, "policy")?;
+    let plain = format!(
+        "Apply lifecycle policy {id} to every repository? If it's enabled, its next run deletes \
+         across all of them"
+    );
+    ensure_can_confirm(&plain, yes, global.no_input)?;
+    if yes {
+        return Ok(true);
+    }
+    let client = client_for(global)?;
+    let prompt = match client.get_lifecycle_policy().id(policy_id).send().await {
+        Ok(policy) => format!(
+            "Apply lifecycle policy '{}' ({}) to every repository? {}",
+            policy.name,
+            policy.policy_type,
+            if policy.enabled {
+                "It's enabled, so its next run deletes across all of them"
+            } else {
+                "It's disabled, so nothing runs until it's enabled"
+            }
+        ),
+        Err(_) => plain,
+    };
+    confirm_action(&prompt, yes, global.no_input)
 }
 
 async fn execute_all_policies(global: &GlobalArgs) -> Result<()> {
@@ -1239,7 +1399,7 @@ mod tests {
     #[test]
     fn parse_execute_all() {
         let cli = parse(&["test", "execute-all"]);
-        assert!(matches!(cli.command, LifecycleCommand::ExecuteAll));
+        assert!(matches!(cli.command, LifecycleCommand::ExecuteAll { .. }));
     }
 
     // ---- parsing: delete ----
@@ -1298,7 +1458,7 @@ mod tests {
     fn parse_execute() {
         let cli = parse(&["test", "execute", "policy-id"]);
         match cli.command {
-            LifecycleCommand::Execute { id } => {
+            LifecycleCommand::Execute { id, .. } => {
                 assert_eq!(id, "policy-id");
             }
             _ => panic!("expected Execute"),

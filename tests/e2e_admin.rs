@@ -178,7 +178,10 @@ fn ci_oidc_static_keys_reach_the_server_or_are_refused_before_1_11() {
 #[ignore = "requires E2E backend"]
 fn cleanup_stale_uploads_reaches_the_server() {
     let env = common::TestEnv::setup();
-    let cleaned = admin_json(env.ak_cmd().args(["admin", "cleanup", "--stale-uploads"]));
+    let cleaned = admin_json(
+        env.ak_cmd()
+            .args(["admin", "cleanup", "--stale-uploads", "--yes"]),
+    );
     assert!(cleaned["stale_uploads_deleted"].is_number(), "{cleaned}");
 }
 

@@ -32,6 +32,10 @@ pub enum InstanceCommand {
     Remove {
         /// Instance name to remove
         name: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// List all configured instances
@@ -59,7 +63,7 @@ impl InstanceCommand {
                 api_version,
                 insecure_http,
             } => add_instance(&name, &url, &api_version, insecure_http),
-            Self::Remove { name } => remove_instance(&name),
+            Self::Remove { name, yes } => remove_instance(&name, yes, global.no_input),
             Self::List => list_instances(&global.format),
             Self::Use { name } => use_instance(&name),
             Self::Info { name } => info_instance(name.as_deref(), global),
@@ -100,12 +104,17 @@ fn add_instance(name: &str, url: &str, api_version: &str, insecure_http: bool) -
     Ok(())
 }
 
-fn remove_instance(name: &str) -> Result<()> {
+fn remove_instance(name: &str, yes: bool, no_input: bool) -> Result<()> {
     let mut config = AppConfig::load()?;
 
-    if config.instances.remove(name).is_none() {
+    if !config.instances.contains_key(name) {
         return Err(AkError::InstanceNotFound(name.to_string()).into());
     }
+    let prompt = format!("Remove instance '{name}' from this machine's config?");
+    if !super::helpers::confirm_action(&prompt, yes, no_input)? {
+        return Ok(());
+    }
+    config.instances.remove(name);
 
     if config.default_instance.as_deref() == Some(name) {
         config.default_instance = config.instances.keys().next().cloned();
@@ -288,7 +297,7 @@ mod tests {
             add_instance("prod", "https://prod.example.com", "v1", false).unwrap();
             add_instance("staging", "https://staging.example.com", "v1", false).unwrap();
 
-            remove_instance("staging").unwrap();
+            remove_instance("staging", true, true).unwrap();
 
             let config = AppConfig::load().unwrap();
             assert_eq!(config.instances.len(), 1);
@@ -299,7 +308,7 @@ mod tests {
     #[test]
     fn remove_instance_not_found() {
         with_temp_config(|| {
-            let result = remove_instance("nonexistent");
+            let result = remove_instance("nonexistent", true, true);
             assert!(result.is_err());
         });
     }
@@ -311,7 +320,7 @@ mod tests {
             add_instance("beta", "https://beta.com", "v1", false).unwrap();
 
             // alpha is default (first added)
-            remove_instance("alpha").unwrap();
+            remove_instance("alpha", true, true).unwrap();
 
             let config = AppConfig::load().unwrap();
             assert_eq!(config.instances.len(), 1);
@@ -324,7 +333,7 @@ mod tests {
     fn remove_last_instance_clears_default() {
         with_temp_config(|| {
             add_instance("only", "https://only.com", "v1", false).unwrap();
-            remove_instance("only").unwrap();
+            remove_instance("only", true, true).unwrap();
 
             let config = AppConfig::load().unwrap();
             assert!(config.instances.is_empty());

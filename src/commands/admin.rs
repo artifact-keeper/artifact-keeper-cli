@@ -4,8 +4,8 @@ use miette::Result;
 
 use super::client::{client_for, resolve_base_url_and_auth};
 use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, resolve_secret,
-    sdk_err, short_id,
+    confirm_action, emit_mutation, emit_mutation_raw, ensure_can_confirm, new_table, parse_uuid,
+    resolve_secret, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -67,6 +67,10 @@ pub enum AdminCommand {
         /// Clean up abandoned uploads
         #[arg(long)]
         stale_uploads: bool,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Show server metrics
@@ -961,6 +965,10 @@ pub enum StorageGcCommand {
         /// Report what would be removed without deleting anything
         #[arg(long)]
         dry_run: bool,
+
+        /// Skip the confirmation prompt that a live run asks
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
     /// Show the OCI blob storage footprint report
     OciReport {
@@ -1104,7 +1112,14 @@ impl AdminCommand {
                 old_backups,
                 stale_peers,
                 stale_uploads,
-            } => run_cleanup(audit_logs, old_backups, stale_peers, stale_uploads, global).await,
+                yes,
+            } => {
+                let chosen = [audit_logs, old_backups, stale_peers, stale_uploads];
+                if !confirm_cleanup(chosen, yes, global).await? {
+                    return Ok(());
+                }
+                run_cleanup(audit_logs, old_backups, stale_peers, stale_uploads, global).await
+            }
             Self::Metrics => show_metrics(global).await,
             Self::Users { command } => match command {
                 UsersCommand::List {
@@ -1395,7 +1410,12 @@ impl AdminCommand {
                 },
             },
             Self::StorageGc { command } => match command {
-                StorageGcCommand::Run { dry_run } => run_storage_gc(dry_run, global).await,
+                StorageGcCommand::Run { dry_run, yes } => {
+                    if !dry_run && !confirm_storage_gc(yes, global).await? {
+                        return Ok(());
+                    }
+                    run_storage_gc(dry_run, global).await
+                }
                 StorageGcCommand::OciReport { grace_hours } => {
                     oci_blob_report(grace_hours, global).await
                 }
@@ -1635,6 +1655,59 @@ async fn restore_backup(
     }
 
     super::helpers::fail_on_errors("Restore", &resp.errors)
+}
+
+/// What `admin cleanup` does with these flags, in the words of the server's handler.
+/// Numbers come from its settings, when they could be read.
+fn cleanup_prompt(
+    [audit_logs, old_backups, stale_peers, stale_uploads]: [bool; 4],
+    settings: Option<&artifact_keeper_sdk::types::SystemSettings>,
+) -> String {
+    let mut parts = Vec::new();
+    if audit_logs {
+        parts.push(match settings.map(|s| s.audit_retention_days) {
+            Some(days) if days > 0 => format!("delete audit logs older than {days} days"),
+            Some(_) => "delete no audit logs, since their retention is off".to_string(),
+            None => "delete audit logs past their retention".to_string(),
+        });
+    }
+    if old_backups {
+        parts.push(match settings {
+            Some(s) => format!(
+                "delete completed backups older than {} days, keeping the newest {}",
+                s.retention_days, s.backup_retention_count
+            ),
+            None => "delete completed backups past their retention".to_string(),
+        });
+    }
+    if stale_peers {
+        parts.push(match settings {
+            Some(s) => format!(
+                "mark peers silent for {} minutes as offline",
+                s.edge_stale_threshold_minutes
+            ),
+            None => "mark stale peers as offline".to_string(),
+        });
+    }
+    if stale_uploads {
+        parts.push("delete abandoned image uploads older than 24 hours".to_string());
+    }
+    if parts.is_empty() {
+        return "Run cleanup with nothing selected? The server does nothing".to_string();
+    }
+    format!("Run cleanup now? It will {}", parts.join(", "))
+}
+
+async fn confirm_cleanup(chosen: [bool; 4], yes: bool, global: &GlobalArgs) -> Result<bool> {
+    let plain = cleanup_prompt(chosen, None);
+    ensure_can_confirm(&plain, yes, global.no_input)?;
+    if yes {
+        return Ok(true);
+    }
+    let client = client_for(global)?;
+    let settings = client.get_settings().send().await.ok();
+    let prompt = cleanup_prompt(chosen, settings.as_deref());
+    confirm_action(&prompt, yes, global.no_input)
 }
 
 async fn run_cleanup(
@@ -4410,6 +4483,32 @@ fn storage_gc_body(dry_run: bool) -> artifact_keeper_sdk::types::StorageGcReques
     artifact_keeper_sdk::types::StorageGcRequest { dry_run }
 }
 
+/// A live run asks first, and says what a dry run found.
+async fn confirm_storage_gc(yes: bool, global: &GlobalArgs) -> Result<bool> {
+    let plain = "Run storage garbage collection now? It removes unreferenced stored files for good";
+    ensure_can_confirm(plain, yes, global.no_input)?;
+    if yes {
+        return Ok(true);
+    }
+    let client = client_for(global)?;
+    let found = client
+        .run_storage_gc()
+        .body(storage_gc_body(true))
+        .send()
+        .await;
+    let prompt = match found {
+        Ok(found) => format!(
+            "Run storage garbage collection now? It removes these for good: artifacts {}, \
+             storage keys {}, freeing {}",
+            found.artifacts_removed,
+            found.storage_keys_deleted,
+            format_bytes(found.bytes_freed)
+        ),
+        Err(e) => format!("{plain}, and its dry run failed, so how much is unknown: {e}"),
+    };
+    confirm_action(&prompt, yes, global.no_input)
+}
+
 async fn run_storage_gc(dry_run: bool, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Running storage garbage collection...");
@@ -4947,6 +5046,17 @@ mod tests {
     }
 
     // ---- Cleanup subcommand parsing ----
+
+    #[test]
+    fn the_cleanup_prompt_says_what_goes() {
+        let all = cleanup_prompt([true, true, true, true], None);
+        for what in ["audit logs", "backups", "peers", "uploads"] {
+            assert!(all.contains(what), "{all}");
+        }
+        let one = cleanup_prompt([false, false, false, true], None);
+        assert!(!one.contains("backups"), "{one}");
+        assert!(cleanup_prompt([false; 4], None).contains("does nothing"));
+    }
 
     #[test]
     fn parse_cleanup_no_flags() {
@@ -7739,7 +7849,7 @@ mod tests {
     fn parse_storage_gc_run() {
         let cli = parse(&["test", "storage-gc", "run", "--dry-run"]);
         if let AdminCommand::StorageGc {
-            command: StorageGcCommand::Run { dry_run },
+            command: StorageGcCommand::Run { dry_run, .. },
         } = cli.command
         {
             assert!(dry_run);
