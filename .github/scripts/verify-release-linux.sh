@@ -39,7 +39,10 @@ esac
 echo "--- install.sh from $tag"
 curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors \
   "https://raw.githubusercontent.com/$repo/$tag/install.sh" -o "$dir/install.sh"
-sh "$dir/install.sh" --version "$tag" --install-dir "$dir/bin"
+# Its own HOME, because an installer older than --install-dir ignores the option
+# and installs under ~/.local/bin.
+mkdir -p "$dir/home"
+HOME="$dir/home" sh "$dir/install.sh" --version "$tag" --install-dir "$dir/bin"
 check_version "install.sh" "$("$dir/bin/ak" --version)"
 
 echo "--- Download the release"
