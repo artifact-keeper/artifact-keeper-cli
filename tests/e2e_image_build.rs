@@ -123,9 +123,6 @@ fn push_image(env: &common::TestEnv, repo: &str, image: &str, tag: &str) {
 #[test]
 #[ignore = "requires E2E backend"]
 fn settings_and_an_empty_list() {
-    if common::server_older_than(1, 11, "image builds") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let (repo, _guard) = docker_repo(&env, "settings");
 
@@ -146,9 +143,6 @@ fn settings_and_an_empty_list() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn render_prints_the_containerfile_from_each_kind_of_input() {
-    if common::server_older_than(1, 11, "image builds") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let (repo, _guard) = docker_repo(&env, "render");
 
@@ -228,9 +222,6 @@ fn render_prints_the_containerfile_from_each_kind_of_input() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn the_servers_refusals_come_through() {
-    if common::server_older_than(1, 11, "image builds") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let (repo, _guard) = docker_repo(&env, "refusals");
 
@@ -286,9 +277,6 @@ fn the_servers_refusals_come_through() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn inspect_and_base_info_describe_a_pushed_image() {
-    if common::server_older_than(1, 11, "image builds") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let (repo, _guard) = docker_repo(&env, "inspect");
 
