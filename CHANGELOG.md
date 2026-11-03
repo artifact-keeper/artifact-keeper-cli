@@ -12,6 +12,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 The CLI minor version now tracks the server API minor it's generated from. This
 release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 
+### Before you upgrade
+
+These can change what you see, or break a script, coming from 1.2:
+
+- **Version numbers and supported servers.** The first two numbers of the `ak` version tell you the server version; the last is the CLI's own and doesn't match the server's patch number. New commands may ship in CLI patch releases (1.11.x). A 1.11.x CLI supports servers on 1.10 and 1.11. Other servers aren't tested, and `ak doctor` warns about them.
+- **Snap is gone.** The Snap package never published. Use the installer, Homebrew, the `.deb`/`.rpm` packages or the static binaries (#148).
+- **Linux binaries are static musl builds**, and so are the `.deb`/`.rpm` packages that wrap them. They no longer need any particular glibc, but they also don't use glibc's NSS: names resolve through `/etc/hosts` and the DNS servers in `/etc/resolv.conf` only. A hostname that only an LDAP or `systemd-resolved` NSS plugin can resolve won't work (#178).
+- **JSON and YAML changed on some commands.** `auth whoami`, `auth token list`, `repo`, `artifact`, `lifecycle` and `webhook` commands (the full list is under Changed) print the server's response as sent. Lists are `{"items": [...], "pagination": {...}}` rather than a bare array, and fields use the API's names: `repo_type` rather than `type`, `is_public` rather than `public`, `is_admin` rather than `admin`. Scripts that read this output need updating. Table output is unchanged.
+- **`ak lifecycle create` needs `--repo` or `--all-repos`, and fails with neither**, so scripts that pass neither have to add one. A policy is enabled as soon as it's created, and one made with `--all-repos` deletes artifacts across every repository when it runs.
+- **`ak setup` creates a token.** When you're logged in with a session and agree to the write (`--no-input` counts as agreeing), it creates an API token named `ak-setup-<tool>-<repo>` that lasts 90 days, rather than writing your 30-minute login token. Each re-run adds another token and doesn't replace the last. See them with `ak auth token list` and revoke old ones with `ak auth revoke-token <id>`.
+- **Secrets piped with `--no-input` need `--<flag>-stdin`.** With `--no-input` or `AK_NO_INPUT`, a secret you didn't give is no longer read from stdin, so `echo "$S" | ak --no-input webhook create ...` now gets no secret. Use `--secret-stdin`.
+- **Device login needs backend 1.12.0**, which isn't released yet. On an older server, `ak auth login --oidc-device` says so and stops. `ak auth login` itself still asks for a password or takes `--token`.
+
 ### Added
 
 - `ak doctor` reports each server's version and warns when ak doesn't support it: older than the previous minor (upgrade the server) or newer than the minor ak is built for (upgrade ak).
@@ -68,6 +81,11 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 ### Removed
 
 - The Snap package. It never published: the store blocks classic confinement and the build got a bad version. Use the installer, Homebrew, the `.deb`/`.rpm` packages or the static binaries (#148)
+
+### Release process
+
+- `install.sh` takes `--version <tag>` and `--install-dir <dir>`.
+- A tag now runs the tests, the SDK drift check and the E2E tests before anything builds, and it must match `Cargo.toml` and the changelog. Every release starts as a prerelease, and only becomes the latest after its published files pass: `install.sh`, the binary on Alpine, Ubuntu 22.04 and Debian 12, `cosign verify-blob`, the `.deb` on Ubuntu 22.04, the `.rpm` on Rocky Linux 9, and Homebrew on macOS. If any of those fails it stays a prerelease and an issue is opened.
 
 ### Security
 

@@ -186,6 +186,9 @@ fn repo_virtual_members_lifecycle() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn repo_virtual_shows_member_storage() {
+    if common::server_older_than(1, 11, "member_storage_used_bytes") {
+        return;
+    }
     let env = common::TestEnv::setup();
     let suffix = std::process::id();
     let member = format!("e2e-virt-member-{suffix}");

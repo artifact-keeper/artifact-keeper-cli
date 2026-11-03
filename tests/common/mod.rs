@@ -32,6 +32,41 @@ pub fn ensure_backend() {
     });
 }
 
+/// The version the backend under test reports. The E2E tests also run against
+/// the oldest supported server, so a test of something newer can ask for this.
+#[allow(dead_code)]
+pub fn server_version() -> String {
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION
+        .get_or_init(|| {
+            ensure_backend();
+            let health: serde_json::Value =
+                reqwest::blocking::get(format!("{}/health", backend_url()))
+                    .expect("Failed to read /health")
+                    .json()
+                    .expect("/health isn't JSON");
+            health["version"]
+                .as_str()
+                .expect("/health has no version")
+                .to_string()
+        })
+        .clone()
+}
+
+/// Whether the backend's minor is older than `major.minor`. A test that returns
+/// early on this says so, so that a skip shows in the log with --nocapture.
+#[allow(dead_code)]
+pub fn server_older_than(major: u64, minor: u64, what: &str) -> bool {
+    let version = server_version();
+    let mut parts = version.split('.').map(|part| part.parse::<u64>().unwrap());
+    let found = (parts.next().unwrap(), parts.next().unwrap());
+    let older = found < (major, minor);
+    if older {
+        eprintln!("Skipping: server {version} has no {what}");
+    }
+    older
+}
+
 /// Login as admin and cache the token. Called once per test binary.
 fn get_auth_token() -> &'static str {
     AUTH_TOKEN.get_or_init(|| {
