@@ -417,16 +417,30 @@ async fn test_webhook(id: &str, global: &GlobalArgs) -> Result<()> {
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", result.success);
-        return Ok(());
+    } else {
+        let (info, table_str) = format_test_result(&result);
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+        );
     }
 
-    let (info, table_str) = format_test_result(&result);
-    println!(
-        "{}",
-        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
-    );
-
+    if !result.success {
+        return Err(super::helpers::reported_failure(&format!(
+            "The test delivery failed: {}",
+            delivery_failure(result.error.as_deref(), result.status_code)
+        )));
+    }
     Ok(())
+}
+
+/// Why a delivery failed: what the server said, or else the status it got back.
+fn delivery_failure(error: Option<&str>, status: Option<i32>) -> String {
+    match (error, status) {
+        (Some(error), _) => error.to_string(),
+        (None, Some(status)) => format!("the endpoint answered {status}"),
+        (None, None) => "no reason given".to_string(),
+    }
 }
 
 async fn enable_webhook(id: &str, global: &GlobalArgs) -> Result<()> {
@@ -637,6 +651,13 @@ async fn redeliver_webhook(id: &str, delivery_id: &str, global: &GlobalArgs) -> 
         global,
     );
 
+    if !delivery.success {
+        return Err(super::helpers::reported_failure(&format!(
+            "The server tried delivery {} again, and it failed: {}",
+            delivery.id,
+            delivery_failure(None, delivery.response_status)
+        )));
+    }
     Ok(())
 }
 

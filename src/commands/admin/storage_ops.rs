@@ -177,7 +177,7 @@ async fn run_scrub(body: StorageScrubRequest, yes: bool, global: &GlobalArgs) ->
         "{}",
         output::render_raw(raw.as_deref(), &result, &global.format, Some(text))
     );
-    Ok(())
+    crate::commands::helpers::fail_on_errors("Storage scrub", &result.errors)
 }
 
 async fn list_findings(
@@ -326,7 +326,7 @@ pub async fn reindex_storage(args: ReindexStorageArgs, global: &GlobalArgs) -> R
         "{}",
         output::render_raw(raw.as_deref(), &result, &global.format, Some(text))
     );
-    Ok(())
+    crate::commands::helpers::fail_on_errors("Reindex", &result.errors)
 }
 
 impl StorageCommand {

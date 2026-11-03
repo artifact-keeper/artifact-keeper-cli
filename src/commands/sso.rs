@@ -1107,15 +1107,20 @@ async fn test_provider(id: &str, provider_type: &str, global: &GlobalArgs) -> Re
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", if result.success { "ok" } else { "fail" });
-        return Ok(());
+    } else {
+        let (info, table_str) = format_test_result(&result);
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+        );
     }
 
-    let (info, table_str) = format_test_result(&result);
-    println!(
-        "{}",
-        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
-    );
-
+    if !result.success {
+        return Err(super::helpers::reported_failure(&format!(
+            "The LDAP test failed: {}",
+            result.message
+        )));
+    }
     Ok(())
 }
 

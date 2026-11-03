@@ -4,7 +4,7 @@ use miette::Result;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid,
+    confirm_action, emit_mutation, emit_mutation_raw, fail_on_errors, new_table, parse_uuid,
     refuse_flags_before_1_11, sdk_err, short_id, since_1_11, since_1_11_any_status,
 };
 use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
@@ -761,7 +761,11 @@ async fn execute_all_policies(global: &GlobalArgs) -> Result<()> {
         );
     }
 
-    Ok(())
+    let errors: Vec<String> = results
+        .iter()
+        .flat_map(|r| r.errors.iter().map(|e| format!("{}: {e}", r.policy_name)))
+        .collect();
+    fail_on_errors("Executing policies", &errors)
 }
 
 async fn delete_policy(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
@@ -809,7 +813,7 @@ async fn preview_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     spinner.finish_and_clear();
     print_execution_result(&result, raw.as_deref(), "Preview", global);
 
-    Ok(())
+    fail_on_errors("Preview", &result.errors)
 }
 
 async fn execute_policy(id: &str, global: &GlobalArgs) -> Result<()> {
@@ -825,7 +829,7 @@ async fn execute_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     spinner.finish_and_clear();
     print_execution_result(&result, raw.as_deref(), "Execution", global);
 
-    Ok(())
+    fail_on_errors("Execution", &result.errors)
 }
 
 /// Add a repository to a policy's scope, or remove it.
@@ -925,8 +929,13 @@ fn print_execution_result(
 
     if matches!(global.format, OutputFormat::Table) {
         eprintln!(
-            "{} complete for policy '{}'{}:",
+            "{} {} for policy '{}'{}:",
             label,
+            if result.errors.is_empty() {
+                "complete"
+            } else {
+                "finished with errors"
+            },
             result.policy_name,
             if result.dry_run { " (dry run)" } else { "" }
         );

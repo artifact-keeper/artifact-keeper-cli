@@ -36,6 +36,27 @@ pub fn raw_err(action: &str, status: reqwest::StatusCode, body: &str) -> AkError
     }
 }
 
+/// The error for a failure the server reported in a 2xx response. The caller has
+/// already printed the response, so this is what tells a script it didn't work. A
+/// server chooses these words, and a terminal displays them.
+pub fn reported_failure(what: &str) -> miette::Report {
+    AkError::ReportedFailure(crate::output::sanitize_terminal(what)).into()
+}
+
+/// Fail if the `errors` in a 2xx response aren't empty.
+pub fn fail_on_errors(what: &str, errors: &[String]) -> Result<()> {
+    const SHOWN: usize = 5;
+    if errors.is_empty() {
+        return Ok(());
+    }
+    let mut message = format!("{what} finished with {} error(s): ", errors.len());
+    message.push_str(&errors[..errors.len().min(SHOWN)].join("; "));
+    if errors.len() > SHOWN {
+        message.push_str("; and more in the output above");
+    }
+    Err(reported_failure(&message))
+}
+
 /// Emit the result of a mutation (create/update/delete) honoring the output
 /// format so results are machine-consumable.
 ///

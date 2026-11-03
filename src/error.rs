@@ -98,6 +98,10 @@ pub enum AkError {
         help("Add the lines shown above to it yourself, or fix the file and run setup again.")
     )]
     SetupFileNotMerged(String, String),
+    /// The server answered 2xx, and its response says it didn't work.
+    #[error("{0}")]
+    #[diagnostic(code(ak::reported_failure))]
+    ReportedFailure(String),
 
     #[error("Promotion blocked: {0}")]
     #[diagnostic(
