@@ -87,6 +87,40 @@ pub fn render<T: Serialize>(data: &T, format: &OutputFormat, table: Option<Strin
     }
 }
 
+/// Render a response in the requested format, with `--format json` and `yaml`
+/// showing the body the server sent rather than a re-serialized struct, which
+/// would drop any field the SDK doesn't know. `raw` comes from
+/// `artifact_keeper_sdk::raw::capture`. `fallback` is used when there's no body
+/// to show.
+///
+/// On a pipe, JSON is the bytes as received. On a terminal, it's pretty-printed
+/// with the same content.
+pub fn render_raw<T: Serialize>(
+    raw: Option<&[u8]>,
+    fallback: &T,
+    format: &OutputFormat,
+    table: Option<String>,
+) -> String {
+    let parsed = raw.and_then(|bytes| serde_json::from_slice::<serde_json::Value>(bytes).ok());
+    match (format, raw, parsed) {
+        (OutputFormat::Json, Some(bytes), Some(value)) => {
+            if console::Term::stdout().is_term() {
+                serde_json::to_string_pretty(&value).unwrap_or_default()
+            } else {
+                String::from_utf8_lossy(bytes).trim_end().to_string()
+            }
+        }
+        (OutputFormat::Yaml, _, Some(value)) => serde_yaml::to_string(&value).unwrap_or_default(),
+        _ => render(fallback, format, table),
+    }
+}
+
+/// Whether output is meant for a program, so a "nothing found" message on stderr
+/// isn't enough: it needs the server's response on stdout, even an empty list.
+pub fn is_machine_format(format: &OutputFormat) -> bool {
+    matches!(format, OutputFormat::Json | OutputFormat::Yaml)
+}
+
 /// Format a byte count as a human-readable string (e.g., "1.5 MB").
 pub fn format_bytes(bytes: i64) -> String {
     const KB: i64 = 1024;
@@ -161,6 +195,48 @@ mod tests {
     fn format_bytes_negative() {
         assert_eq!(format_bytes(-1), "-1 B");
         assert_eq!(format_bytes(-100), "-100 B");
+    }
+
+    // ---- render_raw ----
+
+    #[test]
+    fn render_raw_json_keeps_fields_the_fallback_lacks() {
+        let raw = br#"{"id":1,"field_from_a_newer_server":{"x":[1,2]}}"#;
+        let fallback = serde_json::json!({"id": 1});
+        let shown = render_raw(Some(raw), &fallback, &OutputFormat::Json, None);
+        let value: serde_json::Value = serde_json::from_str(&shown).unwrap();
+        assert_eq!(value["field_from_a_newer_server"]["x"][1], 2);
+    }
+
+    #[test]
+    fn render_raw_yaml_keeps_fields_the_fallback_lacks() {
+        let raw = br#"{"field_from_a_newer_server":"kept"}"#;
+        let fallback = serde_json::json!({});
+        let shown = render_raw(Some(raw), &fallback, &OutputFormat::Yaml, None);
+        assert!(shown.contains("field_from_a_newer_server: kept"), "{shown}");
+    }
+
+    #[test]
+    fn render_raw_table_and_quiet_are_unchanged() {
+        let raw = br#"{"a":1}"#;
+        let fallback = serde_json::json!({});
+        assert_eq!(
+            render_raw(Some(raw), &fallback, &OutputFormat::Table, Some("t".into())),
+            "t"
+        );
+        assert_eq!(
+            render_raw(Some(raw), &fallback, &OutputFormat::Quiet, None),
+            ""
+        );
+    }
+
+    #[test]
+    fn render_raw_falls_back_with_no_body_or_a_non_json_body() {
+        let fallback = serde_json::json!({"from": "fallback"});
+        for raw in [None, Some(&b"not json"[..])] {
+            let shown = render_raw(raw, &fallback, &OutputFormat::Json, None);
+            assert!(shown.contains("fallback"), "{shown}");
+        }
     }
 
     // ---- render ----

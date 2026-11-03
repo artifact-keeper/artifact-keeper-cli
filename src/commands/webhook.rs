@@ -9,7 +9,8 @@ use serde_json::Value;
 use super::client::client_for;
 use super::helpers::resolve_optional_repo_id;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_uuid, resolve_secret, sdk_err, short_id,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, resolve_secret,
+    sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -187,11 +188,12 @@ async fn list_webhooks(
         req = req.enabled(e);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("list webhooks", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list webhooks", e))?;
     let list = resp.into_inner();
     spinner.finish_and_clear();
 
-    if list.items.is_empty() {
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No webhooks found.");
         return Ok(());
     }
@@ -206,7 +208,7 @@ async fn list_webhooks(
     let (entries, table_str) = format_webhooks_table(&list.items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -218,17 +220,17 @@ async fn show_webhook(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching webhook...");
 
-    let webhook = client
-        .get_webhook()
-        .id(webhook_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get webhook", e))?;
+    let (webhook, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_webhook().id(webhook_id).send()).await;
+    let webhook = webhook.map_err(|e| sdk_err("get webhook", e))?;
 
     spinner.finish_and_clear();
 
     let (info, table_str) = format_webhook_detail(&webhook);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -258,16 +260,14 @@ async fn create_webhook(
         signing_mode: None,
     };
 
-    let webhook = client
-        .create_webhook()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create webhook", e))?;
+    let (webhook, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_webhook().body(body).send()).await;
+    let webhook = webhook.map_err(|e| sdk_err("create webhook", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*webhook,
         &webhook.id.to_string(),
         &format!("Webhook '{}' created (ID: {}).", webhook.name, webhook.id),

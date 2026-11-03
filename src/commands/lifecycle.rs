@@ -3,7 +3,9 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
+};
 use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -187,15 +189,13 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
         req = req.repository_id(uid);
     }
 
-    let policies = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list lifecycle policies", e))?;
+    let (policies, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let policies = policies.map_err(|e| sdk_err("list lifecycle policies", e))?;
 
     let policies = policies.into_inner();
     spinner.finish_and_clear();
 
-    if policies.is_empty() {
+    if policies.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No lifecycle policies found.");
         return Ok(());
     }
@@ -253,7 +253,7 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -288,12 +288,9 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching lifecycle policy...");
 
-    let policy = client
-        .get_lifecycle_policy()
-        .id(policy_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get lifecycle policy", e))?;
+    let (policy, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_lifecycle_policy().id(policy_id).send()).await;
+    let policy = policy.map_err(|e| sdk_err("get lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
@@ -344,7 +341,10 @@ async fn show_policy(id: &str, global: &GlobalArgs) -> Result<()> {
         policy.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -403,19 +403,17 @@ async fn create_policy(
 
     let spinner = output::spinner("Creating lifecycle policy...");
 
-    let resp = client
-        .create_lifecycle_policy()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create lifecycle policy", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_lifecycle_policy().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("create lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
     let policy = resp.into_inner();
     let id = policy.id.to_string();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &policy,
         &id,
         &format!(
@@ -492,19 +490,22 @@ async fn update_policy(
     let client = client_for(global)?;
     let spinner = output::spinner("Updating lifecycle policy...");
 
-    let resp = client
-        .update_lifecycle_policy()
-        .id(policy_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update lifecycle policy", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .update_lifecycle_policy()
+            .id(policy_id)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("update lifecycle policy", e))?;
 
     spinner.finish_and_clear();
 
     let policy = resp.into_inner();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &policy,
         id,
         &format!("Lifecycle policy '{}' updated (ID: {id}).", policy.name),

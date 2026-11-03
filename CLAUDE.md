@@ -94,6 +94,7 @@ The CLI minor tracks the API minor it's generated from. `ak` supports servers on
 - **Async**: All commands are async via tokio
 - **`ak api`**: `src/commands/api.rs` sends any request. The instance's token goes only to the instance's own origin. A new route is reachable through it from day one, before it has a command
 - **SDK errors**: `sdk/src/error.rs`, swapped into generated code by xtask. `{e}` gives `<status>: <server message>` and can't print a header. Use `sdk_err` for SDK calls and `helpers::raw_err` for raw HTTP
+- **Raw JSON**: `--format json` and `yaml` must print the response as received. Wrap the SDK call in `artifact_keeper_sdk::raw::capture` and print with `output::render_raw`, or `helpers::emit_mutation_raw` for a mutation. New commands use these rather than `output::render`
 - **Repository and artifact arguments**: `helpers::resolve_repo_id` and `resolve_artifact_id` take a key or a UUID. Use them rather than `parse_uuid` for any repository parameter
 
 ### Environment Variables

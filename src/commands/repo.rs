@@ -5,7 +5,7 @@ use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
 use super::client::{client_for, client_for_optional_auth};
-use super::helpers::{confirm_action, emit_mutation, new_table, sdk_err};
+use super::helpers::{confirm_action, emit_mutation, emit_mutation_raw, new_table, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -509,14 +509,13 @@ async fn list_repos(
         req = req.q(q);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list repositories: {e}")))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp =
+        resp.map_err(|e| AkError::ServerError(format!("Failed to list repositories: {e}")))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No repositories found.");
         return Ok(());
     }
@@ -572,7 +571,7 @@ async fn list_repos(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     // Show pagination info on stderr
@@ -609,12 +608,9 @@ fn storage_label(repo: &artifact_keeper_sdk::types::RepositoryResponse) -> Strin
 async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
 
-    let repo = client
-        .get_repository()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get repository: {e}")))?;
+    let (repo, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_repository().key(key).send()).await;
+    let repo = repo.map_err(|e| AkError::ServerError(format!("Failed to get repository: {e}")))?;
 
     let info = serde_json::json!({
         "id": repo.id,
@@ -662,7 +658,10 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         repo.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -717,14 +716,13 @@ async fn create_repo(
         visibility: None,
     };
 
-    let resp = client
-        .create_repository()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to create repository: {e}")))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_repository().body(body).send()).await;
+    let resp =
+        resp.map_err(|e| AkError::ServerError(format!("Failed to create repository: {e}")))?;
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*resp,
         &resp.key,
         &format!(
@@ -826,13 +824,10 @@ async fn update_repo(
     let client = client_for(global)?;
     let spinner = output::spinner("Updating repository...");
 
-    let resp = client
-        .update_repository()
-        .key(key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update repository", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_repository().key(key).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("update repository", e))?;
 
     spinner.finish_and_clear();
 
@@ -851,7 +846,8 @@ async fn update_repo(
         "upstream_url": resp.upstream_url,
     });
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &info,
         &resp.key,
         &format!("Updated repository '{}'.", resp.key),
@@ -865,16 +861,13 @@ async fn list_members(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching members...");
 
-    let resp = client
-        .list_virtual_members()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list virtual members", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_virtual_members().key(key).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list virtual members", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.members.is_empty() {
+    if resp.members.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No members on virtual repository '{key}'.");
         return Ok(());
     }
@@ -915,7 +908,7 @@ async fn list_members(key: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())

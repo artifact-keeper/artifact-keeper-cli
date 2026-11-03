@@ -606,14 +606,12 @@ async fn list(
         req = req.q(q);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list artifacts: {e}")))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| AkError::ServerError(format!("Failed to list artifacts: {e}")))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No artifacts found in '{repo}'.");
         return Ok(());
     }
@@ -668,7 +666,7 @@ async fn list(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     if resp.pagination.total_pages > 1 {
@@ -684,17 +682,20 @@ async fn list(
 async fn info(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
 
-    let artifacts = client
-        .list_artifacts()
-        .key(repo)
-        .q(artifact_path)
-        .per_page(1)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to find artifact: {e}")))?;
-
-    let artifact = artifacts.items.first().ok_or_else(|| {
-        AkError::ServerError(format!("Artifact '{artifact_path}' not found in '{repo}'"))
+    let (artifact, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .get_repository_artifact_metadata()
+            .key(repo)
+            .path(artifact_path)
+            .send(),
+    )
+    .await;
+    let artifact = artifact.map_err(|e| {
+        if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
+            AkError::ServerError(format!("Artifact '{artifact_path}' not found in '{repo}'"))
+        } else {
+            AkError::ServerError(format!("Failed to find artifact: {e}"))
+        }
     })?;
 
     let info = serde_json::json!({
@@ -732,7 +733,10 @@ async fn info(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Result<()
         artifact.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -741,11 +745,9 @@ async fn show_by_id(id: &str, global: &GlobalArgs) -> Result<()> {
     let artifact_id = parse_uuid(id, "artifact")?;
     let client = client_for(global)?;
 
-    let artifact = client
-        .get_artifact()
-        .id(artifact_id)
-        .send()
-        .await
+    let (artifact, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_artifact().id(artifact_id).send()).await;
+    let artifact = artifact
         .map_err(|e| AkError::ServerError(format!("Failed to get artifact: {e}")))?
         .into_inner();
 
@@ -786,7 +788,10 @@ async fn show_by_id(id: &str, global: &GlobalArgs) -> Result<()> {
         artifact.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -795,11 +800,10 @@ async fn show_metadata(id: &str, global: &GlobalArgs) -> Result<()> {
     let artifact_id = parse_uuid(id, "artifact")?;
     let client = client_for(global)?;
 
-    let meta = client
-        .get_artifact_metadata()
-        .id(artifact_id)
-        .send()
-        .await
+    let (meta, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_artifact_metadata().id(artifact_id).send())
+            .await;
+    let meta = meta
         .map_err(|e| AkError::ServerError(format!("Failed to get artifact metadata: {e}")))?
         .into_inner();
 
@@ -821,7 +825,10 @@ async fn show_metadata(id: &str, global: &GlobalArgs) -> Result<()> {
         serde_json::to_string(&meta.properties).unwrap_or_else(|_| "-".to_string()),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -830,11 +837,9 @@ async fn show_stats(id: &str, global: &GlobalArgs) -> Result<()> {
     let artifact_id = parse_uuid(id, "artifact")?;
     let client = client_for(global)?;
 
-    let stats = client
-        .get_artifact_stats()
-        .id(artifact_id)
-        .send()
-        .await
+    let (stats, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_artifact_stats().id(artifact_id).send()).await;
+    let stats = stats
         .map_err(|e| AkError::ServerError(format!("Failed to get artifact stats: {e}")))?
         .into_inner();
 
@@ -861,7 +866,10 @@ async fn show_stats(id: &str, global: &GlobalArgs) -> Result<()> {
         fmt_dt(stats.last_downloaded),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -925,14 +933,12 @@ async fn search(
         req = req.format(f);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Search failed: {e}")))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| AkError::ServerError(format!("Search failed: {e}")))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No results found for '{query}'.");
         return Ok(());
     }
@@ -985,7 +991,7 @@ async fn search(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} results found.", resp.items.len());
@@ -1841,9 +1847,8 @@ mod tests {
         let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
-            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts/.+"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "items": [{
                     "id": "00000000-0000-0000-0000-000000000001",
                     "path": "org/example/lib/1.0/lib-1.0.jar",
                     "name": "lib",
@@ -1856,8 +1861,6 @@ mod tests {
                     "repository_key": "maven-central",
                     "created_at": "2026-01-15T10:00:00Z",
                     "quarantine_status": "not_quarantined"
-                }],
-                "pagination": { "page": 1, "per_page": 50, "total": 1_i64, "total_pages": 1 }
             })))
             .mount(&server)
             .await;
@@ -1874,11 +1877,8 @@ mod tests {
         let _guard = crate::test_utils::setup_env(&tmp);
 
         Mock::given(method("GET"))
-            .and(path_regex("/api/v1/repositories/.+/artifacts"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "items": [],
-                "pagination": { "page": 1, "per_page": 50, "total": 0_i64, "total_pages": 0 }
-            })))
+            .and(path_regex("/api/v1/repositories/.+/artifacts/.+"))
+            .respond_with(ResponseTemplate::new(404))
             .mount(&server)
             .await;
 

@@ -32,16 +32,7 @@ fn get_auth_me_matches_whoami() {
     let raw: Value = serde_json::from_slice(&api(&env, &["GET", "/api/v1/auth/me"])).unwrap();
     let whoami: Value =
         serde_json::from_slice(&stdout_of(env.ak_cmd().args(["auth", "whoami"]))).unwrap();
-    let raw = raw.as_object().expect("an object");
-    // Every field whoami shows that the server sent under the same name agrees.
-    let mut compared = 0;
-    for (key, value) in whoami.as_object().expect("an object") {
-        if let Some(sent) = raw.get(key) {
-            assert_eq!(value, sent, "{key}");
-            compared += 1;
-        }
-    }
-    assert!(compared > 0, "whoami and /auth/me share no fields");
+    assert_eq!(whoami, raw);
     assert_eq!(raw["username"], "admin");
 }
 

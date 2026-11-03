@@ -54,9 +54,9 @@ fn repo_show_and_list_expose_the_id() {
     assert!(id.parse::<uuid::Uuid>().is_ok(), "{id}");
 
     let list = json_of(env.ak_cmd().args(["repo", "list", "--per-page", "100"]));
-    let found = list
+    let found = list["items"]
         .as_array()
-        .expect("repo list is an array")
+        .expect("repo list has items")
         .iter()
         .find(|r| r["key"] == "resolver-ids")
         .expect("repo in list");
@@ -193,7 +193,7 @@ fn artifact_output_exposes_the_id_and_quarantine_takes_a_path() {
     assert!(id.parse::<uuid::Uuid>().is_ok(), "{id}");
 
     let list = json_of(env.ak_cmd().args(["artifact", "list", key]));
-    assert_eq!(list[0]["id"], id);
+    assert_eq!(list["items"][0]["id"], id);
 
     // By ID and by <repo>/<path>, the same artifact.
     let by_id = json_of(env.ak_cmd().args(["quarantine", "status", id]));

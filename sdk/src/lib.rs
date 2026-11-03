@@ -12,6 +12,7 @@ pub use progenitor_client;
 pub use reqwest;
 
 pub mod error;
+pub mod raw;
 
 #[allow(clippy::all, unused, dead_code, unreachable_code)]
 mod generated_sdk;

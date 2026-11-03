@@ -67,6 +67,24 @@ pub fn decode_jwt_expiry(token: &str) -> Option<i64> {
     json.get("exp")?.as_i64()
 }
 
+/// [`emit_mutation`] for a response captured with
+/// `artifact_keeper_sdk::raw::capture`: JSON and YAML show the body the server sent.
+pub fn emit_mutation_raw<T: Serialize>(
+    raw: Option<&[u8]>,
+    value: &T,
+    id: &str,
+    human: &str,
+    global: &GlobalArgs,
+) {
+    match global.format {
+        OutputFormat::Quiet => println!("{id}"),
+        OutputFormat::Json | OutputFormat::Yaml => {
+            println!("{}", output::render_raw(raw, value, &global.format, None));
+        }
+        OutputFormat::Table => eprintln!("{human}"),
+    }
+}
+
 /// Parse a string as a UUID, returning a friendly error with the given label.
 pub fn parse_uuid(id: &str, label: &str) -> Result<uuid::Uuid> {
     id.parse()

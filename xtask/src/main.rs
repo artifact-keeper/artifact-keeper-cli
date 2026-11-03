@@ -601,7 +601,7 @@ fn use_sdk_error(code: &str) -> Result<String> {
         ),
         (
             "=> ResponseValue::from_response(response).await,",
-            "=> Ok(ResponseValue::from_response::<()>(response).await?),",
+            "=> crate::raw::parse_response(response).await,",
         ),
         (
             ".form_urlencoded(&body)?",
