@@ -83,6 +83,14 @@ pub fn raw_http_client() -> Result<reqwest::Client> {
         .into_diagnostic()
 }
 
+/// The starting point of [`raw_http_client`], for a caller that sets its own
+/// redirect policy. Apply the custom CA before building.
+pub fn raw_http_client_builder(redirects: reqwest::redirect::Policy) -> reqwest::ClientBuilder {
+    reqwest::ClientBuilder::new()
+        .connect_timeout(Duration::from_secs(15))
+        .redirect(redirects)
+}
+
 /// Resolve instance and build an authenticated client from GlobalArgs.
 ///
 /// Returns the instance name, config, and SDK client for commands that

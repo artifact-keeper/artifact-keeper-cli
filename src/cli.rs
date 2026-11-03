@@ -315,6 +315,9 @@ pub enum Command {
         command: commands::analytics::AnalyticsCommand,
     },
 
+    /// Send any HTTP request to the instance, with its auth and TLS settings
+    Api(commands::api::ApiArgs),
+
     /// Manage CLI configuration
     #[command(
         after_help = "Examples:\n  ak config list\n  ak config get default_instance\n  ak config set default_instance prod"
@@ -488,6 +491,7 @@ impl Cli {
             Command::Instance { command } => command.execute(&global).await,
             Command::Repo { command } => command.execute(&global).await,
             Command::Artifact { command } => command.execute(&global).await,
+            Command::Api(args) => commands::api::execute(args, &global).await,
             Command::Setup { options, command } => command.execute(options, &global).await,
             Command::Scan { command } => command.execute(&global).await,
             Command::Doctor => commands::doctor::execute(&global).await,
