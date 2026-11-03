@@ -16,7 +16,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 
 These can change what you see, or break a script, coming from 1.2:
 
-- **Supported servers.** Each `ak` minor supports the server minor it's built for and the one before: `ak` 1.11 supports servers on 1.11 and 1.10. Other servers aren't tested, and `ak doctor` warns about them.
+- **Version numbers and supported servers.** The first two numbers of the `ak` version tell you the server version; the last is the CLI's own and doesn't match the server's patch number. New commands may ship in CLI patch releases (1.11.x). A 1.11.x CLI supports servers on 1.10 and 1.11. Other servers aren't tested, and `ak doctor` warns about them.
 - **Snap is gone.** The Snap package never published. Use the installer, Homebrew, the `.deb`/`.rpm` packages or the static binaries (#148).
 - **Linux binaries are static musl builds**, and so are the `.deb`/`.rpm` packages that wrap them. They no longer need any particular glibc, but they also don't use glibc's NSS: names resolve through `/etc/hosts` and the DNS servers in `/etc/resolv.conf` only. A hostname that only an LDAP or `systemd-resolved` NSS plugin can resolve won't work (#178).
 - **JSON and YAML changed on some commands.** `auth whoami`, `auth token list`, `repo`, `artifact`, `lifecycle` and `webhook` commands (the full list is under Changed) print the server's response as sent. Lists are `{"items": [...], "pagination": {...}}` rather than a bare array, and fields use the API's names: `repo_type` rather than `type`, `is_public` rather than `public`, `is_admin` rather than `admin`. Scripts that read this output need updating. Table output is unchanged.
