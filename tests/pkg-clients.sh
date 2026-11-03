@@ -560,6 +560,39 @@ M
     bazel --output_user_root=/tmp/o mod graph --registry="$BASE/bazel/$REPO" --registry=https://bcr.bazel.build 2>/dev/null | grep -q "akdemo@1.0.0"'
 }
 
+check_oci() {
+  local d; d="$(fresh oci)"
+  REPO="$(new_repo docker oci)" || return 1
+  local host image tls=()
+  host="${BASE#*://}"
+  image="$host/$REPO/app"
+  "$CONTAINER" --version | grep -qi podman && tls=(--tls-verify=false)
+  "$CONTAINER" pull -q docker.io/library/alpine:3.20 >/dev/null || return 1
+  "$CONTAINER" tag docker.io/library/alpine:3.20 "$image:1.0" || return 1
+  "$CONTAINER" login "${tls[@]}" -u admin -p "$ADMIN_PASSWORD" "$host" >/dev/null 2>&1 || return 1
+  "$CONTAINER" push "${tls[@]}" -q "$image:1.0" >/dev/null || return 1
+  "$CONTAINER" rmi "$image:1.0" >/dev/null
+
+  ak --format json pkg oci catalog --all | grep -q "$REPO/app" || { echo "not in the catalog"; return 1; }
+  test "$(ak pkg oci tags "$REPO/app" --format quiet)" = "1.0" || return 1
+  local digest
+  digest="$(ak pkg oci manifest head "$REPO/app" 1.0 --format quiet)" || return 1
+  ak pkg oci manifest get "$REPO/app" 1.0 -o "$d/manifest.json" || return 1
+  test "sha256:$(sha256sum "$d/manifest.json" | cut -d' ' -f1)" = "$digest" || { echo "digest differs"; return 1; }
+  local config
+  config="$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["config"]["digest"])' "$d/manifest.json")" || return 1
+  ak pkg oci blob get "$REPO/app" "$config" -o "$d/config.json" || return 1
+  grep -q architecture "$d/config.json" || return 1
+  # A new tag from the same manifest, which the client then pulls.
+  ak pkg oci manifest put "$REPO/app" copy "$d/manifest.json" >/dev/null || return 1
+  "$CONTAINER" pull "${tls[@]}" -q "$image:copy" >/dev/null || return 1
+  "$CONTAINER" rmi "$image:copy" >/dev/null
+  ak pkg oci referrers "$REPO/app" "$digest" >/dev/null || return 1
+  ak pkg oci manifest delete "$REPO/app" copy --yes >/dev/null || return 1
+  if "$CONTAINER" pull "${tls[@]}" -q "$image:copy" >/dev/null 2>&1; then echo "a deleted tag pulled"; return 1; fi
+  "$CONTAINER" logout "$host" >/dev/null 2>&1 || true
+}
+
 check_lfs() {
   local d; d="$(fresh lfs)"
   REPO="$(new_repo gitlfs lfs)" || return 1
@@ -729,6 +762,6 @@ run() {
 }
 
 FAILED=0
-ALL=(pypi npm cargo helm nuget debian rpm alpine pacman conda maven go gems composer cran pub hex ivy bazel lfs conan ansible huggingface swift puppet)
+ALL=(pypi npm cargo helm nuget debian rpm alpine pacman conda maven go gems composer cran pub hex ivy bazel oci lfs conan ansible huggingface swift puppet)
 for name in "${@:-${ALL[@]}}"; do run "$name"; done
 exit "$FAILED"

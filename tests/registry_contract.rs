@@ -826,6 +826,18 @@ fn pkg_hints(home: &std::path::Path, line: &Line) -> Vec<(&'static str, String)>
             }
         }
         "pkg proto publish" => args.push(("module", "acme/demo".to_string())),
+        "pkg oci tags"
+        | "pkg oci referrers"
+        | "pkg oci blob get"
+        | "pkg oci manifest get"
+        | "pkg oci manifest head"
+        | "pkg oci manifest put"
+        | "pkg oci manifest delete" => {
+            args.push(("name", "app".to_string()));
+            if line.command == "pkg oci manifest put" {
+                args.push(("media_type", "application/json".to_string()));
+            }
+        }
         "pkg npm audit" => {
             let kind = if path.ends_with("quick") {
                 "quick"

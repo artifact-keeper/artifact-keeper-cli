@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ak pkg` for system packages:** `ak pkg debian`, `rpm`, `alpine`, `pacman`, `conda`, and `incus`/`lxc` for images, with chunked uploads. `ak pkg conda` also has `attest` and `withdraw`, and can send an API token in the URL.
 - **`ak pkg` for build tools and languages:** `ak pkg maven` (with checksums and a generated POM), `ivy`, `bazel`, `go`, `gems`, `composer`, `cran`, `hex`, `pub` and `terraform`.
 - **More of `ak pkg`:** `conan` (recipes, packages, removal and its token exchange), `lfs` (the batch upload and locks), `huggingface`, `swift`, `ansible`, `puppet`, `chef`, `cocoapods`, `jetbrains`, `vscode` and `proto` (a module upload, and any RPC of the Buf API).
+- **`ak pkg oci`:** `catalog`, `tags`, `manifest get|head|put|delete`, `blob get`, which checks the digest, and `referrers`.
 
 ## [1.11.0] - Unreleased
 
