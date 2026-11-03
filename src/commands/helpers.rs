@@ -272,6 +272,21 @@ fn resolve_secret_from<R: std::io::Read>(
     Ok(non_empty(entered))
 }
 
+/// The error dialoguer gives for a prompt with no terminal to ask on.
+pub fn is_no_terminal_io_error(e: &std::io::Error) -> bool {
+    e.kind() == std::io::ErrorKind::NotConnected && e.to_string() == "not a terminal"
+}
+
+/// An error for a failed prompt, for a caller that says what it was asking for.
+pub fn prompt_err(what: &str, e: dialoguer::Error) -> AkError {
+    let dialoguer::Error::IO(io) = &e;
+    if is_no_terminal_io_error(io) {
+        AkError::NoTerminal
+    } else {
+        AkError::ConfigError(format!("{what}: {e}"))
+    }
+}
+
 /// Prompt the user to confirm a destructive action. Returns `true` if the
 /// action should proceed, `false` if cancelled.
 pub fn confirm_action(prompt: &str, skip_confirm: bool, no_input: bool) -> Result<bool> {
