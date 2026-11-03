@@ -11,10 +11,16 @@ network="${2:?usage: $0 <version> <docker network>}"
 # The backend refuses to start on a weak or placeholder JWT_SECRET, and on one
 # with fewer than 16 distinct characters. A random hex string sometimes has only
 # 14 or 15, so use base64, which is also what the backend's error recommends.
+#
+# Tests of remote repositories use this backend as its own upstream. It refuses
+# loopback and the name `backend`, hence the alias, and private addresses unless
+# it's told otherwise.
 JWT_SECRET="$(openssl rand -base64 48)"
 
 docker run -d --name e2e-backend \
   --network "$network" \
+  --network-alias ak-upstream \
+  -e UPSTREAM_ALLOW_PRIVATE_IPS="true" \
   -e DATABASE_URL="postgresql://registry:registry@postgres:5432/artifact_registry_test" \
   -e ADMIN_PASSWORD="TestRunner!2026secure" \
   -e JWT_SECRET="$JWT_SECRET" \
