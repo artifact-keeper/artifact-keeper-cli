@@ -4,6 +4,7 @@ pub mod analytics;
 pub mod api;
 pub mod approval;
 pub mod artifact;
+pub mod attestation;
 pub mod auth;
 pub mod banner;
 pub mod builds;

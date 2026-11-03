@@ -1,4 +1,5 @@
 use artifact_keeper_sdk::ClientSigningExt;
+use artifact_keeper_sdk::raw::capture;
 use artifact_keeper_sdk::types::{SigningConfigResponse, SigningKeyPublic};
 use clap::Subcommand;
 use futures::StreamExt;
@@ -7,10 +8,11 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation_raw, new_table, parse_optional_uuid, parse_uuid,
+    resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id, sdk_err, short_id,
 };
-use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -22,6 +24,22 @@ pub enum SignCommand {
     /// Manage repository signing configuration
     #[command(subcommand)]
     Config(SignConfigCommand),
+
+    /// Sign an artifact with its repository's active key (admin only)
+    ///
+    /// This writes the attestation that a policy's --require-signature trusts, so signing
+    /// vouches for the artifact and lets it through that check.
+    ///
+    /// The repository needs an active key set with `ak sign config update <repo>
+    /// --signing-key-id <id> --sign-metadata`.
+    Artifact {
+        /// Artifact ID, or <repo-key>/<path>
+        artifact: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -48,13 +66,14 @@ pub enum SignKeyCommand {
         #[arg(long, default_value = "rsa4096")]
         algorithm: String,
 
-        /// Key type: gpg, rsa or ed25519
+        /// Key type: gpg, rsa or ed25519 (server default: gpg)
         #[arg(long = "type")]
-        key_type: String,
+        key_type: Option<String>,
 
-        /// Repository key or ID to associate with this key
+        /// Repository key or ID to associate with this key. Leave it out for a key that
+        /// isn't tied to one
         #[arg(long)]
-        repo: String,
+        repo: Option<String>,
 
         /// UID email for the key
         #[arg(long)]
@@ -79,12 +98,20 @@ pub enum SignKeyCommand {
     Revoke {
         /// Signing key ID
         id: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Rotate a signing key (generates new key, deactivates old)
     Rotate {
         /// Signing key ID to rotate
         id: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Export the public key in PEM format
@@ -102,22 +129,22 @@ pub enum SignConfigCommand {
         repo_id: String,
     },
 
-    /// Update signing configuration for a repository
+    /// Update signing configuration for a repository. Only what you pass changes
     Update {
         /// Repository key or ID
         repo_id: String,
 
-        /// Require signatures on all uploads
-        #[arg(long)]
-        require_signatures: bool,
+        /// Require signatures on all uploads. On its own, the flag means true
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        require_signatures: Option<bool>,
 
-        /// Sign package metadata
-        #[arg(long)]
-        sign_metadata: bool,
+        /// Sign package metadata. On its own, the flag means true
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        sign_metadata: Option<bool>,
 
-        /// Sign packages
-        #[arg(long)]
-        sign_packages: bool,
+        /// Sign packages. On its own, the flag means true
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        sign_packages: Option<bool>,
 
         /// Signing key ID to use
         #[arg(long)]
@@ -136,6 +163,7 @@ impl SignCommand {
         match self {
             Self::Key(cmd) => cmd.execute(global).await,
             Self::Config(cmd) => cmd.execute(global).await,
+            Self::Artifact { artifact, yes } => sign_artifact(&artifact, yes, global).await,
         }
     }
 }
@@ -156,8 +184,8 @@ impl SignKeyCommand {
                 create_key(
                     &name,
                     &algorithm,
-                    &key_type,
-                    &repo,
+                    key_type.as_deref(),
+                    repo.as_deref(),
                     uid_email.as_deref(),
                     uid_name.as_deref(),
                     global,
@@ -165,8 +193,8 @@ impl SignKeyCommand {
                 .await
             }
             Self::Delete { id, yes } => delete_key(&id, yes, global).await,
-            Self::Revoke { id } => revoke_key(&id, global).await,
-            Self::Rotate { id } => rotate_key(&id, global).await,
+            Self::Revoke { id, yes } => revoke_key(&id, yes, global).await,
+            Self::Rotate { id, yes } => rotate_key(&id, yes, global).await,
             Self::Export { id } => export_key(&id, global).await,
         }
     }
@@ -213,15 +241,13 @@ async fn list_keys(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
         req = req.repository_id(rid);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list signing keys", e))?;
+    let (resp, raw) = capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list signing keys", e))?;
 
     let resp = resp.into_inner();
     spinner.finish_and_clear();
 
-    if resp.keys.is_empty() {
+    if resp.keys.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No signing keys found.");
         return Ok(());
     }
@@ -237,7 +263,7 @@ async fn list_keys(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -248,19 +274,18 @@ async fn show_key(id: &str, global: &GlobalArgs) -> Result<()> {
     let key_id = parse_uuid(id, "signing key")?;
 
     let spinner = output::spinner("Fetching signing key...");
-    let key = client
-        .get_key()
-        .key_id(key_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get signing key", e))?;
+    let (key, raw) = capture(client.get_key().key_id(key_id).send()).await;
+    let key = key.map_err(|e| sdk_err("get signing key", e))?;
 
     let key = key.into_inner();
     spinner.finish_and_clear();
 
     let (info, table_str) = format_key_detail(&key);
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -268,37 +293,34 @@ async fn show_key(id: &str, global: &GlobalArgs) -> Result<()> {
 async fn create_key(
     name: &str,
     algorithm: &str,
-    key_type: &str,
-    repo: &str,
+    key_type: Option<&str>,
+    repo: Option<&str>,
     uid_email: Option<&str>,
     uid_name: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let repo_id = resolve_repo_id(&client, repo).await?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
 
     let spinner = output::spinner("Creating signing key...");
 
     let body = artifact_keeper_sdk::types::CreateKeyPayload {
         name: name.to_string(),
         algorithm: Some(algorithm.to_string()),
-        key_type: Some(key_type.to_string()),
-        repository_id: Some(repo_id),
+        key_type: key_type.map(str::to_string),
+        repository_id: repo_id,
         uid_email: uid_email.map(|s| s.to_string()),
         uid_name: uid_name.map(|s| s.to_string()),
     };
 
-    let key = client
-        .create_key()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create signing key", e))?;
+    let (key, raw) = capture(client.create_key().body(body).send()).await;
+    let key = key.map_err(|e| sdk_err("create signing key", e))?;
 
     let key = key.into_inner();
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &key,
         &key.id.to_string(),
         &format!("Signing key '{}' created (ID: {}).", key.name, key.id),
@@ -322,71 +344,119 @@ async fn delete_key(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Result
     let client = client_for(global)?;
     let spinner = output::spinner("Deleting signing key...");
 
-    client
-        .delete_key()
-        .key_id(key_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("delete signing key", e))?;
+    let (resp, raw) = capture(client.delete_key().key_id(key_id).send()).await;
+    let result = resp.map_err(|e| sdk_err("delete signing key", e))?;
 
     spinner.finish_and_clear();
-    eprintln!("Signing key {id} deleted.");
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &*result,
+        id,
+        &format!("Signing key {id} deleted."),
+        global,
+    );
 
     Ok(())
 }
 
-async fn revoke_key(id: &str, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
+async fn revoke_key(id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
     let key_id = parse_uuid(id, "signing key")?;
 
+    if !confirm_action(
+        &format!("Revoke signing key {id}? Nothing can be signed with it afterwards."),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let client = client_for(global)?;
     let spinner = output::spinner("Revoking signing key...");
 
-    let resp = client
-        .revoke_key()
-        .key_id(key_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("revoke signing key", e))?;
+    let (resp, raw) = capture(client.revoke_key().key_id(key_id).send()).await;
+    let result = resp.map_err(|e| sdk_err("revoke signing key", e))?;
 
-    let result = resp.into_inner();
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        return Ok(());
-    }
-
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        let val = serde_json::Value::Object(result);
-        println!("{}", output::render(&val, &global.format, None));
-    } else {
-        eprintln!("Signing key {id} revoked.");
-    }
+    emit_mutation_raw(
+        raw.as_deref(),
+        &*result,
+        id,
+        &format!("Signing key {id} revoked."),
+        global,
+    );
 
     Ok(())
 }
 
-async fn rotate_key(id: &str, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
+async fn rotate_key(id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
     let key_id = parse_uuid(id, "signing key")?;
 
-    let spinner = output::spinner("Rotating signing key...");
-
-    let key = client
-        .rotate_key()
-        .key_id(key_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("rotate signing key", e))?;
-
-    let key = key.into_inner();
-    spinner.finish_and_clear();
-
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", key.id);
+    if !confirm_action(
+        &format!(
+            "Rotate signing key {id}? It's replaced by a new key, and clients need the new \
+             public key."
+        ),
+        yes,
+        global.no_input,
+    )? {
         return Ok(());
     }
 
-    eprintln!("Key rotated. New key '{}' (ID: {}).", key.name, key.id);
+    let client = client_for(global)?;
+    let spinner = output::spinner("Rotating signing key...");
+
+    let (resp, raw) = capture(client.rotate_key().key_id(key_id).send()).await;
+    let key = resp
+        .map_err(|e| sdk_err("rotate signing key", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &key,
+        &key.id.to_string(),
+        &format!("Key rotated. New key '{}' (ID: {}).", key.name, key.id),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn sign_artifact(artifact: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, artifact).await?;
+
+    if !confirm_action(
+        &format!(
+            "Sign {artifact}? The signature vouches for it and satisfies a policy that requires \
+             one."
+        ),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let spinner = output::spinner("Signing artifact...");
+
+    let (resp, raw) = capture(client.sign_artifact().artifact_id(artifact_id).send()).await;
+    let signed = resp.map_err(|e| sdk_err("sign artifact", e))?.into_inner();
+
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &signed,
+        &signed.signature_sha256,
+        &format!(
+            "Signed {} with key {} ({}). Signature SHA-256: {}",
+            signed.artifact_id, signed.key_id, signed.algorithm, signed.signature_sha256
+        ),
+        global,
+    );
 
     Ok(())
 }
@@ -430,56 +500,76 @@ async fn show_config(repo_id: &str, global: &GlobalArgs) -> Result<()> {
 
     let spinner = output::spinner("Fetching signing config...");
 
-    let config = client
-        .get_repo_signing_config()
-        .repo_id(rid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get signing config", e))?;
+    let (config, raw) = capture(client.get_repo_signing_config().repo_id(rid).send()).await;
+    let config = config.map_err(|e| sdk_err("get signing config", e))?;
 
     let config = config.into_inner();
     spinner.finish_and_clear();
 
     let (info, table_str) = format_config_detail(&config);
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
 
 async fn update_config(
     repo_id: &str,
-    require_signatures: bool,
-    sign_metadata: bool,
-    sign_packages: bool,
+    require_signatures: Option<bool>,
+    sign_metadata: Option<bool>,
+    sign_packages: Option<bool>,
     signing_key_id: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
+    if require_signatures.is_none()
+        && sign_metadata.is_none()
+        && sign_packages.is_none()
+        && signing_key_id.is_none()
+    {
+        return Err(AkError::ConfigError(
+            "Nothing to update. Pass at least one setting, such as --sign-packages true."
+                .to_string(),
+        )
+        .into());
+    }
+
     let client = client_for(global)?;
     let rid = resolve_repo_id(&client, repo_id).await?;
     let key_id = parse_optional_uuid(signing_key_id, "signing key")?;
 
     let spinner = output::spinner("Updating signing config...");
 
-    // Only send flags that were explicitly set (booleans default to false from clap,
-    // so we send Some(true) when the flag is present and None otherwise).
     let body = artifact_keeper_sdk::types::UpdateSigningConfigPayload {
-        require_signatures: if require_signatures { Some(true) } else { None },
-        sign_metadata: if sign_metadata { Some(true) } else { None },
-        sign_packages: if sign_packages { Some(true) } else { None },
+        require_signatures,
+        sign_metadata,
+        sign_packages,
         signing_key_id: key_id,
     };
 
-    client
-        .update_repo_signing_config()
-        .repo_id(rid)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update signing config", e))?;
+    let (resp, raw) = capture(
+        client
+            .update_repo_signing_config()
+            .repo_id(rid)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let config = resp
+        .map_err(|e| sdk_err("update signing config", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
-    eprintln!("Signing configuration updated for repository {repo_id}.");
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &config,
+        &config.id.to_string(),
+        &format!("Signing configuration updated for repository {repo_id}."),
+        global,
+    );
 
     Ok(())
 }
@@ -753,8 +843,11 @@ mod tests {
         {
             assert_eq!(name, "my-key");
             assert_eq!(algorithm, "ed25519");
-            assert_eq!(key_type, "signing");
-            assert_eq!(repo, "00000000-0000-0000-0000-000000000000");
+            assert_eq!(key_type.as_deref(), Some("signing"));
+            assert_eq!(
+                repo.as_deref(),
+                Some("00000000-0000-0000-0000-000000000000")
+            );
             assert!(uid_email.is_none());
             assert!(uid_name.is_none());
         } else {
@@ -795,7 +888,7 @@ mod tests {
 
     #[test]
     fn parse_key_create_missing_required() {
-        let result = try_parse(&["test", "key", "create", "my-key"]);
+        let result = try_parse(&["test", "key", "create"]);
         assert!(result.is_err());
     }
 
@@ -824,7 +917,7 @@ mod tests {
     #[test]
     fn parse_key_revoke() {
         let cli = parse(&["test", "key", "revoke", "key-id"]);
-        if let SignCommand::Key(SignKeyCommand::Revoke { id }) = cli.command {
+        if let SignCommand::Key(SignKeyCommand::Revoke { id, .. }) = cli.command {
             assert_eq!(id, "key-id");
         } else {
             panic!("Expected Key Revoke");
@@ -834,7 +927,7 @@ mod tests {
     #[test]
     fn parse_key_rotate() {
         let cli = parse(&["test", "key", "rotate", "key-id"]);
-        if let SignCommand::Key(SignKeyCommand::Rotate { id }) = cli.command {
+        if let SignCommand::Key(SignKeyCommand::Rotate { id, .. }) = cli.command {
             assert_eq!(id, "key-id");
         } else {
             panic!("Expected Key Rotate");
@@ -885,9 +978,9 @@ mod tests {
         }) = cli.command
         {
             assert_eq!(repo_id, "00000000-0000-0000-0000-000000000001");
-            assert!(!require_signatures);
-            assert!(!sign_metadata);
-            assert!(!sign_packages);
+            assert!(require_signatures.is_none());
+            assert!(sign_metadata.is_none());
+            assert!(sign_packages.is_none());
             assert!(signing_key_id.is_none());
         } else {
             panic!("Expected Config Update");
@@ -915,9 +1008,9 @@ mod tests {
             ..
         }) = cli.command
         {
-            assert!(require_signatures);
-            assert!(sign_metadata);
-            assert!(sign_packages);
+            assert_eq!(require_signatures, Some(true));
+            assert_eq!(sign_metadata, Some(true));
+            assert_eq!(sign_packages, Some(true));
             assert_eq!(
                 signing_key_id.unwrap(),
                 "00000000-0000-0000-0000-000000000002"
@@ -1315,8 +1408,8 @@ mod tests {
         let result = create_key(
             "new-key",
             "ed25519",
-            "signing",
-            NIL_UUID,
+            Some("signing"),
+            Some(NIL_UUID),
             Some("user@example.com"),
             Some("Test User"),
             &global,
@@ -1356,8 +1449,8 @@ mod tests {
         let result = create_key(
             "quiet-key",
             "rsa-4096",
-            "encryption",
-            NIL_UUID,
+            Some("encryption"),
+            Some(NIL_UUID),
             None,
             None,
             &global,
@@ -1401,7 +1494,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = revoke_key(NIL_UUID, &global).await;
+        let result = revoke_key(NIL_UUID, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1420,7 +1513,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = revoke_key(NIL_UUID, &global).await;
+        let result = revoke_key(NIL_UUID, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1452,7 +1545,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = rotate_key(NIL_UUID, &global).await;
+        let result = rotate_key(NIL_UUID, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1484,7 +1577,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = rotate_key(NIL_UUID, &global).await;
+        let result = rotate_key(NIL_UUID, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1534,7 +1627,15 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = update_config(NIL_UUID, true, true, true, Some(NIL_UUID), &global).await;
+        let result = update_config(
+            NIL_UUID,
+            Some(true),
+            Some(true),
+            Some(true),
+            Some(NIL_UUID),
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

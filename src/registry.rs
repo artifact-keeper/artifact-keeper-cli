@@ -743,6 +743,9 @@ pub static COMMANDS: &[Op] = &[
             "per_page",
         ],
     ),
+    // `repository_id` is left out: the schema has it on this route too, but the key in
+    // the path already names the repository, and `scan list --repo <id>` uses the
+    // route above.
     covered(
         "GET",
         "/api/v1/repositories/{key}/security/scans",
@@ -865,6 +868,175 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/repositories/{key}/security/proxy-scans/rescan",
         "scan proxy rescan",
         &["path"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/quarantine/proxy-cache/{repo_key}/release",
+        "quarantine release-proxy",
+        &["path"],
+    ),
+    // ---- attestations ----
+    covered(
+        "GET",
+        "/api/v1/attestations/policy",
+        "attestation policy",
+        &[],
+    ),
+    // ---- SBOM ----
+    covered(
+        "POST",
+        "/api/v1/sbom",
+        "sbom generate",
+        &["artifact_id", "force_regenerate", "format"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/sbom",
+        "sbom list",
+        &["artifact_id", "repository_id", "format"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/sbom/by-artifact/{artifact_id}",
+        "sbom show",
+        &[],
+    ),
+    covered("GET", "/api/v1/sbom/{id}", "sbom get", &[]),
+    covered("GET", "/api/v1/sbom/{id}", "sbom export", &[]),
+    covered("DELETE", "/api/v1/sbom/{id}", "sbom delete", &[]),
+    covered(
+        "GET",
+        "/api/v1/sbom/{id}/components",
+        "sbom components",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/sbom/{id}/convert",
+        "sbom export",
+        &["target_format"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/security/proxy-sbom",
+        "sbom proxy",
+        &["path", "format"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/sbom/environment",
+        "sbom environment",
+        &["filename", "format", "environment", "platform"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/sbom/cve/history/{id}",
+        "sbom cve history",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/sbom/cve/history/by-artifact/{artifact_id}",
+        "sbom cve history-by-artifact",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/sbom/cve/history/by-cve/{cve_id}",
+        "sbom cve history-by-cve",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/sbom/cve/trends",
+        "sbom cve trends",
+        &["repository_id", "days"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/sbom/cve/status/{id}",
+        "sbom cve update-status",
+        &["status", "reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/sbom/cve/status/by-artifact/{artifact_id}/by-cve/{cve_id}",
+        "sbom cve update-status-by-artifact-cve",
+        &["status", "reason"],
+    ),
+    // ---- signing ----
+    covered(
+        "GET",
+        "/api/v1/signing/keys",
+        "sign key list",
+        &["repository_id"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/signing/keys",
+        "sign key create",
+        &[
+            "algorithm",
+            "key_type",
+            "name",
+            "repository_id",
+            "uid_email",
+            "uid_name",
+        ],
+    ),
+    covered("GET", "/api/v1/signing/keys/{key_id}", "sign key show", &[]),
+    covered(
+        "DELETE",
+        "/api/v1/signing/keys/{key_id}",
+        "sign key delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/signing/keys/{key_id}/public",
+        "sign key export",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/signing/keys/{key_id}/revoke",
+        "sign key revoke",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/signing/keys/{key_id}/rotate",
+        "sign key rotate",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/signing/repositories/{repo_id}/config",
+        "sign config show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/signing/repositories/{repo_id}/config",
+        "sign config update",
+        &[
+            "require_signatures",
+            "sign_metadata",
+            "sign_packages",
+            "signing_key_id",
+        ],
+    ),
+    covered(
+        "GET",
+        "/api/v1/signing/repositories/{repo_id}/public-key",
+        "sign config export-key",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/signing/artifacts/{artifact_id}/sign",
+        "sign artifact",
+        &[],
     ),
     // ---- projects ----
     covered("GET", "/api/v1/projects", "project list", &[]),
