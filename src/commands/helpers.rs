@@ -85,6 +85,52 @@ pub fn emit_mutation_raw<T: Serialize>(
     }
 }
 
+/// The version of the instance's server, if it's known to be older than 1.11. An
+/// unknown version isn't older: the server still gets to answer for itself.
+pub async fn server_before_1_11(global: &GlobalArgs) -> Option<String> {
+    let config = crate::config::AppConfig::load().ok()?;
+    let (_, instance) = config.resolve_instance(global.instance.as_deref()).ok()?;
+    let version = super::doctor::fetch_server_version(instance).await.ok()?;
+    let found = super::doctor::major_minor(&version)?;
+    (found < (1, 11)).then_some(version)
+}
+
+/// Refuse flags that a server before 1.11 would accept and silently drop, before
+/// anything changes: it answers 200, so the command would report what never happened.
+pub async fn refuse_flags_before_1_11(flags: &[&str], global: &GlobalArgs) -> Result<()> {
+    if flags.is_empty() {
+        return Ok(());
+    }
+    match server_before_1_11(global).await {
+        Some(version) => Err(AkError::ServerError(format!(
+            "{} needs a server on 1.11 or newer. This one is {version}, which would ignore it. \
+             Nothing was changed.",
+            flags.join(", ")
+        ))
+        .into()),
+        None => Ok(()),
+    }
+}
+
+/// The error for a failed call to a route new in 1.11. A server without the route
+/// answers 404 "Repository not found", which names the wrong problem, so a 404 from
+/// an older server says what's really wrong. Any other failure is the server's own.
+pub async fn since_1_11(
+    error: artifact_keeper_sdk::Error,
+    action: &str,
+    command: &str,
+    global: &GlobalArgs,
+) -> AkError {
+    if error.status() == Some(reqwest::StatusCode::NOT_FOUND)
+        && let Some(version) = server_before_1_11(global).await
+    {
+        return AkError::ServerError(format!(
+            "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
+        ));
+    }
+    sdk_err(action, error)
+}
+
 /// The bytes of a flag's value: the text itself, `@file` or `@-` for stdin.
 pub fn read_inline_or_file(value: &str, flag: &str) -> Result<Vec<u8>> {
     match value.strip_prefix('@') {

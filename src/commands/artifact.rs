@@ -1,17 +1,24 @@
 use std::path::{Path, PathBuf};
 
+use artifact_keeper_sdk::raw::capture;
 use artifact_keeper_sdk::{
     ClientArtifactsExt, ClientPromotionExt, ClientRepositoriesExt, ClientSearchExt,
+    ClientUploadsExt,
 };
-use clap::Subcommand;
+use clap::{Args, Subcommand};
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
-use super::client::{build_client, client_for, client_for_optional_auth};
-use super::helpers::{emit_mutation, parse_uuid};
+use super::chunked_upload::{self, SessionMetadata, UploadOutcome};
+use super::client::{client_for, client_for_optional_auth};
+use super::helpers::{
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, read_inline_or_file,
+    refuse_flags_before_1_11, resolve_artifact_id, sdk_err, since_1_11,
+};
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
+use crate::config::credentials::get_credential;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -35,7 +42,7 @@ pub enum ArtifactCommand {
         chunk_size: String,
 
         /// Disable chunked upload (force single PUT even for large files)
-        #[arg(long)]
+        #[arg(long, conflicts_with = "session")]
         no_chunked: bool,
 
         /// Override the Content-Type sent to the server (e.g.
@@ -43,9 +50,23 @@ pub enum ArtifactCommand {
         /// file extension, falling back to "application/octet-stream".
         #[arg(long = "content-type", id = "content_type")]
         content_type: Option<String>,
+
+        /// Upload as multipart/form-data rather than a raw body. A --path ending
+        /// in `/` is sent as the form's `path` field. The server works out the
+        /// content type itself, so this can't go with --content-type
+        #[arg(long, conflicts_with_all = ["no_chunked", "session", "content_type"])]
+        multipart: bool,
+
+        /// Human tag for this revision of a versioned repository's artifact
+        #[arg(long = "version-label", conflicts_with = "session")]
+        version_label: Option<String>,
+
+        #[command(flatten)]
+        session: SessionArgs,
     },
 
     /// Download an artifact from a repository
+    #[command(disable_version_flag = true)]
     Pull {
         /// Repository key
         repo: String,
@@ -60,6 +81,10 @@ pub enum ArtifactCommand {
         /// Overwrite the output file if it already exists
         #[arg(long)]
         force: bool,
+
+        /// Revision to download, from `ak artifact versions`
+        #[arg(long)]
+        version: Option<String>,
     },
 
     /// List artifacts in a repository
@@ -71,6 +96,9 @@ pub enum ArtifactCommand {
         #[arg(long)]
         search: Option<String>,
 
+        #[command(flatten)]
+        filters: ListFilters,
+
         /// Page number
         #[arg(long, default_value = "1")]
         page: i32,
@@ -81,7 +109,45 @@ pub enum ArtifactCommand {
     },
 
     /// Show artifact metadata and details
+    #[command(disable_version_flag = true)]
     Info {
+        /// Repository key
+        repo: String,
+
+        /// Artifact path
+        path: String,
+
+        /// Revision to show, from `ak artifact versions`
+        #[arg(long)]
+        version: Option<String>,
+    },
+
+    /// Show an artifact by its ID or <repo-key>/<path>
+    Show {
+        /// Artifact ID or <repo-key>/<path>
+        id: String,
+    },
+
+    /// Show format-specific metadata for an artifact
+    Metadata {
+        /// Artifact ID or <repo-key>/<path>
+        id: String,
+    },
+
+    /// Show download statistics for an artifact
+    Stats {
+        /// Artifact ID or <repo-key>/<path>
+        id: String,
+    },
+
+    /// Show what the server found inside a package: vendored components and install scripts
+    PackageAnalysis {
+        /// Artifact ID or <repo-key>/<path>
+        id: String,
+    },
+
+    /// List the revisions of an artifact in a versioned repository
+    Versions {
         /// Repository key
         repo: String,
 
@@ -89,22 +155,25 @@ pub enum ArtifactCommand {
         path: String,
     },
 
-    /// Show an artifact by its global ID
-    Show {
-        /// Artifact ID
-        id: String,
+    /// Report which artifacts a repository doesn't already hold
+    Missing {
+        /// Repository key
+        repo: String,
+
+        /// An artifact to check, as `path=sha256` (repeatable)
+        #[arg(long = "item")]
+        items: Vec<String>,
+
+        /// Artifacts to check: a JSON array of `{path, sha256}`, or `sha256sum`
+        /// output, from a file or `-` for stdin
+        #[arg(long)]
+        from: Option<String>,
     },
 
-    /// Show format-specific metadata for an artifact by its global ID
-    Metadata {
-        /// Artifact ID
-        id: String,
-    },
-
-    /// Show download statistics for an artifact by its global ID
-    Stats {
-        /// Artifact ID
-        id: String,
+    /// Inspect or cancel a chunked upload session
+    UploadSession {
+        #[command(subcommand)]
+        command: UploadSessionCommand,
     },
 
     /// Delete an artifact
@@ -121,9 +190,10 @@ pub enum ArtifactCommand {
     },
 
     /// Search artifacts across all repositories
+    #[command(disable_version_flag = true)]
     Search {
         /// Search query
-        query: String,
+        query: Option<String>,
 
         /// Filter by repository
         #[arg(long)]
@@ -132,6 +202,9 @@ pub enum ArtifactCommand {
         /// Filter by package format
         #[arg(long = "pkg-format", id = "pkg_format")]
         pkg_format: Option<String>,
+
+        #[command(flatten)]
+        filters: SearchFilters,
     },
 
     /// Copy an artifact between repositories (same or cross-instance)
@@ -149,6 +222,171 @@ pub enum ArtifactCommand {
         /// Destination instance (defaults to current instance)
         #[arg(long)]
         to_instance: Option<String>,
+
+        /// Notes to record on the promotion
+        #[arg(long)]
+        notes: Option<String>,
+
+        /// Skip the promotion policy check (admin)
+        #[arg(long = "skip-policy-check")]
+        skip_policy_check: bool,
+    },
+}
+
+/// Fields of a chunked upload session. Giving any of them makes the push chunked,
+/// whatever the file's size, because a plain PUT has nowhere to put them.
+#[derive(Args, Debug, Default)]
+#[group(id = "session", multiple = true)]
+pub struct SessionArgs {
+    /// Don't upload if the artifact already holds this content
+    #[arg(long = "skip-if-present")]
+    skip_if_present: bool,
+
+    /// Artifact name to record
+    #[arg(long = "artifact-name")]
+    artifact_name: Option<String>,
+
+    /// Artifact version to record
+    #[arg(long = "artifact-version")]
+    artifact_version: Option<String>,
+
+    /// Package description to record
+    #[arg(long = "package-description")]
+    package_description: Option<String>,
+
+    /// Package catalog metadata: JSON text, @file or @-
+    #[arg(long = "package-metadata")]
+    package_metadata: Option<String>,
+
+    /// Artifact metadata: JSON text, @file or @-
+    #[arg(long = "artifact-metadata")]
+    artifact_metadata: Option<String>,
+
+    /// Format of the artifact metadata
+    #[arg(long = "artifact-metadata-format")]
+    artifact_metadata_format: Option<String>,
+
+    /// Artifact metadata properties: JSON text, @file or @-
+    #[arg(long = "artifact-metadata-properties")]
+    artifact_metadata_properties: Option<String>,
+}
+
+impl SessionArgs {
+    fn into_metadata(self) -> Result<SessionMetadata> {
+        Ok(SessionMetadata {
+            skip_if_present: self.skip_if_present,
+            artifact_name: self.artifact_name,
+            artifact_version: self.artifact_version,
+            package_description: self.package_description,
+            package_metadata: json_flag(self.package_metadata, "--package-metadata")?,
+            artifact_metadata: json_flag(self.artifact_metadata, "--artifact-metadata")?,
+            artifact_metadata_format: self.artifact_metadata_format,
+            artifact_metadata_properties: json_flag(
+                self.artifact_metadata_properties,
+                "--artifact-metadata-properties",
+            )?,
+        })
+    }
+}
+
+fn json_flag(value: Option<String>, flag: &str) -> Result<Option<serde_json::Value>> {
+    value
+        .map(|v| {
+            let bytes = read_inline_or_file(&v, flag)?;
+            serde_json::from_slice(&bytes)
+                .map_err(|e| AkError::ConfigError(format!("{flag}: invalid JSON: {e}")).into())
+        })
+        .transpose()
+}
+
+/// Filters for `ak artifact list`.
+#[derive(Args, Debug, Default)]
+pub struct ListFilters {
+    /// Only artifacts under this path
+    #[arg(long = "path-prefix")]
+    path_prefix: Option<String>,
+
+    /// Group on the server: maven_component or docker_tag
+    #[arg(long = "group-by")]
+    group_by: Option<String>,
+
+    /// Continue from a listing's `next_cursor`. `--page` is ignored with this
+    #[arg(long)]
+    cursor: Option<String>,
+
+    /// Total-count mode for keyset-paged listings: `exact` for an exact total
+    #[arg(long)]
+    count: Option<String>,
+}
+
+/// Filters for `ak artifact search`.
+#[derive(Args, Debug, Default)]
+pub struct SearchFilters {
+    /// Artifact name
+    #[arg(long)]
+    name: Option<String>,
+
+    /// Artifact path
+    #[arg(long)]
+    path: Option<String>,
+
+    /// Artifact version
+    #[arg(long)]
+    version: Option<String>,
+
+    /// Smallest size, in bytes
+    #[arg(long = "min-size")]
+    min_size: Option<i64>,
+
+    /// Largest size, in bytes
+    #[arg(long = "max-size")]
+    max_size: Option<i64>,
+
+    /// Created after this time (RFC 3339)
+    #[arg(long = "created-after")]
+    created_after: Option<String>,
+
+    /// Created before this time (RFC 3339)
+    #[arg(long = "created-before")]
+    created_before: Option<String>,
+
+    /// Field to sort by
+    #[arg(long = "sort-by")]
+    sort_by: Option<String>,
+
+    /// Sort order: asc or desc
+    #[arg(long = "sort-order")]
+    sort_order: Option<String>,
+
+    /// Page number
+    #[arg(long)]
+    page: Option<i32>,
+
+    /// Results per page
+    #[arg(long = "per-page")]
+    per_page: Option<i32>,
+}
+
+/// Chunked upload sessions.
+#[derive(Subcommand)]
+pub enum UploadSessionCommand {
+    /// List the sessions this machine left unfinished, to resume or cancel
+    List,
+
+    /// Show a session's progress
+    Status {
+        /// Session ID
+        session_id: uuid::Uuid,
+    },
+
+    /// Cancel a session and discard what it uploaded
+    Cancel {
+        /// Session ID
+        session_id: uuid::Uuid,
+
+        /// Skip confirmation prompt
+        #[arg(long)]
+        yes: bool,
     },
 }
 
@@ -162,14 +400,41 @@ impl ArtifactCommand {
                 chunk_size,
                 no_chunked,
                 content_type,
+                multipart,
+                version_label,
+                session,
             } => {
+                let force_chunked = session.skip_if_present
+                    || session.artifact_name.is_some()
+                    || session.artifact_version.is_some()
+                    || session.package_description.is_some()
+                    || session.package_metadata.is_some()
+                    || session.artifact_metadata.is_some()
+                    || session.artifact_metadata_format.is_some()
+                    || session.artifact_metadata_properties.is_some();
+                if session.skip_if_present {
+                    refuse_flags_before_1_11(&["--skip-if-present"], global).await?;
+                }
+                let mode = if multipart {
+                    UploadMode::Multipart
+                } else if force_chunked {
+                    UploadMode::Chunked
+                } else if no_chunked || version_label.is_some() {
+                    UploadMode::Put
+                } else {
+                    UploadMode::BySize
+                };
                 push(
                     &repo,
                     &files,
-                    path.as_deref(),
-                    &chunk_size,
-                    no_chunked,
-                    content_type.as_deref(),
+                    &PushOptions {
+                        target_path: path,
+                        chunk_size,
+                        mode,
+                        content_type,
+                        version_label,
+                        session: session.into_metadata()?,
+                    },
                     global,
                 )
                 .await
@@ -179,34 +444,82 @@ impl ArtifactCommand {
                 path,
                 output,
                 force,
-            } => pull(&repo, &path, output.as_deref(), force, global).await,
+                version,
+            } => {
+                pull(
+                    &repo,
+                    &path,
+                    output.as_deref(),
+                    force,
+                    version.as_deref(),
+                    global,
+                )
+                .await
+            }
             Self::List {
                 repo,
                 search,
+                filters,
                 page,
                 per_page,
-            } => list(&repo, search.as_deref(), page, per_page, global).await,
-            Self::Info { repo, path } => info(&repo, &path, global).await,
+            } => list(&repo, search.as_deref(), &filters, page, per_page, global).await,
+            Self::Info {
+                repo,
+                path,
+                version,
+            } => info(&repo, &path, version.as_deref(), global).await,
             Self::Show { id } => show_by_id(&id, global).await,
             Self::Metadata { id } => show_metadata(&id, global).await,
             Self::Stats { id } => show_stats(&id, global).await,
+            Self::PackageAnalysis { id } => package_analysis(&id, global).await,
+            Self::Versions { repo, path } => versions(&repo, &path, global).await,
+            Self::Missing { repo, items, from } => {
+                missing(&repo, &items, from.as_deref(), global).await
+            }
+            Self::UploadSession { command } => match command {
+                UploadSessionCommand::List => upload_sessions(global),
+                UploadSessionCommand::Status { session_id } => {
+                    upload_session_status(session_id, global).await
+                }
+                UploadSessionCommand::Cancel { session_id, yes } => {
+                    upload_session_cancel(session_id, yes, global).await
+                }
+            },
             Self::Delete { repo, path, yes } => delete(&repo, &path, yes, global).await,
             Self::Search {
                 query,
                 repo,
                 pkg_format,
-            } => search(&query, repo.as_deref(), pkg_format.as_deref(), global).await,
+                filters,
+            } => {
+                search(
+                    query.as_deref(),
+                    repo.as_deref(),
+                    pkg_format.as_deref(),
+                    &filters,
+                    global,
+                )
+                .await
+            }
             Self::Copy {
                 source,
                 destination,
                 from_instance,
                 to_instance,
+                notes,
+                skip_policy_check,
             } => {
+                let promotion = artifact_keeper_sdk::types::PromoteArtifactRequest {
+                    target_repository: None,
+                    notes,
+                    skip_policy_check: skip_policy_check.then_some(true),
+                };
                 copy(
                     &source,
                     &destination,
                     from_instance.as_deref(),
                     to_instance.as_deref(),
+                    promotion,
                     global,
                 )
                 .await
@@ -265,18 +578,34 @@ fn content_type_for_path(path: &str) -> String {
         .to_string()
 }
 
+/// How `ak artifact push` sends a file.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum UploadMode {
+    /// Chunked from the threshold up, a single PUT below it.
+    BySize,
+    Put,
+    Chunked,
+    Multipart,
+}
+
+struct PushOptions {
+    target_path: Option<String>,
+    chunk_size: String,
+    mode: UploadMode,
+    content_type: Option<String>,
+    version_label: Option<String>,
+    session: SessionMetadata,
+}
+
 async fn push(
     repo: &str,
     file_patterns: &[String],
-    target_path: Option<&str>,
-    chunk_size_str: &str,
-    no_chunked: bool,
-    content_type_override: Option<&str>,
+    options: &PushOptions,
     global: &GlobalArgs,
 ) -> Result<()> {
     let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
-    let chunk_size = super::chunked_upload::parse_size(chunk_size_str)?;
-    let threshold = super::chunked_upload::chunked_threshold()?;
+    let chunk_size = chunked_upload::parse_size(&options.chunk_size)?;
+    let threshold = chunked_upload::chunked_threshold()?;
 
     let mut files_to_upload: Vec<PathBuf> = Vec::new();
     for pattern in file_patterns {
@@ -306,7 +635,9 @@ async fn push(
             .and_then(|n| n.to_str())
             .unwrap_or("unknown");
 
-        let artifact_path = target_path
+        let artifact_path = options
+            .target_path
+            .as_deref()
             .map(|p| {
                 if p.ends_with('/') {
                     format!("{p}{file_name}")
@@ -323,16 +654,19 @@ async fn push(
             .into_diagnostic()?
             .len();
 
-        let use_chunked = !no_chunked && file_size >= threshold;
-
-        let content_type = match content_type_override {
+        let content_type = match options.content_type.as_deref() {
             Some(ct) => ct.to_string(),
             None => content_type_for_path(&artifact_path),
         };
 
-        if use_chunked {
-            // Chunked upload for large files
-            let result = super::chunked_upload::chunked_upload(
+        let use_chunked = match options.mode {
+            UploadMode::Chunked => true,
+            UploadMode::BySize => file_size >= threshold,
+            UploadMode::Put | UploadMode::Multipart => false,
+        };
+
+        let uploaded = if use_chunked {
+            chunked_upload::chunked_upload(
                 &base_url,
                 &auth_header,
                 file_path,
@@ -342,22 +676,10 @@ async fn push(
                 file_size,
                 file_name,
                 &content_type,
+                &options.session,
             )
-            .await?;
-
-            if matches!(global.format, OutputFormat::Quiet) {
-                println!("{}", result.path);
-            } else {
-                eprintln!(
-                    "  {} ({}) -> {}:{} [chunked]",
-                    file_name,
-                    format_bytes(result.size as i64),
-                    repo,
-                    result.path
-                );
-            }
+            .await?
         } else {
-            // Single PUT for small files
             let pb = indicatif::ProgressBar::new(file_size);
             pb.set_style(
                 indicatif::ProgressStyle::with_template(
@@ -379,41 +701,111 @@ async fn push(
             });
             let body = reqwest::Body::wrap_stream(stream);
 
-            let resp = single_put_upload(
-                &base_url,
-                &auth_header,
-                repo,
-                &artifact_path,
-                body,
-                &content_type,
-            )
-            .await?;
+            let uploaded = if options.mode == UploadMode::Multipart {
+                multipart_upload(
+                    &base_url,
+                    &auth_header,
+                    repo,
+                    options.target_path.as_deref(),
+                    file_name,
+                    file_size,
+                    body,
+                    &content_type,
+                    options.version_label.as_deref(),
+                )
+                .await?
+            } else {
+                single_put_upload(
+                    &base_url,
+                    &auth_header,
+                    repo,
+                    &artifact_path,
+                    body,
+                    &content_type,
+                    options.version_label.as_deref(),
+                )
+                .await?
+            };
 
             pb.finish_with_message(format!("Uploaded {file_name}"));
+            uploaded
+        };
 
-            if matches!(global.format, OutputFormat::Quiet) {
-                println!("{}", resp.path);
-            } else {
-                eprintln!(
-                    "  {} ({}) -> {}:{}",
-                    file_name,
-                    format_bytes(resp.size_bytes),
-                    repo,
-                    resp.path
-                );
-            }
-        }
+        let note = match (use_chunked, uploaded.already_present) {
+            (_, true) => " [already present]",
+            (true, false) => " [chunked]",
+            (false, false) => "",
+        };
+        emit_mutation_raw(
+            Some(&uploaded.raw),
+            &serde_json::json!({ "path": uploaded.path, "size": uploaded.size }),
+            &output::sanitize_terminal(&uploaded.path),
+            &format!(
+                "  {} ({}) -> {}:{}{note}",
+                file_name,
+                format_bytes(uploaded.size),
+                repo,
+                output::sanitize_terminal(&uploaded.path),
+            ),
+            global,
+        );
     }
 
-    if !matches!(global.format, OutputFormat::Quiet) && files_to_upload.len() > 1 {
+    if matches!(global.format, OutputFormat::Table) && files_to_upload.len() > 1 {
         eprintln!("Uploaded {} files.", files_to_upload.len());
     }
 
     Ok(())
 }
 
-/// Response from the single-PUT upload endpoint (the subset of the API's
-/// `ArtifactResponse` that `push` actually uses).
+/// The URL of an artifact route: `/api/v1/repositories/<repo>/<route>/<path>`,
+/// with each segment encoded.
+fn artifact_url(
+    base_url: &str,
+    repo: &str,
+    route: &str,
+    artifact_path: Option<&str>,
+) -> Result<reqwest::Url> {
+    let mut url = reqwest::Url::parse(base_url)
+        .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
+    {
+        let mut segments = url
+            .path_segments_mut()
+            .map_err(|_| AkError::ConfigError(format!("Invalid instance URL: {base_url}")))?;
+        segments
+            .pop_if_empty()
+            .extend(["api", "v1", "repositories", repo, route]);
+        if let Some(path) = artifact_path {
+            segments.extend(path.split('/'));
+        }
+    }
+    Ok(url)
+}
+
+/// What an upload response says, kept with the body as the server sent it.
+async fn read_upload_response(resp: reqwest::Response) -> Result<UploadOutcome> {
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().await.unwrap_or_default();
+        return Err(super::helpers::raw_err("Upload failed", status, &text).into());
+    }
+    let raw = resp
+        .bytes()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Upload failed: {e}")))?
+        .to_vec();
+    let parsed: SinglePutUploadResponse = serde_json::from_slice(&raw)
+        .map_err(|e| AkError::ServerError(format!("Invalid upload response: {e}")))?;
+    Ok(UploadOutcome {
+        path: parsed.path,
+        size: parsed.size_bytes,
+        already_present: false,
+        raw,
+    })
+}
+
+/// Response from the upload endpoints (the subset of the API's `ArtifactResponse`
+/// that `push` uses).
 #[derive(Debug, serde::Deserialize)]
 struct SinglePutUploadResponse {
     path: String,
@@ -432,33 +824,101 @@ async fn single_put_upload(
     artifact_path: &str,
     body: reqwest::Body,
     content_type: &str,
-) -> Result<SinglePutUploadResponse> {
-    let mut url = reqwest::Url::parse(base_url)
-        .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
-    url.path_segments_mut()
-        .map_err(|_| AkError::ConfigError(format!("Invalid instance URL: {base_url}")))?
-        .pop_if_empty()
-        .extend(["api", "v1", "repositories", repo, "artifacts"])
-        .extend(artifact_path.split('/'));
+    version_label: Option<&str>,
+) -> Result<UploadOutcome> {
+    let url = artifact_url(base_url, repo, "artifacts", Some(artifact_path))?;
 
-    let resp = super::client::raw_http_client()?
+    let mut request = super::client::raw_http_client()?
         .put(url)
         .header(reqwest::header::AUTHORIZATION, auth_header)
-        .header(reqwest::header::CONTENT_TYPE, content_type)
+        .header(reqwest::header::CONTENT_TYPE, content_type);
+    if let Some(label) = version_label {
+        request = request.header("X-Artifact-Version", label);
+    }
+    let resp = request
         .body(body)
         .send()
         .await
         .map_err(|e| AkError::NetworkError(format!("Upload failed: {e}")))?;
 
+    read_upload_response(resp).await
+}
+
+/// Upload a file as multipart/form-data, which isn't in the OpenAPI spec:
+///
+/// - no `--path`: `POST .../artifacts`, and the server names it after the file
+/// - `--path` ending in `/`: the same route, with `--path` as the `path` field
+/// - any other `--path`: `POST .../artifacts/<path>`
+#[allow(clippy::too_many_arguments)]
+async fn multipart_upload(
+    base_url: &str,
+    auth_header: &str,
+    repo: &str,
+    target_path: Option<&str>,
+    file_name: &str,
+    file_size: u64,
+    body: reqwest::Body,
+    content_type: &str,
+    version_label: Option<&str>,
+) -> Result<UploadOutcome> {
+    let (url_path, form_path) = match target_path {
+        Some(p) if p.ends_with('/') => (None, Some(p)),
+        Some(p) => (Some(p), None),
+        None => (None, None),
+    };
+    let url = artifact_url(base_url, repo, "artifacts", url_path)?;
+
+    let part = reqwest::multipart::Part::stream_with_length(body, file_size)
+        .file_name(file_name.to_string())
+        .mime_str(content_type)
+        .map_err(|e| AkError::ConfigError(format!("Invalid content type: {e}")))?;
+    let mut form = reqwest::multipart::Form::new();
+    if let Some(path) = form_path {
+        form = form.text("path", path.to_string());
+    }
+    form = form.part("file", part);
+
+    let mut request = super::client::raw_http_client()?
+        .post(url)
+        .header(reqwest::header::AUTHORIZATION, auth_header);
+    if let Some(label) = version_label {
+        request = request.header("X-Artifact-Version", label);
+    }
+    let resp = request
+        .multipart(form)
+        .send()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Upload failed: {e}")))?;
+
+    read_upload_response(resp).await
+}
+
+/// Start a download. This is raw HTTP because the SDK's client has a 30-second
+/// limit on the whole request, body included, which a large artifact outlasts.
+async fn fetch_artifact(
+    base_url: &str,
+    auth_header: &str,
+    repo: &str,
+    artifact_path: &str,
+    version: Option<&str>,
+) -> Result<reqwest::Response> {
+    let url = artifact_url(base_url, repo, "download", Some(artifact_path))?;
+    let mut request = super::client::raw_http_client()?
+        .get(url)
+        .header(reqwest::header::AUTHORIZATION, auth_header);
+    if let Some(version) = version {
+        request = request.query(&[("version", version)]);
+    }
+    let resp = request
+        .send()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Download failed: {e}")))?;
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(super::helpers::raw_err("Upload failed", status, &text).into());
+        return Err(super::helpers::raw_err("Download failed", status, &text).into());
     }
-
-    resp.json::<SinglePutUploadResponse>()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Invalid upload response: {e}")).into())
+    Ok(resp)
 }
 
 /// Open the pull output file for writing.
@@ -512,9 +972,10 @@ async fn pull(
     artifact_path: &str,
     output: Option<&str>,
     force: bool,
+    version: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
+    let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
 
     let out_path = output.map(PathBuf::from).unwrap_or_else(|| {
         let filename = Path::new(artifact_path)
@@ -529,25 +990,19 @@ async fn pull(
 
     let spinner = output::spinner(&format!("Downloading {artifact_path}..."));
 
-    let resp = match client
-        .download_artifact()
-        .key(repo)
-        .path(artifact_path)
-        .send()
-        .await
-    {
+    let resp = match fetch_artifact(&base_url, &auth_header, repo, artifact_path, version).await {
         Ok(resp) => resp,
         Err(e) => {
             spinner.finish_and_clear();
             // Don't leave an empty placeholder file behind on failure.
             drop(file);
             let _ = tokio::fs::remove_file(&out_path).await;
-            return Err(AkError::ServerError(format!("Download failed: {e}")).into());
+            return Err(e);
         }
     };
 
     spinner.finish_and_clear();
-    let mut stream = resp.into_inner();
+    let mut stream = resp.bytes_stream();
     let mut total_bytes: u64 = 0;
     let copy_result: Result<()> = async {
         while let Some(chunk) = stream.next().await {
@@ -589,6 +1044,7 @@ async fn pull(
 async fn list(
     repo: &str,
     search: Option<&str>,
+    filters: &ListFilters,
     page: i32,
     per_page: i32,
     global: &GlobalArgs,
@@ -605,11 +1061,32 @@ async fn list(
     if let Some(q) = search {
         req = req.q(q);
     }
+    if let Some(prefix) = &filters.path_prefix {
+        req = req.path_prefix(prefix);
+    }
+    if let Some(group_by) = &filters.group_by {
+        req = req.group_by(group_by);
+    }
+    if let Some(cursor) = &filters.cursor {
+        req = req.cursor(cursor);
+    }
+    if let Some(count) = &filters.count {
+        req = req.count(count);
+    }
 
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
     let resp = resp.map_err(|e| AkError::ServerError(format!("Failed to list artifacts: {e}")))?;
 
     spinner.finish_and_clear();
+
+    if let Some(table_str) = grouped_table(&resp) {
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &*resp, &global.format, Some(table_str))
+        );
+        print_next_cursor(resp.next_cursor.as_deref());
+        return Ok(());
+    }
 
     if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No artifacts found in '{repo}'.");
@@ -675,21 +1152,67 @@ async fn list(
             resp.pagination.page, resp.pagination.total_pages, resp.pagination.total
         );
     }
+    print_next_cursor(resp.next_cursor.as_deref());
 
     Ok(())
 }
 
-async fn info(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Result<()> {
+fn print_next_cursor(cursor: Option<&str>) {
+    if let Some(cursor) = cursor {
+        eprintln!(
+            "More results: --cursor {}",
+            output::sanitize_terminal(cursor)
+        );
+    }
+}
+
+/// The table for `--group-by`, whose rows aren't in `items`.
+fn grouped_table(resp: &artifact_keeper_sdk::types::ArtifactListResponse) -> Option<String> {
+    if let Some(tags) = &resp.docker_tags {
+        let mut table = new_table(vec!["IMAGE", "TAG", "SIZE", "LAYERS", "PUSHED"]);
+        for t in tags {
+            table.add_row(vec![
+                t.image.clone(),
+                t.tag.clone(),
+                format_bytes(t.total_size_bytes),
+                t.layer_count.to_string(),
+                t.last_pushed_at.format("%Y-%m-%d").to_string(),
+            ]);
+        }
+        return Some(table.to_string());
+    }
+    if let Some(components) = &resp.components {
+        let mut table = new_table(vec!["GROUP", "ARTIFACT", "VERSION", "SIZE", "DOWNLOADS"]);
+        for c in components {
+            table.add_row(vec![
+                c.group_id.clone(),
+                c.artifact_id.clone(),
+                c.version.clone(),
+                format_bytes(c.size_bytes),
+                c.download_count.to_string(),
+            ]);
+        }
+        return Some(table.to_string());
+    }
+    None
+}
+
+async fn info(
+    repo: &str,
+    artifact_path: &str,
+    version: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for_optional_auth(global)?;
 
-    let (artifact, raw) = artifact_keeper_sdk::raw::capture(
-        client
-            .get_repository_artifact_metadata()
-            .key(repo)
-            .path(artifact_path)
-            .send(),
-    )
-    .await;
+    let mut req = client
+        .get_repository_artifact_metadata()
+        .key(repo)
+        .path(artifact_path);
+    if let Some(version) = version {
+        req = req.version(version);
+    }
+    let (artifact, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
     let artifact = artifact.map_err(|e| {
         if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
             AkError::ServerError(format!("Artifact '{artifact_path}' not found in '{repo}'"))
@@ -742,8 +1265,8 @@ async fn info(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Result<()
 }
 
 async fn show_by_id(id: &str, global: &GlobalArgs) -> Result<()> {
-    let artifact_id = parse_uuid(id, "artifact")?;
     let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, id).await?;
 
     let (artifact, raw) =
         artifact_keeper_sdk::raw::capture(client.get_artifact().id(artifact_id).send()).await;
@@ -797,8 +1320,8 @@ async fn show_by_id(id: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 async fn show_metadata(id: &str, global: &GlobalArgs) -> Result<()> {
-    let artifact_id = parse_uuid(id, "artifact")?;
     let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, id).await?;
 
     let (meta, raw) =
         artifact_keeper_sdk::raw::capture(client.get_artifact_metadata().id(artifact_id).send())
@@ -834,8 +1357,8 @@ async fn show_metadata(id: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 async fn show_stats(id: &str, global: &GlobalArgs) -> Result<()> {
-    let artifact_id = parse_uuid(id, "artifact")?;
     let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, id).await?;
 
     let (stats, raw) =
         artifact_keeper_sdk::raw::capture(client.get_artifact_stats().id(artifact_id).send()).await;
@@ -874,29 +1397,320 @@ async fn show_stats(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+async fn package_analysis(id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, id).await?;
+
+    let (resp, raw) = capture(client.get_package_analysis().id(artifact_id).send()).await;
+    let resp = match resp {
+        Ok(resp) => resp,
+        Err(e) => {
+            let action = "get package analysis";
+            return Err(since_1_11(e, action, "artifact package-analysis", global)
+                .await
+                .into());
+        }
+    };
+
+    let mut text = format!(
+        "Format:       {}\nCompleteness: {}\nAnalyzed:     {}\nComponents:   {}\nScripts:      {}",
+        resp.format,
+        resp.completeness.status,
+        resp.analyzed_at.as_deref().unwrap_or("-"),
+        resp.vendored_components.len(),
+        resp.install_scripts.len(),
+    );
+    if let Some(reason) = &resp.completeness.reason {
+        text.push_str(&format!("\nIncomplete:   {reason}"));
+    }
+    if !resp.vendored_components.is_empty() {
+        let mut table = new_table(vec!["COMPONENT", "VERSION", "CONFIDENCE"]);
+        for c in &resp.vendored_components {
+            table.add_row(vec![
+                c.name.clone(),
+                c.version.clone().unwrap_or_else(|| "-".into()),
+                c.confidence.clone(),
+            ]);
+        }
+        text.push_str(&format!("\n{table}"));
+    }
+    if !resp.install_scripts.is_empty() {
+        let mut table = new_table(vec!["SCRIPT", "KIND", "SIZE"]);
+        for script in &resp.install_scripts {
+            table.add_row(vec![
+                script.path.clone(),
+                script.kind.clone(),
+                format_bytes(script.size_bytes),
+            ]);
+        }
+        text.push_str(&format!("\n{table}"));
+    }
+
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &*resp, &global.format, Some(text))
+    );
+    Ok(())
+}
+
+async fn versions(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for_optional_auth(global)?;
+
+    let (resp, raw) = capture(
+        client
+            .list_artifact_versions()
+            .key(repo)
+            .path(artifact_path)
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("list artifact versions", e))?;
+
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
+        eprintln!("No revisions of '{artifact_path}' in '{repo}'.");
+        return Ok(());
+    }
+    if matches!(global.format, OutputFormat::Quiet) {
+        for v in &resp.items {
+            println!("{}", v.revision);
+        }
+        return Ok(());
+    }
+
+    let mut table = new_table(vec!["REVISION", "LABEL", "SIZE", "SHA-256", "CREATED"]);
+    for v in &resp.items {
+        table.add_row(vec![
+            v.revision.to_string(),
+            v.version_label.clone().unwrap_or_else(|| "-".into()),
+            format_bytes(v.size_bytes),
+            v.checksum_sha256.clone(),
+            v.created_at.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+        ]);
+    }
+    println!(
+        "{}",
+        output::render_raw(
+            raw.as_deref(),
+            &*resp,
+            &global.format,
+            Some(table.to_string())
+        )
+    );
+    Ok(())
+}
+
+/// `path=sha256`
+fn parse_presence_item(entry: &str) -> Result<artifact_keeper_sdk::types::ArtifactPresenceItem> {
+    let (path, sha256) = entry.rsplit_once('=').ok_or_else(|| {
+        AkError::ConfigError(format!("--item must be 'path=sha256', got '{entry}'"))
+    })?;
+    Ok(artifact_keeper_sdk::types::ArtifactPresenceItem {
+        path: path.to_string(),
+        sha256: sha256.to_string(),
+    })
+}
+
+/// The items in a `--from` file: a JSON array of `{path, sha256}`, or `sha256sum`
+/// lines of `<sha256>  <path>`.
+fn parse_presence_list(
+    text: &str,
+) -> Result<Vec<artifact_keeper_sdk::types::ArtifactPresenceItem>> {
+    if text.trim_start().starts_with('[') {
+        return serde_json::from_str(text)
+            .map_err(|e| AkError::ConfigError(format!("--from: invalid JSON: {e}")).into());
+    }
+    text.lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| {
+            let (sha256, path) = line.split_once(char::is_whitespace).ok_or_else(|| {
+                AkError::ConfigError(format!("--from: expected '<sha256>  <path>', got '{line}'"))
+            })?;
+            // sha256sum marks a binary-mode file with `*` before its name.
+            let path = path.trim_start();
+            let path = path.strip_prefix('*').unwrap_or(path);
+            Ok(artifact_keeper_sdk::types::ArtifactPresenceItem {
+                path: path.to_string(),
+                sha256: sha256.to_string(),
+            })
+        })
+        .collect()
+}
+
+async fn missing(
+    repo: &str,
+    items: &[String],
+    from: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let mut all = items
+        .iter()
+        .map(|item| parse_presence_item(item))
+        .collect::<Result<Vec<_>>>()?;
+    if let Some(from) = from {
+        let source = if from == "-" {
+            "@-".to_string()
+        } else {
+            format!("@{from}")
+        };
+        let bytes = read_inline_or_file(&source, "--from")?;
+        let text = String::from_utf8(bytes)
+            .map_err(|_| AkError::ConfigError("--from: the input isn't text".into()))?;
+        all.extend(parse_presence_list(&text)?);
+    }
+    if all.is_empty() {
+        return Err(AkError::ConfigError("Give at least one --item, or --from".into()).into());
+    }
+
+    let client = client_for(global)?;
+    let (resp, raw) = capture(
+        client
+            .missing_artifacts()
+            .key(repo)
+            .body(artifact_keeper_sdk::types::MissingArtifactsRequest { items: all })
+            .send(),
+    )
+    .await;
+    let resp = match resp {
+        Ok(resp) => resp,
+        Err(e) => {
+            let action = "check for missing artifacts";
+            return Err(since_1_11(e, action, "artifact missing", global)
+                .await
+                .into());
+        }
+    };
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for m in &resp.missing {
+            println!("{}", output::sanitize_terminal(&m.path));
+        }
+        return Ok(());
+    }
+
+    let mut text = format!("{} checked, {} missing.", resp.checked, resp.missing.len());
+    if !resp.missing.is_empty() {
+        let mut table = new_table(vec!["PATH", "REASON", "SHA-256"]);
+        for m in &resp.missing {
+            table.add_row(vec![m.path.clone(), m.reason.to_string(), m.sha256.clone()]);
+        }
+        text.push_str(&format!("\n{table}"));
+    }
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &*resp, &global.format, Some(text))
+    );
+    Ok(())
+}
+
+/// Sessions left in the local cache. Nothing on the server lists them, and this
+/// is the only place their IDs are kept.
+fn upload_sessions(global: &GlobalArgs) -> Result<()> {
+    let sessions = chunked_upload::cached_sessions()?;
+    if matches!(global.format, OutputFormat::Quiet) {
+        for session in &sessions {
+            println!("{}", session.session_id);
+        }
+        return Ok(());
+    }
+    if sessions.is_empty() && !output::is_machine_format(&global.format) {
+        eprintln!("No unfinished upload sessions on this machine.");
+        return Ok(());
+    }
+    let mut table = new_table(vec![
+        "SESSION",
+        "REPOSITORY",
+        "PATH",
+        "FILE",
+        "SIZE",
+        "STARTED",
+    ]);
+    for session in &sessions {
+        table.add_row(vec![
+            session.session_id.clone(),
+            session.repository_key.clone(),
+            session.artifact_path.clone(),
+            session.file_path.clone(),
+            format_bytes(session.total_size as i64),
+            session.created_at.format("%Y-%m-%d %H:%M").to_string(),
+        ]);
+    }
+    println!(
+        "{}",
+        output::render(&sessions, &global.format, Some(table.to_string()))
+    );
+    Ok(())
+}
+
+async fn upload_session_status(session_id: uuid::Uuid, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let (resp, raw) = capture(client.get_session_status().session_id(session_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get upload session", e))?;
+    let text = format!(
+        "Session:    {}\nStatus:     {}\nRepository: {}\nPath:       {}\nReceived:   {} of {}\n\
+         Chunks:     {} of {}\nCreated:    {}\nExpires:    {}",
+        resp.session_id,
+        resp.status,
+        resp.repository_key,
+        resp.artifact_path,
+        format_bytes(resp.bytes_received),
+        format_bytes(resp.total_size),
+        resp.chunks_completed,
+        resp.chunks_total,
+        resp.created_at,
+        resp.expires_at,
+    );
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &*resp, &global.format, Some(text))
+    );
+    Ok(())
+}
+
+async fn upload_session_cancel(
+    session_id: uuid::Uuid,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    if !confirm_action(
+        &format!("Cancel upload session {session_id} and discard what it uploaded?"),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+    let client = client_for(global)?;
+    client
+        .cancel()
+        .session_id(session_id)
+        .send()
+        .await
+        .map_err(|e| sdk_err("cancel upload session", e))?;
+    chunked_upload::forget_session(&session_id.to_string())?;
+
+    emit_mutation(
+        &serde_json::json!({ "session_id": session_id, "status": "cancelled" }),
+        &session_id.to_string(),
+        &format!("Cancelled upload session {session_id}."),
+        global,
+    );
+    Ok(())
+}
+
 async fn delete(
     repo: &str,
     artifact_path: &str,
     skip_confirm: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
-
-    let needs_confirmation = !skip_confirm && !global.no_input;
-    if needs_confirmation {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!(
-                "Delete '{artifact_path}' from '{repo}'? This cannot be undone"
-            ))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !confirm_action(
+        &format!("Delete '{artifact_path}' from '{repo}'? This cannot be undone"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
     }
+
+    let client = client_for(global)?;
 
     client
         .delete_artifact()
@@ -916,16 +1730,53 @@ async fn delete(
 }
 
 async fn search(
-    query: &str,
+    query: Option<&str>,
     repo: Option<&str>,
     format: Option<&str>,
+    filters: &SearchFilters,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for_optional_auth(global)?;
 
     let spinner = output::spinner("Searching...");
 
-    let mut req = client.advanced_search().query(query);
+    let mut req = client.advanced_search();
+    if let Some(q) = query {
+        req = req.query(q);
+    }
+    if let Some(v) = &filters.name {
+        req = req.name(v);
+    }
+    if let Some(v) = &filters.path {
+        req = req.path(v);
+    }
+    if let Some(v) = &filters.version {
+        req = req.version(v);
+    }
+    if let Some(v) = filters.min_size {
+        req = req.min_size(v);
+    }
+    if let Some(v) = filters.max_size {
+        req = req.max_size(v);
+    }
+    if let Some(v) = &filters.created_after {
+        req = req.created_after(v);
+    }
+    if let Some(v) = &filters.created_before {
+        req = req.created_before(v);
+    }
+    if let Some(v) = &filters.sort_by {
+        req = req.sort_by(v);
+    }
+    if let Some(v) = &filters.sort_order {
+        req = req.sort_order(v);
+    }
+    if let Some(v) = filters.page {
+        req = req.page(v);
+    }
+    if let Some(v) = filters.per_page {
+        req = req.per_page(v);
+    }
     if let Some(r) = repo {
         req = req.repository_key(r);
     }
@@ -939,7 +1790,7 @@ async fn search(
     spinner.finish_and_clear();
 
     if resp.items.is_empty() && !output::is_machine_format(&global.format) {
-        eprintln!("No results found for '{query}'.");
+        eprintln!("No results found.");
         return Ok(());
     }
 
@@ -999,97 +1850,150 @@ async fn search(
     Ok(())
 }
 
+/// `<repo>` or `<repo>/<path>`, with the path defaulting to the source's.
+fn parse_copy_destination<'a>(
+    destination: &'a str,
+    src_path: &'a str,
+) -> Result<(&'a str, &'a str)> {
+    let (repo, path) = match destination.split_once('/') {
+        Some((repo, path)) => (repo, path.trim_end_matches('/')),
+        None => (destination, ""),
+    };
+    if repo.is_empty() {
+        return Err(AkError::ConfigError(format!(
+            "Destination must be 'repo' or 'repo/path', got '{destination}'"
+        ))
+        .into());
+    }
+    Ok((repo, if path.is_empty() { src_path } else { path }))
+}
+
 async fn copy(
     source: &str,
     destination: &str,
     from_instance: Option<&str>,
     to_instance: Option<&str>,
+    promotion: artifact_keeper_sdk::types::PromoteArtifactRequest,
     global: &GlobalArgs,
 ) -> Result<()> {
     let (src_repo, src_path) = source
         .split_once('/')
+        .filter(|(repo, path)| !repo.is_empty() && !path.is_empty())
         .ok_or_else(|| AkError::ConfigError("Source must be in format 'repo/path'".into()))?;
+    let (dst_repo, dst_path) = parse_copy_destination(destination, src_path)?;
 
     let is_cross_instance = from_instance.is_some() || to_instance.is_some();
 
-    if is_cross_instance {
-        cross_instance_copy(
+    // The server's promotion keeps the path. Anything else goes through a download
+    // and an upload.
+    if is_cross_instance || dst_path != src_path {
+        if promotion.notes.is_some() || promotion.skip_policy_check.is_some() {
+            return Err(AkError::ConfigError(
+                "--notes and --skip-policy-check apply to a promotion, which needs the same \
+                 instance and the same path"
+                    .into(),
+            )
+            .into());
+        }
+        transfer_copy(
             src_repo,
             src_path,
-            destination,
+            dst_repo,
+            dst_path,
             from_instance,
             to_instance,
             global,
         )
         .await
     } else {
-        same_instance_copy(src_repo, src_path, destination, global).await
+        same_instance_copy(src_repo, src_path, dst_repo, promotion, global).await
     }
 }
 
 async fn same_instance_copy(
     src_repo: &str,
     src_path: &str,
-    destination: &str,
+    dst_repo: &str,
+    promotion: artifact_keeper_sdk::types::PromoteArtifactRequest,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Finding artifact...");
 
-    let artifacts = client
-        .list_artifacts()
+    let artifact = client
+        .get_repository_artifact_metadata()
         .key(src_repo)
-        .q(src_path)
-        .per_page(1)
+        .path(src_path)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to find source artifact: {e}")))?;
-
-    let artifact = artifacts.items.first().ok_or_else(|| {
-        AkError::ServerError(format!("Artifact '{src_path}' not found in '{src_repo}'"))
-    })?;
+        .map_err(|e| {
+            spinner.finish_and_clear();
+            if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
+                AkError::ServerError(format!("Artifact '{src_path}' not found in '{src_repo}'"))
+            } else {
+                sdk_err("find source artifact", e)
+            }
+        })?;
 
     spinner.set_message("Copying...");
 
     let body = artifact_keeper_sdk::types::PromoteArtifactRequest {
-        target_repository: Some(destination.to_string()),
-        notes: None,
-        skip_policy_check: None,
+        target_repository: Some(dst_repo.to_string()),
+        ..promotion
     };
 
-    client
-        .promote_artifact()
-        .key(src_repo)
-        .artifact_id(artifact.id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Copy failed: {e}")))?;
-
+    let (result, raw) = capture(
+        client
+            .promote_artifact()
+            .key(src_repo)
+            .artifact_id(artifact.id)
+            .body(body)
+            .send(),
+    )
+    .await;
     spinner.finish_and_clear();
+    let result = result.map_err(|e| AkError::ServerError(format!("Copy failed: {e}")))?;
 
-    emit_mutation(
+    // A promotion a policy turned down still answers 200.
+    if !result.promoted {
+        let reasons = result
+            .policy_violations
+            .iter()
+            .map(|v| v.message.as_str())
+            .collect::<Vec<_>>()
+            .join("; ");
+        let message = result.message.as_deref().unwrap_or("refused by policy");
+        return Err(AkError::ServerError(format!(
+            "Copy failed: {}{}{}",
+            output::sanitize_terminal(message),
+            if reasons.is_empty() { "" } else { ": " },
+            output::sanitize_terminal(&reasons),
+        ))
+        .into());
+    }
+
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({
             "source": format!("{src_repo}/{src_path}"),
-            "destination": destination,
+            "destination": format!("{dst_repo}/{src_path}"),
             "status": "copied",
         }),
-        destination,
-        &format!(
-            "Copied '{}' from '{}' to '{}'.",
-            src_path, src_repo, destination
-        ),
+        dst_repo,
+        &format!("Copied '{src_path}' from '{src_repo}' to '{dst_repo}'."),
         global,
     );
 
     Ok(())
 }
 
-async fn cross_instance_copy(
+/// Copy by downloading and uploading: between instances, or to a different path.
+async fn transfer_copy(
     src_repo: &str,
     src_path: &str,
-    destination: &str,
+    dst_repo: &str,
+    dst_path: &str,
     from_instance: Option<&str>,
     to_instance: Option<&str>,
     global: &GlobalArgs,
@@ -1098,27 +2002,30 @@ async fn cross_instance_copy(
 
     let (src_name, src_instance) =
         config.resolve_instance(from_instance.or(global.instance.as_deref()))?;
-    let (dst_name, dst_instance) = config.resolve_instance(to_instance)?;
-
-    let src_client = build_client(src_name, src_instance, None)?;
-    let dst_client = build_client(dst_name, dst_instance, None)?;
+    let (dst_name, dst_instance) =
+        config.resolve_instance(to_instance.or(global.instance.as_deref()))?;
+    crate::transport::warn_if_insecure(src_name, src_instance);
+    crate::transport::warn_if_insecure(dst_name, dst_instance);
+    let src_auth = format!("Bearer {}", get_credential(src_name)?.access_token);
+    let dst_auth = format!("Bearer {}", get_credential(dst_name)?.access_token);
 
     let spinner = output::spinner(&format!(
         "Downloading from {src_name}:{src_repo}/{src_path}..."
     ));
 
-    let resp = src_client
-        .download_artifact()
-        .key(src_repo)
-        .path(src_path)
-        .send()
+    let resp = fetch_artifact(&src_instance.url, &src_auth, src_repo, src_path, None)
         .await
-        .map_err(|e| AkError::ServerError(format!("Download from source failed: {e}")))?;
+        .inspect_err(|_| spinner.finish_and_clear())?;
+    let content_type = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .map_or_else(|| content_type_for_path(dst_path), str::to_string);
 
     let tmp_file = tempfile::NamedTempFile::new().into_diagnostic()?;
     let tmp_path = tmp_file.path().to_path_buf();
     let mut file = tokio::fs::File::create(&tmp_path).await.into_diagnostic()?;
-    let mut stream = resp.into_inner();
+    let mut stream = resp.bytes_stream();
     let mut total_bytes: u64 = 0;
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| AkError::ServerError(format!("Download error: {e}")))?;
@@ -1134,32 +2041,39 @@ async fn cross_instance_copy(
         .into_diagnostic()?;
     drop(file);
 
-    let (dst_repo, dst_path) = match destination.split_once('/') {
-        Some((repo, path)) => (repo, path.to_string()),
-        None => (destination, src_path.to_string()),
-    };
-
     spinner.set_message(format!("Uploading to {dst_name}:{dst_repo}/{dst_path}..."));
 
-    let size = total_bytes as i64;
     let upload_file = tokio::fs::File::open(&tmp_path).await.into_diagnostic()?;
     let upload_stream = tokio_util::io::ReaderStream::new(upload_file);
     let body = reqwest::Body::wrap_stream(upload_stream);
 
-    dst_client
-        .upload_artifact()
-        .key(dst_repo)
-        .path(&dst_path)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Upload to destination failed: {e}")))?;
+    let uploaded = single_put_upload(
+        &dst_instance.url,
+        &dst_auth,
+        dst_repo,
+        dst_path,
+        body,
+        &content_type,
+        None,
+    )
+    .await
+    .inspect_err(|_| spinner.finish_and_clear())?;
 
     spinner.finish_and_clear();
 
-    eprintln!(
-        "Copied {src_name}:{src_repo}/{src_path} -> {dst_name}:{dst_repo}/{dst_path} ({})",
-        format_bytes(size),
+    emit_mutation_raw(
+        Some(&uploaded.raw),
+        &serde_json::json!({
+            "source": format!("{src_repo}/{src_path}"),
+            "destination": format!("{dst_repo}/{dst_path}"),
+            "status": "copied",
+        }),
+        &output::sanitize_terminal(&uploaded.path),
+        &format!(
+            "Copied {src_name}:{src_repo}/{src_path} -> {dst_name}:{dst_repo}/{dst_path} ({})",
+            format_bytes(total_bytes as i64),
+        ),
+        global,
     );
 
     Ok(())
@@ -1170,6 +2084,26 @@ mod tests {
     use super::*;
     use clap::Parser;
     use serde_json::json;
+
+    fn test_push_options(
+        target_path: Option<&str>,
+        chunk_size: &str,
+        no_chunked: bool,
+        content_type: Option<&str>,
+    ) -> PushOptions {
+        PushOptions {
+            target_path: target_path.map(str::to_string),
+            chunk_size: chunk_size.to_string(),
+            mode: if no_chunked {
+                UploadMode::Put
+            } else {
+                UploadMode::BySize
+            },
+            content_type: content_type.map(str::to_string),
+            version_label: None,
+            session: SessionMetadata::default(),
+        }
+    }
 
     // ---- TestCli wrapper for parsing ----
 
@@ -1405,6 +2339,7 @@ mod tests {
             path,
             output,
             force,
+            ..
         } = cli.command
         {
             assert_eq!(repo, "my-repo");
@@ -1485,6 +2420,7 @@ mod tests {
             search,
             page,
             per_page,
+            ..
         } = cli.command
         {
             assert_eq!(repo, "my-repo");
@@ -1527,7 +2463,7 @@ mod tests {
     #[test]
     fn parse_info() {
         let cli = parse(&["test", "info", "my-repo", "org/pkg/1.0/pkg.jar"]);
-        if let ArtifactCommand::Info { repo, path } = cli.command {
+        if let ArtifactCommand::Info { repo, path, .. } = cli.command {
             assert_eq!(repo, "my-repo");
             assert_eq!(path, "org/pkg/1.0/pkg.jar");
         } else {
@@ -1622,9 +2558,10 @@ mod tests {
             query,
             repo,
             pkg_format,
+            ..
         } = cli.command
         {
-            assert_eq!(query, "log4j");
+            assert_eq!(query.as_deref(), Some("log4j"));
             assert!(repo.is_none());
             assert!(pkg_format.is_none());
         } else {
@@ -1636,7 +2573,7 @@ mod tests {
     fn parse_search_with_repo_filter() {
         let cli = parse(&["test", "search", "log4j", "--repo", "maven-central"]);
         if let ArtifactCommand::Search { query, repo, .. } = cli.command {
-            assert_eq!(query, "log4j");
+            assert_eq!(query.as_deref(), Some("log4j"));
             assert_eq!(repo.as_deref(), Some("maven-central"));
         } else {
             panic!("Expected ArtifactCommand::Search");
@@ -1650,7 +2587,7 @@ mod tests {
             query, pkg_format, ..
         } = cli.command
         {
-            assert_eq!(query, "express");
+            assert_eq!(query.as_deref(), Some("express"));
             assert_eq!(pkg_format.as_deref(), Some("npm"));
         } else {
             panic!("Expected ArtifactCommand::Search");
@@ -1672,9 +2609,10 @@ mod tests {
             query,
             repo,
             pkg_format,
+            ..
         } = cli.command
         {
-            assert_eq!(query, "flask");
+            assert_eq!(query.as_deref(), Some("flask"));
             assert_eq!(repo.as_deref(), Some("pypi-repo"));
             assert_eq!(pkg_format.as_deref(), Some("pypi"));
         } else {
@@ -1683,8 +2621,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_search_missing_query_fails() {
-        assert!(try_parse(&["test", "search"]).is_err());
+    fn parse_search_query_is_optional() {
+        assert!(try_parse(&["test", "search", "--name", "a"]).is_ok());
     }
 
     // ---- Copy subcommand parsing ----
@@ -1697,6 +2635,7 @@ mod tests {
             destination,
             from_instance,
             to_instance,
+            ..
         } = cli.command
         {
             assert_eq!(source, "src-repo/path/to/file");
@@ -1725,6 +2664,7 @@ mod tests {
             destination,
             from_instance,
             to_instance,
+            ..
         } = cli.command
         {
             assert_eq!(source, "src/path");
@@ -1803,7 +2743,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list("my-repo", None, 1, 50, &global).await;
+        let result = list("my-repo", None, &ListFilters::default(), 1, 50, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1836,7 +2776,15 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list("maven-central", None, 1, 50, &global).await;
+        let result = list(
+            "maven-central",
+            None,
+            &ListFilters::default(),
+            1,
+            50,
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1866,7 +2814,13 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = info("maven-central", "org/example/lib/1.0/lib-1.0.jar", &global).await;
+        let result = info(
+            "maven-central",
+            "org/example/lib/1.0/lib-1.0.jar",
+            None,
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1883,7 +2837,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = info("my-repo", "nonexistent", &global).await;
+        let result = info("my-repo", "nonexistent", None, &global).await;
         assert!(result.is_err());
         crate::test_utils::teardown_env();
     }
@@ -1978,7 +2932,14 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = search("nonexistent", None, None, &global).await;
+        let result = search(
+            Some("nonexistent"),
+            None,
+            None,
+            &SearchFilters::default(),
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2010,7 +2971,14 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = search("log4j", None, None, &global).await;
+        let result = search(
+            Some("log4j"),
+            None,
+            None,
+            &SearchFilters::default(),
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2040,23 +3008,20 @@ mod tests {
 
         // Mock for finding the source artifact
         Mock::given(method("GET"))
-            .and(path_regex("/api/v1/repositories/.+/artifacts"))
+            .and(path_regex("/api/v1/repositories/.+/artifacts/.+"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "items": [{
-                    "id": "00000000-0000-0000-0000-000000000099",
-                    "path": "pkg/lib-1.0.jar",
-                    "name": "lib",
-                    "version": "1.0",
-                    "size_bytes": 1024_i64,
-                    "content_type": "application/java-archive",
-                    "checksum_sha256": "abc123",
-                    "analyzable": true,
-                    "download_count": 5_i64,
-                    "repository_key": "src-repo",
-                    "created_at": "2026-01-15T10:00:00Z",
-                    "quarantine_status": "not_quarantined"
-                }],
-                "pagination": { "page": 1, "per_page": 1, "total": 1_i64, "total_pages": 1 }
+                "id": "00000000-0000-0000-0000-000000000099",
+                "path": "pkg/lib-1.0.jar",
+                "name": "lib",
+                "version": "1.0",
+                "size_bytes": 1024_i64,
+                "content_type": "application/java-archive",
+                "checksum_sha256": "abc123",
+                "analyzable": true,
+                "download_count": 5_i64,
+                "repository_key": "src-repo",
+                "created_at": "2026-01-15T10:00:00Z",
+                "quarantine_status": "not_quarantined"
             })))
             .mount(&server)
             .await;
@@ -2078,7 +3043,18 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = same_instance_copy("src-repo", "pkg/lib-1.0.jar", "dst-repo", &global).await;
+        let result = same_instance_copy(
+            "src-repo",
+            "pkg/lib-1.0.jar",
+            "dst-repo",
+            artifact_keeper_sdk::types::PromoteArtifactRequest {
+                target_repository: None,
+                notes: Some("n".to_string()),
+                skip_policy_check: None,
+            },
+            &global,
+        )
+        .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2156,10 +3132,7 @@ mod tests {
         let result = push(
             "my-repo",
             &[file.to_string_lossy().into_owned()],
-            None,
-            "8MB",
-            false,
-            None,
+            &test_push_options(None, "8MB", false, None),
             &global,
         )
         .await;
@@ -2189,10 +3162,7 @@ mod tests {
         let result = push(
             "my-repo",
             &[file.to_string_lossy().into_owned()],
-            None,
-            "8MB",
-            false,
-            None,
+            &test_push_options(None, "8MB", false, None),
             &global,
         )
         .await;
@@ -2225,10 +3195,7 @@ mod tests {
         let result = push(
             "my-repo",
             &[file.to_string_lossy().into_owned()],
-            Some("nested/dir/"),
-            "8MB",
-            false,
-            None,
+            &test_push_options(Some("nested/dir/"), "8MB", false, None),
             &global,
         )
         .await;
@@ -2258,10 +3225,7 @@ mod tests {
         let result = push(
             "no-such-repo",
             &[file.to_string_lossy().into_owned()],
-            None,
-            "8MB",
-            false,
-            None,
+            &test_push_options(None, "8MB", false, None),
             &global,
         )
         .await;
@@ -2378,6 +3342,7 @@ mod tests {
             "path/to/pulled.bin",
             Some(&out.to_string_lossy()),
             false,
+            None,
             &global,
         )
         .await;
@@ -2405,6 +3370,7 @@ mod tests {
             "path/to/existing.bin",
             Some(&out.to_string_lossy()),
             false,
+            None,
             &global,
         )
         .await;
@@ -2437,6 +3403,7 @@ mod tests {
             "path/to/existing.bin",
             Some(&out.to_string_lossy()),
             true,
+            None,
             &global,
         )
         .await;
@@ -2464,6 +3431,7 @@ mod tests {
             "path/to/missing.bin",
             Some(&out.to_string_lossy()),
             false,
+            None,
             &global,
         )
         .await;
@@ -2473,5 +3441,42 @@ mod tests {
             "failed pull must not leave an empty placeholder file"
         );
         crate::test_utils::teardown_env();
+    }
+
+    #[test]
+    fn copy_destination_defaults_to_the_source_path() {
+        assert_eq!(
+            parse_copy_destination("dst", "a/b.txt").unwrap(),
+            ("dst", "a/b.txt")
+        );
+        assert_eq!(
+            parse_copy_destination("dst/", "a/b.txt").unwrap(),
+            ("dst", "a/b.txt")
+        );
+        assert_eq!(
+            parse_copy_destination("dst/c/d.txt", "a/b.txt").unwrap(),
+            ("dst", "c/d.txt")
+        );
+        assert!(parse_copy_destination("/x", "a").is_err());
+    }
+
+    #[test]
+    fn presence_items_come_from_flags_json_and_sha256sum() {
+        let item = parse_presence_item("a/b=c.txt=abc").unwrap();
+        assert_eq!(
+            (item.path.as_str(), item.sha256.as_str()),
+            ("a/b=c.txt", "abc")
+        );
+        assert!(parse_presence_item("nope").is_err());
+
+        let json = parse_presence_list(r#"[{"path":"a","sha256":"1"}]"#).unwrap();
+        assert_eq!(json[0].path, "a");
+
+        let lines = parse_presence_list("111  a b.txt\n222 *c.bin\n\n").unwrap();
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0].path, "a b.txt");
+        assert_eq!(lines[1].path, "c.bin");
+        assert_eq!(lines[1].sha256, "222");
+        assert!(parse_presence_list("oneword").is_err());
     }
 }

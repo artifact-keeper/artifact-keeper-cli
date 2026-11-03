@@ -11,6 +11,7 @@ use miette::Result;
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::{
     confirm_action, emit_mutation_raw, new_table, read_inline_or_file, resolve_secret, sdk_err,
+    since_1_11,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -179,7 +180,14 @@ impl AllowlistCommand {
         match self {
             Self::Get { key } => {
                 let (resp, raw) = capture(client.get_conda_allowlist().key(&key).send()).await;
-                let resp = resp.map_err(|e| sdk_err("get allowlist", e))?;
+                let resp = match resp {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        return Err(since_1_11(e, "get allowlist", "repo allowlist", global)
+                            .await
+                            .into());
+                    }
+                };
                 println!(
                     "{}",
                     render_raw(
@@ -212,7 +220,14 @@ impl AllowlistCommand {
                 };
                 let (resp, raw) =
                     capture(client.set_conda_allowlist().key(&key).body(body).send()).await;
-                let resp = resp.map_err(|e| sdk_err("set allowlist", e))?;
+                let resp = match resp {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        return Err(since_1_11(e, "set allowlist", "repo allowlist", global)
+                            .await
+                            .into());
+                    }
+                };
                 emit_mutation_raw(
                     raw.as_deref(),
                     &*resp,
@@ -233,7 +248,14 @@ impl AllowlistCommand {
                     return Ok(());
                 }
                 let (resp, raw) = capture(client.delete_conda_allowlist().key(&key).send()).await;
-                let resp = resp.map_err(|e| sdk_err("delete allowlist", e))?;
+                let resp = match resp {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        return Err(since_1_11(e, "delete allowlist", "repo allowlist", global)
+                            .await
+                            .into());
+                    }
+                };
                 emit_mutation_raw(
                     raw.as_deref(),
                     &*resp,
@@ -282,7 +304,19 @@ impl UpstreamFilterCommand {
         match self {
             Self::Get { key } => {
                 let (resp, raw) = capture(client.get_upstream_filter().key(&key).send()).await;
-                let resp = resp.map_err(|e| sdk_err("get upstream filter", e))?;
+                let resp = match resp {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        return Err(since_1_11(
+                            e,
+                            "get upstream filter",
+                            "repo upstream-filter",
+                            global,
+                        )
+                        .await
+                        .into());
+                    }
+                };
                 println!(
                     "{}",
                     render_raw(
@@ -304,7 +338,19 @@ impl UpstreamFilterCommand {
                 };
                 let (resp, raw) =
                     capture(client.set_upstream_filter().key(&key).body(body).send()).await;
-                let resp = resp.map_err(|e| sdk_err("set upstream filter", e))?;
+                let resp = match resp {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        return Err(since_1_11(
+                            e,
+                            "set upstream filter",
+                            "repo upstream-filter",
+                            global,
+                        )
+                        .await
+                        .into());
+                    }
+                };
                 emit_mutation_raw(
                     raw.as_deref(),
                     &*resp,
@@ -322,7 +368,19 @@ impl UpstreamFilterCommand {
                     return Ok(());
                 }
                 let (resp, raw) = capture(client.delete_upstream_filter().key(&key).send()).await;
-                let resp = resp.map_err(|e| sdk_err("delete upstream filter", e))?;
+                let resp = match resp {
+                    Ok(resp) => resp,
+                    Err(e) => {
+                        return Err(since_1_11(
+                            e,
+                            "delete upstream filter",
+                            "repo upstream-filter",
+                            global,
+                        )
+                        .await
+                        .into());
+                    }
+                };
                 emit_mutation_raw(
                     raw.as_deref(),
                     &*resp,
@@ -476,7 +534,19 @@ fn npm_policy_text(resp: &types::NpmScopePolicyResponse) -> String {
 pub async fn capabilities(global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
     let (resp, raw) = capture(client.repository_capabilities().send()).await;
-    let resp = resp.map_err(|e| sdk_err("get repository capabilities", e))?;
+    let resp = match resp {
+        Ok(resp) => resp,
+        Err(e) => {
+            return Err(since_1_11(
+                e,
+                "get repository capabilities",
+                "repo capabilities",
+                global,
+            )
+            .await
+            .into());
+        }
+    };
     let depth = &resp.rpm_repodata_depth;
     let text = format!(
         "RPM repodata depth: {} (min {}, max {}, default {})",

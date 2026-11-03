@@ -112,6 +112,44 @@ fn cache_path_for(file_path: &Path) -> Result<PathBuf> {
     Ok(uploads_cache_dir()?.join(format!("{key}.json")))
 }
 
+/// Sessions left in the local cache, oldest first. A cache file that can't be read
+/// is skipped rather than failing the listing.
+pub fn cached_sessions() -> Result<Vec<CachedSession>> {
+    let dir = uploads_cache_dir()?;
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(e).into_diagnostic(),
+    };
+    let mut sessions: Vec<CachedSession> = entries
+        .filter_map(|entry| std::fs::read_to_string(entry.ok()?.path()).ok())
+        .filter_map(|text| serde_json::from_str(&text).ok())
+        .collect();
+    sessions.sort_by_key(|s| s.created_at);
+    Ok(sessions)
+}
+
+/// Remove a session from the local cache, wherever its file is kept.
+pub fn forget_session(session_id: &str) -> Result<()> {
+    let dir = uploads_cache_dir()?;
+    let entries = match std::fs::read_dir(&dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => return Err(e).into_diagnostic(),
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        let cached = serde_json::from_str::<CachedSession>(&text);
+        if cached.is_ok_and(|c| c.session_id == session_id) {
+            std::fs::remove_file(&path).into_diagnostic()?;
+        }
+    }
+    Ok(())
+}
+
 /// Save a session to the local cache.
 pub fn save_session_cache(file_path: &Path, session: &CachedSession) -> Result<()> {
     let path = cache_path_for(file_path)?;
@@ -157,6 +195,52 @@ pub struct CreateSessionRequest {
     pub chunk_size: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content_type: Option<String>,
+    #[serde(flatten)]
+    pub metadata: SessionMetadata,
+}
+
+/// The optional fields of a session, which a plain upload can't carry.
+#[derive(Debug, Default, Clone, Serialize)]
+pub struct SessionMetadata {
+    /// Don't upload if the artifact already holds this content.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub skip_if_present: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package_description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package_metadata: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact_metadata: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact_metadata_format: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact_metadata_properties: Option<serde_json::Value>,
+}
+
+/// How an upload ended, with the body the server finished with.
+#[derive(Debug)]
+pub struct UploadOutcome {
+    pub path: String,
+    pub size: i64,
+    pub already_present: bool,
+    pub raw: Vec<u8>,
+}
+
+/// The answer to creating a session when the artifact is already there.
+#[derive(Debug, Deserialize)]
+struct AlreadyPresentResponse {
+    path: String,
+    size: i64,
+}
+
+/// What creating a session led to.
+enum SessionStart {
+    Created(CreateSessionResponse),
+    AlreadyPresent(UploadOutcome),
 }
 
 #[derive(Debug, Deserialize)]
@@ -225,7 +309,8 @@ pub async fn chunked_upload(
     file_size: u64,
     file_name: &str,
     content_type: &str,
-) -> Result<FinalizeResponse> {
+    metadata: &SessionMetadata,
+) -> Result<UploadOutcome> {
     // Step 1: Compute SHA256
     let sha_spinner = crate::output::spinner(&format!("Computing checksum for {file_name}..."));
     let file_sha256 = sha256_file(file_path).await?;
@@ -233,49 +318,63 @@ pub async fn chunked_upload(
 
     // Step 2: Check for existing session to resume
     let http = super::client::raw_http_client()?;
-    let (session_id, server_chunk_size, chunks_completed) =
-        match try_resume(&http, base_url, auth_header, file_path, &file_sha256).await? {
-            Some((sid, cs, cc)) => {
-                eprintln!(
-                    "Resuming upload session {}: {}/{} chunks completed",
-                    &sid[..8],
-                    cc,
-                    file_size.div_ceil(cs)
-                );
-                (sid, cs, cc)
-            }
-            None => {
-                // Step 3: Create new session
-                let resp = create_session(
-                    &http,
-                    base_url,
-                    auth_header,
-                    repo,
-                    artifact_path,
-                    file_size,
-                    &file_sha256,
-                    chunk_size,
-                    content_type,
-                )
-                .await?;
+    let (session_id, server_chunk_size, chunks_completed) = match try_resume(
+        &http,
+        base_url,
+        auth_header,
+        file_path,
+        &file_sha256,
+        repo,
+        artifact_path,
+    )
+    .await?
+    {
+        Some((sid, cs, cc)) => {
+            eprintln!(
+                "Resuming upload session {}: {}/{} chunks completed",
+                &sid[..8],
+                cc,
+                file_size.div_ceil(cs)
+            );
+            (sid, cs, cc)
+        }
+        None => {
+            // Step 3: Create new session
+            let resp = match create_session(
+                &http,
+                base_url,
+                auth_header,
+                repo,
+                artifact_path,
+                file_size,
+                &file_sha256,
+                chunk_size,
+                content_type,
+                metadata,
+            )
+            .await?
+            {
+                SessionStart::Created(resp) => resp,
+                SessionStart::AlreadyPresent(outcome) => return Ok(outcome),
+            };
 
-                // Cache the session for resume
-                let cached = CachedSession {
-                    session_id: resp.session_id.clone(),
-                    file_path: file_path.to_string_lossy().into_owned(),
-                    file_sha256: file_sha256.clone(),
-                    total_size: file_size,
-                    chunk_size: resp.chunk_size,
-                    chunk_count: resp.chunk_count,
-                    repository_key: repo.to_string(),
-                    artifact_path: artifact_path.to_string(),
-                    created_at: Utc::now(),
-                };
-                save_session_cache(file_path, &cached)?;
+            // Cache the session for resume
+            let cached = CachedSession {
+                session_id: resp.session_id.clone(),
+                file_path: file_path.to_string_lossy().into_owned(),
+                file_sha256: file_sha256.clone(),
+                total_size: file_size,
+                chunk_size: resp.chunk_size,
+                chunk_count: resp.chunk_count,
+                repository_key: repo.to_string(),
+                artifact_path: artifact_path.to_string(),
+                created_at: Utc::now(),
+            };
+            save_session_cache(file_path, &cached)?;
 
-                (resp.session_id, resp.chunk_size, 0)
-            }
-        };
+            (resp.session_id, resp.chunk_size, 0)
+        }
+    };
 
     let chunk_count = file_size.div_ceil(server_chunk_size);
 
@@ -361,12 +460,19 @@ pub async fn chunked_upload(
     pb.finish_with_message(format!("Uploaded {file_name}"));
 
     // Step 5: Finalize
-    let result = finalize_upload(&http, base_url, auth_header, &session_id).await?;
+    let raw = finalize_upload(&http, base_url, auth_header, &session_id).await?;
+    let result: FinalizeResponse = serde_json::from_slice(&raw)
+        .map_err(|e| AkError::ServerError(format!("Invalid finalize response: {e}")))?;
 
     // Step 6: Clean up cache
     remove_session_cache(file_path)?;
 
-    Ok(result)
+    Ok(UploadOutcome {
+        path: result.path,
+        size: result.size as i64,
+        already_present: false,
+        raw,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -384,7 +490,8 @@ async fn create_session(
     checksum_sha256: &str,
     chunk_size: u64,
     content_type: &str,
-) -> Result<CreateSessionResponse> {
+    metadata: &SessionMetadata,
+) -> Result<SessionStart> {
     let body = CreateSessionRequest {
         repository_key: repo.to_string(),
         artifact_path: artifact_path.to_string(),
@@ -392,6 +499,7 @@ async fn create_session(
         checksum_sha256: checksum_sha256.to_string(),
         chunk_size: Some(chunk_size),
         content_type: Some(content_type.to_string()),
+        metadata: metadata.clone(),
     };
 
     let resp = http
@@ -408,9 +516,27 @@ async fn create_session(
         return Err(super::helpers::raw_err("Create session failed", status, &text).into());
     }
 
-    resp.json::<CreateSessionResponse>()
+    // 200 says it's there already (`skip_if_present`). 201 is a new session.
+    let already_present = resp.status() == reqwest::StatusCode::OK;
+    let raw = resp
+        .bytes()
         .await
-        .map_err(|e| AkError::ServerError(format!("Invalid session response: {e}")).into())
+        .map_err(|e| AkError::NetworkError(format!("Failed to create upload session: {e}")))?
+        .to_vec();
+    let invalid =
+        |e: serde_json::Error| AkError::ServerError(format!("Invalid session response: {e}"));
+    if already_present {
+        let present: AlreadyPresentResponse = serde_json::from_slice(&raw).map_err(invalid)?;
+        return Ok(SessionStart::AlreadyPresent(UploadOutcome {
+            path: present.path,
+            size: present.size,
+            already_present: true,
+            raw,
+        }));
+    }
+    Ok(SessionStart::Created(
+        serde_json::from_slice(&raw).map_err(invalid)?,
+    ))
 }
 
 async fn upload_chunk(
@@ -455,8 +581,11 @@ async fn get_session_status(
         .await
         .map_err(|e| AkError::NetworkError(format!("Session status check failed: {e}")))?;
 
-    if resp.status() == reqwest::StatusCode::GONE {
-        // Session expired
+    if matches!(
+        resp.status(),
+        reqwest::StatusCode::GONE | reqwest::StatusCode::NOT_FOUND
+    ) {
+        // Expired or cancelled. A push must start again rather than fail on it.
         return Ok(None);
     }
 
@@ -479,7 +608,7 @@ async fn finalize_upload(
     base_url: &str,
     auth_header: &str,
     session_id: &str,
-) -> Result<FinalizeResponse> {
+) -> Result<Vec<u8>> {
     let resp = http
         .put(format!("{base_url}/api/v1/uploads/{session_id}/complete"))
         .header(AUTHORIZATION, auth_header)
@@ -493,19 +622,24 @@ async fn finalize_upload(
         return Err(super::helpers::raw_err("Finalize failed", status, &text).into());
     }
 
-    resp.json::<FinalizeResponse>()
+    let raw = resp
+        .bytes()
         .await
-        .map_err(|e| AkError::ServerError(format!("Invalid finalize response: {e}")).into())
+        .map_err(|e| AkError::NetworkError(format!("Finalize failed: {e}")))?;
+    Ok(raw.to_vec())
 }
 
 /// Try to resume an existing upload session.
 /// Returns Some((session_id, chunk_size, chunks_completed)) if resumable.
+#[allow(clippy::too_many_arguments)]
 async fn try_resume(
     http: &reqwest::Client,
     base_url: &str,
     auth_header: &str,
     file_path: &Path,
     current_sha256: &str,
+    repo: &str,
+    artifact_path: &str,
 ) -> Result<Option<(String, u64, u64)>> {
     let cached = match load_session_cache(file_path)? {
         Some(c) => c,
@@ -519,21 +653,27 @@ async fn try_resume(
         return Ok(None);
     }
 
+    // The same file going somewhere else is a new upload, not this one resumed.
+    if cached.repository_key != repo || cached.artifact_path != artifact_path {
+        remove_session_cache(file_path)?;
+        return Ok(None);
+    }
+
     // Check if the server session is still alive
     match get_session_status(http, base_url, auth_header, &cached.session_id).await? {
-        Some(status) if status.status != "completed" => Ok(Some((
+        Some(status) if !matches!(status.status.as_str(), "completed" | "cancelled") => Ok(Some((
             cached.session_id,
             cached.chunk_size,
             status.chunks_completed,
         ))),
         Some(_) => {
-            // Session already completed somehow
+            // Already finished, or cancelled: nothing to resume.
             remove_session_cache(file_path)?;
             Ok(None)
         }
         None => {
             // Session expired (410 Gone)
-            eprintln!("Previous upload session expired, starting new session");
+            eprintln!("Previous upload session is gone, starting new session");
             remove_session_cache(file_path)?;
             Ok(None)
         }
@@ -724,6 +864,7 @@ mod tests {
             checksum_sha256: "abc123".into(),
             chunk_size: Some(8388608),
             content_type: None,
+            metadata: SessionMetadata::default(),
         };
         let json = serde_json::to_string(&req).unwrap();
         assert!(json.contains("my-repo"));
@@ -742,6 +883,7 @@ mod tests {
             checksum_sha256: "hash".into(),
             chunk_size: None,
             content_type: Some("application/octet-stream".into()),
+            metadata: SessionMetadata::default(),
         };
         let json = serde_json::to_string(&req).unwrap();
         assert!(json.contains("content_type"));

@@ -428,13 +428,24 @@ fn repo_update_assigns_and_clears_a_project() {
     );
     assert_eq!(assigned["project_id"], project_id);
 
-    let cleared = json_stdout(
+    if common::server_older_than(1, 11, "clearing a project by sending null") {
+        // It would answer 200 and keep the project, so the command refuses.
         env.ak_cmd()
             .args(["repo", "update", &key, "--clear-project"])
             .assert()
-            .success(),
-    );
-    assert!(cleared["project_id"].is_null(), "{cleared}");
+            .failure()
+            .stderr(predicate::str::contains("needs a server on 1.11"));
+        let kept = json_stdout(env.ak_cmd().args(["repo", "show", &key]).assert().success());
+        assert_eq!(kept["project_id"], project_id);
+    } else {
+        let cleared = json_stdout(
+            env.ak_cmd()
+                .args(["repo", "update", &key, "--clear-project"])
+                .assert()
+                .success(),
+        );
+        assert!(cleared["project_id"].is_null(), "{cleared}");
+    }
 
     env.ak_cmd()
         .args(["repo", "delete", &key, "--yes", "--wait"])
@@ -463,6 +474,15 @@ fn repo_delete_wait_returns_once_the_repository_is_gone() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn repo_capabilities_reports_rpm_depth() {
+    if common::server_older_than(1, 11, "repository capabilities") {
+        let env = common::TestEnv::setup();
+        env.ak_cmd()
+            .args(["repo", "capabilities"])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("needs a server on 1.11"));
+        return;
+    }
     let env = common::TestEnv::setup();
     let caps = json_stdout(
         env.ak_cmd()
@@ -479,6 +499,15 @@ fn repo_capabilities_reports_rpm_depth() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn repo_allowlist_set_get_delete() {
+    if common::server_older_than(1, 11, "a conda allowlist") {
+        let env = common::TestEnv::setup();
+        env.ak_cmd()
+            .args(["repo", "allowlist", "get", "any"])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("needs a server on 1.11"));
+        return;
+    }
     let env = common::TestEnv::setup();
     let pid = std::process::id();
     let member = format!("e2e-al-m-{pid}");
@@ -577,37 +606,45 @@ fn repo_remote_settings_round_trip() {
         .success();
 
     // Upstream filter
-    let set = json_stdout(
-        env.ak_cmd()
-            .args([
-                "repo",
-                "upstream-filter",
-                "set",
-                &key,
-                "--include",
-                "^a/",
-                "--exclude",
-                r"x{1,2}\.tgz$",
-            ])
-            .assert()
-            .success(),
-    );
-    assert_eq!(set["active"], true);
-    assert_eq!(set["exclude_patterns"][0], r"x{1,2}\.tgz$");
-    let got = json_stdout(
+    if common::server_older_than(1, 11, "upstream filters") {
         env.ak_cmd()
             .args(["repo", "upstream-filter", "get", &key])
             .assert()
-            .success(),
-    );
-    assert_eq!(got["include_patterns"][0], "^a/");
-    let removed = json_stdout(
-        env.ak_cmd()
-            .args(["repo", "upstream-filter", "delete", &key, "--yes"])
-            .assert()
-            .success(),
-    );
-    assert_eq!(removed["active"], false);
+            .failure()
+            .stderr(predicate::str::contains("needs a server on 1.11"));
+    } else {
+        let set = json_stdout(
+            env.ak_cmd()
+                .args([
+                    "repo",
+                    "upstream-filter",
+                    "set",
+                    &key,
+                    "--include",
+                    "^a/",
+                    "--exclude",
+                    r"x{1,2}\.tgz$",
+                ])
+                .assert()
+                .success(),
+        );
+        assert_eq!(set["active"], true);
+        assert_eq!(set["exclude_patterns"][0], r"x{1,2}\.tgz$");
+        let got = json_stdout(
+            env.ak_cmd()
+                .args(["repo", "upstream-filter", "get", &key])
+                .assert()
+                .success(),
+        );
+        assert_eq!(got["include_patterns"][0], "^a/");
+        let removed = json_stdout(
+            env.ak_cmd()
+                .args(["repo", "upstream-filter", "delete", &key, "--yes"])
+                .assert()
+                .success(),
+        );
+        assert_eq!(removed["active"], false);
+    }
 
     // Egress proxy: the server masks credentials and the CLI shows what it masks.
     let set = json_stdout(
@@ -741,6 +778,52 @@ fn repo_storage_and_gc() {
 
     env.ak_cmd()
         .args(["repo", "delete", &key, "--yes", "--wait"])
+        .assert()
+        .success();
+}
+
+/// A server before 1.11 answers 200 to these and drops them, so the command has to
+/// refuse rather than report a change that never happened.
+#[test]
+#[ignore = "requires E2E backend"]
+fn repo_flags_a_server_would_drop_are_refused_there() {
+    if !common::server_older_than(1, 11, "--visibility") {
+        return;
+    }
+    let env = common::TestEnv::setup();
+    let key = format!("e2e-old-{}", std::process::id());
+    let refused = |args: &[&str]| {
+        env.ak_cmd()
+            .args(args)
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("needs a server on 1.11"));
+    };
+    refused(&[
+        "repo",
+        "create",
+        &key,
+        "--pkg-format",
+        "generic",
+        "--visibility",
+        "internal",
+    ]);
+    env.ak_cmd().args(["repo", "show", &key]).assert().failure();
+
+    env.ak_cmd()
+        .args(["repo", "create", &key, "--pkg-format", "generic"])
+        .assert()
+        .success();
+    refused(&["repo", "update", &key, "--visibility", "internal"]);
+    refused(&[
+        "repo",
+        "update",
+        &key,
+        "--upstream-url",
+        "https://u.example.com",
+    ]);
+    env.ak_cmd()
+        .args(["repo", "delete", &key, "--yes"])
         .assert()
         .success();
 }

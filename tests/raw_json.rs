@@ -158,6 +158,26 @@ async fn whoami() {
     .await;
 }
 
+/// A new subcommand with a flag can clash with `--version`, which `ak` adds to
+/// every subcommand. Clap only reports that when the subcommand runs.
+#[test]
+fn every_subcommand_definition_is_valid() {
+    for args in [
+        vec!["artifact", "pull", "--help"],
+        vec!["artifact", "info", "--help"],
+        vec!["artifact", "search", "--help"],
+        vec!["artifact", "push", "--help"],
+        vec!["repo", "create", "--help"],
+        vec!["repo", "update", "--help"],
+    ] {
+        Command::cargo_bin("ak")
+            .expect("ak binary")
+            .args(&args)
+            .assert()
+            .success();
+    }
+}
+
 #[tokio::test]
 async fn an_empty_list_still_prints_the_body() {
     let empty = json!({
@@ -667,4 +687,55 @@ async fn human_and_quiet_output_of_moved_mutations_is_unchanged() {
     )
     .await;
     assert_eq!(String::from_utf8_lossy(&output.stdout), format!("{UUID}\n"));
+}
+
+#[test]
+fn artifact_detail_commands() {
+    let analysis = json!({
+        "format": "pypi", "completeness": {"status": "complete"}, "vendored_components": [],
+        "install_scripts": [], "from_a_newer_server": 1
+    });
+    let versions = json!({
+        "repository_key": "r", "path": "a", "items": [{
+            "revision": 1, "size_bytes": 1, "checksum_sha256": "x", "content_type": "t",
+            "created_at": "2026-01-15T12:00:00Z"
+        }], "from_a_newer_server": 1
+    });
+    let missing = json!({"checked": 1, "missing": [], "from_a_newer_server": 1});
+    let session = json!({
+        "session_id": UUID, "status": "pending", "total_size": 1, "bytes_received": 0,
+        "chunks_completed": 0, "chunks_total": 1, "repository_key": "r", "artifact_path": "a",
+        "created_at": "t", "expires_at": "t", "from_a_newer_server": 1
+    });
+    let cases: Vec<(String, &str, Value, Vec<&str>)> = vec![
+        (
+            format!("/api/v1/artifacts/{UUID}/package-analysis"),
+            "GET",
+            analysis,
+            vec!["artifact", "package-analysis", UUID],
+        ),
+        (
+            "/api/v1/repositories/r/versions/a".to_string(),
+            "GET",
+            versions,
+            vec!["artifact", "versions", "r", "a"],
+        ),
+        (
+            "/api/v1/repositories/r/artifacts-missing".to_string(),
+            "POST",
+            missing,
+            vec!["artifact", "missing", "r", "--item", "a=1"],
+        ),
+        (
+            format!("/api/v1/uploads/{UUID}"),
+            "GET",
+            session,
+            vec!["artifact", "upload-session", "status", UUID],
+        ),
+    ];
+    for (route, verb, body, args) in cases {
+        tokio::runtime::Runtime::new()
+            .expect("runtime")
+            .block_on(assert_prints_the_body(&route, verb, body, &args));
+    }
 }

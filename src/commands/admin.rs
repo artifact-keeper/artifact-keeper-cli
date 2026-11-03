@@ -3,6 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::{client_for, resolve_base_url_and_auth};
+use super::helpers::since_1_11;
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
 };
@@ -26,29 +27,6 @@ pub struct PageArgs {
     /// Results per page
     #[arg(long, default_value = "20")]
     per_page: i32,
-}
-
-/// The error for a failed call to a route new in 1.11. A server without the route
-/// answers 404 "Repository not found", which names the wrong problem, so a 404
-/// from an older server says what's really wrong. Any other failure, and any 404
-/// from a server that does have the route, is the server's own.
-async fn since_1_11(
-    error: artifact_keeper_sdk::Error,
-    action: &str,
-    command: &str,
-    global: &GlobalArgs,
-) -> crate::error::AkError {
-    if error.status() == Some(reqwest::StatusCode::NOT_FOUND)
-        && let Ok(config) = crate::config::AppConfig::load()
-        && let Ok((_, instance)) = config.resolve_instance(global.instance.as_deref())
-        && let Ok(version) = super::doctor::fetch_server_version(instance).await
-        && super::doctor::major_minor(&version).is_some_and(|found| found < (1, 11))
-    {
-        return crate::error::AkError::ServerError(format!(
-            "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
-        ));
-    }
-    sdk_err(action, error)
 }
 
 /// Pages needed for `total` results, for a response that doesn't say.
