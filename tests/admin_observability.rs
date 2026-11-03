@@ -503,3 +503,99 @@ async fn quality_checks_for_an_artifact_filters_the_body_by_repository() {
     let printed: Value = serde_json::from_slice(&output.stdout).expect("JSON");
     assert_eq!(printed, json!([check_of(UUID2)]));
 }
+
+/// Answer as a server on `version` does when it has no such route.
+async fn server_without_the_route(version: &str) -> MockServer {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/health"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"version": version})))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .respond_with(ResponseTemplate::new(404).set_body_string("Repository not found"))
+        .mount(&server)
+        .await;
+    server
+}
+
+fn one_line(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr)
+        .replace('│', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+#[tokio::test]
+async fn a_route_new_in_1_11_says_so_on_an_older_server() {
+    let server = server_without_the_route("1.10.2").await;
+    for args in [
+        vec!["admin", "holds", "summary"],
+        vec!["admin", "holds", "quarantine"],
+        vec!["admin", "npm-feed", "status"],
+    ] {
+        let output = ak(&server, &args).await;
+        assert!(!output.status.success());
+        let stderr = one_line(&output);
+        assert!(
+            stderr.contains("needs a server on 1.11 or newer"),
+            "{stderr}"
+        );
+        assert!(stderr.contains("1.10.2"), "{stderr}");
+        assert!(!stderr.contains("Repository not found"), "{stderr}");
+    }
+}
+
+#[tokio::test]
+async fn a_404_from_a_current_server_stays_the_servers_own() {
+    let server = server_without_the_route("1.11.10").await;
+    let output = ak(&server, &["admin", "holds", "summary"]).await;
+    assert!(!output.status.success());
+    let stderr = one_line(&output);
+    assert!(stderr.contains("Repository not found"), "{stderr}");
+    assert!(!stderr.contains("1.11 or newer"), "{stderr}");
+}
+
+fn a_download(source: Option<&str>) -> Value {
+    let mut record = json!({"downloaded_at": "2026-01-15T12:00:00Z", "path": "a"});
+    if let Some(source) = source {
+        record["source"] = json!(source);
+    }
+    json!({"downloads": [record], "total": 1, "page": 1, "per_page": 20})
+}
+
+async fn downloads_answering(body: Value, args: &[&str]) -> Output {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/admin/downloads"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .mount(&server)
+        .await;
+    let mut all = vec!["--format", "json", "admin", "downloads", "list"];
+    all.extend_from_slice(args);
+    ak(&server, &all).await
+}
+
+#[tokio::test]
+async fn an_unfiltered_answer_to_a_filter_is_an_error_not_a_list() {
+    for flags in [["--source", "proxy"], ["--repo", UUID]] {
+        let output = downloads_answering(a_download(None), &flags).await;
+        assert!(!output.status.success(), "{flags:?}");
+        assert!(output.stdout.is_empty(), "{flags:?}");
+        let stderr = one_line(&output);
+        assert!(stderr.contains("1.11 or newer"), "{stderr}");
+    }
+}
+
+#[tokio::test]
+async fn downloads_without_those_filters_work_on_an_older_server() {
+    let output = downloads_answering(a_download(None), &["--ip", "10.0.0.1"]).await;
+    assert!(output.status.success(), "{}", one_line(&output));
+}
+
+#[tokio::test]
+async fn a_filtered_answer_from_a_current_server_is_shown() {
+    let output = downloads_answering(a_download(Some("hosted")), &["--source", "hosted"]).await;
+    assert!(output.status.success(), "{}", one_line(&output));
+}
