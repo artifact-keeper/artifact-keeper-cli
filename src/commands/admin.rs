@@ -2154,7 +2154,7 @@ async fn set_plugin_config(
     let mut config = serde_json::Map::new();
 
     if let Some(path) = config_file {
-        let contents = std::fs::read_to_string(path).map_err(|e| {
+        let contents = tokio::fs::read_to_string(path).await.map_err(|e| {
             crate::error::AkError::ConfigError(format!("Failed to read config file {path}: {e}"))
         })?;
         let parsed: serde_json::Value = serde_json::from_str(&contents).map_err(|e| {
@@ -2278,7 +2278,7 @@ async fn test_format_handler(
     // Prefer --sample (a file whose bytes are base64-encoded); fall back to
     // --content (raw string). One of the two is required.
     let (body_content, is_base64, default_path) = if let Some(sample_path) = sample {
-        let bytes = std::fs::read(sample_path).map_err(|e| {
+        let bytes = tokio::fs::read(sample_path).await.map_err(|e| {
             crate::error::AkError::ConfigError(format!(
                 "Failed to read sample file '{sample_path}': {e}"
             ))
@@ -2461,7 +2461,7 @@ async fn install_plugin_zip(path: &str, global: &GlobalArgs) -> Result<()> {
     // generated SDK does not model (Progenitor skips multipart operations), so
     // this is wired via a raw multipart HTTP request — the same raw-HTTP
     // workaround used by chunked upload and migration streaming.
-    let bytes = std::fs::read(path).map_err(|e| {
+    let bytes = tokio::fs::read(path).await.map_err(|e| {
         crate::error::AkError::ConfigError(format!("Failed to read ZIP file {path}: {e}"))
     })?;
 
