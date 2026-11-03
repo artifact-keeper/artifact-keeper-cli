@@ -149,7 +149,7 @@ fn create_with_all_repos_applies_to_all_and_matches() {
         &env,
         &format!("e2e-global-{suffix}"),
         &config,
-        &["--all-repos"],
+        &["--all-repos", "--yes"],
     );
     let id = policy["id"].as_str().unwrap().to_string();
     guard.policies.push(id.clone());
@@ -262,7 +262,7 @@ fn create_disabled_stays_disabled_or_is_refused() {
     // It can be previewed, but not run.
     assert_eq!(matched(&env, &id), 1);
     env.ak_cmd()
-        .args(["lifecycle", "execute", &id])
+        .args(["lifecycle", "execute", &id, "--yes"])
         .assert()
         .failure();
     assert_eq!(matched(&env, &id), 1);
@@ -352,11 +352,14 @@ fn attach_and_detach_change_which_repositories_a_policy_applies_to() {
     assert!(ids(&cleared).is_empty(), "{cleared}");
     assert_eq!(matched(&env, &id), 0);
 
-    let global =
-        json_output(
-            env.ak_cmd()
-                .args(["lifecycle", "update", &id, "--all-repos", "true"]),
-        );
+    let global = json_output(env.ak_cmd().args([
+        "lifecycle",
+        "update",
+        &id,
+        "--all-repos",
+        "true",
+        "--yes",
+    ]));
     assert_eq!(global["applies_to_all"], true);
     // A policy on every repository can't name any.
     env.ak_cmd()
