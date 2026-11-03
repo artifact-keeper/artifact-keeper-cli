@@ -193,3 +193,67 @@ pub fn pkginfo_package(path: &Path, name: &str, version: &str, arch: &str) -> Pa
         ],
     )
 }
+
+/// A plain `.tar` of (path, content), as a Hex package is.
+#[allow(dead_code)]
+pub fn tar(path: &Path, entries: &[(&str, &[u8])]) -> PathBuf {
+    let file = std::fs::File::create(path).expect("create archive");
+    let mut tar = tar::Builder::new(file);
+    for (name, content) in entries {
+        let mut header = tar::Header::new_gnu();
+        header.set_size(content.len() as u64);
+        header.set_mode(0o644);
+        header.set_cksum();
+        tar.append_data(&mut header, name, *content)
+            .expect("append");
+    }
+    tar.finish().expect("tar");
+    path.to_path_buf()
+}
+
+/// A `.gem`: a tar holding a gzipped gemspec and a data tarball.
+#[allow(dead_code)]
+pub fn gem(dir: &Path, name: &str, version: &str) -> PathBuf {
+    let spec = format!(
+        "--- !ruby/object:Gem::Specification\nname: {name}\nversion: !ruby/object:Gem::Version\n  \
+         version: {version}\nplatform: ruby\nauthors:\n- t\nsummary: demo\nlicenses:\n- MIT\n\
+         dependencies: []\nrequire_paths:\n- lib\n"
+    );
+    let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
+    gz.write_all(spec.as_bytes()).expect("gzip");
+    let metadata = gz.finish().expect("gzip");
+    let data = dir.join("data.tar.gz");
+    tar_gz(&data, &[("lib/x.rb", b"\n")]);
+    let data = std::fs::read(data).expect("data");
+    tar(
+        &dir.join(format!("{name}-{version}.gem")),
+        &[("metadata.gz", &metadata), ("data.tar.gz", &data)],
+    )
+}
+
+/// A Hex package: a tar of a version, a checksum, the metadata and the contents.
+#[allow(dead_code)]
+pub fn hex_package(dir: &Path, name: &str, version: &str) -> PathBuf {
+    use sha2::{Digest, Sha256};
+    let metadata = format!(
+        "{{<<\"name\">>,<<\"{name}\">>}}.\n{{<<\"version\">>,<<\"{version}\">>}}.\n\
+         {{<<\"app\">>,<<\"{name}\">>}}.\n"
+    );
+    let contents_path = dir.join("contents.tar.gz");
+    tar_gz(&contents_path, &[("lib/a.ex", b"\n")]);
+    let contents = std::fs::read(contents_path).expect("contents");
+    let mut hash = Sha256::new();
+    hash.update(b"3");
+    hash.update(metadata.as_bytes());
+    hash.update(&contents);
+    let checksum = hex::encode_upper(hash.finalize());
+    tar(
+        &dir.join(format!("{name}-{version}.tar")),
+        &[
+            ("VERSION", b"3"),
+            ("CHECKSUM", checksum.as_bytes()),
+            ("metadata.config", metadata.as_bytes()),
+            ("contents.tar.gz", &contents),
+        ],
+    )
+}

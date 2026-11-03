@@ -708,14 +708,14 @@ fn pkg_hints(home: &std::path::Path, line: &Line) -> Vec<(&'static str, String)>
     use pkg_fixtures as fx;
     let path = line.path.as_str();
     let mut args: Vec<(&'static str, String)> = Vec::new();
-    let mut file = |p: std::path::PathBuf| args.push(("file", p.to_string_lossy().to_string()));
+    let as_file = |p: std::path::PathBuf| ("file", p.to_string_lossy().to_string());
     match line.command.as_str() {
-        "pkg cargo publish" => file(fx::crate_file(home, "demo", "1.0.0", "")),
-        "pkg pypi publish" => file(fx::sdist(home, "demo", "1.0.0")),
+        "pkg cargo publish" => args.push(as_file(fx::crate_file(home, "demo", "1.0.0", ""))),
+        "pkg pypi publish" => args.push(as_file(fx::sdist(home, "demo", "1.0.0"))),
         "pkg npm publish" if path.contains("@{scope}") => {
-            file(fx::npm_tarball(home, "@a/demo", "1.0.0"));
+            args.push(as_file(fx::npm_tarball(home, "@a/demo", "1.0.0")));
         }
-        "pkg npm publish" => file(fx::npm_tarball(home, "demo", "1.0.0")),
+        "pkg npm publish" => args.push(as_file(fx::npm_tarball(home, "demo", "1.0.0"))),
         "pkg npm unpublish" => {
             let scoped = path.contains("@{scope}");
             args.push((
@@ -732,7 +732,7 @@ fn pkg_hints(home: &std::path::Path, line: &Line) -> Vec<(&'static str, String)>
             }
         }
         "pkg debian publish" => {
-            file(fx_plain(home, "demo_1.0_all.deb"));
+            args.push(as_file(fx_plain(home, "demo_1.0_all.deb")));
             if path.ends_with("/upload") {
                 args.push(("endpoint", "upload".to_string()));
             }
@@ -763,6 +763,25 @@ fn pkg_hints(home: &std::path::Path, line: &Line) -> Vec<(&'static str, String)>
         {
             args.push(("chunked", String::new()));
         }
+        "pkg composer publish" if line.method == "PUT" => {
+            args.push(("put", String::new()));
+        }
+        "pkg maven publish" => {
+            args.push(("group", "com.acme".to_string()));
+            args.push(("artifact", "demo".to_string()));
+            args.push(("artifact_version", "1.0".to_string()));
+            args.push(as_file(fx_plain(home, "demo.jar")));
+        }
+        "pkg ivy publish" => {
+            args.push(("org", "com.acme".to_string()));
+            args.push(("module", "demo".to_string()));
+            args.push(("revision", "1.0".to_string()));
+            args.push(as_file(fx_plain(home, "demo.jar")));
+        }
+        "pkg go publish" => args.push(as_file(pkg_fixtures::zip(
+            &home.join("m.zip"),
+            &[("example.com/d@v1.0.0/go.mod", b"module example.com/d\n")],
+        ))),
         "pkg npm audit" => {
             let kind = if path.ends_with("quick") {
                 "quick"

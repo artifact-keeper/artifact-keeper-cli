@@ -7,16 +7,26 @@
 
 mod alpine;
 mod archive;
+mod bazel;
 mod cargo;
+mod composer;
 mod conda;
+mod cran;
 mod debian;
+mod gems;
+mod go;
 mod helm;
+mod hex;
 mod incus;
+mod ivy;
+mod maven;
 mod npm;
 mod nuget;
 mod pacman;
+mod pub_dart;
 mod pypi;
 mod rpm;
+mod terraform;
 mod wire;
 
 use clap::{Args, Subcommand};
@@ -40,6 +50,36 @@ pub struct PkgArgs {
 
 #[derive(Subcommand)]
 enum PkgCommand {
+    /// Bazel modules
+    #[command(subcommand)]
+    Bazel(bazel::BazelCommand),
+    /// Composer packages
+    #[command(subcommand)]
+    Composer(composer::ComposerCommand),
+    /// R packages
+    #[command(subcommand)]
+    Cran(cran::CranCommand),
+    /// RubyGems
+    #[command(subcommand)]
+    Gems(gems::GemsCommand),
+    /// Go modules
+    #[command(subcommand)]
+    Go(go::GoCommand),
+    /// Hex packages
+    #[command(subcommand)]
+    Hex(hex::HexCommand),
+    /// Ivy and sbt artifacts
+    #[command(subcommand)]
+    Ivy(ivy::IvyCommand),
+    /// Maven artifacts
+    #[command(subcommand)]
+    Maven(maven::MavenCommand),
+    /// Dart and Flutter packages
+    #[command(subcommand)]
+    Pub(pub_dart::PubCommand),
+    /// Terraform modules and providers
+    #[command(subcommand)]
+    Terraform(terraform::TerraformCommand),
     /// Alpine packages
     #[command(subcommand)]
     Alpine(alpine::AlpineCommand),
@@ -80,6 +120,16 @@ enum PkgCommand {
 
 pub async fn execute(args: PkgArgs, global: &GlobalArgs) -> Result<()> {
     match args.format {
+        PkgCommand::Bazel(c) => bazel::execute(c, global).await,
+        PkgCommand::Composer(c) => composer::execute(c, global).await,
+        PkgCommand::Cran(c) => cran::execute(c, global).await,
+        PkgCommand::Gems(c) => gems::execute(c, global).await,
+        PkgCommand::Go(c) => go::execute(c, global).await,
+        PkgCommand::Hex(c) => hex::execute(c, global).await,
+        PkgCommand::Ivy(c) => ivy::execute(c, global).await,
+        PkgCommand::Maven(c) => maven::execute(c, global).await,
+        PkgCommand::Pub(c) => pub_dart::execute(c, global).await,
+        PkgCommand::Terraform(c) => terraform::execute(c, global).await,
         PkgCommand::Alpine(c) => alpine::execute(c, global).await,
         PkgCommand::Cargo(c) => cargo::execute(c, global).await,
         PkgCommand::Conda(c) => conda::execute(c, global).await,
