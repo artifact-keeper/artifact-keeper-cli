@@ -19,6 +19,14 @@ use anyhow::{Context, Result, bail, ensure};
 /// fails on any other skip, so a new one can't silently drop out of the SDK.
 const KNOWN_SKIPS: &[&str] = &["POST /api/v1/plugins", "POST /api/v1/plugins/install/zip"];
 
+/// Response fields the spec requires and doesn't allow to be null, but the server
+/// does send as null. They are generated as `Option`.
+const NULL_DESPITE_THE_SPEC: &[(&str, &[&str])] = &[
+    // A plugin installed with no config schema has null here. It would stop
+    // `ak admin plugins list` reading the whole list.
+    ("PluginResponse", &["config_schema"]),
+];
+
 /// Response fields the pinned API requires but the previous minor doesn't send.
 ///
 /// `ak` supports the server minor it's built for and the one before it. The
@@ -311,12 +319,24 @@ fn remove_unsupported_endpoints(spec: &mut serde_json::Value) -> Vec<String> {
     skipped
 }
 
-/// Drop `NOT_REQUIRED_ON_PREVIOUS_MINOR` fields from their schemas' `required`.
+/// Drop `NOT_REQUIRED_ON_PREVIOUS_MINOR` and `NULL_DESPITE_THE_SPEC` fields from
+/// their schemas' `required`, and allow null for the second.
 fn relax_previous_minor_fields(spec: &mut serde_json::Value) {
-    for (schema, fields) in NOT_REQUIRED_ON_PREVIOUS_MINOR {
+    for (schema, fields) in NOT_REQUIRED_ON_PREVIOUS_MINOR
+        .iter()
+        .chain(NULL_DESPITE_THE_SPEC)
+    {
         let pointer = format!("/components/schemas/{schema}/required");
         if let Some(required) = spec.pointer_mut(&pointer).and_then(|r| r.as_array_mut()) {
             required.retain(|field| !field.as_str().is_some_and(|f| fields.contains(&f)));
+        }
+    }
+    for (schema, fields) in NULL_DESPITE_THE_SPEC {
+        for field in *fields {
+            let pointer = format!("/components/schemas/{schema}/properties/{field}");
+            if let Some(property) = spec.pointer_mut(&pointer).and_then(|p| p.as_object_mut()) {
+                property.insert("nullable".to_string(), serde_json::Value::Bool(true));
+            }
         }
     }
 }

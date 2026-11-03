@@ -3,7 +3,6 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::{client_for, resolve_base_url_and_auth};
-use super::helpers::since_1_11;
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
 };
@@ -12,10 +11,15 @@ use crate::output::{self, OutputFormat, format_bytes};
 
 mod audit;
 mod blast_radius;
+mod diag;
 mod downloads;
 mod holds;
 mod npm_feed;
+mod plugin_install;
 mod proxy_scan_verdict;
+mod runtime_settings;
+mod storage_ops;
+mod trash;
 
 /// Paging for a list command. Sent to the server as given.
 #[derive(clap::Args)]
@@ -170,6 +174,36 @@ pub enum AdminCommand {
     Holds {
         #[command(subcommand)]
         command: holds::HoldsCommand,
+    },
+
+    /// Check stored objects against their recorded checksums. Needs a 1.11 server
+    StorageScrub {
+        #[command(subcommand)]
+        command: storage_ops::StorageScrubCommand,
+    },
+
+    /// Register objects in a repository's storage that it has no record of. Maven
+    /// and Gradle repositories only. Needs a 1.11 server
+    ReindexStorage(storage_ops::ReindexStorageArgs),
+
+    /// List and restore soft-deleted artifacts. Needs a 1.11 server
+    Trash {
+        #[command(subcommand)]
+        command: trash::TrashCommand,
+    },
+
+    /// Storage operator commands
+    #[command(hide = true)]
+    Storage {
+        #[command(subcommand)]
+        command: storage_ops::StorageCommand,
+    },
+
+    /// Operator debugging commands
+    #[command(hide = true)]
+    Diag {
+        #[command(subcommand)]
+        command: diag::DiagCommand,
     },
 }
 
@@ -392,12 +426,13 @@ pub enum UserTokenCommand {
 pub enum PluginsCommand {
     /// List installed plugins
     List,
-    /// Install a plugin from a git repository
+    /// Install a plugin from a manifest file, a ZIP package or a git repository
     Install {
-        /// Git repository URL
+        /// A local JSON manifest or ZIP file, or a git repository URL
+        #[arg(value_name = "FILE_OR_URL")]
         url: String,
 
-        /// Git ref (tag, branch, or commit)
+        /// Git ref (tag, branch, or commit). For a git URL only
         #[arg(long)]
         r#ref: Option<String>,
     },
@@ -539,6 +574,21 @@ pub enum SettingsCommand {
         /// Settings JSON
         #[arg(long)]
         json: String,
+    },
+    /// Show or change runtime settings, such as guest access. Needs a 1.11 server
+    System {
+        #[command(subcommand)]
+        command: runtime_settings::SystemCommand,
+    },
+    /// Show or change the API token expiration policy
+    TokenPolicy {
+        #[command(subcommand)]
+        command: runtime_settings::TokenPolicyCommand,
+    },
+    /// Show or change the two-factor authentication policy
+    TotpPolicy {
+        #[command(subcommand)]
+        command: runtime_settings::TotpPolicyCommand,
     },
 }
 
@@ -946,7 +996,7 @@ impl AdminCommand {
             Self::Plugins { command } => match command {
                 PluginsCommand::List => list_plugins(global).await,
                 PluginsCommand::Install { url, r#ref } => {
-                    install_plugin(&url, r#ref.as_deref(), global).await
+                    plugin_install::install(&url, r#ref.as_deref(), global).await
                 }
                 PluginsCommand::Remove { id, yes } => remove_plugin(&id, yes, global).await,
                 PluginsCommand::Show { id } => show_plugin(&id, global).await,
@@ -997,6 +1047,9 @@ impl AdminCommand {
             Self::Settings { command } => match command {
                 SettingsCommand::Show => show_settings(global).await,
                 SettingsCommand::Update { json } => update_settings(&json, global).await,
+                SettingsCommand::System { command } => command.execute(global).await,
+                SettingsCommand::TokenPolicy { command } => command.execute(global).await,
+                SettingsCommand::TotpPolicy { command } => command.execute(global).await,
             },
             Self::Telemetry { command } => match command {
                 TelemetryCommand::Show => show_telemetry(global).await,
@@ -1143,6 +1196,11 @@ impl AdminCommand {
             Self::ProxyScanVerdict { command } => command.execute(global).await,
             Self::NpmFeed { command } => command.execute(global).await,
             Self::Holds { command } => command.execute(global).await,
+            Self::StorageScrub { command } => command.execute(global).await,
+            Self::ReindexStorage(args) => storage_ops::reindex_storage(args, global).await,
+            Self::Trash { command } => command.execute(global).await,
+            Self::Storage { command } => command.execute(global).await,
+            Self::Diag { command } => command.execute(global).await,
             Self::Rescan { limit } => rescan_for_inventory(limit, global).await,
             Self::SmtpTest { to } => send_test_email(&to, global).await,
             Self::Instance { command } => match command {

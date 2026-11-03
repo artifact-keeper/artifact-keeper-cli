@@ -23049,7 +23049,6 @@ pub mod types {
     #[doc = "{"]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
-    #[doc = "    \"config_schema\","]
     #[doc = "    \"display_name\","]
     #[doc = "    \"id\","]
     #[doc = "    \"installed_at\","]
@@ -23066,7 +23065,10 @@ pub mod types {
     #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"config_schema\": {"]
-    #[doc = "      \"type\": \"object\""]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"object\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"description\": {"]
     #[doc = "      \"type\": ["]
@@ -23118,7 +23120,9 @@ pub mod types {
     pub struct PluginResponse {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub author: ::std::option::Option<::std::string::String>,
-        pub config_schema: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub config_schema:
+            ::std::option::Option<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub description: ::std::option::Option<::std::string::String>,
         pub display_name: ::std::string::String,
@@ -77610,7 +77614,9 @@ pub mod types {
                 ::std::string::String,
             >,
             config_schema: ::std::result::Result<
-                ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                ::std::option::Option<
+                    ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                >,
                 ::std::string::String,
             >,
             description: ::std::result::Result<
@@ -77640,7 +77646,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     author: Ok(Default::default()),
-                    config_schema: Err("no value supplied for config_schema".to_string()),
+                    config_schema: Ok(Default::default()),
                     description: Ok(Default::default()),
                     display_name: Err("no value supplied for display_name".to_string()),
                     enabled_at: Ok(Default::default()),
@@ -77668,7 +77674,9 @@ pub mod types {
             pub fn config_schema<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<
-                        ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                        ::std::option::Option<
+                            ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                        >,
                     >,
                 T::Error: ::std::fmt::Display,
             {

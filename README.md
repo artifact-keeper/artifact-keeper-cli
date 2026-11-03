@@ -179,7 +179,7 @@ Federation & Integration
   ak analytics     Usage analytics and storage insights
 
 Administration
-  ak admin         Backup, cleanup, metrics, users, plugins, audit log, downloads, blast radius, holds
+  ak admin         Backup, cleanup, metrics, users, plugins, settings, audit log, downloads, trash, storage checks
   ak project       Projects: grouped repositories, members and a storage quota
   ak banner        System-wide maintenance and downtime banners
   ak bundle        Offline bundles: format, manifest checks, export and import jobs

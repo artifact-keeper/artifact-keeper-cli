@@ -7,7 +7,7 @@ use miette::Result;
 use super::PageArgs;
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for;
-use crate::commands::helpers::{new_table, print_page_info};
+use crate::commands::helpers::{new_table, or_since_1_11, print_page_info};
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -47,15 +47,9 @@ impl HoldsCommand {
                 }
                 let spinner = output::spinner("Fetching quarantine holds...");
                 let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-                let resp = match resp {
-                    Ok(resp) => resp.into_inner(),
-                    Err(e) => {
-                        let action = "list quarantine holds";
-                        return Err(super::since_1_11(e, action, "admin holds", global)
-                            .await
-                            .into());
-                    }
-                };
+                let resp = or_since_1_11(resp, "list quarantine holds", "admin holds", global)
+                    .await?
+                    .into_inner();
                 spinner.finish_and_clear();
 
                 if resp.items.is_empty() && !output::is_machine_format(&global.format) {
@@ -126,15 +120,9 @@ impl HoldsCommand {
                 let spinner = output::spinner("Fetching holds summary...");
                 let (resp, raw) =
                     artifact_keeper_sdk::raw::capture(client.holds_summary().send()).await;
-                let summary = match resp {
-                    Ok(resp) => resp.into_inner(),
-                    Err(e) => {
-                        let action = "get holds summary";
-                        return Err(super::since_1_11(e, action, "admin holds", global)
-                            .await
-                            .into());
-                    }
-                };
+                let summary = or_since_1_11(resp, "get holds summary", "admin holds", global)
+                    .await?
+                    .into_inner();
                 spinner.finish_and_clear();
                 if matches!(global.format, OutputFormat::Quiet) {
                     println!(

@@ -69,6 +69,15 @@ pub fn build_client(
     instance: &InstanceConfig,
     cred: Option<&StoredCredential>,
 ) -> Result<artifact_keeper_sdk::Client> {
+    build_client_with_timeout(instance_name, instance, cred, Duration::from_secs(30))
+}
+
+fn build_client_with_timeout(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    cred: Option<&StoredCredential>,
+    timeout: Duration,
+) -> Result<artifact_keeper_sdk::Client> {
     let owned_cred;
     let cred = match cred {
         Some(c) => c,
@@ -94,7 +103,7 @@ pub fn build_client(
         .default_headers(headers)
         .redirect(redirect_policy())
         .connect_timeout(Duration::from_secs(15))
-        .timeout(Duration::from_secs(30));
+        .timeout(timeout);
     let http_client = transport::apply_custom_ca(builder)?
         .build()
         .into_diagnostic()?;
@@ -165,6 +174,16 @@ pub fn client_for(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
     let config = AppConfig::load()?;
     let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
     build_client(name, instance, None)
+}
+
+/// [`client_for`] for a server operation that can run for minutes. The server
+/// keeps working after a client gives up, so timing out at the usual 30 seconds
+/// would report a failure for something that's still happening. This outlasts the
+/// server's own 120-second limit on admin requests.
+pub fn client_for_slow(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
+    let config = AppConfig::load()?;
+    let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    build_client_with_timeout(name, instance, None, Duration::from_secs(150))
 }
 
 /// Resolve instance and return the base URL and Bearer auth header value.

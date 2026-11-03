@@ -6,6 +6,7 @@ use miette::Result;
 
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for;
+use crate::commands::helpers::or_since_1_11;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -21,15 +22,9 @@ impl NpmFeedCommand {
         let spinner = output::spinner("Fetching npm feed status...");
         let (resp, raw) =
             artifact_keeper_sdk::raw::capture(client.get_npm_upstream_feed_status().send()).await;
-        let status = match resp {
-            Ok(resp) => resp.into_inner(),
-            Err(e) => {
-                let action = "get npm feed status";
-                return Err(super::since_1_11(e, action, "admin npm-feed", global)
-                    .await
-                    .into());
-            }
-        };
+        let status = or_since_1_11(resp, "get npm feed status", "admin npm-feed", global)
+            .await?
+            .into_inner();
         spinner.finish_and_clear();
 
         if matches!(global.format, OutputFormat::Quiet) {

@@ -48,6 +48,10 @@ These can change what you see, or break a script, coming from 1.2:
 - `ak bundle` covers offline bundles: `format`, `validate-manifest`, `jobs list|show|items`, `export` and `import`. `validate-manifest` exits 1 for an invalid manifest. The 1.11.10 server answers 501 to `export` and `import`, and the command shows that message. Needs a 1.11 server, and on 1.10 says so.
 - `ak environment` stores lockfiles and searches them: `ingest`, `list`, `show`, `delete`, `advisories`, `lookup <purl>` and `advisory-transitions`. Commands take an environment's name or its ID. Needs a 1.11 server, and on 1.10 says so.
 - `ak image-build` builds container images on the server and inspects pushed ones: `list`, `show`, `log`, `create`, `render`, `settings`, `base-info` and `inspect`. A spec comes from flags (`--base-image`, `--apt`, `--pip`, `--conda`, `--env`, `--label`, `--user` and more), from `--spec` as JSON, or both. `render` checks a spec and prints the Containerfile without building. `create` needs a server with a builder configured.
+- `ak bundle` covers offline bundles: `format`, `validate-manifest`, `jobs list|show|items`, `export` and `import`. `validate-manifest` exits 1 for an invalid manifest. The 1.11.10 server answers 501 to `export` and `import`, and the command shows that message. Needs a 1.11 server.
+- `ak environment` stores lockfiles and searches them: `ingest`, `list`, `show`, `delete`, `advisories`, `lookup <purl>` and `advisory-transitions`. Commands take an environment's name or its ID. Needs a 1.11 server.
+- `ak image-build` builds container images on the server and inspects pushed ones: `list`, `show`, `log`, `create`, `render`, `settings`, `base-info` and `inspect`. A spec comes from flags (`--base-image`, `--apt`, `--pip`, `--conda`, `--env`, `--label`, `--user` and more), from `--spec` as JSON, or both. `render` checks a spec and prints the Containerfile without building. `create` needs a server with a builder configured. Needs a 1.11 server.
+- Admin settings and storage commands: `ak admin settings system|token-policy|totp-policy`, `ak admin storage-scrub run|findings`, `ak admin reindex-storage`, `ak admin trash list|restore` and `ak packages backfill`. `ak admin plugins install` also takes a local JSON manifest or ZIP file as well as a git URL. Operators also have `ak admin storage ledger-backfill` and `ak admin diag memory|heap-profile`, which aren't in the help. The `diag` routes exist only on a server built with its `profiling` feature. `admin settings system`, `storage-scrub`, `reindex-storage` and `trash` need a 1.11 server, and on 1.10 they say so.
 
 ### Changed
 
@@ -68,6 +72,7 @@ These can change what you see, or break a script, coming from 1.2:
 
 ### Fixed
 
+- `ak admin plugins list` and `show` no longer fail on a server with a plugin that has no config schema. The server sends null there although the API spec doesn't allow it.
 - Virtual repositories show the size of their members in `ak repo list`, `ak repo show` and the TUI, rather than 0 (#181).
 - The `ak lifecycle create` help names the right config key for `size_quota_bytes`: `quota_bytes`.
 - `ak admin plugins install-local` explains that the server doesn't implement it and points to `install-zip`.
