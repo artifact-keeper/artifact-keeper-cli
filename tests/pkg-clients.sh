@@ -35,6 +35,14 @@ export ADMIN_PASSWORD
 
 ak() { "$AK_BIN" "$@"; }
 
+# Whether the backend has what's new in 1.11, for the checks of what isn't on 1.10.
+is_1_11() {
+  curl -s "$BASE/health" | python3 -I -c '
+import json, sys
+major, minor = json.load(sys.stdin)["version"].split(".")[:2]
+sys.exit(0 if (int(major), int(minor)) >= (1, 11) else 1)'
+}
+
 # box <image> <dir> <script>: run a shell script in a container, on the host's network,
 # with <dir> at /w and the credentials in its environment.
 box() {
@@ -272,6 +280,7 @@ A
 }
 
 check_pacman() {
+  is_1_11 || { echo "needs 1.11"; return 0; }
   local d; d="$(fresh pacman)"
   REPO="$(new_repo pacman pacman)" || return 1
   box docker.io/library/archlinux:base-devel "$d" '
@@ -318,21 +327,32 @@ P' || return 1
   local api_token
   api_token="$(ak --format json auth token create --description "conda-$RUN_ID" --scope write:artifacts --expires-in 1 |
     python3 -I -c 'import json,sys;print(json.load(sys.stdin)["token"])')" || return 1
-  AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken-1.0.$RUN_ID-0.tar.bz2" --subdir noarch --token-in-url t-conda || return 1
-  AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken2-1.0.$RUN_ID-0.tar.bz2" --token-in-url conda-t || return 1
+  # 1.10 has only one of the two URL forms, and no withdrawal.
+  local form=t-conda
+  is_1_11 || form=conda-t
+  AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken-1.0.$RUN_ID-0.tar.bz2" --subdir noarch --token-in-url "$form" || return 1
+  if is_1_11; then
+    AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken2-1.0.$RUN_ID-0.tar.bz2" --token-in-url conda-t || return 1
+  else
+    AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken2-1.0.$RUN_ID-0.tar.bz2" --subdir noarch --token-in-url conda-t || return 1
+  fi
   # An attestation has to be a signed bundle, which is out of reach here, so this shows
   # only that it reaches the handler: the server reads it, and refuses it for what it is.
   local refused
   refused="$(ak pkg conda attest "$REPO" noarch "akdemo-1.0.$RUN_ID-0.tar.bz2" '{}' 2>&1)" && return 1
   case "$refused" in *404*) echo "$refused"; return 1 ;; esac
   # A withdrawn package isn't offered any more.
-  ak pkg conda publish "$REPO" "$d/akgone-1.0.$RUN_ID-0.tar.bz2" --subdir noarch || return 1
-  ak pkg conda withdraw "$REPO" noarch "akgone-1.0.$RUN_ID-0.tar.bz2" --reason test --yes || return 1
+  local gone=""
+  if is_1_11; then
+    gone=1
+    ak pkg conda publish "$REPO" "$d/akgone-1.0.$RUN_ID-0.tar.bz2" --subdir noarch || return 1
+    ak pkg conda withdraw "$REPO" noarch "akgone-1.0.$RUN_ID-0.tar.bz2" --reason test --yes || return 1
+  fi
   box docker.io/mambaorg/micromamba:1.5-bookworm-slim "$d" '
     export MAMBA_ROOT_PREFIX=/tmp/m
     micromamba create -q -y -n e --override-channels -c "$BASE/conda/$REPO" akdemo aktoken aktoken2 >/dev/null
     for n in akdemo aktoken aktoken2; do test "$(cat /tmp/m/envs/e/share/$n/value)" = 41; done
-    if micromamba create -q -y -n g --override-channels -c "$BASE/conda/$REPO" akgone >/dev/null 2>&1; then
+    if [ -n "'"$gone"'" ] && micromamba create -q -y -n g --override-channels -c "$BASE/conda/$REPO" akgone >/dev/null 2>&1; then
       echo "a withdrawn package installed"; exit 1
     fi'
 }
@@ -531,6 +551,7 @@ check_bazel() {
 module(name = "akdemo", version = "1.0.0")
 M
   printf '{"url":"https://example.com/none.tgz","integrity":"sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="}' >"$d/source.json"
+  is_1_11 || { echo "publishing needs 1.11"; return 0; }
   ak pkg bazel publish "$REPO" akdemo 1.0.0 "$d/MODULE.bazel" "$d/source.json" || return 1
   box gcr.io/bazel-public/bazel:7.4.1 "$d" '
     export HOME=/tmp/h; mkdir -p $HOME /tmp/use; cd /tmp/use
@@ -539,10 +560,166 @@ M
     bazel --output_user_root=/tmp/o mod graph --registry="$BASE/bazel/$REPO" --registry=https://bcr.bazel.build 2>/dev/null | grep -q "akdemo@1.0.0"'
 }
 
+check_lfs() {
+  local d; d="$(fresh lfs)"
+  REPO="$(new_repo gitlfs lfs)" || return 1
+  head -c 300000 /dev/urandom >"$d/model.bin"
+  local oid size
+  oid="$(ak pkg lfs upload "$REPO" "$d/model.bin" --format quiet)" || return 1
+  size="$(stat -c %s "$d/model.bin")"
+  # The server has it now, so a second upload does nothing.
+  ak --format json pkg lfs upload "$REPO" "$d/model.bin" | grep -q '"uploaded":false' || return 1
+  OID="$oid" SIZE="$size" box docker.io/bitnami/git:latest "$d" "
+    export HOME=/tmp/h GIT_TERMINAL_PROMPT=0; mkdir -p \$HOME /tmp/r; cd /tmp/r
+    git config --global user.email t@example.com; git config --global user.name t
+    git config --global http.extraHeader 'Authorization: Bearer '\$AK_TOKEN
+    git lfs install >/dev/null
+    git init -q .
+    printf 'version https://git-lfs.github.com/spec/v1\noid sha256:$oid\nsize $size\n' > model.bin
+    git config -f .lfsconfig lfs.url \$BASE/lfs/\$REPO
+    echo 'model.bin filter=lfs diff=lfs merge=lfs -text' > .gitattributes
+    git add .gitattributes .lfsconfig model.bin; git commit -qm x
+    git remote add origin \$BASE/lfs/\$REPO
+    git lfs pull origin 2>&1 | tail -3
+    test \"\$(sha256sum model.bin | cut -d' ' -f1)\" = $oid"
+}
+
+check_conan() {
+  local d; d="$(fresh conan)"
+  REPO="$(new_repo conan conan)" || return 1
+  box docker.io/library/python:3.12-slim "$d" '
+    pip -q --disable-pip-version-check install conan >/dev/null 2>&1
+    export CONAN_HOME=/tmp/c
+    conan profile detect -f >/dev/null 2>&1
+    mkdir pk; cd pk
+    cat > conanfile.py <<C
+from conan import ConanFile
+from conan.tools.files import save
+import os
+class Demo(ConanFile):
+    name = "akdemo"
+    version = "1.0"
+    def package(self):
+        save(self, os.path.join(self.package_folder, "share", "value"), "41")
+C
+    conan create . >/dev/null 2>&1
+    conan list "akdemo/1.0#*:*#*" --format=json > /w/list.json 2>/dev/null
+    python -I - <<P
+import json, os, shutil, subprocess, tarfile
+data = json.load(open("/w/list.json"))["Local Cache"]["akdemo/1.0"]["revisions"]
+rrev = next(iter(data)); pkgs = data[rrev]["packages"]; pid = next(iter(pkgs)); prev = next(iter(pkgs[pid]["revisions"]))
+open("/w/ids", "w").write(f"{rrev} {pid} {prev}")
+def path(ref): return subprocess.check_output(["conan", "cache", "path", ref], text=True).strip()
+rec = path(f"akdemo/1.0#{rrev}"); pkg = path(f"akdemo/1.0#{rrev}:{pid}#{prev}")
+os.makedirs("/w/r"); os.makedirs("/w/p")
+for f in os.listdir(rec): shutil.copy(os.path.join(rec, f), "/w/r/")
+for f in ("conaninfo.txt", "conanmanifest.txt"): shutil.copy(os.path.join(pkg, f), "/w/p/")
+with tarfile.open("/w/p/conan_package.tgz", "w:gz") as t: t.add(os.path.join(pkg, "share"), arcname="share")
+P' || return 1
+  local rrev pid prev
+  read -r rrev pid prev <"$d/ids"
+  ak pkg conan upload "$REPO" akdemo/1.0 --revision "$rrev" "$d"/r/* >/dev/null || return 1
+  ak pkg conan upload "$REPO" akdemo/1.0 --revision "$rrev" --package-id "$pid" --package-revision "$prev" "$d"/p/* >/dev/null || return 1
+  ak pkg conan authenticate "$REPO" | grep -q . || return 1
+  box docker.io/library/python:3.12-slim "$d" '
+    pip -q --disable-pip-version-check install conan >/dev/null 2>&1
+    export CONAN_HOME=/tmp/c2
+    conan profile detect -f >/dev/null 2>&1
+    conan remote add ak "$BASE/conan/$REPO" --allowed-packages "*" >/dev/null 2>&1 || conan remote add ak "$BASE/conan/$REPO" >/dev/null
+    conan remote remove conancenter >/dev/null 2>&1 || true
+    conan install --requires=akdemo/1.0 -r ak 2>&1 | tail -3
+    p="$(conan cache path "akdemo/1.0:$(python -I -c "print(open(\"/w/ids\").read().split()[1])")")"
+    test "$(cat "$p/share/value")" = 41' || return 1
+  is_1_11 || return 0
+  ak pkg conan remove "$REPO" akdemo/1.0 --revision "$rrev" --all-packages --yes >/dev/null || return 1
+  ak pkg conan remove "$REPO" akdemo/1.0 --revision "$rrev" --yes >/dev/null || return 1
+}
+
+check_ansible() {
+  local d; d="$(fresh ansible)"
+  REPO="$(new_repo ansible ansible)" || return 1
+  box docker.io/library/python:3.12-slim "$d" '
+    pip -q --disable-pip-version-check install ansible-core >/dev/null 2>&1
+    export HOME=/tmp/h; mkdir -p $HOME
+    mkdir -p acme/demo/plugins; cd acme/demo
+    printf "namespace: acme\nname: demo\nversion: 1.0.$RUN_ID\nreadme: README.md\nauthors: [t]\n" > galaxy.yml
+    echo demo > README.md
+    ansible-galaxy collection build --output-path /w >/dev/null' || return 1
+  ak pkg ansible publish "$REPO" "$d/acme-demo-1.0.$RUN_ID.tar.gz" || return 1
+  box docker.io/library/python:3.12-slim "$d" '
+    pip -q --disable-pip-version-check install ansible-core >/dev/null 2>&1
+    export HOME=/tmp/h2; mkdir -p $HOME
+    ansible-galaxy collection install "acme.demo:1.0.$RUN_ID" -s "$BASE/ansible/$REPO/" -p /tmp/col 2>&1 | tail -1
+    test -f /tmp/col/ansible_collections/acme/demo/galaxy.yml -o -f /tmp/col/ansible_collections/acme/demo/MANIFEST.json'
+}
+
+check_huggingface() {
+  local d; d="$(fresh huggingface)"
+  REPO="$(new_repo huggingface huggingface)" || return 1
+  printf 'bytes of a model' >"$d/model.safetensors"
+  printf '{"a":1}' >"$d/config.json"
+  ak pkg huggingface upload "$REPO" acme/demo "$d/model.safetensors" || return 1
+  ak pkg huggingface upload "$REPO" acme/demo "$d/config.json" || return 1
+  ak pkg huggingface upload "$REPO" bare "$d/config.json" || return 1
+  box docker.io/library/python:3.12-slim "$d" '
+    pip -q --disable-pip-version-check install huggingface_hub >/dev/null 2>&1
+    export HF_ENDPOINT="$BASE/huggingface/$REPO" HF_HOME=/tmp/hf HF_TOKEN="$AK_TOKEN" HF_HUB_DISABLE_XET=1
+    python -I -c "
+from huggingface_hub import hf_hub_download
+p = hf_hub_download(\"acme/demo\", \"model.safetensors\")
+assert open(p).read() == \"bytes of a model\"
+p = hf_hub_download(\"bare\", \"config.json\")
+assert open(p).read() == \"{\\\"a\\\":1}\"
+"'
+}
+
+check_swift() {
+  local d; d="$(fresh swift)"
+  REPO="$(new_repo swift swift)" || return 1
+  box docker.io/library/swift:6.0 "$d" '
+    export HOME=/tmp/h; mkdir -p $HOME/lib/Sources/Demo; cd $HOME/lib
+    cat > Package.swift <<P
+// swift-tools-version:5.9
+import PackageDescription
+let package = Package(name: "Demo", products: [.library(name: "Demo", targets: ["Demo"])], targets: [.target(name: "Demo")])
+P
+    echo "public let v = 41" > Sources/Demo/d.swift
+    git init -q . 2>/dev/null; git add . ; git -c user.email=t@e -c user.name=t commit -qm x
+    swift package archive-source --output /w/Demo.zip >/dev/null' || return 1
+  ak pkg swift publish "$REPO" acme Demo 1.0.0 "$d/Demo.zip" --metadata '{}' || return 1
+  box docker.io/library/swift:6.0 "$d" '
+    export HOME=/tmp/h2; mkdir -p $HOME/use/Sources/use; cd $HOME/use
+    cat > Package.swift <<P
+// swift-tools-version:5.9
+import PackageDescription
+let package = Package(name: "use", dependencies: [.package(id: "acme.Demo", exact: "1.0.0")],
+  targets: [.executableTarget(name: "use", dependencies: [.product(name: "Demo", package: "acme.Demo")])])
+P
+    printf "import Demo\nguard v == 41 else { fatalError() }\n" > Sources/use/main.swift
+    swift package-registry set --allow-insecure-http "$BASE/swift/$REPO" >/dev/null
+    swift build --disable-sandbox -q 2>&1 | tail -4'
+}
+
+check_puppet() {
+  local d; d="$(fresh puppet)"
+  REPO="$(new_repo puppet puppet)" || return 1
+  mkdir -p "$d/acme-demo-1.0.0/manifests"
+  printf 'class demo {}\n' >"$d/acme-demo-1.0.0/manifests/init.pp"
+  printf '{"name":"acme-demo","version":"1.0.0","author":"acme","license":"MIT","summary":"s","source":"https://example.com","dependencies":[]}' \
+    >"$d/acme-demo-1.0.0/metadata.json"
+  tar -czf "$d/acme-demo-1.0.0.tar.gz" -C "$d" acme-demo-1.0.0 || return 1
+  ak pkg puppet publish "$REPO" "$d/acme-demo-1.0.0.tar.gz" || return 1
+  # `puppet module install` can't list releases yet: artifact-keeper#5229. Until it
+  # can, fetch what a client would be pointed at.
+  local got="$d/got.tar.gz"
+  ak api GET "/puppet/$REPO/v3/files/acme-demo-1.0.0.tar.gz" -o "$got" || return 1
+  cmp "$got" "$d/acme-demo-1.0.0.tar.gz"
+}
+
 # A format's check, its outcome on one line, and its output only if it failed.
 run() {
   local name="$1" log="$WORK/$1.log"
-  if "check_$name" >"$log" 2>&1; then
+  if "check_$name" >"$log" 2>&1 </dev/null; then
     echo "PASS $name"
   else
     echo "FAIL $name"
@@ -552,6 +729,6 @@ run() {
 }
 
 FAILED=0
-ALL=(pypi npm cargo helm nuget debian rpm alpine pacman conda maven go gems composer cran pub hex ivy bazel)
+ALL=(pypi npm cargo helm nuget debian rpm alpine pacman conda maven go gems composer cran pub hex ivy bazel lfs conan ansible huggingface swift puppet)
 for name in "${@:-${ALL[@]}}"; do run "$name"; done
 exit "$FAILED"

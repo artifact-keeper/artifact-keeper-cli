@@ -257,3 +257,25 @@ pub fn hex_package(dir: &Path, name: &str, version: &str) -> PathBuf {
         ],
     )
 }
+
+/// A `.vsix`: the zip VS Code installs, with the manifest the server reads.
+#[allow(dead_code)]
+pub fn vsix(dir: &Path, publisher: &str, name: &str, version: &str) -> PathBuf {
+    let manifest = format!(
+        "<?xml version=\"1.0\"?><PackageManifest Version=\"2.0.0\" \
+         xmlns=\"http://schemas.microsoft.com/developer/vsx-schema/2011\">\
+         <Metadata><Identity Id=\"{name}\" Version=\"{version}\" Publisher=\"{publisher}\"/>\
+         <DisplayName>{name}</DisplayName></Metadata></PackageManifest>"
+    );
+    let package = format!(
+        "{{\"name\":\"{name}\",\"publisher\":\"{publisher}\",\"version\":\"{version}\",\
+         \"engines\":{{\"vscode\":\"^1.80.0\"}}}}"
+    );
+    zip(
+        &dir.join(format!("{name}-{version}.vsix")),
+        &[
+            ("extension.vsixmanifest", manifest.as_bytes()),
+            ("extension/package.json", package.as_bytes()),
+        ],
+    )
+}
