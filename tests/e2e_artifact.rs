@@ -376,3 +376,462 @@ fn artifact_list_search_and_delete() {
         .success()
         .stdout(predicate::str::contains(&needle).not());
 }
+
+fn json_stdout(assert: assert_cmd::assert::Assert) -> serde_json::Value {
+    serde_json::from_slice(&assert.get_output().stdout).expect("JSON on stdout")
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_copy_to_a_path_and_by_exact_source() {
+    let env = common::TestEnv::setup();
+    let pid = std::process::id();
+    let src = format!("e2e-cp2-src-{pid}");
+    let dst = format!("e2e-cp2-dst-{pid}");
+    let _src_guard = RepoGuard::create(&env, &src, "generic");
+    let _dst_guard = RepoGuard::create(&env, &dst, "generic");
+
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("a.txt");
+    let body = write_test_file(&file, 2048);
+    let decoy = dir.path().join("decoy.txt");
+    write_test_file(&decoy, 16);
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "push",
+            &src,
+            file.to_str().unwrap(),
+            "--path",
+            "d/a.txt",
+        ])
+        .assert()
+        .success();
+    // Sorts before d/a.txt and matches a search for it, as a search used to find.
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "push",
+            &src,
+            decoy.to_str().unwrap(),
+            "--path",
+            "b/d/a.txt.old",
+        ])
+        .assert()
+        .success();
+
+    // A destination with a different path used to be sent whole as the target repository.
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "copy",
+            &format!("{src}/d/a.txt"),
+            &format!("{dst}/new/b.txt"),
+        ])
+        .assert()
+        .success();
+    let copied = json_stdout(
+        env.ak_cmd()
+            .args(["artifact", "info", &dst, "new/b.txt"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(copied["size_bytes"], 2048);
+    assert_eq!(copied["content_type"], "text/plain");
+
+    let out = dir.path().join("out");
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "pull",
+            &dst,
+            "new/b.txt",
+            "-o",
+            out.to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+    assert_eq!(std::fs::read(&out).unwrap(), body);
+
+    // A destination of a repository with the same path, with and without the path.
+    let promoted = json_stdout(
+        env.ak_cmd()
+            .args(["artifact", "copy", &format!("{src}/d/a.txt"), &dst])
+            .assert()
+            .success(),
+    );
+    assert_eq!(promoted["promoted"], true);
+    assert_eq!(promoted["target"], format!("{dst}/d/a.txt"));
+    let same = json_stdout(
+        env.ak_cmd()
+            .args(["artifact", "info", &dst, "d/a.txt"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(same["size_bytes"], 2048, "the exact source, not the decoy");
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_pull_of_a_quarantined_artifact_shows_the_reason() {
+    let env = common::TestEnv::setup();
+    let repo = format!("e2e-art-q-{}", std::process::id());
+    let _guard = RepoGuard::create(&env, &repo, "generic");
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("a.txt");
+    write_test_file(&file, 64);
+    env.ak_cmd()
+        .args(["artifact", "push", &repo, file.to_str().unwrap()])
+        .assert()
+        .success();
+    env.ak_cmd()
+        .args([
+            "quarantine",
+            "hold",
+            &format!("{repo}/a.txt"),
+            "--reason",
+            "e2e",
+        ])
+        .assert()
+        .success();
+
+    let out = dir.path().join("out");
+    let assert = env
+        .ak_cmd()
+        .args([
+            "artifact",
+            "pull",
+            &repo,
+            "a.txt",
+            "-o",
+            out.to_str().unwrap(),
+        ])
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
+    assert!(
+        stderr.contains("409") && stderr.contains("quarantined"),
+        "{stderr}"
+    );
+    assert!(!stderr.contains("Response {"), "{stderr}");
+    assert!(!out.exists());
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_multipart_reaches_both_routes() {
+    let env = common::TestEnv::setup();
+    let repo = format!("e2e-art-mp-{}", std::process::id());
+    let _guard = RepoGuard::create(&env, &repo, "generic");
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("m.bin");
+    write_test_file(&file, 512);
+    let path_of = |args: &[&str]| -> String {
+        let mut all = vec![
+            "artifact",
+            "push",
+            &repo,
+            file.to_str().unwrap(),
+            "--multipart",
+        ];
+        all.extend(args);
+        let shown = json_stdout(env.ak_cmd().args(&all).assert().success());
+        shown["path"].as_str().unwrap().to_string()
+    };
+    assert_eq!(path_of(&[]), "m.bin");
+    assert_eq!(path_of(&["--path", "dir/"]), "dir/m.bin");
+    assert_eq!(path_of(&["--path", "x/full.bin"]), "x/full.bin");
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_session_fields_and_skip_if_present() {
+    let env = common::TestEnv::setup();
+    let repo = format!("e2e-art-se-{}", std::process::id());
+    let _guard = RepoGuard::create(&env, &repo, "generic");
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("s.bin");
+    write_test_file(&file, 4096);
+    let file = file.to_str().unwrap();
+
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "push",
+            &repo,
+            file,
+            "--path",
+            "s.bin",
+            "--artifact-name",
+            "named",
+            "--artifact-version",
+            "9.9",
+        ])
+        .assert()
+        .success();
+    let info = json_stdout(
+        env.ak_cmd()
+            .args(["artifact", "info", &repo, "s.bin"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(info["name"], "named");
+    assert_eq!(info["version"], "9.9");
+
+    if common::server_older_than(1, 11, "skip_if_present") {
+        // It would ignore the flag and upload anyway, so the command refuses.
+        env.ak_cmd()
+            .args([
+                "artifact",
+                "push",
+                &repo,
+                file,
+                "--path",
+                "s.bin",
+                "--skip-if-present",
+            ])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("needs a server on 1.11"));
+        return;
+    }
+    let again = json_stdout(
+        env.ak_cmd()
+            .args([
+                "artifact",
+                "push",
+                &repo,
+                file,
+                "--path",
+                "s.bin",
+                "--skip-if-present",
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(again["already_present"], true);
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_upload_session_status_and_cancel() {
+    let env = common::TestEnv::setup();
+    let repo = format!("e2e-art-us-{}", std::process::id());
+    let _guard = RepoGuard::create(&env, &repo, "generic");
+    let created: serde_json::Value = env
+        .api_post(
+            "/api/v1/uploads",
+            &serde_json::json!({
+                "repository_key": repo,
+                "artifact_path": "x.bin",
+                "total_size": 3,
+                "checksum_sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            }),
+        )
+        .json()
+        .expect("session JSON");
+    let session = created["session_id"].as_str().expect("session id");
+
+    let status = json_stdout(
+        env.ak_cmd()
+            .args(["artifact", "upload-session", "status", session])
+            .assert()
+            .success(),
+    );
+    assert_eq!(status["artifact_path"], "x.bin");
+
+    env.ak_cmd()
+        .args(["artifact", "upload-session", "cancel", session, "--yes"])
+        .assert()
+        .success();
+    let status = json_stdout(
+        env.ak_cmd()
+            .args(["artifact", "upload-session", "status", session])
+            .assert()
+            .success(),
+    );
+    assert_eq!(status["status"], "cancelled");
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_versions_labels_and_pull_by_revision() {
+    let env = common::TestEnv::setup();
+    let repo = format!("e2e-art-ve-{}", std::process::id());
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &repo,
+            "--pkg-format",
+            "generic",
+            "--versioning-enabled",
+            "true",
+        ])
+        .assert()
+        .success();
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("v.txt");
+    for (content, label) in [("first", "one"), ("second", "two")] {
+        std::fs::write(&file, content).unwrap();
+        env.ak_cmd()
+            .args([
+                "artifact",
+                "push",
+                &repo,
+                file.to_str().unwrap(),
+                "--version-label",
+                label,
+            ])
+            .assert()
+            .success();
+    }
+
+    let versions = json_stdout(
+        env.ak_cmd()
+            .args(["artifact", "versions", &repo, "v.txt"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(versions["items"].as_array().unwrap().len(), 2);
+    assert_eq!(versions["items"][0]["version_label"], "two");
+
+    let out = dir.path().join("out");
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "pull",
+            &repo,
+            "v.txt",
+            "-o",
+            out.to_str().unwrap(),
+            "--version",
+            "1",
+        ])
+        .assert()
+        .success();
+    assert_eq!(std::fs::read(&out).unwrap(), b"first");
+
+    let first = json_stdout(
+        env.ak_cmd()
+            .args(["artifact", "info", &repo, "v.txt", "--version", "1"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(first["version"], "one");
+
+    env.ak_cmd()
+        .args(["repo", "delete", &repo, "--yes", "--wait"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_missing_reports_what_the_repository_lacks() {
+    if common::server_older_than(1, 11, "artifacts-missing") {
+        let env = common::TestEnv::setup();
+        env.ak_cmd()
+            .args(["artifact", "missing", "any", "--item", "a=1"])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("needs a server on 1.11"));
+        return;
+    }
+    let env = common::TestEnv::setup();
+    let repo = format!("e2e-art-mi-{}", std::process::id());
+    let _guard = RepoGuard::create(&env, &repo, "generic");
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("h.txt");
+    std::fs::write(&file, "abc").unwrap();
+    env.ak_cmd()
+        .args(["artifact", "push", &repo, file.to_str().unwrap()])
+        .assert()
+        .success();
+    let held = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+
+    let sums = dir.path().join("sums");
+    std::fs::write(&sums, format!("{held}  other.txt\n")).unwrap();
+    let report = json_stdout(
+        env.ak_cmd()
+            .args([
+                "artifact",
+                "missing",
+                &repo,
+                "--item",
+                &format!("h.txt={held}"),
+                "--from",
+                sums.to_str().unwrap(),
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(report["checked"], 2);
+    assert_eq!(report["missing"].as_array().unwrap().len(), 1);
+    assert_eq!(report["missing"][0]["path"], "other.txt");
+    assert_eq!(report["missing"][0]["reason"], "not_found");
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_commands_take_a_repo_and_path() {
+    let env = common::TestEnv::setup();
+    let repo = format!("e2e-art-rp-{}", std::process::id());
+    let _guard = RepoGuard::create(&env, &repo, "generic");
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("p.txt");
+    write_test_file(&file, 32);
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "push",
+            &repo,
+            file.to_str().unwrap(),
+            "--path",
+            "d/p.txt",
+        ])
+        .assert()
+        .success();
+
+    let shown = json_stdout(
+        env.ak_cmd()
+            .args(["artifact", "show", &format!("{repo}/d/p.txt")])
+            .assert()
+            .success(),
+    );
+    assert_eq!(shown["path"], "d/p.txt");
+    env.ak_cmd()
+        .args(["artifact", "stats", &format!("{repo}/d/p.txt")])
+        .assert()
+        .success();
+
+    // A generic file gets no analysis. The server's own 404 has to come through.
+    let assert = env
+        .ak_cmd()
+        .args(["artifact", "package-analysis", &format!("{repo}/d/p.txt")])
+        .assert()
+        .failure();
+    let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
+    let expected = if common::server_older_than(1, 11, "package analysis") {
+        "needs a server on 1.11"
+    } else {
+        "404"
+    };
+    assert!(stderr.contains(expected), "{stderr}");
+
+    let filtered = json_stdout(
+        env.ak_cmd()
+            .args([
+                "artifact",
+                "list",
+                &repo,
+                "--path-prefix",
+                "d",
+                "--count",
+                "exact",
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(filtered["items"][0]["path"], "d/p.txt");
+}

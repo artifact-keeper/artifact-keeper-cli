@@ -618,3 +618,187 @@ async fn create_defaults_the_name_to_the_key() {
     let output = ak(&server, &["repo", "create", "k", "--pkg-format", "generic"]);
     assert!(output.status.success(), "{output:?}");
 }
+
+// ---- a server before 1.11 ----
+
+async fn server_on(version: &str) -> MockServer {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/health"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"version": version})))
+        .mount(&server)
+        .await;
+    server
+}
+
+fn one_line(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr)
+        .replace('│', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Sends nothing but the version check, and says what's wrong.
+#[tokio::test]
+async fn flags_an_older_server_would_drop_are_refused_before_anything_changes() {
+    for args in [
+        vec![
+            "repo",
+            "create",
+            "k",
+            "--pkg-format",
+            "generic",
+            "--visibility",
+            "internal",
+        ],
+        vec![
+            "repo",
+            "create",
+            "k",
+            "--pkg-format",
+            "rpm",
+            "--repodata-depth",
+            "2",
+        ],
+        vec![
+            "repo",
+            "create",
+            "k",
+            "--pkg-format",
+            "npm",
+            "--npm-virtual-isolate-hosted-names",
+            "true",
+        ],
+        vec![
+            "repo",
+            "create",
+            "k",
+            "--pkg-format",
+            "docker",
+            "--oci-trusted-bearer-realms",
+            "https://a",
+        ],
+        vec![
+            "repo",
+            "create",
+            "k",
+            "--pkg-format",
+            "generic",
+            "--allow-public-with-upstream-credentials",
+            "true",
+        ],
+        vec!["repo", "update", "k", "--visibility", "internal"],
+        vec![
+            "repo",
+            "update",
+            "k",
+            "--upstream-url",
+            "https://u.example.com",
+        ],
+        vec!["repo", "update", "k", "--virtual-metadata-partial", "true"],
+        vec!["repo", "update", "k", "--clear-project"],
+        vec![
+            "repo",
+            "upstream-auth",
+            "k",
+            "--type",
+            "none",
+            "--allow-public-with-upstream-credentials",
+            "true",
+        ],
+    ] {
+        let server = server_on("1.10.2").await;
+        let output = ak(&server, &args);
+        assert_eq!(output.status.code(), Some(1), "{args:?}: {output:?}");
+        let stderr = one_line(&output);
+        assert!(
+            stderr.contains("needs a server on 1.11 or newer. This one is 1.10.2")
+                && stderr.contains("Nothing was changed"),
+            "{args:?}: {stderr}"
+        );
+        let requests = server.received_requests().await.expect("recorded");
+        assert!(
+            requests.iter().all(|r| r.url.path() == "/health"),
+            "{args:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn the_same_flags_go_through_on_a_current_server() {
+    let server = server_on("1.11.10").await;
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/k"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(repository()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &["repo", "update", "k", "--visibility", "internal"],
+    );
+    assert!(output.status.success(), "{output:?}");
+}
+
+/// Flags 1.10 does honour don't need a version check at all.
+#[tokio::test]
+async fn other_flags_go_through_on_an_older_server() {
+    let server = server_on("1.10.2").await;
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/k"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(repository()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(&server, &["repo", "update", "k", "--project-id", PROJECT]);
+    assert!(output.status.success(), "{output:?}");
+    let requests = server.received_requests().await.expect("recorded");
+    assert!(requests.iter().all(|r| r.url.path() != "/health"));
+}
+
+/// A server with no such route answers 404 "Repository not found".
+#[tokio::test]
+async fn a_route_new_in_1_11_says_so_on_an_older_server() {
+    for args in [
+        vec!["repo", "capabilities"],
+        vec!["repo", "allowlist", "get", "k"],
+        vec!["repo", "allowlist", "delete", "k", "--yes"],
+        vec!["repo", "allowlist", "set", "k", "--package", "a"],
+        vec!["repo", "upstream-filter", "get", "k"],
+        vec!["repo", "upstream-filter", "delete", "k", "--yes"],
+        vec!["repo", "upstream-filter", "set", "k", "--include", "a"],
+        vec!["artifact", "missing", "k", "--item", "a=1"],
+        vec![
+            "artifact",
+            "package-analysis",
+            "00000000-0000-0000-0000-000000000001",
+        ],
+    ] {
+        let server = server_on("1.10.2").await;
+        Mock::given(wiremock::matchers::any())
+            .respond_with(ResponseTemplate::new(404).set_body_string("Repository not found"))
+            .mount(&server)
+            .await;
+        let output = ak(&server, &args);
+        assert_eq!(output.status.code(), Some(1), "{args:?}: {output:?}");
+        let stderr = one_line(&output);
+        assert!(
+            stderr.contains("needs a server on 1.11 or newer. This one is 1.10.2"),
+            "{args:?}: {stderr}"
+        );
+    }
+}
+
+/// A 404 from a server that has the route is the server's own answer.
+#[tokio::test]
+async fn a_404_from_a_current_server_keeps_its_message() {
+    let server = server_on("1.11.10").await;
+    Mock::given(wiremock::matchers::any())
+        .respond_with(ResponseTemplate::new(404).set_body_json(json!({"message": "no such repo"})))
+        .mount(&server)
+        .await;
+    let output = ak(&server, &["repo", "allowlist", "get", "k"]);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(one_line(&output).contains("no such repo"));
+}

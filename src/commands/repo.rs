@@ -7,7 +7,7 @@ use miette::{IntoDiagnostic, Result};
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, raw_err,
-    read_inline_or_file, resolve_secret, sdk_err,
+    read_inline_or_file, refuse_flags_before_1_11, resolve_secret, sdk_err,
 };
 use super::repo_settings::{
     self, AllowlistCommand, EgressProxyCommand, NpmScopePolicyCommand, UpstreamFilterCommand,
@@ -468,6 +468,31 @@ pub struct RepoSettingsArgs {
     oci_trusted_bearer_realms: Option<Vec<String>>,
 }
 
+impl RepoSettingsArgs {
+    /// The flags set here that a server before 1.11 silently drops.
+    fn flags_needing_1_11(&self) -> Vec<&'static str> {
+        [
+            ("--visibility", self.visibility.is_some()),
+            (
+                "--allow-public-with-upstream-credentials",
+                self.allow_public_with_upstream_credentials.is_some(),
+            ),
+            ("--repodata-depth", self.repodata_depth.is_some()),
+            (
+                "--npm-virtual-isolate-hosted-names",
+                self.npm_virtual_isolate_hosted_names.is_some(),
+            ),
+            (
+                "--oci-trusted-bearer-realms",
+                self.oci_trusted_bearer_realms.is_some(),
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(flag, set)| set.then_some(flag))
+        .collect()
+    }
+}
+
 /// A create or update request: the fields given, plus the ones from
 /// [`RepoSettingsArgs`], which the two requests name the same way.
 macro_rules! with_settings {
@@ -728,6 +753,7 @@ impl RepoCommand {
                 upstream_password_stdin,
                 settings,
             } => {
+                refuse_flags_before_1_11(&settings.flags_needing_1_11(), global).await?;
                 let upstream_password = resolve_secret(
                     upstream_password,
                     upstream_password_stdin,
@@ -801,6 +827,20 @@ impl RepoCommand {
                     .as_deref()
                     .map(|v| parse_json_arg(v, "--debian"))
                     .transpose()?;
+                let mut needs_1_11 = settings.flags_needing_1_11();
+                for (flag, set) in [
+                    ("--upstream-url", upstream_url.is_some()),
+                    (
+                        "--virtual-metadata-partial",
+                        virtual_metadata_partial.is_some(),
+                    ),
+                    ("--clear-project", clear_project),
+                ] {
+                    if set {
+                        needs_1_11.push(flag);
+                    }
+                }
+                refuse_flags_before_1_11(&needs_1_11, global).await?;
                 let clear = [
                     ("project_id", clear_project),
                     ("trusted_gpg_key", clear_trusted_gpg_key),
@@ -883,6 +923,10 @@ impl RepoCommand {
                 aws,
                 allow_public_with_upstream_credentials,
             } => {
+                if allow_public_with_upstream_credentials.is_some() {
+                    refuse_flags_before_1_11(&["--allow-public-with-upstream-credentials"], global)
+                        .await?;
+                }
                 let needs_secret = matches!(auth_type.as_str(), "basic" | "bearer");
                 let password = resolve_secret(
                     password,

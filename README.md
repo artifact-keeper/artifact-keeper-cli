@@ -143,7 +143,7 @@ Core
   ak instance      Add, remove, and switch between registry instances
   ak auth          Log in, manage tokens, check identity
   ak repo          Manage repositories: members, upstream settings, storage, and more
-  ak artifact      Push, pull, list, search, copy, and delete artifacts
+  ak artifact      Push, pull, list, search, copy, and delete artifacts; revisions and upload sessions
   ak api           Send any HTTP request to the instance, with its auth and TLS settings
   ak setup         Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more
   ak doctor        Diagnose configuration and connectivity issues
