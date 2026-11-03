@@ -509,6 +509,14 @@ fn pip_trusted_host(ctx: &SetupContext) -> Option<&str> {
     ctx.is_remote_http().then(|| ctx.host_and_port())
 }
 
+/// Whether two paths are the same file, as a symlink from one to the other is.
+fn same_file(a: &Path, b: &Path) -> bool {
+    matches!(
+        (std::fs::canonicalize(a), std::fs::canonicalize(b)),
+        (Ok(a), Ok(b)) if a == b
+    )
+}
+
 /// What a config file holds now, empty if it isn't there. A file that isn't text
 /// can't be edited by key, so it's left alone.
 fn read_existing(path: &Path) -> Result<String> {
@@ -519,9 +527,16 @@ fn read_existing(path: &Path) -> Result<String> {
     }
 }
 
-/// An error for a file that `setup` can't safely add its settings to.
-fn not_merged(path: &Path, reason: String) -> miette::Report {
-    AkError::ConfigError(format!("{} wasn't changed: {reason}", path.display())).into()
+/// Refuse a file that `setup` can't safely add its settings to. A wrong guess here
+/// would leave the tool broken with `setup` saying it's configured, so say what to
+/// add. This comes before any prompt or token, so refusing costs nothing.
+fn refuse_merge(path: &Path, reason: String, snippet: &str) -> miette::Report {
+    eprintln!(
+        "\n{} wasn't changed, because {reason}. To use Artifact Keeper, add this to it, with \
+         a token from `ak auth token create` in place of {TOKEN_SLOT}:\n\n{snippet}",
+        path.display()
+    );
+    AkError::SetupFileNotMerged(path.display().to_string(), reason).into()
 }
 
 /// Say which of the user's own settings a merge replaced. Only the key is named:
@@ -694,7 +709,12 @@ async fn auto_detect(options: SetupOptions, global: &GlobalArgs) -> Result<()> {
             _ => Ok(()),
         };
         match outcome {
-            Err(e) if matches!(e.downcast_ref(), Some(AkError::SetupFileNotOurs(_))) => {
+            Err(e)
+                if matches!(
+                    e.downcast_ref(),
+                    Some(AkError::SetupFileNotOurs(_) | AkError::SetupFileNotMerged(..))
+                ) =>
+            {
                 left_alone.get_or_insert(e);
             }
             other => other?,
@@ -738,11 +758,16 @@ async fn setup_npm(repo: Option<&str>, options: SetupOptions, global: &GlobalArg
 async fn setup_pip(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("pip", "pypi", repo, options, global).await?;
     let trusted_host = pip_trusted_host(&ctx);
-    let preview = merge::pip_conf("", &pip_index_url(&ctx, TOKEN_SLOT), trusted_host).text;
+    let slot_url = pip_index_url(&ctx, TOKEN_SLOT);
+    let preview = merge::pip_conf("", &slot_url, trusted_host)
+        .expect("an empty file can be merged")
+        .text;
 
     let filename = if cfg!(windows) { "pip.ini" } else { "pip.conf" };
     let pip_conf_path = config_dir()?.join("pip").join(filename);
     let existing = read_existing(&pip_conf_path)?;
+    merge::pip_conf(&existing, &slot_url, trusted_host)
+        .map_err(|reason| refuse_merge(&pip_conf_path, reason, &preview))?;
 
     if !confirm_merge(&pip_conf_path, &preview, global.no_input)? {
         eprintln!("Skipped pip configuration.");
@@ -751,7 +776,8 @@ async fn setup_pip(repo: Option<&str>, options: SetupOptions, global: &GlobalArg
 
     let token = ctx.token_for_config().await?;
     let index_url = pip_index_url(&ctx, &url_encode(&token));
-    let merged = merge::pip_conf(&existing, &index_url, trusted_host);
+    let merged = merge::pip_conf(&existing, &index_url, trusted_host)
+        .map_err(|reason| refuse_merge(&pip_conf_path, reason, &preview))?;
     write_config_file(&pip_conf_path, &merged.text, "pip.conf")?;
     report_replaced(&pip_conf_path, &merged.replaced);
     eprintln!(
@@ -778,18 +804,37 @@ async fn setup_cargo(repo: Option<&str>, options: SetupOptions, global: &GlobalA
     let creds_path = cargo_home.join("credentials.toml");
     let existing_config = read_existing(&config_path)?;
     let existing_creds = read_existing(&creds_path)?;
+    let config_preview = merge::cargo_config("", &cargo_registry_url)
+        .expect("an empty file can be merged")
+        .text;
+    let creds_preview =
+        merge::cargo_credentials("", TOKEN_SLOT).expect("an empty file can be merged");
+
+    // Cargo uses the old name if it's there, and ignores the file with the new one.
+    for (legacy, snippet) in [("config", &config_preview), ("credentials", &creds_preview)] {
+        let legacy = cargo_home.join(legacy);
+        if tokio::fs::metadata(&legacy)
+            .await
+            .is_ok_and(|m| m.is_file())
+            && !same_file(
+                &legacy,
+                &cargo_home.join(format!("{}.toml", legacy.display())),
+            )
+        {
+            return Err(refuse_merge(
+                &legacy,
+                "Cargo reads it in preference to the file with .toml on its name".to_string(),
+                snippet,
+            ));
+        }
+    }
 
     // Both are checked before any prompt or token: neither file should change if
     // the other can't be merged.
     let config = merge::cargo_config(&existing_config, &cargo_registry_url)
-        .map_err(|reason| not_merged(&config_path, reason))?;
+        .map_err(|reason| refuse_merge(&config_path, reason, &config_preview))?;
     merge::cargo_credentials(&existing_creds, TOKEN_SLOT)
-        .map_err(|reason| not_merged(&creds_path, reason))?;
-    let config_preview = merge::cargo_config("", &cargo_registry_url)
-        .map_err(|reason| not_merged(&config_path, reason))?
-        .text;
-    let creds_preview = merge::cargo_credentials("", TOKEN_SLOT)
-        .map_err(|reason| not_merged(&creds_path, reason))?;
+        .map_err(|reason| refuse_merge(&creds_path, reason, &creds_preview))?;
 
     eprintln!("Will write two files:");
     if !confirm_merge(&config_path, &config_preview, global.no_input)? {
@@ -805,16 +850,20 @@ async fn setup_cargo(repo: Option<&str>, options: SetupOptions, global: &GlobalA
         None
     };
 
+    // The credentials first. A token nothing uses yet does no harm if the next write
+    // fails, but a default registry with no token breaks every cargo command.
+    if let Some(token) = &token {
+        let credentials = merge::cargo_credentials(&existing_creds, token)
+            .map_err(|reason| refuse_merge(&creds_path, reason, &creds_preview))?;
+        write_config_file(&creds_path, &credentials, "cargo credentials.toml")?;
+    } else {
+        eprintln!("Skipped Cargo credentials.");
+    }
     write_config_file(&config_path, &config.text, "cargo config.toml")?;
     report_replaced(&config_path, &config.replaced);
-
-    let Some(token) = token else {
-        eprintln!("Skipped Cargo credentials.");
+    if token.is_none() {
         return Ok(());
-    };
-    let credentials = merge::cargo_credentials(&existing_creds, &token)
-        .map_err(|reason| not_merged(&creds_path, reason))?;
-    write_config_file(&creds_path, &credentials, "cargo credentials.toml")?;
+    }
     eprintln!(
         "Cargo is now configured to use repository '{}'.",
         ctx.repo_key
@@ -1051,8 +1100,11 @@ async fn setup_go(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs
 
     if write_netrc {
         let existing = read_existing(&netrc_path)?;
+        merge::netrc(&existing, &host, &netrc_template)
+            .map_err(|reason| refuse_merge(&netrc_path, reason, &netrc_template))?;
         let token = ctx.token_for_config().await?;
-        let merged = merge::netrc(&existing, &host, &fill_token(&netrc_template, &token));
+        let merged = merge::netrc(&existing, &host, &fill_token(&netrc_template, &token))
+            .map_err(|reason| refuse_merge(&netrc_path, reason, &netrc_template))?;
         write_config_file(&netrc_path, &merged, ".netrc")?;
     }
 

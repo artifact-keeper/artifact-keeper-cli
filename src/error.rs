@@ -92,6 +92,13 @@ pub enum AkError {
     )]
     SetupFileNotOurs(String),
 
+    #[error("{0} wasn't changed, because {1}")]
+    #[diagnostic(
+        code(ak::setup_file_not_merged),
+        help("Add the lines shown above to it yourself, or fix the file and run setup again.")
+    )]
+    SetupFileNotMerged(String, String),
+
     #[error("Promotion blocked: {0}")]
     #[diagnostic(
         code(ak::promotion_blocked),
