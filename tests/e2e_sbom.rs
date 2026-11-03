@@ -302,6 +302,17 @@ fn a_cached_path_with_no_inventory_is_an_error_not_an_empty_sbom() {
         .assert()
         .success();
 
+    // The server records a proxied download after the client has the last byte.
+    common::wait_until("the download to be recorded", || {
+        env.ak_cmd()
+            .args(["scan", "proxy", "list", &remote, "--path", "f.bin"])
+            .output()
+            .unwrap()
+            .status
+            .success()
+            .then_some(())
+    });
+
     let unknown = stderr_of(&env, &["sbom", "proxy", &remote, "--path", "missing"]);
     assert!(unknown.contains("404"), "{unknown}");
     let not_recorded = stderr_of(&env, &["sbom", "proxy", &remote, "--path", "f.bin"]);

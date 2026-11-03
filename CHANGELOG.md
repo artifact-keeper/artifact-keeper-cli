@@ -32,7 +32,7 @@ These can change what you see, or break a script, coming from 1.2:
 
 ### Added
 
-- `ak quarantine release-proxy <repo> --path <path>` releases a held path from a remote repository's cache, which `quarantine release` can't reach because proxied content has no artifact ID. Needs a 1.11 server.
+- `ak quarantine release-proxy <repo> --path <path>` releases a held path from a remote repository's cache, which `quarantine release` can't reach because proxied content has no artifact ID. A server refuses a held download before it has recorded the hold, so right after that 409 the command keeps asking for a few seconds, and then says the hold may not be recorded yet. Needs a 1.11 server.
 - `ak attestation policy` shows which publishers and keys the server trusts for attestations. Needs a 1.11 server.
 - `ak sbom proxy <repo> --path <path>` shows the SBOM of a proxied artifact, and `ak sbom environment <lockfile>` makes SBOMs from a lockfile without storing anything (needs a 1.11 server). Both take `--sbom-format` and `-o`, and `environment` takes `--environment`, `--platform` and `--filename`.
 - `ak sign artifact <artifact> [--yes]` signs an artifact with its repository's active key. `ak sign key create` no longer needs `--type` or `--repo`, which the API leaves optional.
