@@ -208,7 +208,7 @@ fn incus_flow(format: &str, prefix: &str) {
     let path = format!("/{prefix}/{key}/images/demo/20260101/incus.tar.xz");
     assert_eq!(repo.get(&path).bytes().unwrap().to_vec(), content);
 
-    // In chunks, which the server joins after it has answered.
+    // In chunks. The command returns once the image is stored, so it's there at once.
     let chunked = tmp.path().join("rootfs.squashfs");
     std::fs::write(&chunked, &content).unwrap();
     env.ak_cmd()
@@ -227,15 +227,36 @@ fn incus_flow(format: &str, prefix: &str) {
         .assert()
         .success();
     let path = format!("/{prefix}/{key}/images/demo/20260102/rootfs.squashfs");
-    common::wait_until("the chunked image", || {
+    assert_eq!(repo.get(&path).bytes().unwrap().to_vec(), content);
+
+    // --no-wait says the server is still at it, and the image does arrive.
+    let sent: serde_json::Value = serde_json::from_slice(
+        &env.ak_cmd()
+            .args([
+                "pkg",
+                prefix,
+                "publish",
+                key,
+                "demo",
+                "20260104",
+                "--no-wait",
+            ])
+            .arg(&whole)
+            .assert()
+            .success()
+            .get_output()
+            .stdout,
+    )
+    .unwrap();
+    assert_eq!(sent["status"], "finalizing");
+    let path = format!("/{prefix}/{key}/images/demo/20260104/incus.tar.xz");
+    let arrived = common::wait_until("the image sent with --no-wait", || {
         let got = repo.get(&path);
         got.status()
             .is_success()
             .then(|| got.bytes().unwrap().to_vec())
-    })
-    .eq(&content)
-    .then_some(())
-    .expect("the joined image differs");
+    });
+    assert_eq!(arrived, content);
 
     // A session can be cancelled.
     let started = repo
