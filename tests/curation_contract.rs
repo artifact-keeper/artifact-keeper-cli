@@ -80,7 +80,7 @@ async fn a_sync_that_failed_upstream_fails_the_command() {
         .respond("POST", "/api/v1/curation/repos/stg/sync", 200, body.clone())
         .await;
     let output = mocked.ak(&["curation", "sync", "stg", "--format", "json"]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(7));
     assert!(
         unwrapped(&output.stderr).contains("failed upstream"),
         "{}",

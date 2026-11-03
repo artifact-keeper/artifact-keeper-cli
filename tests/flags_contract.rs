@@ -211,7 +211,7 @@ async fn webhook_header_needs_a_name_and_a_value() {
         "--header",
         "no-equals-sign",
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert!(m.server.received_requests().await.unwrap().is_empty());
 }
 

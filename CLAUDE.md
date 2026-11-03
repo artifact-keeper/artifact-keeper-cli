@@ -116,7 +116,7 @@ The first two numbers of the CLI version are the server version it's built for. 
 - **OutputFormat**: All commands use the `--format` flag (table/json/yaml/quiet) for output
 - **Instance resolution**: flag `--instance` > config `default_instance` > error
 - **Config path**: `$AK_CONFIG_DIR` or `~/.config/artifact-keeper/config.toml`
-- **Error handling**: `miette::Result` throughout, `AkError` with diagnostic codes and help text
+- **Error handling**: `miette::Result` throughout, `AkError` with diagnostic codes and help text. `AkError::exit_code` maps each variant to the exit code in `ak --help`, and `main` applies it. `ak api` keeps its own table. `Usage` is what the user typed, `Local` a failure on this machine, `ConfigError` ak's own configuration
 - **Async**: All commands are async via tokio
 - **`ak api`**: `src/commands/api.rs` sends any request. The instance's token goes only to the instance's own origin. A new route is reachable through it from day one, before it has a command
 - **`ak pkg`**: `src/commands/pkg/`, one file per format. A format's wire protocol isn't in the spec, so these use `pkg::wire::Wire` over raw HTTP and build what that format's client sends. Plain GETs have no helper: they're `ak api`

@@ -79,7 +79,7 @@ async fn names_are_resolved_through_the_list() {
     m.json(&["environment", "delete", "r", "prod", "--yes"]);
 
     let output = m.ak(&["environment", "show", "r", "nope"]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(5));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("No environment named 'nope'"), "{stderr}");
 }
@@ -181,6 +181,6 @@ async fn a_bad_time_is_refused_before_any_request() {
         "--since",
         "yesterday",
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert!(m.server.received_requests().await.unwrap().is_empty());
 }

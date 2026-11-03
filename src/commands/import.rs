@@ -553,7 +553,7 @@ async fn source_test(id: &str, global: &GlobalArgs) -> Result<()> {
     );
 
     if !result.success {
-        std::process::exit(1);
+        std::process::exit(crate::error::EXIT_REPORTED_FAILURE.into());
     }
     Ok(())
 }

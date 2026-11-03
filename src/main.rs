@@ -1,5 +1,6 @@
+use std::process::ExitCode;
+
 use clap::Parser;
-use miette::Result;
 
 mod cli;
 mod commands;
@@ -10,25 +11,26 @@ mod registry;
 mod transport;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> ExitCode {
     let cli = cli::Cli::parse();
-    let result = cli.execute().await.map_err(explain_no_terminal);
-    if let Err(e) = &result
-        && lacks_consent(e)
-    {
-        eprintln!("Error: {e:?}");
-        std::process::exit(2);
+    match cli.execute().await.map_err(explain_no_terminal) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("Error: {e:?}");
+            ExitCode::from(exit_code(&e))
+        }
     }
-    result
 }
 
-/// Nothing said yes to something that needs it. That's how the command was run, not
-/// something that went wrong, so it's a usage error.
-fn lacks_consent(e: &miette::Report) -> bool {
-    matches!(
-        e.downcast_ref::<error::AkError>(),
-        Some(error::AkError::ConfirmationRefused(_) | error::AkError::NoTerminal)
-    )
+/// The exit code for a failed command: that of the `AkError` in its chain, which a
+/// `wrap_err` doesn't hide, or 1 for anything else.
+fn exit_code(e: &miette::Report) -> u8 {
+    e.downcast_ref::<error::AkError>()
+        .or_else(|| {
+            e.chain()
+                .find_map(|cause| cause.downcast_ref::<error::AkError>())
+        })
+        .map_or(error::EXIT_GENERIC, error::AkError::exit_code)
 }
 
 /// A prompt with no terminal fails deep inside dialoguer, in 20-odd places, with
@@ -99,6 +101,48 @@ pub(crate) mod test_utils {
             std::env::remove_var("AK_CONFIG_DIR");
             std::env::remove_var("AK_TOKEN");
         }
+    }
+}
+
+#[cfg(test)]
+mod exit_code_tests {
+    use super::*;
+    use crate::error::AkError;
+
+    #[test]
+    fn each_failure_has_its_code() {
+        let cases: Vec<(AkError, u8)> = vec![
+            (AkError::Usage("x".into()), 2),
+            (AkError::NoInstance, 2),
+            (AkError::InstanceNotFound("x".into()), 2),
+            (AkError::NoTerminal, 2),
+            (AkError::ConfirmationRefused("x".into()), 2),
+            (AkError::NetworkError("x".into()), 3),
+            (AkError::NotAuthenticated("x".into()), 4),
+            (AkError::Forbidden("x".into()), 4),
+            (AkError::NotFound("x".into()), 5),
+            (AkError::ServerError("x".into()), 6),
+            (AkError::UnsupportedServer("x".into()), 6),
+            (AkError::ReportedFailure("x".into()), 7),
+            (AkError::PromotionBlocked("x".into()), 7),
+            (AkError::ConfigError("x".into()), 1),
+            (AkError::Local("x".into()), 1),
+        ];
+        for (error, code) in cases {
+            let shown = error.to_string();
+            assert_eq!(exit_code(&error.into()), code, "{shown}");
+        }
+    }
+
+    #[test]
+    fn wrapping_an_error_keeps_its_code() {
+        let wrapped: miette::Report = miette::Report::new(AkError::NotFound("x".into()));
+        assert_eq!(exit_code(&wrapped.wrap_err("while doing y")), 5);
+    }
+
+    #[test]
+    fn an_error_that_isnt_ours_is_generic() {
+        assert_eq!(exit_code(&miette::miette!("anything")), 1);
     }
 }
 

@@ -739,7 +739,7 @@ async fn an_empty_token_is_never_stored() {
         let mock = Mocked::start().await;
         mock.respond("POST", route, 200, empty_session()).await;
         let output = mock.ak_anon(&args, stdin, &[]);
-        assert_eq!(output.status.code(), Some(1), "{args:?}: {output:?}");
+        assert_eq!(output.status.code(), Some(4), "{args:?}: {output:?}");
         let stderr = mock::unwrapped(&output.stderr);
         assert!(!stderr.contains("ogged in to"), "{args:?}: {stderr}");
         assert!(stderr.contains("no session token"), "{args:?}: {stderr}");

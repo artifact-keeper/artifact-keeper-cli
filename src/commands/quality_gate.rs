@@ -684,7 +684,7 @@ async fn check_artifact(
     }
 
     if !result.passed {
-        std::process::exit(1);
+        std::process::exit(crate::error::EXIT_REPORTED_FAILURE.into());
     }
 
     Ok(())

@@ -217,7 +217,7 @@ async fn bad_input_is_refused_before_any_request() {
         ["image-build", "render", "r", "--env", "novalue"].as_slice(),
         ["image-build", "show", "r", "not-a-uuid"].as_slice(),
     ] {
-        assert_eq!(m.ak(args).status.code(), Some(1), "{args:?}");
+        assert_eq!(m.ak(args).status.code(), Some(2), "{args:?}");
     }
     assert!(m.server.received_requests().await.unwrap().is_empty());
 }

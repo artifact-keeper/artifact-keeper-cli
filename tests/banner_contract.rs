@@ -105,6 +105,6 @@ async fn a_bad_time_is_refused_before_any_request() {
         "--ends-at",
         "soon",
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert!(m.server.received_requests().await.unwrap().is_empty());
 }
