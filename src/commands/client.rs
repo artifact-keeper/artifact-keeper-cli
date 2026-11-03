@@ -26,6 +26,31 @@ pub fn redirect_policy() -> reqwest::redirect::Policy {
     })
 }
 
+/// `redirect_policy` for a request whose body holds a credential, such as a
+/// password. reqwest resends a body on a 307 or 308 wherever it's sent, so no
+/// redirect from https to plain http is followed, on any host or port.
+///
+/// This isn't for every client: a policy can't see the method or status it would
+/// need to tell these from a download, and a redirect to presigned storage over
+/// plain http has to keep working.
+fn credential_body_redirect_policy() -> reqwest::redirect::Policy {
+    reqwest::redirect::Policy::custom(|attempt| {
+        let downgrade = attempt.url().scheme() == "http"
+            && attempt.previous().iter().any(|url| url.scheme() == "https");
+        let refusal = if downgrade {
+            Some(
+                "refusing a redirect from https to plain http, which would send your credentials unencrypted",
+            )
+        } else {
+            unsafe_redirect(attempt.previous(), attempt.url())
+        };
+        match refusal {
+            Some(reason) => attempt.error(reason),
+            None => reqwest::redirect::Policy::default().redirect(attempt),
+        }
+    })
+}
+
 /// Why following a redirect to `to` would expose a credential, if it would.
 /// `chain` is every URL requested so far, the one that redirected last.
 fn unsafe_redirect(chain: &[Url], to: &Url) -> Option<&'static str> {
@@ -120,8 +145,21 @@ fn build_client_with_timeout(
 /// Used by pre-auth flows (login, TOTP verify, setup status) that must work
 /// against instances behind a private CA before any credentials exist.
 pub fn anon_client(url: &str) -> Result<artifact_keeper_sdk::Client> {
+    unauthenticated_client(url, redirect_policy())
+}
+
+/// [`anon_client`] for sending a password or similar in the request body, as
+/// login does.
+pub fn login_client(url: &str) -> Result<artifact_keeper_sdk::Client> {
+    unauthenticated_client(url, credential_body_redirect_policy())
+}
+
+fn unauthenticated_client(
+    url: &str,
+    redirects: reqwest::redirect::Policy,
+) -> Result<artifact_keeper_sdk::Client> {
     let builder = reqwest::ClientBuilder::new()
-        .redirect(redirect_policy())
+        .redirect(redirects)
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(30));
     let http_client = transport::apply_custom_ca(builder)?
