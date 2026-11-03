@@ -7,12 +7,18 @@
 //! Usage:
 //!   cargo xtask generate          # Generate SDK
 //!   cargo xtask generate --check  # Verify generated code is up-to-date
+//!   cargo xtask routes            # Write ROUTES.json from a backend checkout
+//!   cargo xtask routes --check    # Verify ROUTES.json is up-to-date
+//!   cargo xtask coverage --check  # The coverage gate
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result, bail, ensure};
+
+mod coverage;
+mod routes;
 
 /// Operations left out of the SDK, because Progenitor cannot generate
 /// multipart/form-data. `src/commands` calls these over raw HTTP. Generation
@@ -78,11 +84,35 @@ fn main() -> Result<()> {
             let check = args.iter().any(|a| a == "--check");
             generate_sdk(check)
         }
+        "routes" => {
+            let check = args.iter().any(|a| a == "--check");
+            let backend = flag_value(&args, "--backend").map(PathBuf::from);
+            routes::run(&workspace_root()?, backend, check)
+        }
+        "coverage" => coverage::run(
+            &workspace_root()?,
+            coverage::Options {
+                check: args.iter().any(|a| a == "--check"),
+                ak: flag_value(&args, "--ak").map(PathBuf::from),
+                base_ref: flag_value(&args, "--base-ref"),
+                spec: flag_value(&args, "--spec").map(PathBuf::from),
+            },
+        ),
         _ => {
-            eprintln!("Usage: cargo xtask generate [--check]");
+            eprintln!(
+                "Usage: cargo xtask generate [--check]\n       \
+                 cargo xtask routes [--backend <dir>] [--check]\n       \
+                 cargo xtask coverage [--check] [--ak <path>] [--base-ref <ref>] [--spec <file>]"
+            );
             std::process::exit(1);
         }
     }
+}
+
+/// The value after `--name`, if it's on the command line.
+fn flag_value(args: &[String], name: &str) -> Option<String> {
+    let at = args.iter().position(|a| a == name)?;
+    args.get(at + 1).cloned()
 }
 
 fn generate_sdk(check: bool) -> Result<()> {

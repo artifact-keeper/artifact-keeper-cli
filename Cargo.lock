@@ -4718,7 +4718,10 @@ dependencies = [
  "anyhow",
  "openapiv3",
  "progenitor",
+ "quote",
+ "serde",
  "serde_json",
+ "syn 2.0.117",
 ]
 
 [[package]]

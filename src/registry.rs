@@ -1,9 +1,10 @@
 //! Which `ak` command covers which server route.
 //!
-//! This is the data behind the coverage gate (WS-G in the coverage plan). A route
-//! is covered by a first-class command, or excluded with a reason and reachable
-//! through `ak api`. The list is compiled in, so the gate reads what the binary
-//! really has, and a test here checks that every `command` parses.
+//! This is the data behind the coverage gate, `cargo run -p xtask -- coverage --check`.
+//! A route is covered by a first-class command, or excluded with a reason and
+//! reachable through `ak api`. The list is compiled in, so the gate reads what the
+//! binary really has, through `ak __registry`. `tests/registry_contract.rs` runs each
+//! line against a mock server and fails if the command doesn't do what the line says.
 //!
 //! # Adding an entry
 //!
@@ -18,9 +19,9 @@
 //!   parameter, the same names as the OpenAPI spec.
 //! - `command` is the path of subcommands, as typed after `ak`, with no arguments.
 //! - `binds` lists every query and body field in the pinned API schema that a flag or
-//!   positional can set. Path parameters aren't listed. The gate will compare this
-//!   with the schema, so leave out a field the command can't set. An empty list
-//!   today means "not checked yet", not "there are none".
+//!   positional can set. Path parameters aren't listed. The gate compares this with
+//!   the schema, and `tests/registry_contract.rs` checks each one reaches the server,
+//!   so leave out a field the command can't set.
 //!
 //! For a route that shouldn't have a command, use `excluded(method, path, reason)`.
 //! The reason is for a reviewer: say why a command adds nothing over `ak api`.
@@ -65,6 +66,100 @@ const fn excluded(method: &'static str, path: &'static str, reason: &'static str
         excluded: Some(reason),
     }
 }
+
+/// A whole class of routes with no first-class command, from section 1 of the
+/// coverage plan. The gate applies these after the lines in [`COMMANDS`], fails if one
+/// matches no route, and prints how many each one takes out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ClassExclusion {
+    pub name: &'static str,
+    /// Methods it applies to. Empty means any.
+    pub methods: &'static [&'static str],
+    /// Path prefixes it applies to. A prefix matches whole segments.
+    pub prefixes: &'static [&'static str],
+    /// Path prefixes taken back out, because those routes do get a command.
+    pub except: &'static [&'static str],
+    pub reason: &'static str,
+}
+
+/// The URL prefix of each package-format wire protocol: `format_routes` in the
+/// backend's `routes.rs`. `/v2` isn't here: OCI has its own classes.
+pub const FORMAT_PREFIXES: &[&str] = &[
+    "/alpine",
+    "/ansible",
+    "/api/cargo",
+    "/api/helm",
+    "/bazel",
+    "/cargo",
+    "/chef",
+    "/cocoapods",
+    "/composer",
+    "/conan",
+    "/conda",
+    "/cran",
+    "/debian",
+    "/gems",
+    "/general",
+    "/go",
+    "/helm",
+    "/hex",
+    "/huggingface",
+    "/incus",
+    "/ivy",
+    "/jetbrains",
+    "/lfs",
+    "/lxc",
+    "/maven",
+    "/npm",
+    "/nuget",
+    "/pacman",
+    "/proto",
+    "/pub",
+    "/puppet",
+    "/pypi",
+    "/rpm",
+    "/swift",
+    "/t",
+    "/terraform",
+    "/vscode",
+];
+
+pub static CLASS_EXCLUSIONS: &[ClassExclusion] = &[
+    ClassExclusion {
+        name: "format-get",
+        methods: &["GET", "HEAD"],
+        prefixes: FORMAT_PREFIXES,
+        except: &[],
+        reason: "A plain GET of a package-format wire route is what `ak api GET` already \
+                 sends. A command per format GET would be a wrapper that adds nothing",
+    },
+    ClassExclusion {
+        name: "oci-blob-upload",
+        methods: &[],
+        prefixes: &["/v2/{name}/blobs/uploads"],
+        except: &[],
+        reason: "The OCI blob upload session is a chunk protocol docker and oras implement. \
+                 `ak api` can send any single step",
+    },
+];
+
+/// A request field in the schema that no flag should set, and why. The gate counts
+/// these apart from the fields that have a flag.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FieldOptOut {
+    pub method: &'static str,
+    pub path: &'static str,
+    pub field: &'static str,
+    pub reason: &'static str,
+}
+
+pub static FIELD_OPT_OUTS: &[FieldOptOut] = &[FieldOptOut {
+    method: "GET",
+    path: "/api/v1/repositories/{key}/security/scans",
+    field: "repository_id",
+    reason: "The route's key already picks the repository. `scan list --repo <uuid>` sends \
+             this filter to the route that lists every repository's scans",
+}];
 
 const IDP_CALLBACK: &str = "An identity provider sends a browser here with a code or an \
                             assertion. A CLI never starts this request";
@@ -129,7 +224,12 @@ pub static COMMANDS: &[Op] = &[
         "auth login",
         &["username", "password"],
     ),
-    covered("POST", "/api/v1/auth/logout", "auth logout", &[]),
+    covered(
+        "POST",
+        "/api/v1/auth/logout",
+        "auth logout",
+        &["refresh_token"],
+    ),
     covered(
         "POST",
         "/api/v1/auth/refresh",
@@ -2218,6 +2318,1287 @@ pub static COMMANDS: &[Op] = &[
         "admin diag heap-profile",
         &["activate", "deactivate"],
     ),
+    // ---- other commands over the same routes ----
+    covered("GET", "/api/v1/auth/me", "auth token list", &[]),
+    covered("GET", "/api/v1/users/{id}/tokens", "auth token list", &[]),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/artifacts",
+        "repo browse",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/promotion/repositories/{key}/artifacts/{artifact_id}/promote",
+        "promotion promote",
+        &["notes", "skip_policy_check", "target_repository"],
+    ),
+    covered("GET", "/api/v1/auth/me", "profile show", &[]),
+    covered("GET", "/api/v1/auth/me", "profile update", &[]),
+    covered(
+        "PATCH",
+        "/api/v1/users/{id}",
+        "profile update",
+        &["display_name", "email"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/projects",
+        "dt project show",
+        &[],
+    ),
+    covered("GET", "/api/v1/admin/stats", "admin stats", &[]),
+    covered("GET", "/api/v1/auth/me", "totp status", &[]),
+    covered(
+        "GET",
+        "/api/v1/tree",
+        "packages tree",
+        &["include_metadata", "path", "repository_key"],
+    ),
+    covered("GET", "/health", "system health", &[]),
+    // ---- routes that aren't in the spec ----
+    covered("GET", "/api/v1/openapi.json", "system openapi", &[]),
+    covered("GET", "/swagger-ui", "system swagger-ui", &[]),
+    covered("GET", "/swagger-ui/{path}", "system swagger-ui", &[]),
+    covered("GET", "/healthz", "system healthz", &[]),
+    covered("GET", "/ready", "system ready", &[]),
+    covered(
+        "POST",
+        "/api/v1/admin/settings",
+        "admin settings update",
+        &[
+            "allow_anonymous_download",
+            "audit_retention_days",
+            "backup_retention_count",
+            "edge_stale_threshold_minutes",
+            "environment",
+            "max_upload_size_bytes",
+            "retention_days",
+            "storage_backend",
+            "storage_path",
+        ],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/email-subscriptions",
+        "email-subscriptions subscribe",
+        &["enabled", "event_types", "recipients"],
+    ),
+    // ---- admin ----
+    covered(
+        "DELETE",
+        "/api/v1/admin/ci-oidc/{id}/mappings/{mid}",
+        "admin ci-oidc mapping delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/ci-oidc/{id}/mappings/{mid}",
+        "admin ci-oidc mapping get",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/ci-oidc/{id}/mappings",
+        "admin ci-oidc mapping list",
+        &[],
+    ),
+    covered(
+        "PATCH",
+        "/api/v1/admin/ci-oidc/{id}/mappings/{mid}/toggle",
+        "admin ci-oidc mapping toggle",
+        &["enabled"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/formats/{format_key}/disable",
+        "admin formats disable",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/formats/{format_key}/enable",
+        "admin formats enable",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/formats",
+        "admin formats list",
+        &["enabled", "type"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/formats/{format_key}",
+        "admin formats show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/formats/{format_key}/test",
+        "admin formats test",
+        &["base64", "content", "path"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/instances",
+        "admin instance create",
+        &["api_key", "name", "url"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/instances/{id}",
+        "admin instance delete",
+        &[],
+    ),
+    covered("GET", "/api/v1/instances", "admin instance list", &[]),
+    covered(
+        "DELETE",
+        "/api/v1/instances/{id}/proxy/{path}",
+        "admin instance proxy delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/instances/{id}/proxy/{path}",
+        "admin instance proxy get",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/instances/{id}/proxy/{path}",
+        "admin instance proxy post",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/instances/{id}/proxy/{path}",
+        "admin instance proxy put",
+        &[],
+    ),
+    covered("GET", "/api/v1/admin/stats", "admin metrics", &[]),
+    covered(
+        "GET",
+        "/api/v1/plugins/{id}/config",
+        "admin plugins config get",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/plugins/{id}/config",
+        "admin plugins config set",
+        &["config"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/plugins/{id}/disable",
+        "admin plugins disable",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/plugins/{id}/enable",
+        "admin plugins enable",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/plugins/{id}/events",
+        "admin plugins events",
+        &["limit"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/plugins/install/git",
+        "admin plugins install",
+        &["ref", "url"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/plugins/install/local",
+        "admin plugins install-local",
+        &["path"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/plugins/install/zip",
+        "admin plugins install-zip",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/plugins/{id}/reload",
+        "admin plugins reload",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/plugins/{id}",
+        "admin plugins remove",
+        &[],
+    ),
+    covered("GET", "/api/v1/plugins/{id}", "admin plugins show", &[]),
+    covered("POST", "/api/v1/admin/reindex", "admin reindex", &[]),
+    covered(
+        "POST",
+        "/api/v1/admin/rescan-for-inventory",
+        "admin rescan",
+        &["limit"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/search/reindex",
+        "admin search-reindex",
+        &[],
+    ),
+    covered("GET", "/api/v1/admin/settings", "admin settings show", &[]),
+    covered(
+        "POST",
+        "/api/v1/admin/smtp/test",
+        "admin smtp-test",
+        &["to"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/storage-backends",
+        "admin storage-backends",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/storage-gc/oci-blob-report",
+        "admin storage-gc oci-report",
+        &["grace_hours"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/storage-gc",
+        "admin storage-gc run",
+        &["dry_run"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/telemetry/crashes/{id}",
+        "admin telemetry crash",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/telemetry/crashes",
+        "admin telemetry crashes",
+        &["page", "per_page"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/telemetry/crashes/pending",
+        "admin telemetry crashes",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/admin/telemetry/crashes/{id}",
+        "admin telemetry delete-crash",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/telemetry/settings",
+        "admin telemetry show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/telemetry/crashes/submit",
+        "admin telemetry submit",
+        &["ids"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/telemetry/settings",
+        "admin telemetry update",
+        &[
+            "enabled",
+            "include_logs",
+            "review_before_send",
+            "scrub_level",
+        ],
+    ),
+    covered("DELETE", "/api/v1/users/{id}", "admin users delete", &[]),
+    covered(
+        "POST",
+        "/api/v1/users/{id}/force-password-change",
+        "admin users force-password-change",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/users/{id}/password/reset",
+        "admin users reset-password",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/users/{id}/roles",
+        "admin users role assign",
+        &["role_id"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/users/{id}/roles/{role_id}",
+        "admin users role revoke",
+        &[],
+    ),
+    covered("GET", "/api/v1/users/{id}/roles", "admin users roles", &[]),
+    covered("GET", "/api/v1/users/{id}", "admin users show", &[]),
+    covered(
+        "POST",
+        "/api/v1/users/{id}/tokens",
+        "admin users tokens create",
+        &["expires_in_days", "name", "scopes"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/users/{id}/tokens",
+        "admin users tokens list",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/users/{id}/tokens/{token_id}",
+        "admin users tokens revoke",
+        &[],
+    ),
+    covered(
+        "PATCH",
+        "/api/v1/users/{id}",
+        "admin users update",
+        &["display_name", "email", "is_active", "is_admin"],
+    ),
+    // ---- age-gate ----
+    covered(
+        "POST",
+        "/api/v1/admin/age-gate/reviews/{id}/approve",
+        "age-gate approve",
+        &["reason"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/age-gate",
+        "age-gate get",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/age-gate/reviews/{id}/reject",
+        "age-gate reject",
+        &["reason"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/age-gate/reviews/{id}",
+        "age-gate review",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/age-gate/reviews",
+        "age-gate reviews",
+        &["page", "per_page", "repository_key", "status"],
+    ),
+    // ---- analytics ----
+    covered(
+        "GET",
+        "/api/v1/admin/analytics/downloads/trend",
+        "analytics downloads",
+        &["from", "to"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/analytics/storage/growth",
+        "analytics growth",
+        &["from", "to"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/analytics/repositories/{id}/trend",
+        "analytics repo-trend",
+        &["from", "to"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/analytics/snapshot",
+        "analytics snapshot",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/analytics/storage/breakdown",
+        "analytics storage",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/analytics/storage/trend",
+        "analytics storage-trend",
+        &["from", "to"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/analytics/artifacts/stale",
+        "analytics top-stale",
+        &["days", "limit"],
+    ),
+    // ---- approval ----
+    covered(
+        "GET",
+        "/api/v1/approval/history",
+        "approval list",
+        &["page", "per_page", "source_repository", "status"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/approval/pending",
+        "approval list",
+        &["page", "per_page", "source_repository"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/approval/request",
+        "approval request",
+        &[
+            "artifact_id",
+            "notes",
+            "skip_policy_check",
+            "source_repository",
+            "target_repository",
+        ],
+    ),
+    covered("GET", "/api/v1/approval/{id}", "approval show", &[]),
+    // ---- auth ----
+    covered("GET", "/api/v1/setup/status", "auth setup-status", &[]),
+    // ---- builds ----
+    covered(
+        "POST",
+        "/api/v1/builds/{id}/artifacts",
+        "builds add-artifacts",
+        &["artifacts"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/builds/diff",
+        "builds diff",
+        &["build_a", "build_b"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/builds",
+        "builds list",
+        &[
+            "page",
+            "per_page",
+            "search",
+            "sort_by",
+            "sort_order",
+            "status",
+        ],
+    ),
+    covered("GET", "/api/v1/builds/{id}", "builds show", &[]),
+    covered(
+        "PUT",
+        "/api/v1/builds/{id}",
+        "builds update",
+        &["finished_at", "status"],
+    ),
+    // ---- dt ----
+    covered(
+        "PUT",
+        "/api/v1/dependency-track/analysis",
+        "dt analyze",
+        &[
+            "component_uuid",
+            "details",
+            "justification",
+            "project_uuid",
+            "state",
+            "suppressed",
+            "vulnerability_uuid",
+        ],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/metrics/portfolio",
+        "dt metrics",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/policies",
+        "dt policies",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/projects/{project_uuid}/components",
+        "dt project components",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/projects/{project_uuid}/findings",
+        "dt project findings",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/projects/{project_uuid}",
+        "dt project get",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/projects",
+        "dt project list",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/projects/{project_uuid}/metrics",
+        "dt project metrics",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/projects/{project_uuid}/metrics/history",
+        "dt project metrics-history",
+        &["days"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/dependency-track/projects/{project_uuid}/violations",
+        "dt project violations",
+        &[],
+    ),
+    covered("GET", "/api/v1/dependency-track/status", "dt status", &[]),
+    // ---- email-subscriptions ----
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/email-subscriptions",
+        "email-subscriptions list",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/repositories/{key}/email-subscriptions/{subscription_id}",
+        "email-subscriptions unsubscribe",
+        &[],
+    ),
+    // ---- group ----
+    covered(
+        "POST",
+        "/api/v1/groups/{id}/members",
+        "group add-member",
+        &["user_ids"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/groups",
+        "group create",
+        &["description", "name"],
+    ),
+    covered("DELETE", "/api/v1/groups/{id}", "group delete", &[]),
+    covered(
+        "GET",
+        "/api/v1/groups",
+        "group list",
+        &["page", "per_page", "search"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/groups/{id}/members",
+        "group remove-member",
+        &["user_ids"],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/groups/{id}",
+        "group update",
+        &["description", "name"],
+    ),
+    // ---- import ----
+    covered(
+        "GET",
+        "/api/v1/migrations/{id}/assessment",
+        "import assess result",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/migrations/{id}/assess",
+        "import assess run",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/migrations/{id}/cancel",
+        "import job cancel",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/migrations",
+        "import job create",
+        &["config", "job_type", "source_connection_id"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/migrations/{id}",
+        "import job delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/migrations/{id}/items",
+        "import job items",
+        &["item_type", "page", "per_page", "status"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/migrations",
+        "import job list",
+        &["page", "per_page", "status"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/migrations/{id}/pause",
+        "import job pause",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/migrations/{id}/report",
+        "import job report",
+        &["format"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/migrations/{id}/resume",
+        "import job resume",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/migrations/{id}/start",
+        "import job start",
+        &[],
+    ),
+    covered("GET", "/api/v1/migrations/{id}", "import job status", &[]),
+    covered(
+        "GET",
+        "/api/v1/migrations/{id}/stream",
+        "import job stream",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/migrations/connections",
+        "import source add",
+        &["auth_type", "credentials", "name", "source_type", "url"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/migrations/connections/{id}",
+        "import source delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/migrations/connections",
+        "import source list",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/migrations/connections/{id}/repositories",
+        "import source repos",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/migrations/connections/{id}",
+        "import source show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/migrations/connections/{id}/test",
+        "import source test",
+        &[],
+    ),
+    // ---- label ----
+    covered(
+        "POST",
+        "/api/v1/artifacts/{id}/labels/{label_key}",
+        "label artifact add",
+        &["value"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/artifacts/{id}/labels",
+        "label artifact list",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/artifacts/{id}/labels/{label_key}",
+        "label artifact remove",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/artifacts/{id}/labels",
+        "label artifact set",
+        &["labels"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/labels/{label_key}",
+        "label repo add",
+        &["value"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/labels",
+        "label repo list",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/repositories/{key}/labels/{label_key}",
+        "label repo remove",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/repositories/{key}/labels",
+        "label repo set",
+        &["labels"],
+    ),
+    // ---- license ----
+    covered(
+        "POST",
+        "/api/v1/sbom/check-compliance",
+        "license check",
+        &["licenses", "repository_id"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/sbom/license-policies",
+        "license policy create",
+        &[
+            "action",
+            "allow_unknown",
+            "allowed_licenses",
+            "denied_licenses",
+            "description",
+            "is_enabled",
+            "name",
+            "repository_id",
+        ],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/sbom/license-policies/{id}",
+        "license policy delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/sbom/license-policies",
+        "license policy list",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/sbom/license-policies/{id}",
+        "license policy show",
+        &[],
+    ),
+    // ---- monitoring ----
+    covered(
+        "GET",
+        "/api/v1/admin/monitoring/alerts",
+        "monitoring alerts",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/monitoring/check",
+        "monitoring check",
+        &[],
+    ),
+    covered("GET", "/health", "monitoring health", &[]),
+    covered(
+        "GET",
+        "/api/v1/admin/monitoring/health-log",
+        "monitoring health-log",
+        &["limit", "service"],
+    ),
+    covered("GET", "/livez", "monitoring live", &[]),
+    covered("GET", "/api/v1/admin/metrics", "monitoring metrics", &[]),
+    covered("GET", "/readyz", "monitoring ready", &[]),
+    covered(
+        "POST",
+        "/api/v1/admin/monitoring/alerts/suppress",
+        "monitoring suppress",
+        &["service_name", "until"],
+    ),
+    // ---- packages ----
+    covered(
+        "GET",
+        "/api/v1/packages",
+        "packages list",
+        &["format", "page", "per_page", "repository_key", "search"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/packages/{id}/versions",
+        "packages versions",
+        &[],
+    ),
+    // ---- peer ----
+    covered(
+        "POST",
+        "/api/v1/peers/announce",
+        "peer announce",
+        &["api_key", "endpoint_url", "name", "peer_id"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/peers/{id}/chunks/{artifact_id}/peers",
+        "peer chunk peers",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/peers/{id}/chunks/{artifact_id}/scored-peers",
+        "peer chunk scored-peers",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/peers/{id}/chunks/{artifact_id}",
+        "peer chunk show",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/peers/{id}/chunks/{artifact_id}",
+        "peer chunk update",
+        &["chunk_bitmap", "total_chunks"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/peers/{id}/connections/discover",
+        "peer connection discover",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/peers/{id}/connections",
+        "peer connection list",
+        &["status"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/connections/{target_id}/unreachable",
+        "peer connection unreachable",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/heartbeat",
+        "peer heartbeat",
+        &["cache_used_bytes", "status"],
+    ),
+    covered("GET", "/api/v1/peers/identity", "peer identity", &[]),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/labels/{label_key}",
+        "peer label add",
+        &["value"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/peers/{id}/labels/{label_key}",
+        "peer label delete",
+        &[],
+    ),
+    covered("GET", "/api/v1/peers/{id}/labels", "peer label list", &[]),
+    covered(
+        "PUT",
+        "/api/v1/peers/{id}/labels",
+        "peer label set",
+        &["labels"],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/peers/{id}/network-profile",
+        "peer network-profile",
+        &[
+            "concurrent_transfers_limit",
+            "max_bandwidth_bps",
+            "sync_window_end",
+            "sync_window_start",
+            "sync_window_timezone",
+        ],
+    ),
+    covered("GET", "/api/v1/peers/{id}", "peer show", &[]),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/repositories",
+        "peer subscription assign",
+        &[
+            "replication_filter",
+            "replication_mode",
+            "replication_schedule",
+            "repository_id",
+            "sync_enabled",
+        ],
+    ),
+    covered(
+        "GET",
+        "/api/v1/peers/{id}/repositories",
+        "peer subscription list",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/repositories/{repo_id}/sync",
+        "peer subscription run",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/peers/{id}/repositories/{repo_id}",
+        "peer subscription show",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/peers/{id}/repositories/{repo_id}",
+        "peer subscription unassign",
+        &[],
+    ),
+    covered("POST", "/api/v1/peers/{id}/sync", "peer sync", &[]),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/connections/probe",
+        "peer test",
+        &["bandwidth_estimate_bps", "latency_ms", "target_peer_id"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/transfer/{session_id}/chunk/{chunk_index}/complete",
+        "peer transfer chunk-complete",
+        &["checksum", "source_peer_id"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/transfer/{session_id}/chunk/{chunk_index}/fail",
+        "peer transfer chunk-fail",
+        &["error"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/transfer/{session_id}/chunk/{chunk_index}/retry",
+        "peer transfer chunk-retry",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/transfer/{session_id}/complete",
+        "peer transfer complete",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/transfer/{session_id}/fail",
+        "peer transfer fail",
+        &["error"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/peers/{id}/transfer/init",
+        "peer transfer init",
+        &["artifact_id", "chunk_size"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/peers/{id}/transfer/{session_id}/chunks",
+        "peer transfer manifest",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/peers/{id}/transfer/{session_id}",
+        "peer transfer show",
+        &[],
+    ),
+    covered("DELETE", "/api/v1/peers/{id}", "peer unregister", &[]),
+    // ---- promotion ----
+    covered(
+        "POST",
+        "/api/v1/promotion/repositories/{key}/promote",
+        "promotion bulk-promote",
+        &[
+            "artifact_ids",
+            "notes",
+            "skip_policy_check",
+            "target_repository",
+        ],
+    ),
+    covered(
+        "POST",
+        "/api/v1/promotion/repositories/{key}/artifacts/{artifact_id}/reject",
+        "promotion reject",
+        &["notes", "reason"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/promotion/repositories/{key}/release-target",
+        "promotion release-target get",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/promotion/repositories/{key}/release-target",
+        "promotion release-target set",
+        &["release_repository_key"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/promotion-rules/{id}",
+        "promotion rule delete",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/promotion-rules/{id}/evaluate",
+        "promotion rule evaluate",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/promotion-rules/{id}",
+        "promotion rule get",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/promotion-rules",
+        "promotion rule list",
+        &["source_repo_id"],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/promotion-rules/{id}",
+        "promotion rule update",
+        &[
+            "allowed_licenses",
+            "auto_promote",
+            "is_enabled",
+            "max_artifact_age_days",
+            "max_cve_severity",
+            "min_health_score",
+            "min_staging_hours",
+            "name",
+            "require_signature",
+        ],
+    ),
+    // ---- quality-gate ----
+    covered(
+        "GET",
+        "/api/v1/quality/health/artifacts/{artifact_id}",
+        "quality-gate artifact-health",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/quality/gates/evaluate/{artifact_id}",
+        "quality-gate check",
+        &["repository_id"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/quality/checks/{id}/issues",
+        "quality-gate check-issues",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/quality/checks/{id}",
+        "quality-gate check-show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/quality/checks/trigger",
+        "quality-gate check-trigger",
+        &["artifact_id", "repository_id"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/quality/checks",
+        "quality-gate checks",
+        &["artifact_id"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/quality/gates/{id}",
+        "quality-gate delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/quality/health/dashboard",
+        "quality-gate health-dashboard",
+        &[],
+    ),
+    covered("GET", "/api/v1/quality/gates", "quality-gate list", &[]),
+    covered(
+        "GET",
+        "/api/v1/quality/health/repositories/{key}",
+        "quality-gate repo-health",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/quality/gates/{id}",
+        "quality-gate show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/quality/issues/{id}/suppress",
+        "quality-gate suppress",
+        &["reason"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/quality/issues/{id}/suppress",
+        "quality-gate unsuppress",
+        &[],
+    ),
+    // ---- repo-token ----
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/tokens",
+        "repo-token create",
+        &["description", "expires_in_days", "name", "scopes"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/tokens",
+        "repo-token list",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/repositories/{key}/tokens/{token_id}",
+        "repo-token revoke",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/tokens/{token_id}",
+        "repo-token show",
+        &[],
+    ),
+    // ---- service-account ----
+    covered(
+        "POST",
+        "/api/v1/service-accounts",
+        "service-account create",
+        &["description", "name"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/service-accounts/{id}",
+        "service-account delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/service-accounts",
+        "service-account list",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/service-accounts/repo-selector/preview",
+        "service-account preview-selector",
+        &["repo_selector"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/service-accounts/{id}",
+        "service-account show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/service-accounts/{id}/tokens",
+        "service-account token create",
+        &[
+            "description",
+            "expires_in_days",
+            "name",
+            "repo_selector",
+            "repository_ids",
+            "scopes",
+        ],
+    ),
+    covered(
+        "GET",
+        "/api/v1/service-accounts/{id}/tokens",
+        "service-account token list",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/service-accounts/{id}/tokens/{token_id}",
+        "service-account token revoke",
+        &[],
+    ),
+    covered(
+        "PATCH",
+        "/api/v1/service-accounts/{id}",
+        "service-account update",
+        &["display_name", "is_active"],
+    ),
+    // ---- sync-policy ----
+    covered(
+        "DELETE",
+        "/api/v1/sync-policies/{id}",
+        "sync-policy delete",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/sync-policies/evaluate",
+        "sync-policy evaluate",
+        &[],
+    ),
+    covered("GET", "/api/v1/sync-policies", "sync-policy list", &[]),
+    covered("GET", "/api/v1/sync-policies/{id}", "sync-policy show", &[]),
+    covered(
+        "POST",
+        "/api/v1/sync-policies/{id}/toggle",
+        "sync-policy toggle",
+        &["enabled"],
+    ),
+    // ---- system ----
+    covered("GET", "/api/v1/system/config", "system config", &[]),
     // ---- excluded: reachable with `ak api` ----
     excluded("GET", "/api/v1/auth/sso/oidc/{id}/callback", IDP_CALLBACK),
     excluded("GET", "/api/v1/auth/sso/oidc/callback", IDP_CALLBACK),
@@ -2229,6 +3610,136 @@ pub static COMMANDS: &[Op] = &[
         WASM_PASSTHROUGH,
     ),
 ];
+
+/// Everything `ak __registry` prints: the lines above, and every leaf command with
+/// its arguments, read from clap. The gate and `tests/registry_contract.rs` read
+/// this, so they see what the binary really has.
+pub fn dump() -> serde_json::Value {
+    use clap::CommandFactory;
+
+    let commands: Vec<_> = COMMANDS
+        .iter()
+        .map(|op| {
+            serde_json::json!({
+                "method": op.method,
+                "path": op.path,
+                "command": op.command,
+                "binds": op.binds,
+                "excluded": op.excluded,
+            })
+        })
+        .collect();
+    let classes: Vec<_> = CLASS_EXCLUSIONS
+        .iter()
+        .map(|class| {
+            serde_json::json!({
+                "name": class.name,
+                "methods": class.methods,
+                "prefixes": class.prefixes,
+                "except": class.except,
+                "reason": class.reason,
+            })
+        })
+        .collect();
+    let mut leaves = Vec::new();
+    let root = crate::cli::Cli::command();
+    for sub in root.get_subcommands() {
+        collect_leaves(sub, sub.get_name(), &mut leaves);
+    }
+    serde_json::json!({
+        "commands": commands,
+        "class_exclusions": classes,
+        "field_opt_outs": FIELD_OPT_OUTS
+            .iter()
+            .map(|out| {
+                serde_json::json!({
+                    "method": out.method,
+                    "path": out.path,
+                    "field": out.field,
+                    "reason": out.reason,
+                })
+            })
+            .collect::<Vec<_>>(),
+        "leaves": leaves,
+    })
+}
+
+pub fn print_dump() {
+    println!("{}", dump());
+}
+
+fn collect_leaves(cmd: &clap::Command, path: &str, out: &mut Vec<serde_json::Value>) {
+    if cmd.get_name() == "help" || cmd.get_name() == "__registry" {
+        return;
+    }
+    let subs: Vec<_> = cmd
+        .get_subcommands()
+        .filter(|sub| sub.get_name() != "help")
+        .collect();
+    if subs.is_empty() || !cmd.is_subcommand_required_set() {
+        let args: Vec<_> = cmd
+            .get_arguments()
+            .filter(|a| !a.is_global_set() && !a.is_hide_set())
+            .filter(|a| {
+                !matches!(
+                    a.get_action(),
+                    clap::ArgAction::Help
+                        | clap::ArgAction::HelpShort
+                        | clap::ArgAction::HelpLong
+                        | clap::ArgAction::Version
+                )
+            })
+            .map(describe_arg)
+            .collect();
+        if subs.is_empty() || !args.is_empty() {
+            out.push(serde_json::json!({ "command": path, "args": args }));
+        }
+    }
+    for sub in subs {
+        collect_leaves(sub, &format!("{path} {}", sub.get_name()), out);
+    }
+}
+
+fn describe_arg(arg: &clap::Arg) -> serde_json::Value {
+    use clap::builder::ValueParser;
+    use clap::value_parser;
+
+    let id = arg.get_value_parser().type_id();
+    let is_int = [
+        ValueParser::from(value_parser!(u8)).type_id(),
+        ValueParser::from(value_parser!(u16)).type_id(),
+        ValueParser::from(value_parser!(u32)).type_id(),
+        ValueParser::from(value_parser!(u64)).type_id(),
+        ValueParser::from(value_parser!(i32)).type_id(),
+        ValueParser::from(value_parser!(i64)).type_id(),
+        ValueParser::new(clap::builder::RangedU64ValueParser::<usize>::new()).type_id(),
+    ]
+    .contains(&id);
+    let kind = if !arg.get_action().takes_values() {
+        "flag"
+    } else if id == ValueParser::path_buf().type_id() {
+        "path"
+    } else if is_int {
+        "int"
+    } else if id == ValueParser::bool().type_id() {
+        "bool"
+    } else {
+        "string"
+    };
+    let values: Vec<String> = arg
+        .get_possible_values()
+        .iter()
+        .map(|v| v.get_name().to_string())
+        .collect();
+    serde_json::json!({
+        "id": arg.get_id().as_str(),
+        "long": arg.get_long(),
+        "positional": arg.is_positional(),
+        "required": arg.is_required_set(),
+        "kind": kind,
+        "values": values,
+    })
+}
 
 #[cfg(test)]
 mod tests {

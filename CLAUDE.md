@@ -33,6 +33,16 @@ cargo run -p xtask -- generate
 
 # Verify SDK is up-to-date
 cargo run -p xtask -- generate --check
+
+# Write ROUTES.json from a backend checkout at the pin (../artifact-keeper), or verify it
+cargo run -p xtask -- routes
+cargo run -p xtask -- routes --check
+
+# The coverage gate: every route has a command, a reason, or is pending WS-F
+cargo run -p xtask -- coverage --check
+
+# Does each registry line tell the truth? Runs the real binary against a mock server
+cargo test --test registry_contract -- --include-ignored
 ```
 
 ## Architecture
@@ -80,6 +90,16 @@ The xtask handles OpenAPI 3.1 → 3.0 conversion (nullable types, oneOf/anyOf pa
 - Fields required by the pinned API but absent on the previous server minor are generated as `Option` (`NOT_REQUIRED_ON_PREVIOUS_MINOR`). Update that list when the pin moves to a new minor.
 
 To regenerate: `cargo run -p xtask -- generate`. To check: `cargo run -p xtask -- generate --check`, which the `SDK Drift` CI job runs.
+
+### Coverage gate
+
+The `Coverage` CI job holds the CLI to "anything curl can do". It isn't a required check yet.
+
+- `ROUTES.json` is the backend's route table, read from its source by `xtask routes`, with a trailing slash removed from each path. `OCI_ROUTES.json` is the OCI surface that the backend routes in a fallback handler, kept by hand. Regenerate `ROUTES.json` whenever `API_VERSION` moves.
+- `xtask coverage --check` reads those, the spec, and the registry from `ak __registry`. Each route needs a line in `src/registry.rs`, a class exclusion there, or a place in `COVERAGE_PENDING.json`. It prints the per-tag table.
+- `COVERAGE_PENDING.json` lists package-format routes waiting for the WS-F helpers. It only shrinks. The gate fails if a route is added to it, or if a route on it gets a command and stays.
+- Every field in a covered operation's schema has to be in that route's `binds`, or in `FIELD_OPT_OUTS` with a reason.
+- `tests/registry_contract.rs` runs each registry line against a mock server, and fails if the command doesn't send that request, or if a listed field doesn't reach the server. A new command that it can't drive needs an entry in that test's `hints` or `preflight`.
 
 ### Version policy
 
