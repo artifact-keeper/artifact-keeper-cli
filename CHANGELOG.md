@@ -34,6 +34,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak admin users role assign` warns that the role grants no repository access, since backend 1.11 deprecated the endpoint in favour of `ak permission create`.
 - `ak lifecycle update` and `ak email-subscriptions subscribe` use the generated SDK instead of raw HTTP.
 - `ak setup` no longer writes your 30-minute login token into permanent config files. It creates an API token named `ak-setup-<tool>-<repo>` with `read:artifacts` and `write:artifacts` that lasts 90 days (`--token-days`), and prints its ID and how to revoke it. `--session-token` keeps the old behavior with a warning. An API token in `AK_TOKEN` is used as it is.
+- For `--format json` and `yaml`, these commands now print the response body as the server sent it, including fields this version of the CLI does not know: `auth whoami`, `auth token list`, `repo list|show|create|update|members list`, `artifact list|info|show|metadata|stats|search`, `lifecycle list|show|create|update`, `webhook list|show|create`. **This changes their JSON shape**: lists are `{"items": [...], "pagination": {...}}` rather than a bare array, and fields use the API names (`repo_type` rather than `type`, `is_public` rather than `public`, `is_admin` rather than `admin`). `size` and `storage_used` strings and `whoami`'s `instance` and `url` are gone from JSON, and an empty list prints the body rather than nothing. Other commands keep their shape for now and move as their workstreams land. Table output is unchanged.
 
 ### Fixed
 
@@ -46,6 +47,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak setup` writes working URLs (#155). Package-manager endpoints are mounted at the server root, not under `/api/v1`. NuGet uses `/nuget/<repo>/v3/index.json`, apt uses `/debian/<repo>/`, and Cargo uses the sparse protocol. It no longer forces https on http instances, and `setup docker` keeps the port. For http instances it adds the setting each client needs (`allowInsecureProtocol`, `allowInsecureConnections`, `trusted-host`, a protocol on the apt `machine` line). `setup go` now says the go command will not send credentials over plain HTTP. `setup go` no longer suggests the nonexistent `GONOSUMCHECK`.
 - Failed commands now show the status and the server's own message, such as `409 Conflict: Artifact is quarantined and pending security review`, instead of response headers or a debug dump of the response. The SDK has its own error type for this, and it holds no headers.
 - `ak lifecycle create --repo` no longer creates a policy for every repository on a 1.10 server. It sent only `repository_ids`, which 1.10 ignores. If you created policies with `--repo` against 1.10 using a build of this release, check their scope with `ak lifecycle list`.
+- `ak artifact info` fetches the exact path. It used to search and take the first match, so `a.bin` could show `dir/a.bin.old`.
 
 ### Removed
 

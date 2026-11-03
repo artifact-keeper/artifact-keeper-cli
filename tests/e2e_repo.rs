@@ -230,7 +230,6 @@ fn repo_virtual_shows_member_storage() {
     let shown: serde_json::Value = serde_json::from_slice(&output).unwrap();
     assert_eq!(shown["storage_used_bytes"], 0);
     assert_eq!(shown["member_storage_used_bytes"], 2048);
-    assert_eq!(shown["storage_used"], "2.0 KB");
 
     env.ak_cmd_table()
         .args(["repo", "show", &virt, "--format", "table"])

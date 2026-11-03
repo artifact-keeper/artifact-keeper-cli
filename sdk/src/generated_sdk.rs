@@ -106043,7 +106043,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106102,7 +106102,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106187,7 +106187,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106272,7 +106272,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106357,7 +106357,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106434,7 +106434,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106505,7 +106505,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106597,7 +106597,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106638,7 +106638,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106685,7 +106685,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106754,7 +106754,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -106825,7 +106825,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -107005,7 +107005,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -107109,7 +107109,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -107179,7 +107179,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -107239,7 +107239,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -107407,7 +107407,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -107493,7 +107493,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -107537,7 +107537,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -107605,7 +107605,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -107666,7 +107666,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -107751,7 +107751,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -107850,7 +107850,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -107926,7 +107926,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -107988,7 +107988,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -108081,7 +108081,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -108200,7 +108200,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -108293,7 +108293,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -108370,7 +108370,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -108481,7 +108481,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -108655,7 +108655,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -108744,7 +108744,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -108815,7 +108815,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -108998,7 +108998,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -109185,7 +109185,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -109371,7 +109371,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -109478,7 +109478,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -109519,7 +109519,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -109583,7 +109583,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -109657,7 +109657,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 422u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -109699,7 +109699,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -109744,7 +109744,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -109803,7 +109803,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -109944,7 +109944,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 422u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -110004,7 +110004,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -110063,7 +110063,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -110139,7 +110139,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -110220,7 +110220,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -110301,7 +110301,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -110407,7 +110407,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -110483,7 +110483,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -110524,7 +110524,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -110589,7 +110589,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -110653,7 +110653,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -110717,7 +110717,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -110844,7 +110844,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -110886,7 +110886,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -110975,7 +110975,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
@@ -111052,7 +111052,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 503u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -111095,7 +111095,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -111205,7 +111205,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -111327,7 +111327,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -111438,7 +111438,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -111561,7 +111561,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -111604,7 +111604,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -111672,7 +111672,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -111714,7 +111714,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 503u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -111790,7 +111790,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 503u16 => Err(Error::from_response(response).await),
@@ -111834,7 +111834,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -111908,7 +111908,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
@@ -111952,7 +111952,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -112026,7 +112026,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -112095,7 +112095,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 502u16 => Err(Error::from_response(response).await),
@@ -112142,7 +112142,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -112216,7 +112216,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -112276,7 +112276,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -112367,7 +112367,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -112481,7 +112481,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -112607,7 +112607,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -112681,7 +112681,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -112741,7 +112741,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -112832,7 +112832,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -113011,7 +113011,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -113055,7 +113055,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -113129,7 +113129,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -113189,7 +113189,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -113280,7 +113280,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -113457,7 +113457,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -113502,7 +113502,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -113572,7 +113572,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -113635,7 +113635,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -113704,7 +113704,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -113782,7 +113782,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -113823,7 +113823,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -113900,7 +113900,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -113943,7 +113943,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -114014,7 +114014,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -114073,7 +114073,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -114165,7 +114165,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -114234,7 +114234,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -114326,7 +114326,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -114386,7 +114386,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
@@ -114496,7 +114496,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -114589,7 +114589,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -114656,7 +114656,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
@@ -114718,7 +114718,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -114802,7 +114802,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
@@ -114888,7 +114888,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
@@ -114950,7 +114950,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -115010,7 +115010,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -115100,7 +115100,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -115208,7 +115208,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -115337,7 +115337,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -115397,7 +115397,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -115459,7 +115459,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -115501,7 +115501,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -115569,7 +115569,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -115639,7 +115639,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -115746,7 +115746,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -115817,7 +115817,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -115887,7 +115887,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -116219,7 +116219,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -116421,7 +116421,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -116495,7 +116495,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -116685,7 +116685,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -116760,7 +116760,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -116833,7 +116833,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -116876,7 +116876,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -116946,7 +116946,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -117004,7 +117004,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -117138,7 +117138,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -117208,7 +117208,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -117283,7 +117283,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -117343,7 +117343,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -117430,7 +117430,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -117522,7 +117522,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -117639,7 +117639,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -117778,7 +117778,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -117839,7 +117839,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -117947,7 +117947,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -118017,7 +118017,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -118126,7 +118126,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -118380,7 +118380,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -118439,7 +118439,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -118498,7 +118498,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -118635,7 +118635,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -118695,7 +118695,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -118756,7 +118756,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -118835,7 +118835,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -118917,7 +118917,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -118991,7 +118991,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -119051,7 +119051,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -119142,7 +119142,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -119256,7 +119256,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119325,7 +119325,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119369,7 +119369,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119412,7 +119412,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119453,7 +119453,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119515,7 +119515,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119579,7 +119579,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119641,7 +119641,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119703,7 +119703,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119782,7 +119782,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119846,7 +119846,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -119887,7 +119887,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -120007,7 +120007,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -120088,7 +120088,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -120166,7 +120166,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -120225,7 +120225,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -120285,7 +120285,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -120344,7 +120344,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -120433,7 +120433,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -120522,7 +120522,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -120593,7 +120593,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
@@ -120695,7 +120695,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -120783,7 +120783,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -121051,7 +121051,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -121122,7 +121122,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -121572,7 +121572,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -121644,7 +121644,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -121690,7 +121690,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -121764,7 +121764,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -121824,7 +121824,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -121940,7 +121940,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122001,7 +122001,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122062,7 +122062,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122176,7 +122176,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                202u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                202u16 => crate::raw::parse_response(response).await,
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122237,7 +122237,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122298,7 +122298,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122422,7 +122422,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -122482,7 +122482,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122556,7 +122556,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122617,7 +122617,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122678,7 +122678,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -122854,7 +122854,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -122934,7 +122934,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -122995,7 +122995,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -123100,7 +123100,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -123170,7 +123170,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -123245,7 +123245,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -123287,7 +123287,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -123347,7 +123347,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -123478,7 +123478,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -123662,7 +123662,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -123740,7 +123740,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -123814,7 +123814,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -123877,7 +123877,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -123960,7 +123960,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -124173,7 +124173,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -124261,7 +124261,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -124366,7 +124366,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -124582,7 +124582,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -124744,7 +124744,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -124892,7 +124892,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                202u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                202u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -125069,7 +125069,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -125156,7 +125156,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -125232,7 +125232,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -125614,7 +125614,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -125921,7 +125921,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -125995,7 +125995,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -126056,7 +126056,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -126147,7 +126147,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -126275,7 +126275,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -126346,7 +126346,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -126477,7 +126477,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -126589,7 +126589,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -126681,7 +126681,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -126862,7 +126862,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -126921,7 +126921,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -126962,7 +126962,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -127035,7 +127035,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
@@ -127097,7 +127097,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -127187,7 +127187,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -127303,7 +127303,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -127395,7 +127395,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -127549,7 +127549,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -127619,7 +127619,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -127680,7 +127680,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -127766,7 +127766,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -127878,7 +127878,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -127984,7 +127984,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
@@ -128092,7 +128092,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -128180,7 +128180,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -128306,7 +128306,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -128366,7 +128366,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -128457,7 +128457,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -128524,7 +128524,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -128596,7 +128596,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -128656,7 +128656,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -128718,7 +128718,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -128762,7 +128762,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -128831,7 +128831,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 422u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -128911,7 +128911,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -128971,7 +128971,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -129057,7 +129057,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -129122,7 +129122,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -129185,7 +129185,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -129227,7 +129227,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -129287,7 +129287,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -129375,7 +129375,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -129435,7 +129435,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -129529,7 +129529,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -129596,7 +129596,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -129689,7 +129689,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -129781,7 +129781,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -129847,7 +129847,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -129984,7 +129984,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -130057,7 +130057,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -130103,7 +130103,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -130162,7 +130162,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -130306,7 +130306,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -130371,7 +130371,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -130461,7 +130461,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -130520,7 +130520,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -130607,7 +130607,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -130670,7 +130670,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -130840,7 +130840,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -130930,7 +130930,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 413u16 => Err(Error::from_response(response).await),
@@ -131023,7 +131023,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -131118,7 +131118,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -131250,7 +131250,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -131336,7 +131336,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -131411,7 +131411,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -131563,7 +131563,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -131651,7 +131651,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -131716,7 +131716,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -131809,7 +131809,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -131948,7 +131948,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -132063,8 +132063,8 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
+                201u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -132145,7 +132145,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -132291,7 +132291,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -132352,7 +132352,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -132441,7 +132441,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                202u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                202u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 503u16 => Err(Error::from_response(response).await),
@@ -132516,7 +132516,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -132605,7 +132605,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -132666,7 +132666,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -132738,7 +132738,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -132894,7 +132894,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -132954,7 +132954,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -133040,7 +133040,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -133143,7 +133143,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -133274,7 +133274,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -133367,7 +133367,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -133460,7 +133460,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
@@ -133593,7 +133593,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -133684,7 +133684,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -133746,7 +133746,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -133850,7 +133850,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -133982,7 +133982,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -134070,7 +134070,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -134185,7 +134185,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -134275,7 +134275,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -134470,7 +134470,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -134557,7 +134557,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
@@ -134717,7 +134717,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -134779,7 +134779,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -134865,7 +134865,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -134975,7 +134975,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -135090,7 +135090,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -135180,7 +135180,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -135260,7 +135260,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -135477,7 +135477,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -135564,7 +135564,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -135627,7 +135627,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -135705,7 +135705,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -135802,7 +135802,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -135871,7 +135871,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -135935,7 +135935,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -136010,7 +136010,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -136075,7 +136075,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -136138,7 +136138,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -136200,7 +136200,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -136306,7 +136306,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -136396,7 +136396,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -136475,7 +136475,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -136602,7 +136602,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 413u16 => Err(Error::from_response(response).await),
@@ -136649,7 +136649,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -136723,7 +136723,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 422u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -136783,7 +136783,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -136848,7 +136848,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -136908,7 +136908,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -136973,7 +136973,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -137035,7 +137035,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -137121,7 +137121,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -137380,7 +137380,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -137453,7 +137453,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 422u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -137543,7 +137543,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -137602,7 +137602,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -137676,7 +137676,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -137753,7 +137753,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -137859,7 +137859,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -137902,7 +137902,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -137943,7 +137943,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -138020,7 +138020,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -138108,7 +138108,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -138169,7 +138169,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -138214,7 +138214,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -138283,7 +138283,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
@@ -138345,7 +138345,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -138431,7 +138431,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -138496,7 +138496,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -138566,7 +138566,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 503u16 => Err(Error::from_response(response).await),
@@ -138707,7 +138707,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -138766,7 +138766,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -138918,7 +138918,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -138962,7 +138962,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -139004,7 +139004,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -139079,7 +139079,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -139160,7 +139160,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -139221,7 +139221,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -139364,7 +139364,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -139424,7 +139424,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -139510,7 +139510,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -139623,7 +139623,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -139685,7 +139685,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
@@ -139750,7 +139750,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -139820,7 +139820,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -139881,7 +139881,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -139947,7 +139947,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -140065,7 +140065,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -140126,7 +140126,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -140187,7 +140187,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -140283,7 +140283,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -140378,7 +140378,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -140452,7 +140452,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -140496,7 +140496,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -140568,7 +140568,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -140628,7 +140628,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -140719,7 +140719,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -140860,7 +140860,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -140903,7 +140903,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -140997,7 +140997,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -141159,8 +141159,8 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
-                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
+                201u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
@@ -141224,7 +141224,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 410u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -141337,7 +141337,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -141402,7 +141402,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 405u16 => Err(Error::from_response(response).await),
@@ -141545,7 +141545,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -141614,7 +141614,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 409u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -141657,7 +141657,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -141769,7 +141769,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -141843,7 +141843,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -141954,7 +141954,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -142093,7 +142093,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -142155,7 +142155,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
@@ -142304,7 +142304,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
@@ -142366,7 +142366,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -142575,7 +142575,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -142666,7 +142666,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -142843,7 +142843,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -142917,7 +142917,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 400u16 => Err(Error::from_response(response).await),
                 422u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -142961,7 +142961,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -143021,7 +143021,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -143180,7 +143180,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 500u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -143257,7 +143257,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -143423,7 +143423,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 409u16 => Err(Error::from_response(response).await),
                 500u16 => Err(Error::from_response(response).await),
@@ -143485,7 +143485,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -143527,7 +143527,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 503u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -143569,7 +143569,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 _ => Err(Error::from_response(response).await),
             }
         }
@@ -143729,7 +143729,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -143826,7 +143826,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -143869,7 +143869,7 @@ pub mod builder {
             client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                200u16 => crate::raw::parse_response(response).await,
                 503u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
