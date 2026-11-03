@@ -53,7 +53,7 @@ pub async fn execute(command: SwiftCommand, global: &GlobalArgs) -> Result<()> {
         let body = read_inline_or_file(&metadata, "--metadata")?;
         let part = Part::bytes(body)
             .mime_str("application/json")
-            .map_err(|e| crate::error::AkError::ConfigError(e.to_string()))?;
+            .map_err(|e| crate::error::AkError::Usage(e.to_string()))?;
         form = form.part("metadata", part);
     }
     let url = wire.url(&["swift", &repo, &scope, &name, &version]);

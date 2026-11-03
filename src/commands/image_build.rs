@@ -183,7 +183,7 @@ fn json_arg(value: &str, flag: &str) -> Result<Value> {
         None => value.as_bytes().to_vec(),
     };
     serde_json::from_slice(&bytes)
-        .map_err(|e| AkError::ConfigError(format!("{flag} isn't valid JSON: {e}")).into())
+        .map_err(|e| AkError::Usage(format!("{flag} isn't valid JSON: {e}")).into())
 }
 
 fn key_values(pairs: &[String], flag: &str) -> Result<Map<String, Value>> {
@@ -191,7 +191,7 @@ fn key_values(pairs: &[String], flag: &str) -> Result<Map<String, Value>> {
         .iter()
         .map(|pair| match pair.split_once('=') {
             Some((key, value)) if !key.is_empty() => Ok((key.to_string(), json!(value))),
-            _ => Err(AkError::ConfigError(format!("{flag} needs KEY=VALUE, not '{pair}'")).into()),
+            _ => Err(AkError::Usage(format!("{flag} needs KEY=VALUE, not '{pair}'")).into()),
         })
         .collect()
 }
@@ -203,9 +203,7 @@ fn build_spec(args: SpecArgs) -> Result<Value> {
         Some(value) => match json_arg(value, "--spec")? {
             Value::Object(map) => map,
             _ => {
-                return Err(
-                    AkError::ConfigError("--spec must be a JSON object".to_string()).into(),
-                );
+                return Err(AkError::Usage("--spec must be a JSON object".to_string()).into());
             }
         },
         None => Map::new(),
@@ -247,7 +245,7 @@ fn build_spec(args: SpecArgs) -> Result<Value> {
     }
     if let Some(path) = args.dockerfile.as_deref() {
         let text = String::from_utf8(read_input(path)?)
-            .map_err(|_| AkError::ConfigError(format!("{path} isn't UTF-8 text")))?;
+            .map_err(|_| AkError::Usage(format!("{path} isn't UTF-8 text")))?;
         set("dockerfile", json!(text));
     }
     Ok(Value::Object(spec))

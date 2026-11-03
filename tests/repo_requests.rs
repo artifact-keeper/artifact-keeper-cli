@@ -548,7 +548,12 @@ async fn wait_reports_a_failed_job_with_its_reason() {
 
     let output = ak(&server, &["repo", "delete", "r", "--yes", "--wait"]);
     assert_eq!(output.status.code(), Some(1), "{output:?}");
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    // miette wraps long lines and draws a border in the wrap.
+    let stderr = String::from_utf8_lossy(&output.stderr)
+        .replace('│', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
     assert!(
         stderr.contains("failed") && stderr.contains("storage is down"),
         "{stderr}"

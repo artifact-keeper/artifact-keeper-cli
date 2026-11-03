@@ -20,9 +20,9 @@ pub fn parse_size(s: &str) -> Result<u64> {
     let (num_part, unit) = split_number_unit(s)?;
     let value: f64 = num_part
         .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid size number: {num_part}")))?;
+        .map_err(|_| AkError::Usage(format!("Invalid size number: {num_part}")))?;
     if value < 0.0 {
-        return Err(AkError::ConfigError("Size cannot be negative".into()).into());
+        return Err(AkError::Usage("Size cannot be negative".into()).into());
     }
     let multiplier = match unit.to_uppercase().as_str() {
         "B" | "" => 1u64,
@@ -30,7 +30,7 @@ pub fn parse_size(s: &str) -> Result<u64> {
         "MB" | "M" => 1024 * 1024,
         "GB" | "G" => 1024 * 1024 * 1024,
         "TB" | "T" => 1024 * 1024 * 1024 * 1024,
-        _ => return Err(AkError::ConfigError(format!("Unknown size unit: {unit}")).into()),
+        _ => return Err(AkError::Usage(format!("Unknown size unit: {unit}")).into()),
     };
     Ok((value * multiplier as f64) as u64)
 }
@@ -38,7 +38,7 @@ pub fn parse_size(s: &str) -> Result<u64> {
 fn split_number_unit(s: &str) -> Result<(&str, &str)> {
     let idx = s.find(|c: char| c.is_ascii_alphabetic()).unwrap_or(s.len());
     if idx == 0 {
-        return Err(AkError::ConfigError(format!("Invalid size: {s}")).into());
+        return Err(AkError::Usage(format!("Invalid size: {s}")).into());
     }
     Ok((&s[..idx], &s[idx..]))
 }
@@ -107,7 +107,7 @@ fn uploads_cache_dir() -> Result<PathBuf> {
 fn cache_path_for(file_path: &Path) -> Result<PathBuf> {
     let canonical = file_path
         .canonicalize()
-        .map_err(|e| AkError::ConfigError(format!("Cannot resolve path: {e}")))?;
+        .map_err(|e| AkError::Local(format!("Cannot resolve path: {e}")))?;
     let key = sha256_of_string(&canonical.to_string_lossy());
     Ok(uploads_cache_dir()?.join(format!("{key}.json")))
 }

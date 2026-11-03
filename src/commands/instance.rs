@@ -71,7 +71,7 @@ fn add_instance(name: &str, url: &str, api_version: &str, insecure_http: bool) -
     let mut config = AppConfig::load()?;
 
     if config.instances.contains_key(name) {
-        return Err(AkError::ConfigError(format!(
+        return Err(AkError::Usage(format!(
             "Instance '{name}' already exists. Use `ak instance remove {name}` first."
         ))
         .into());

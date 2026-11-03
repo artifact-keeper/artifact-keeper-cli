@@ -263,7 +263,7 @@ async fn update_profile(
     global: &GlobalArgs,
 ) -> Result<()> {
     if display_name.is_none() && email.is_none() {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "Provide at least one of --display-name or --email to update.".to_string(),
         )
         .into());
@@ -456,8 +456,8 @@ async fn access_tokens_list(global: &GlobalArgs) -> Result<()> {
     let raw =
         access_tokens_request(reqwest::Method::GET, "", None, "list API tokens", global).await?;
     spinner.finish_and_clear();
-    let list: artifact_keeper_sdk::types::ApiTokenListResponse =
-        serde_json::from_slice(&raw).map_err(|e| sdk_err("read the API token list", e))?;
+    let list: artifact_keeper_sdk::types::ApiTokenListResponse = serde_json::from_slice(&raw)
+        .map_err(|e| crate::commands::helpers::bad_response("read the API token list", e))?;
 
     if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No API tokens found.");
@@ -500,8 +500,8 @@ async fn access_token_create(
     )
     .await?;
     spinner.finish_and_clear();
-    let created: ApiTokenCreatedResponse =
-        serde_json::from_slice(&raw).map_err(|e| sdk_err("read the new API token", e))?;
+    let created: ApiTokenCreatedResponse = serde_json::from_slice(&raw)
+        .map_err(|e| crate::commands::helpers::bad_response("read the new API token", e))?;
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", created.token);

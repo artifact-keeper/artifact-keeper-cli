@@ -92,9 +92,10 @@ impl Wire {
     /// Send and hand back the response unread, for a download to stream. A failure still
     /// comes back as the server's own message.
     pub async fn send_streaming(&self, action: &str, request: RequestBuilder) -> Result<Response> {
-        let response = request.send().await.map_err(|e| {
-            AkError::ServerError(format!("Failed to {action}: {}", e.without_url()))
-        })?;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| crate::commands::helpers::network_err(action, e))?;
         let status = response.status();
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
@@ -105,9 +106,10 @@ impl Wire {
 
     /// Send, and turn any status but a success into the server's own message.
     pub async fn send(&self, action: &str, request: RequestBuilder) -> Result<Reply> {
-        let response = request.send().await.map_err(|e| {
-            AkError::ServerError(format!("Failed to {action}: {}", e.without_url()))
-        })?;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| crate::commands::helpers::network_err(action, e))?;
         let status = response.status();
         let headers = response.headers().clone();
         let body = response.bytes().await.into_diagnostic()?.to_vec();
@@ -132,9 +134,10 @@ impl Wire {
         global: &GlobalArgs,
         request: RequestBuilder,
     ) -> Result<Reply> {
-        let response = request.send().await.map_err(|e| {
-            AkError::ServerError(format!("Failed to {action}: {}", e.without_url()))
-        })?;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| crate::commands::helpers::network_err(action, e))?;
         let status = response.status();
         let headers = response.headers().clone();
         let body = response.bytes().await.into_diagnostic()?.to_vec();
@@ -180,7 +183,7 @@ pub fn split_path<'a>(path: &'a str, what: &str) -> Result<Vec<&'a str>> {
         .iter()
         .any(|s| s.is_empty() || *s == "." || *s == "..")
     {
-        return Err(AkError::ConfigError(format!("{what} `{path}` isn't a valid path")).into());
+        return Err(AkError::Usage(format!("{what} `{path}` isn't a valid path")).into());
     }
     Ok(segments)
 }
@@ -195,14 +198,14 @@ pub struct Upload {
 impl Upload {
     pub fn open(path: &Path) -> Result<Self> {
         let meta = std::fs::metadata(path)
-            .map_err(|e| AkError::ConfigError(format!("Can't read {}: {e}", path.display())))?;
+            .map_err(|e| AkError::Usage(format!("Can't read {}: {e}", path.display())))?;
         if !meta.is_file() {
-            return Err(AkError::ConfigError(format!("{} isn't a file", path.display())).into());
+            return Err(AkError::Usage(format!("{} isn't a file", path.display())).into());
         }
         let name = path
             .file_name()
             .map(|n| n.to_string_lossy().to_string())
-            .ok_or_else(|| AkError::ConfigError(format!("{} has no name", path.display())))?;
+            .ok_or_else(|| AkError::Usage(format!("{} has no name", path.display())))?;
         Ok(Self {
             path: path.to_path_buf(),
             name,
@@ -240,9 +243,9 @@ impl Upload {
     }
 
     pub async fn read(&self) -> Result<Vec<u8>> {
-        tokio::fs::read(&self.path).await.map_err(|e| {
-            AkError::ConfigError(format!("Can't read {}: {e}", self.path.display())).into()
-        })
+        tokio::fs::read(&self.path)
+            .await
+            .map_err(|e| AkError::Usage(format!("Can't read {}: {e}", self.path.display())).into())
     }
 
     pub async fn sha256(&self) -> Result<String> {

@@ -60,7 +60,7 @@ pub async fn execute(command: CargoCommand, global: &GlobalArgs) -> Result<()> {
         parts.len() == 2 && parts[1] == "Cargo.toml"
     })?;
     let manifest: toml::Value = toml::from_str(&String::from_utf8_lossy(&manifest))
-        .map_err(|e| AkError::ConfigError(format!("The Cargo.toml in the crate: {e}")))?;
+        .map_err(|e| AkError::Usage(format!("The Cargo.toml in the crate: {e}")))?;
     let mut metadata = publish_metadata(&manifest, &repo)?;
     if let Some(readme) = manifest
         .get("package")
@@ -100,7 +100,7 @@ pub async fn execute(command: CargoCommand, global: &GlobalArgs) -> Result<()> {
 /// The length-prefixed body of a publish.
 fn frame(metadata: &Value, crate_file: &[u8]) -> Result<Vec<u8>> {
     let json = serde_json::to_vec(metadata).expect("JSON value serializes");
-    let too_big = |_| AkError::ConfigError("The crate is too large to publish".to_string());
+    let too_big = |_| AkError::Usage("The crate is too large to publish".to_string());
     let json_len = u32::try_from(json.len()).map_err(too_big)?;
     let crate_len = u32::try_from(crate_file.len()).map_err(too_big)?;
     let mut body = Vec::with_capacity(8 + json.len() + crate_file.len());
@@ -113,9 +113,9 @@ fn frame(metadata: &Value, crate_file: &[u8]) -> Result<Vec<u8>> {
 
 /// The JSON cargo sends for a manifest. See `NewCrate` in the `crates-io` crate.
 fn publish_metadata(manifest: &toml::Value, repo: &str) -> Result<Value> {
-    let package = manifest.get("package").ok_or_else(|| {
-        AkError::ConfigError("The crate's Cargo.toml has no [package]".to_string())
-    })?;
+    let package = manifest
+        .get("package")
+        .ok_or_else(|| AkError::Usage("The crate's Cargo.toml has no [package]".to_string()))?;
     let text = |key: &str| package.get(key).and_then(|v| v.as_str());
     let list = |key: &str| {
         package
@@ -125,7 +125,7 @@ fn publish_metadata(manifest: &toml::Value, repo: &str) -> Result<Value> {
             .unwrap_or_else(|| json!([]))
     };
     let (Some(name), Some(version)) = (text("name"), text("version")) else {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "The crate's Cargo.toml has no package name or version".to_string(),
         )
         .into());

@@ -438,7 +438,7 @@ async fn promote_artifact(
 
     // A blocked promotion is a 200 from the server, but the artifact didn't move.
     if !resp.promoted {
-        return Err(crate::error::AkError::ServerError(format!(
+        return Err(crate::error::AkError::ReportedFailure(format!(
             "The promotion from {from} to {to} was blocked."
         ))
         .into());

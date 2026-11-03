@@ -85,9 +85,7 @@ pub async fn execute(command: MavenCommand, global: &GlobalArgs) -> Result<()> {
     }
     // clap requires these when there's no --path.
     let (Some(group), Some(artifact), Some(version)) = (group, artifact, version) else {
-        return Err(
-            AkError::ConfigError("--group, --artifact and --version are required".into()).into(),
-        );
+        return Err(AkError::Usage("--group, --artifact and --version are required".into()).into());
     };
     let is_pom = upload.name.ends_with(".pom") || upload.name == "pom.xml";
     let stem = format!(
@@ -111,7 +109,7 @@ pub async fn execute(command: MavenCommand, global: &GlobalArgs) -> Result<()> {
         let pom_body = match &pom {
             Some(path) => tokio::fs::read(path)
                 .await
-                .map_err(|e| AkError::ConfigError(format!("Can't read {}: {e}", path.display())))?,
+                .map_err(|e| AkError::Usage(format!("Can't read {}: {e}", path.display())))?,
             None => minimal_pom(&group, &artifact, &version, &ext).into_bytes(),
         };
         put_with_checksums(&wire, &repo, &format!("{stem}.pom"), &pom_body).await?;
@@ -164,7 +162,7 @@ fn checksums(content: &[u8]) -> [(&'static str, String); 4] {
 fn extension(file: &Path) -> Result<String> {
     file.extension()
         .map(|e| e.to_string_lossy().to_string())
-        .ok_or_else(|| AkError::ConfigError(format!("{} has no extension", file.display())).into())
+        .ok_or_else(|| AkError::Usage(format!("{} has no extension", file.display())).into())
 }
 
 fn xml_escape(text: &str) -> String {

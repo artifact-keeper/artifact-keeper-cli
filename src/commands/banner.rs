@@ -204,13 +204,13 @@ impl BannerCommand {
 fn parse_severity(value: &str) -> Result<BannerSeverity> {
     value
         .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid severity: {value}")).into())
+        .map_err(|_| AkError::Usage(format!("Invalid severity: {value}")).into())
 }
 
 fn parse_target(value: &str) -> Result<BannerTarget> {
     value
         .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid target: {value}")).into())
+        .map_err(|_| AkError::Usage(format!("Invalid target: {value}")).into())
 }
 
 pub(super) fn parse_time(value: Option<&str>, flag: &str) -> Result<Option<DateTime<Utc>>> {
@@ -219,7 +219,7 @@ pub(super) fn parse_time(value: Option<&str>, flag: &str) -> Result<Option<DateT
             DateTime::parse_from_rfc3339(v)
                 .map(|t| t.with_timezone(&Utc))
                 .map_err(|_| {
-                    AkError::ConfigError(format!(
+                    AkError::Usage(format!(
                         "{flag} needs an RFC 3339 time such as 2026-12-01T09:00:00Z, not '{v}'"
                     ))
                     .into()

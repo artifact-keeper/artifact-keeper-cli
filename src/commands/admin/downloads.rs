@@ -169,7 +169,7 @@ impl DownloadsCommand {
         // A server before 1.11 ignores both filters, so it sends downloads they
         // should have removed. It also leaves out `source`, which is how to tell.
         if narrowed && resp.downloads.iter().any(|d| d.source.is_none()) {
-            return Err(AkError::ServerError(
+            return Err(AkError::UnsupportedServer(
                 "This server ignores --repo and --source, which need a server on 1.11 or \
                  newer, so its answer isn't filtered. Run this without them."
                     .into(),

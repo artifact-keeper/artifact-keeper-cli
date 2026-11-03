@@ -61,7 +61,7 @@ pub async fn execute(command: ChefCommand, global: &GlobalArgs) -> Result<()> {
         name.or_else(|| from_file("name")),
         version.or_else(|| from_file("version")),
     ) else {
-        return Err(AkError::ConfigError(format!(
+        return Err(AkError::Usage(format!(
             "{} has no metadata.json with a name and version. Give --name and --version",
             file.display()
         ))

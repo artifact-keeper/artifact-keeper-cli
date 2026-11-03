@@ -55,7 +55,7 @@ fn get_value(cfg: &AppConfig, key: &str) -> Result<String> {
         "color" if cfg.color.is_empty() => "auto".into(),
         "color" => cfg.color.clone(),
         _ => {
-            return Err(AkError::ConfigError(format!(
+            return Err(AkError::Usage(format!(
                 "Unknown config key '{key}'. Valid keys: {}",
                 KNOWN_KEYS.join(", ")
             ))
@@ -84,7 +84,7 @@ fn config_set(key: &str, value: &str) -> Result<()> {
             if value == "(not set)" || value.is_empty() {
                 cfg.default_instance = None;
             } else if !cfg.instances.contains_key(value) {
-                return Err(AkError::ConfigError(format!(
+                return Err(AkError::Usage(format!(
                     "Instance '{value}' not found. Run `ak instance list` to see available instances."
                 ))
                 .into());
@@ -94,7 +94,7 @@ fn config_set(key: &str, value: &str) -> Result<()> {
         }
         "output_format" => {
             if !matches!(value, "table" | "json" | "yaml" | "quiet") {
-                return Err(AkError::ConfigError(format!(
+                return Err(AkError::Usage(format!(
                     "Invalid output format '{value}'. Valid values: table, json, yaml, quiet"
                 ))
                 .into());
@@ -103,7 +103,7 @@ fn config_set(key: &str, value: &str) -> Result<()> {
         }
         "color" => {
             if !matches!(value, "auto" | "always" | "never") {
-                return Err(AkError::ConfigError(format!(
+                return Err(AkError::Usage(format!(
                     "Invalid color mode '{value}'. Valid values: auto, always, never"
                 ))
                 .into());
@@ -111,7 +111,7 @@ fn config_set(key: &str, value: &str) -> Result<()> {
             cfg.color = value.to_string();
         }
         _ => {
-            return Err(AkError::ConfigError(format!(
+            return Err(AkError::Usage(format!(
                 "Unknown config key '{key}'. Valid keys: {}",
                 KNOWN_KEYS.join(", ")
             ))

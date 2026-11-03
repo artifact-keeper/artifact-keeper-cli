@@ -17,12 +17,37 @@ pub enum AkError {
     )]
     InstanceNotFound(String),
 
-    #[error("Not authenticated with '{0}'")]
+    #[error("Not authenticated: {0}")]
     #[diagnostic(
         code(ak::not_authenticated),
-        help("Run `ak auth login` to authenticate, or set AK_TOKEN environment variable")
+        help(
+            "Run `ak auth login` to log in. A token in AK_TOKEN is used ahead of a login, so if \
+             it's set, replace or unset it."
+        )
     )]
     NotAuthenticated(String),
+
+    #[error("Permission denied: {0}")]
+    #[diagnostic(
+        code(ak::forbidden),
+        help(
+            "This account or token isn't allowed to do this. Run `ak auth whoami` to see who \
+             you are, or ask an admin for access."
+        )
+    )]
+    Forbidden(String),
+
+    #[error("Not found: {0}")]
+    #[diagnostic(code(ak::not_found))]
+    NotFound(String),
+
+    /// The command needs a newer server than this one.
+    #[error("{0}")]
+    #[diagnostic(
+        code(ak::unsupported_server),
+        help("Run `ak doctor` to see this server's version and what ak supports.")
+    )]
+    UnsupportedServer(String),
 
     #[error("Server error: {0}")]
     #[diagnostic(code(ak::server_error))]
@@ -35,9 +60,20 @@ pub enum AkError {
     )]
     NetworkError(String),
 
+    /// ak's own configuration: the config file, or an instance's settings in it.
     #[error("Configuration error: {0}")]
     #[diagnostic(code(ak::config_error))]
     ConfigError(String),
+
+    /// What the user typed isn't valid, or can't be done as asked.
+    #[error("{0}")]
+    #[diagnostic(code(ak::usage))]
+    Usage(String),
+
+    /// A problem on this machine, such as a file that can't be written.
+    #[error("{0}")]
+    #[diagnostic(code(ak::local))]
+    Local(String),
 
     #[error("CA certificate error: {0}")]
     #[diagnostic(
@@ -169,7 +205,7 @@ mod tests {
     #[test]
     fn not_authenticated_display() {
         let err = AkError::NotAuthenticated("staging".into());
-        assert_eq!(err.to_string(), "Not authenticated with 'staging'");
+        assert_eq!(err.to_string(), "Not authenticated: staging");
     }
 
     #[test]

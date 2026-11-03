@@ -1999,7 +1999,7 @@ fn parse_int_list(raw: &str) -> Result<Vec<i32>> {
         .filter(|s| !s.is_empty())
         .map(|s| {
             s.parse::<i32>().map_err(|_| {
-                crate::error::AkError::ConfigError(format!("invalid integer in list: '{s}'")).into()
+                crate::error::AkError::Usage(format!("invalid integer in list: '{s}'")).into()
             })
         })
         .collect()
@@ -2016,7 +2016,7 @@ fn parse_label_entries(
                 None => (pair.trim().to_string(), None),
             };
             if key.is_empty() {
-                return Err(crate::error::AkError::ConfigError(format!(
+                return Err(crate::error::AkError::Usage(format!(
                     "invalid label (empty key): '{pair}'"
                 ))
                 .into());

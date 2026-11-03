@@ -91,7 +91,7 @@ fn artifact_path(
         return Ok(vec![format!("ivy-{revision}.xml")]);
     }
     let Some((_, ext)) = file.rsplit_once('.') else {
-        return Err(AkError::ConfigError(format!(
+        return Err(AkError::Usage(format!(
             "`{file}` has no extension to make an Ivy path from"
         ))
         .into());

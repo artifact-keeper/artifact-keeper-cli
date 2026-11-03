@@ -177,7 +177,7 @@ pub(super) fn parser_filename(lockfile: &str, filename: Option<String>) -> Resul
         return Ok(filename);
     }
     if lockfile == "-" {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "Reading a lockfile from stdin needs --filename, for example --filename uv.lock"
                 .to_string(),
         )
@@ -187,9 +187,7 @@ pub(super) fn parser_filename(lockfile: &str, filename: Option<String>) -> Resul
         .file_name()
         .and_then(|name| name.to_str())
         .map(str::to_string)
-        .ok_or_else(|| {
-            AkError::ConfigError(format!("Can't tell the file name of {lockfile}")).into()
-        })
+        .ok_or_else(|| AkError::Usage(format!("Can't tell the file name of {lockfile}")).into())
 }
 
 /// Turn what a user typed for an environment into its ID: a UUID is used as it is,
@@ -216,7 +214,7 @@ async fn resolve_environment_id(
         .and_then(|e| e["id"].as_str())
         .and_then(|id| id.parse().ok())
         .ok_or_else(|| {
-            AkError::ConfigError(format!(
+            AkError::NotFound(format!(
                 "No environment named '{environment}' in '{repo}'. \
                  Run `ak environment list {repo}` to see them."
             ))

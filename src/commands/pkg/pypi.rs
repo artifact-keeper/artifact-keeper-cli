@@ -148,7 +148,7 @@ fn name_and_version(
     match (name, version, parsed) {
         (Some(n), Some(v), _) => Ok((n, v)),
         (n, v, Some((parsed_n, parsed_v))) => Ok((n.unwrap_or(parsed_n), v.unwrap_or(parsed_v))),
-        _ => Err(AkError::ConfigError(format!(
+        _ => Err(AkError::Usage(format!(
             "Can't tell the name and version from `{file}`. Give --name and --version"
         ))
         .into()),

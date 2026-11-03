@@ -189,10 +189,10 @@ impl TokenCommand {
 /// Parse a JSON object string into a serde_json map, with a friendly error.
 fn parse_json_object(raw: &str, label: &str) -> Result<serde_json::Map<String, serde_json::Value>> {
     let value: serde_json::Value = serde_json::from_str(raw)
-        .map_err(|e| AkError::ConfigError(format!("Invalid {label} JSON: {e}")))?;
+        .map_err(|e| AkError::Usage(format!("Invalid {label} JSON: {e}")))?;
     match value {
         serde_json::Value::Object(map) => Ok(map),
-        _ => Err(AkError::ConfigError(format!("{label} must be a JSON object")).into()),
+        _ => Err(AkError::Usage(format!("{label} must be a JSON object")).into()),
     }
 }
 
@@ -381,7 +381,7 @@ async fn update_account(
     global: &GlobalArgs,
 ) -> Result<()> {
     if display_name.is_none() && is_active.is_none() {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "Nothing to update: provide --display-name and/or --active/--inactive".to_string(),
         )
         .into());

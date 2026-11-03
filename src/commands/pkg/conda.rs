@@ -86,7 +86,7 @@ async fn check_url_token(wire: &Wire, token: Option<TokenUrl>, global: &GlobalAr
         refuse_flags_before_1_11(&["--token-in-url t-conda"], global).await?;
     }
     if token.is_some() && wire.token().split('.').count() == 3 {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "--token-in-url needs an API token, and this is a login session. Create one with \
              `ak auth token create`, and set it in AK_TOKEN"
                 .to_string(),

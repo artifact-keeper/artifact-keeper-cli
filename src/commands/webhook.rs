@@ -173,7 +173,7 @@ fn parse_headers(headers: &[String]) -> Result<Option<serde_json::Map<String, Va
     let mut parsed = serde_json::Map::new();
     for header in headers {
         let (name, value) = header.split_once('=').ok_or_else(|| {
-            crate::error::AkError::ConfigError(format!("--header: '{header}' isn't NAME=VALUE"))
+            crate::error::AkError::Usage(format!("--header: '{header}' isn't NAME=VALUE"))
         })?;
         parsed.insert(name.to_string(), Value::String(value.to_string()));
     }

@@ -95,7 +95,7 @@ pub fn get_credential(instance: &str) -> Result<StoredCredential> {
         return Ok(cred);
     }
 
-    Err(AkError::NotAuthenticated(instance.to_string()).into())
+    Err(AkError::NotAuthenticated(format!("no saved login for '{instance}'")).into())
 }
 
 /// Delete credential for a given instance from all stores.

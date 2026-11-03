@@ -71,9 +71,7 @@ pub async fn execute(command: AlpineCommand, global: &GlobalArgs) -> Result<()> 
         }
         Endpoint::Path => {
             let Some(arch) = &arch else {
-                return Err(
-                    AkError::ConfigError("--endpoint path needs --arch".to_string()).into(),
-                );
+                return Err(AkError::Usage("--endpoint path needs --arch".to_string()).into());
             };
             wire.request(
                 Method::PUT,

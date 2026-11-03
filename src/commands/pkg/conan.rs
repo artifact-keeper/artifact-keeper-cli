@@ -92,7 +92,7 @@ fn parse_reference(reference: &str) -> Result<[&str; 4]> {
         None => (reference, None),
     };
     let bad = || {
-        AkError::ConfigError(format!(
+        AkError::Usage(format!(
             "`{reference}` isn't a reference: use name/version or name/version@user/channel"
         ))
     };

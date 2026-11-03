@@ -400,7 +400,7 @@ async fn fetch_list<T: serde::de::DeserializeOwned>(
         )
         .into());
     }
-    let items = parse_list(&body).map_err(|e| sdk_err(action, e))?;
+    let items = parse_list(&body).map_err(|e| crate::commands::helpers::bad_response(action, e))?;
     Ok((items, body.to_vec()))
 }
 
@@ -976,10 +976,10 @@ fn parse_config(config: Option<&str>) -> Result<serde_json::Map<String, Value>> 
         None => Ok(serde_json::Map::new()),
         Some(raw) => {
             let value: Value = serde_json::from_str(raw)
-                .map_err(|e| AkError::ConfigError(format!("Invalid --config JSON: {e}")))?;
+                .map_err(|e| AkError::Usage(format!("Invalid --config JSON: {e}")))?;
             match value {
                 Value::Object(map) => Ok(map),
-                _ => Err(AkError::ConfigError("--config must be a JSON object".to_string()).into()),
+                _ => Err(AkError::Usage("--config must be a JSON object".to_string()).into()),
             }
         }
     }

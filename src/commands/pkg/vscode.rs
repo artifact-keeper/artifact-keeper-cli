@@ -71,7 +71,7 @@ pub async fn execute(command: VscodeCommand, global: &GlobalArgs) -> Result<()> 
         VscodeCommand::Query { repo, body } => {
             let body = read_inline_or_file(&body, "--body")?;
             let parsed: Value = serde_json::from_slice(&body)
-                .map_err(|e| AkError::ConfigError(format!("--body isn't JSON: {e}")))?;
+                .map_err(|e| AkError::Usage(format!("--body isn't JSON: {e}")))?;
             let url = wire.url(&["vscode", &repo, "gallery", "extensionquery"]);
             let reply = wire
                 .send_since_1_11(

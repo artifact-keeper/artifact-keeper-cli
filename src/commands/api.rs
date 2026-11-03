@@ -213,7 +213,7 @@ async fn run(args: ApiArgs, global: &GlobalArgs) -> Result<i32> {
     let target = resolve_target(&args, global, &headers)?;
     let body = RequestBody::from_args(&args)?;
     if matches!(body, RequestBody::Form(_)) && headers.contains_key(header::CONTENT_TYPE) {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "--form sets its own Content-Type, with the boundary. Remove the -H for it."
                 .to_string(),
         )
@@ -291,7 +291,7 @@ async fn run(args: ApiArgs, global: &GlobalArgs) -> Result<i32> {
 
 fn parse_method(raw: &str) -> Result<Method> {
     Method::from_bytes(raw.to_ascii_uppercase().as_bytes())
-        .map_err(|_| AkError::ConfigError(format!("Invalid HTTP method '{raw}'")).into())
+        .map_err(|_| AkError::Usage(format!("Invalid HTTP method '{raw}'")).into())
 }
 
 /// Parse `Name: value` headers. Errors never quote what was typed unless it's a
@@ -300,27 +300,27 @@ fn parse_headers(raw: &[String]) -> Result<HeaderMap> {
     let mut headers = HeaderMap::new();
     for entry in raw {
         let Some((name, value)) = entry.split_once(':') else {
-            return Err(AkError::ConfigError(
+            return Err(AkError::Usage(
                 "A header must look like 'Name: value' (what you typed isn't shown here)"
                     .to_string(),
             )
             .into());
         };
         let parsed_name = HeaderName::from_bytes(name.trim().as_bytes()).map_err(|_| {
-            AkError::ConfigError(
+            AkError::Usage(
                 "A header name isn't valid (what you typed isn't shown here)".to_string(),
             )
         })?;
         // These describe the body we send, and a wrong value silently truncates
         // it or leaves the server waiting.
         if parsed_name == header::CONTENT_LENGTH || parsed_name == header::TRANSFER_ENCODING {
-            return Err(AkError::ConfigError(format!(
+            return Err(AkError::Usage(format!(
                 "ak sets {parsed_name} itself from the body, so it can't be given with -H"
             ))
             .into());
         }
         let parsed_value = HeaderValue::from_str(value.trim()).map_err(|_| {
-            AkError::ConfigError(format!(
+            AkError::Usage(format!(
                 "The value of header '{parsed_name}' isn't valid (not shown)"
             ))
         })?;
@@ -396,8 +396,7 @@ fn resolve_target(args: &ApiArgs, global: &GlobalArgs, headers: &HeaderMap) -> R
 /// typed as a path stays a path on the instance, and can't become its host.
 fn build_url(base: &str, path: &str) -> Result<Url> {
     if path.starts_with("http://") || path.starts_with("https://") {
-        return Url::parse(path)
-            .map_err(|e| AkError::ConfigError(format!("Invalid URL: {e}")).into());
+        return Url::parse(path).map_err(|e| AkError::Usage(format!("Invalid URL: {e}")).into());
     }
     if base.is_empty() {
         return Err(AkError::NoInstance.into());
@@ -409,11 +408,10 @@ fn build_url(base: &str, path: &str) -> Result<Url> {
         base.trim_end_matches('/'),
         path.trim_start_matches('/')
     );
-    let url =
-        Url::parse(&joined).map_err(|e| AkError::ConfigError(format!("Invalid path: {e}")))?;
+    let url = Url::parse(&joined).map_err(|e| AkError::Usage(format!("Invalid path: {e}")))?;
     // Whatever the path held, the request must still go to the base's server.
     if !same_origin(&base_url, &url) {
-        return Err(AkError::ConfigError(format!("Invalid path '{path}'")).into());
+        return Err(AkError::Usage(format!("Invalid path '{path}'")).into());
     }
     Ok(url)
 }
@@ -433,7 +431,7 @@ fn append_query(url: &mut Url, query: &[String]) -> Result<()> {
 fn split_key_value<'a>(entry: &'a str, flag: &str) -> Result<(&'a str, &'a str)> {
     entry.split_once('=').ok_or_else(|| {
         // What was typed isn't quoted: it could be a secret missing its key.
-        AkError::ConfigError(format!(
+        AkError::Usage(format!(
             "{flag} takes key=value, and one of them has no '='"
         ))
         .into()
@@ -472,7 +470,7 @@ fn api_client() -> Result<reqwest::Client> {
     let client = super::client::raw_http_client_builder(reqwest::redirect::Policy::none());
     transport::apply_custom_ca(client)?
         .build()
-        .map_err(|e| AkError::ConfigError(format!("Couldn't set up the HTTP client: {e}")).into())
+        .map_err(|e| AkError::Local(format!("Couldn't set up the HTTP client: {e}")).into())
 }
 
 fn headers_safe_across_origins(headers: &HeaderMap) -> HeaderMap {
@@ -596,7 +594,7 @@ impl RequestBody {
             let bytes = read_inline_or_file(json, "--body")?;
             if serde_json::from_slice::<serde_json::Value>(&bytes).is_err() {
                 // The body itself isn't quoted back: it could hold a password.
-                return Err(AkError::ConfigError(
+                return Err(AkError::Usage(
                     "--body isn't valid JSON. Use --raw-body to send other data.".to_string(),
                 )
                 .into());
@@ -724,7 +722,7 @@ impl RequestBody {
                                 None => reqwest::multipart::Part::stream(stream),
                             };
                             let part = part.file_name(filename).mime_str(&mime).map_err(|_| {
-                                AkError::ConfigError(format!("Invalid type '{mime}' for {name}"))
+                                AkError::Usage(format!("Invalid type '{mime}' for {name}"))
                             })?;
                             form.part(name, part)
                         }
@@ -738,9 +736,9 @@ impl RequestBody {
 
 /// The bytes for a flag that takes text, @file or @-.
 fn check_readable(path: &Path, flag: &str) -> Result<()> {
-    std::fs::File::open(path).map(|_| ()).map_err(|e| {
-        AkError::ConfigError(format!("{flag}: can't read '{}': {e}", path.display())).into()
-    })
+    std::fs::File::open(path)
+        .map(|_| ())
+        .map_err(|e| AkError::Usage(format!("{flag}: can't read '{}': {e}", path.display())).into())
 }
 
 /// Open a file to stream, with its length if it's a regular file. Anything else,
@@ -748,11 +746,11 @@ fn check_readable(path: &Path, flag: &str) -> Result<()> {
 async fn open_for_streaming(path: &Path) -> Result<(tokio::fs::File, Option<u64>)> {
     let file = tokio::fs::File::open(path)
         .await
-        .map_err(|e| AkError::ConfigError(format!("Can't read '{}': {e}", path.display())))?;
+        .map_err(|e| AkError::Usage(format!("Can't read '{}': {e}", path.display())))?;
     let metadata = file
         .metadata()
         .await
-        .map_err(|e| AkError::ConfigError(format!("Can't read '{}': {e}", path.display())))?;
+        .map_err(|e| AkError::Usage(format!("Can't read '{}': {e}", path.display())))?;
     Ok((file, metadata.is_file().then_some(metadata.len())))
 }
 
@@ -785,7 +783,7 @@ fn parse_form_field(entry: &str) -> Result<FormField> {
             Some(("type", value)) => mime = Some(value.to_string()),
             Some(("filename", value)) => filename = value.to_string(),
             _ => {
-                return Err(AkError::ConfigError(format!(
+                return Err(AkError::Usage(format!(
                     "--form: unknown option '{option}'. Use ;type=<mime> or ;filename=<name>"
                 ))
                 .into());
@@ -974,9 +972,9 @@ async fn write_body(response: reqwest::Response, output: Option<&Path>) -> Resul
     let to_file = output.filter(|p| *p != Path::new("-"));
     match to_file {
         Some(path) => {
-            let mut file = tokio::fs::File::create(path).await.map_err(|e| {
-                AkError::ConfigError(format!("Can't write '{}': {e}", path.display()))
-            })?;
+            let mut file = tokio::fs::File::create(path)
+                .await
+                .map_err(|e| AkError::Local(format!("Can't write '{}': {e}", path.display())))?;
             let mut stream = response.bytes_stream();
             while let Some(chunk) = stream.next().await {
                 let chunk = chunk.map_err(|e| {

@@ -35,7 +35,7 @@ pub async fn execute(command: PuppetCommand, global: &GlobalArgs) -> Result<()> 
         parts.len() == 2 && parts[1] == "metadata.json"
     })?;
     let metadata: Value = serde_json::from_slice(&metadata)
-        .map_err(|e| AkError::ConfigError(format!("The metadata.json in the module: {e}")))?;
+        .map_err(|e| AkError::Usage(format!("The metadata.json in the module: {e}")))?;
     let module = module_field(&metadata)?;
     let label = format!(
         "{}-{}-{}",
@@ -68,7 +68,7 @@ fn module_field(metadata: &Value) -> Result<Value> {
     let full = metadata["name"].as_str().unwrap_or_default();
     let split = full.split_once('-').or_else(|| full.split_once('/'));
     let (Some((owner, name)), Some(version)) = (split, metadata["version"].as_str()) else {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "The module's metadata.json needs a name like owner-module, and a version".to_string(),
         )
         .into());

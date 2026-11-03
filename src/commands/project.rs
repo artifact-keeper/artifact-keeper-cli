@@ -181,7 +181,7 @@ async fn resolve_project_id(client: &artifact_keeper_sdk::Client, project: &str)
         .find(|p| p.key == project)
         .map(|p| p.id)
         .ok_or_else(|| {
-            AkError::ConfigError(format!(
+            AkError::NotFound(format!(
                 "No project with key '{project}'. Run `ak project list` to see projects."
             ))
             .into()
@@ -279,7 +279,7 @@ async fn update_project(
     global: &GlobalArgs,
 ) -> Result<()> {
     if name.is_none() && description.is_none() && quota_bytes.is_none() {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "Nothing to update. Pass --name, --description or --quota-bytes.".to_string(),
         )
         .into());

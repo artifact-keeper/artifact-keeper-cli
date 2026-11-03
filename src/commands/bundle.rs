@@ -152,7 +152,7 @@ pub(super) fn read_input(path: &str) -> Result<Vec<u8>> {
     } else {
         std::fs::read(path).map(|content| bytes = content)
     };
-    read.map_err(|e| AkError::ConfigError(format!("Can't read {path}: {e}")))?;
+    read.map_err(|e| AkError::Usage(format!("Can't read {path}: {e}")))?;
     Ok(bytes)
 }
 
@@ -246,14 +246,14 @@ async fn export(
     let media_profile = media_profile
         .map(|p| p.parse::<MediaProfile>())
         .transpose()
-        .map_err(|_| AkError::ConfigError("Invalid media profile".to_string()))?;
+        .map_err(|_| AkError::Usage("Invalid media profile".to_string()))?;
     let body = CreateBundleExportRequest {
         media_control_number,
         media_profile,
         repository_keys,
     };
     let body = serde_json::to_vec(&body)
-        .map_err(|e| AkError::ConfigError(format!("Can't encode the request: {e}")))?;
+        .map_err(|e| AkError::Local(format!("Can't encode the request: {e}")))?;
     post_job(
         "/api/v1/bundles/exports",
         Some(body),

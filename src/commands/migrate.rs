@@ -6,7 +6,6 @@ use miette::{IntoDiagnostic, Result};
 use super::client::{build_client, build_reading_client};
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
-use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
 
 /// Migrate artifacts between instances or repositories in bulk.
@@ -40,7 +39,7 @@ pub async fn execute(
             .per_page(page_size)
             .send()
             .await
-            .map_err(|e| AkError::ServerError(format!("Failed to list source artifacts: {e}")))?;
+            .map_err(|e| crate::commands::helpers::sdk_err("list source artifacts", e))?;
 
         let is_last_page = resp.items.len() < page_size as usize;
         all_artifacts.extend(resp.items.clone());

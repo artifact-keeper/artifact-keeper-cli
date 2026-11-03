@@ -1759,7 +1759,7 @@ async fn update_repo_security(
         && settings.severity_threshold.is_none()
         && settings.proxy_scan_action.is_none()
     {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "Nothing to update. Pass at least one setting, such as --scanning-enabled true."
                 .to_string(),
         )
@@ -1771,7 +1771,7 @@ async fn update_repo_security(
         && let Some(version) =
             crate::commands::helpers::guard_flags("--proxy-scan-action", (1, 11, 0), global).await
     {
-        return Err(AkError::ServerError(format!(
+        return Err(AkError::UnsupportedServer(format!(
             "--proxy-scan-action record_only needs a server on 1.11 or newer. This one is \
              {version}, which would store fail_open instead. Nothing was changed."
         ))
