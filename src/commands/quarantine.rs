@@ -6,7 +6,23 @@ use miette::Result;
 use super::client::client_for;
 use super::helpers::{confirm_action, emit_mutation_raw, resolve_artifact_id, sdk_err, since_1_11};
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output;
+
+/// How long `release-proxy` waits between tries while a path isn't recorded yet.
+const RECORD_WAITS: [std::time::Duration; 4] = [
+    std::time::Duration::from_millis(250),
+    std::time::Duration::from_millis(500),
+    std::time::Duration::from_secs(1),
+    std::time::Duration::from_secs(2),
+];
+
+/// Whether the server knows the repository but has no record of the cached path. A
+/// missing repository is also a 404, with a different message, and isn't worth a wait.
+fn is_not_recorded(error: &artifact_keeper_sdk::Error) -> bool {
+    error.status() == Some(reqwest::StatusCode::NOT_FOUND)
+        && error.server_message().as_deref() == Some("No cached artifact at that path")
+}
 
 #[derive(Subcommand)]
 pub enum QuarantineCommand {
@@ -226,28 +242,47 @@ async fn release_proxy(repo: &str, path: &str, yes: bool, global: &GlobalArgs) -
     let client = client_for(global)?;
     let spinner = output::spinner("Releasing cached artifact from quarantine...");
 
-    let body = artifact_keeper_sdk::types::ReleaseProxyCacheRequest {
-        path: path.to_string(),
-    };
-    let (resp, raw) = capture(
-        client
-            .release_proxy_cache_entry()
-            .repo_key(repo)
-            .body(body)
-            .send(),
-    )
-    .await;
-    let released = match resp {
-        Ok(resp) => resp.into_inner(),
-        Err(e) => {
+    // A server answers 409 for a held download before it has recorded the hold, so
+    // right after that 409 it says this path isn't cached. Nothing changes on a 404, so
+    // asking again is safe, and only the server's 200 ever reports a release.
+    let mut waits = RECORD_WAITS.iter();
+    let (released, raw) = loop {
+        let body = artifact_keeper_sdk::types::ReleaseProxyCacheRequest {
+            path: path.to_string(),
+        };
+        let (resp, raw) = capture(
+            client
+                .release_proxy_cache_entry()
+                .repo_key(repo)
+                .body(body)
+                .send(),
+        )
+        .await;
+        let error = match resp {
+            Ok(resp) => break (resp.into_inner(), raw),
+            Err(error) => error,
+        };
+        if !is_not_recorded(&error) {
             return Err(since_1_11(
-                e,
+                error,
                 "release cached artifact from quarantine",
                 "quarantine release-proxy",
                 global,
             )
             .await
             .into());
+        }
+        match waits.next() {
+            Some(wait) => tokio::time::sleep(*wait).await,
+            None => {
+                return Err(AkError::ServerError(format!(
+                    "Failed to release cached artifact from quarantine: {error}. Nothing was \
+                     released. If a download of this path just got a 409, the server may still \
+                     be recording the hold, which takes as long as fetching it from upstream. \
+                     Try again shortly."
+                ))
+                .into());
+            }
         }
     };
 

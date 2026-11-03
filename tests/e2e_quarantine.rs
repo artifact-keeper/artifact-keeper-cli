@@ -123,32 +123,29 @@ fn a_held_cached_path_is_released_and_its_download_works() {
         .success();
 
     assert_eq!(download_status(&env, &remote), 409);
-    assert!(
-        stderr_of(
-            &env,
-            &[
+
+    // The server answers that 409 before it has recorded the hold, and the command only
+    // waits a few seconds for it. Its own 404 is the one answer that means "not yet".
+    let released = common::wait_until("the hold to be recorded", || {
+        let output = env
+            .ak_cmd()
+            .args([
                 "quarantine",
                 "release-proxy",
                 &remote,
                 "--path",
-                "missing",
-                "--yes"
-            ]
-        )
-        .contains("404")
-    );
-
-    let released = json_of(
-        &env,
-        &[
-            "quarantine",
-            "release-proxy",
-            &remote,
-            "--path",
-            "f.bin",
-            "--yes",
-        ],
-    );
+                "f.bin",
+                "--yes",
+            ])
+            .output()
+            .unwrap();
+        if output.status.success() {
+            return Some(serde_json::from_slice::<Value>(&output.stdout).unwrap());
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(stderr.contains("No cached artifact"), "{stderr}");
+        None
+    });
     assert_eq!(released["released"], true);
     assert_eq!(released["path"], "f.bin");
     assert_eq!(released["repository"], remote.as_str());
@@ -166,6 +163,21 @@ fn a_held_cached_path_is_released_and_its_download_works() {
         ],
     );
     assert!(again.contains("409"), "{again}");
+
+    // A path that really isn't there still fails, and says nothing was released.
+    let missing = stderr_of(
+        &env,
+        &[
+            "quarantine",
+            "release-proxy",
+            &remote,
+            "--path",
+            "missing",
+            "--yes",
+        ],
+    );
+    assert!(missing.contains("404"), "{missing}");
+    assert!(missing.contains("Nothing was released"), "{missing}");
 }
 
 #[test]

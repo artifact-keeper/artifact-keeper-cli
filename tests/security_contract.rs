@@ -178,6 +178,106 @@ async fn release_proxy_sends_the_path_and_prints_the_body() {
     assert_eq!(sent, json!({"path": "a/b"}));
 }
 
+const NOT_RECORDED: &str = "No cached artifact at that path";
+
+/// A server answers 409 for a held download before it has recorded the hold, so the
+/// first releases after it get a 404.
+#[tokio::test]
+async fn release_proxy_waits_for_a_hold_to_be_recorded() {
+    let mocked = Mocked::start().await;
+    let route = "/api/v1/quarantine/proxy-cache/rem/release";
+    Mock::given(method("POST"))
+        .and(path(route))
+        .respond_with(
+            ResponseTemplate::new(404)
+                .set_body_json(json!({"code": "NOT_FOUND", "message": NOT_RECORDED})),
+        )
+        .up_to_n_times(2)
+        .mount(&mocked.server)
+        .await;
+    let body = json!({"repository": "rem", "path": "a", "released": true, "message": "m"});
+    mocked.respond("POST", route, 200, body.clone()).await;
+
+    let shown = mocked.json(&["quarantine", "release-proxy", "rem", "--path", "a", "--yes"]);
+    assert_eq!(shown, body);
+    assert_eq!(mocked.server.received_requests().await.unwrap().len(), 3);
+}
+
+/// It gives up in a few seconds, and never reports a release the server didn't make.
+#[tokio::test]
+async fn release_proxy_stops_waiting_and_says_nothing_was_released() {
+    let mocked = Mocked::start().await;
+    mocked
+        .respond(
+            "POST",
+            "/api/v1/quarantine/proxy-cache/rem/release",
+            404,
+            json!({"code": "NOT_FOUND", "message": NOT_RECORDED}),
+        )
+        .await;
+    let started = std::time::Instant::now();
+    let output = mocked.ak(&[
+        "quarantine",
+        "release-proxy",
+        "rem",
+        "--path",
+        "a",
+        "--yes",
+        "--format",
+        "json",
+    ]);
+    assert!(started.elapsed() < std::time::Duration::from_secs(15));
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    let stderr = unwrapped(&output.stderr);
+    assert!(
+        stderr.contains("404 Not Found: No cached artifact"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("Nothing was released"), "{stderr}");
+    assert!(stderr.contains("recording the hold"), "{stderr}");
+    assert_eq!(mocked.server.received_requests().await.unwrap().len(), 5);
+}
+
+/// Only that answer means "not recorded yet". Anything else is final at once.
+#[tokio::test]
+async fn release_proxy_does_not_wait_on_any_other_failure() {
+    for (status, message) in [
+        (404, "Repository not found"),
+        (
+            409,
+            "Cached artifact is not in quarantined state; release not allowed",
+        ),
+        (403, "Admin access required"),
+    ] {
+        let mocked = Mocked::start().await;
+        mocked
+            .respond(
+                "POST",
+                "/api/v1/quarantine/proxy-cache/rem/release",
+                status,
+                json!({"message": message}),
+            )
+            .await;
+        let output = mocked.ak(&["quarantine", "release-proxy", "rem", "--path", "a", "--yes"]);
+        assert_eq!(output.status.code(), Some(1));
+        assert!(
+            unwrapped(&output.stderr).contains(message),
+            "{}",
+            unwrapped(&output.stderr)
+        );
+        let posts = mocked
+            .server
+            .received_requests()
+            .await
+            .unwrap()
+            .iter()
+            .filter(|r| r.method.as_str() == "POST")
+            .count();
+        assert_eq!(posts, 1, "{status} {message}");
+    }
+}
+
 /// Anything that opens a gate, vouches for something, or can't be undone asks first,
 /// and sends nothing without an answer.
 #[tokio::test]

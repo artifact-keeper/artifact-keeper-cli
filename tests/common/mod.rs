@@ -67,6 +67,24 @@ pub fn server_older_than(major: u64, minor: u64, what: &str) -> bool {
     older
 }
 
+/// Ask until `ready` gives a value, for what the server finishes after it has answered,
+/// such as recording a proxied download in its catalog. Panics after 30 seconds, naming
+/// what it was waiting for.
+#[allow(dead_code)]
+pub fn wait_until<T>(what: &str, mut ready: impl FnMut() -> Option<T>) -> T {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    loop {
+        if let Some(value) = ready() {
+            return value;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "gave up waiting for {what}"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+}
+
 /// Login as admin and cache the token. Called once per test binary.
 fn get_auth_token() -> &'static str {
     AUTH_TOKEN.get_or_init(|| {

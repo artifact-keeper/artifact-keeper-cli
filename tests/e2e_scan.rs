@@ -492,19 +492,23 @@ fn a_cached_path_is_listed_and_a_rescan_reports_the_server_answer() {
         .assert()
         .success();
 
-    let listed = json_of(
-        &env,
-        &[
-            "scan",
-            "proxy",
-            "list",
-            &remote,
-            "--page",
-            "1",
-            "--per-page",
-            "5",
-        ],
-    );
+    // The server records a proxied download after the client has the last byte.
+    let listed = common::wait_until("the download to be recorded", || {
+        let body = json_of(
+            &env,
+            &[
+                "scan",
+                "proxy",
+                "list",
+                &remote,
+                "--page",
+                "1",
+                "--per-page",
+                "5",
+            ],
+        );
+        (!body["items"].as_array().unwrap().is_empty()).then_some(body)
+    });
     assert_eq!(listed["items"][0]["path"], "d/f.bin", "{listed}");
     assert_eq!(listed["repository_key"], remote.as_str());
     let one = json_of(
