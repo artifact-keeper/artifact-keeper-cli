@@ -18,7 +18,9 @@ pub enum ConfigCommand {
         key: String,
     },
 
-    /// Set a configuration value
+    /// Set a configuration value. --format and AK_FORMAT, and --color and AK_COLOR, still
+    /// win over these. `output_format table` is the default: table on a terminal, JSON on
+    /// a pipe
     Set {
         /// Configuration key (default_instance, output_format, color)
         key: String,

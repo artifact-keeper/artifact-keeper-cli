@@ -61,6 +61,8 @@ These can change what you see, or break a script, coming from 1.2:
 - **`--version` and `-V` are on `ak` alone.** `ak repo --version` is now a usage error, so a script that reads the version has to use `ak --version`.
 - **`ak instance add` checks the URL.** A URL with no scheme, a username or password, or a query is refused, and a trailing `/api/v1` is taken off with a warning. Check any script that adds an instance with `host:port`.
 - **`ak auth login <url>` adds the instance** if none has that URL, named from its host, once the login works. `--instance` and `AK_INSTANCE` also take a URL, so `AK_INSTANCE=https://... AK_TOKEN=...` works with no config file. A login stored for an instance only goes to that instance's exact URL. An empty `AK_INSTANCE` now means none rather than failing with `Instance '' not found`.
+- **`ak config set output_format` and `color` now work.** They were accepted and ignored. If your config sets `output_format` to `json`, `yaml` or `quiet`, or `color`, you get that now wherever `--format` or `AK_FORMAT` doesn't say otherwise. `--color always` and `AK_COLOR=always` also beat `NO_COLOR` now, and actually turn color on.
+- **JSON keeps the server's key order on a terminal**, as it already did on a pipe, instead of sorting. YAML keeps it too. `ak api` on a terminal is pretty printed with a trailing newline, like other commands; on a pipe it's still the bytes as received.
 - **Redirects are stricter.** API requests don't follow a redirect to plain http or to another server. A redirect from `http://host:8080` to `https://host:8080` now drops your token, as other changes of port or host already did, so an instance set up over http that redirects like this needs its URL changed to https.
 
 ### Added

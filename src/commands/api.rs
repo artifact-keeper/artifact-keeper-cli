@@ -993,9 +993,8 @@ async fn write_body(response: reqwest::Response, output: Option<&Path>) -> Resul
                 .map_err(AkError::Io)?;
             Ok(())
         }
+        None if std::io::stdout().is_terminal() => write_to_terminal(response).await,
         None => {
-            let terminal = std::io::stdout().is_terminal();
-            let mut filter = TerminalFilter::default();
             let mut stream = response.bytes_stream();
             let mut stdout = std::io::stdout().lock();
             while let Some(chunk) = stream.next().await {
@@ -1004,19 +1003,11 @@ async fn write_body(response: reqwest::Response, output: Option<&Path>) -> Resul
                 })?;
                 // Flushed each time: stdout buffers by line, and a body without
                 // newlines would otherwise sit there until the end.
-                let result = if terminal {
-                    stdout.write_all(filter.push(&chunk).as_bytes())
-                } else {
-                    stdout.write_all(&chunk)
-                }
-                .and_then(|()| stdout.flush());
+                let result = stdout.write_all(&chunk).and_then(|()| stdout.flush());
                 match result {
                     Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => return Ok(()),
                     other => other.map_err(AkError::Io)?,
                 }
-            }
-            if terminal {
-                let _ = stdout.write_all(filter.finish().as_bytes());
             }
             match stdout.flush() {
                 Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => Ok(()),
@@ -1024,6 +1015,45 @@ async fn write_body(response: reqwest::Response, output: Option<&Path>) -> Resul
             }
         }
     }
+}
+
+/// A body on a terminal, shown as other commands show their output: JSON is pretty
+/// printed in the order it came, and the prompt starts on its own line. Anything else
+/// still arrives as it comes. A pipe or a file gets the bytes as received.
+async fn write_to_terminal(response: reqwest::Response) -> Result<()> {
+    let is_json = response
+        .headers()
+        .get(header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.contains("json"));
+    let mut filter = TerminalFilter::default();
+    let mut body = Vec::new();
+    let mut last = None;
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| {
+            AkError::NetworkError(format!("The response stopped: {}", e.without_url()))
+        })?;
+        if is_json {
+            body.extend_from_slice(&chunk);
+        } else {
+            last = chunk.last().copied().or(last);
+            crate::commands::helpers::write_stdout(filter.push(&chunk).as_bytes())?;
+        }
+    }
+    if is_json {
+        let shown = match serde_json::from_slice::<serde_json::Value>(&body) {
+            Ok(value) => serde_json::to_string_pretty(&value).unwrap_or_default(),
+            Err(_) => String::from_utf8_lossy(&body).into_owned(),
+        };
+        last = shown.as_bytes().last().copied();
+        crate::commands::helpers::write_stdout(filter.push(shown.as_bytes()).as_bytes())?;
+    }
+    crate::commands::helpers::write_stdout(filter.finish().as_bytes())?;
+    if last.is_some_and(|byte| byte != b'\n') {
+        crate::commands::helpers::write_stdout(b"\n")?;
+    }
+    Ok(())
 }
 
 /// Makes a body safe for a terminal, chunk by chunk: a chunk can end partway
