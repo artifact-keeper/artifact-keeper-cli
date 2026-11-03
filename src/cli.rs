@@ -61,6 +61,10 @@ pub enum ColorMode {
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Print the coverage registry and the command tree as JSON, for the coverage gate
+    #[command(name = "__registry", hide = true)]
+    Registry,
+
     /// Authenticate with an Artifact Keeper instance
     #[command(
         after_help = "Examples:\n  ak auth login\n  ak auth login https://registry.company.com\n  ak auth login --token\n  ak auth login --oidc-device\n  ak auth login --oidc-device --scope read:artifacts,write:artifacts\n  ak auth whoami\n  ak auth refresh\n  ak auth revoke-token <id>\n  ak auth setup-status\n  ak auth logout"
@@ -561,6 +565,10 @@ impl Cli {
             Command::Repo { command } => command.execute(&global).await,
             Command::Artifact { command } => command.execute(&global).await,
             Command::Api(args) => commands::api::execute(args, &global).await,
+            Command::Registry => {
+                crate::registry::print_dump();
+                Ok(())
+            }
             Command::Setup { options, command } => command.execute(options, &global).await,
             Command::Scan { command } => command.execute(&global).await,
             Command::Doctor => commands::doctor::execute(&global).await,

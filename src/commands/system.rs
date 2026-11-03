@@ -2,9 +2,12 @@ use artifact_keeper_sdk::{ClientHealthExt, ClientSystemExt};
 use clap::Subcommand;
 use miette::Result;
 
-use super::client::client_for_optional_auth;
-use super::helpers::sdk_err;
+use super::client::{client_for_optional_auth, raw_http_client};
+use super::helpers::{raw_err, sdk_err};
 use crate::cli::GlobalArgs;
+use crate::config::AppConfig;
+use crate::config::credentials::get_credential;
+use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
 
 #[derive(Subcommand)]
@@ -19,6 +22,24 @@ pub enum SystemCommand {
     /// Show instance health, version, and dependency status
     #[command(visible_alias = "info")]
     Health,
+
+    /// Print the server's OpenAPI document. The server has to run with ENABLE_SWAGGER=true
+    Openapi,
+
+    /// Fetch the server's Swagger UI, or a file of it. Needs ENABLE_SWAGGER=true
+    #[command(hide = true)]
+    SwaggerUi {
+        /// A file under /swagger-ui
+        path: Option<String>,
+    },
+
+    /// Ask /healthz, the same check as /health under its probe name
+    #[command(hide = true)]
+    Healthz,
+
+    /// Ask /ready, the same check as /readyz under its older name
+    #[command(hide = true)]
+    Ready,
 }
 
 impl SystemCommand {
@@ -26,8 +47,44 @@ impl SystemCommand {
         match self {
             Self::Config => show_config(global).await,
             Self::Health => show_health(global).await,
+            Self::Openapi => print_raw("/api/v1/openapi.json", global).await,
+            Self::SwaggerUi { path: Some(path) } => {
+                print_raw(&format!("/swagger-ui/{path}"), global).await
+            }
+            Self::SwaggerUi { path: None } => print_raw("/swagger-ui", global).await,
+            Self::Healthz => print_raw("/healthz", global).await,
+            Self::Ready => print_raw("/ready", global).await,
         }
     }
+}
+
+/// GET a route the spec doesn't document and print what comes back.
+async fn print_raw(route: &str, global: &GlobalArgs) -> Result<()> {
+    let config = AppConfig::load()?;
+    let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    let mut request =
+        raw_http_client()?.get(format!("{}{route}", instance.url.trim_end_matches('/')));
+    // These answer without a login, so being logged out isn't an error.
+    if let Ok(credential) = get_credential(name) {
+        request = request.header(
+            reqwest::header::AUTHORIZATION,
+            format!("Bearer {}", credential.access_token),
+        );
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("GET {route} failed: {e}")))?;
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("GET {route} failed: {e}")))?;
+    if !status.is_success() {
+        return Err(raw_err(&format!("GET {route}"), status, &body).into());
+    }
+    println!("{}", body.trim_end());
+    Ok(())
 }
 
 async fn show_config(global: &GlobalArgs) -> Result<()> {
