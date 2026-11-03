@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "artifact-keeper-sdk"
-version = "1.11.10"
+version = "1.11.9"
 dependencies = [
  "chrono",
  "progenitor-client",
