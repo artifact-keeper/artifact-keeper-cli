@@ -7,10 +7,13 @@ use uuid::Uuid;
 use super::banner::parse_time;
 use super::bundle::read_input;
 use super::client::client_for;
-use super::helpers::{confirm_action, emit_mutation, emit_mutation_raw, new_table, sdk_err};
+use super::helpers::{confirm_action, emit_mutation, emit_mutation_raw, new_table, or_since_1_11};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
+
+/// The group, for the message on a server older than these routes.
+const COMMAND: &str = "environment";
 
 #[derive(Subcommand)]
 pub enum EnvironmentCommand {
@@ -149,8 +152,8 @@ impl EnvironmentCommand {
                     req = req.limit(limit);
                 }
                 let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-                let body = resp
-                    .map_err(|e| sdk_err("list advisory transitions", e))?
+                let body = or_since_1_11(resp, "list advisory transitions", COMMAND, global)
+                    .await?
                     .into_inner();
                 spinner.finish_and_clear();
                 print_rows(
@@ -195,16 +198,18 @@ async fn resolve_environment_id(
     client: &artifact_keeper_sdk::Client,
     repo: &str,
     environment: &str,
+    global: &GlobalArgs,
 ) -> Result<Uuid> {
     if let Ok(id) = environment.parse() {
         return Ok(id);
     }
-    let body = client
-        .list_environments()
-        .key(repo)
-        .send()
-        .await
-        .map_err(|e| sdk_err(&format!("list environments in '{repo}'"), e))?;
+    let body = or_since_1_11(
+        client.list_environments().key(repo).send().await,
+        &format!("list environments in '{repo}'"),
+        COMMAND,
+        global,
+    )
+    .await?;
     rows(&body, "environments")
         .iter()
         .find(|e| e["name"] == environment)
@@ -239,8 +244,8 @@ async fn ingest(
         req = req.name(name);
     }
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-    let stored = resp
-        .map_err(|e| sdk_err("ingest environment", e))?
+    let stored = or_since_1_11(resp, "ingest environment", COMMAND, global)
+        .await?
         .into_inner();
     spinner.finish_and_clear();
 
@@ -259,8 +264,8 @@ async fn list(repo: &str, global: &GlobalArgs) -> Result<()> {
     let spinner = output::spinner("Fetching environments...");
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.list_environments().key(repo).send()).await;
-    let body = resp
-        .map_err(|e| sdk_err("list environments", e))?
+    let body = or_since_1_11(resp, "list environments", COMMAND, global)
+        .await?
         .into_inner();
     spinner.finish_and_clear();
     print_rows(
@@ -277,12 +282,12 @@ async fn list(repo: &str, global: &GlobalArgs) -> Result<()> {
 
 async fn show(repo: &str, environment: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let id = resolve_environment_id(&client, repo, environment).await?;
+    let id = resolve_environment_id(&client, repo, environment, global).await?;
     let spinner = output::spinner("Fetching environment...");
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.get_environment().key(repo).id(id).send()).await;
-    let body = resp
-        .map_err(|e| sdk_err("get environment", e))?
+    let body = or_since_1_11(resp, "get environment", COMMAND, global)
+        .await?
         .into_inner();
     spinner.finish_and_clear();
 
@@ -316,15 +321,15 @@ async fn delete(
         return Ok(());
     }
     let client = client_for(global)?;
-    let id = resolve_environment_id(&client, repo, environment).await?;
+    let id = resolve_environment_id(&client, repo, environment, global).await?;
     let spinner = output::spinner("Deleting environment...");
-    client
-        .delete_environment()
-        .key(repo)
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("delete environment", e))?;
+    or_since_1_11(
+        client.delete_environment().key(repo).id(id).send().await,
+        "delete environment",
+        COMMAND,
+        global,
+    )
+    .await?;
     spinner.finish_and_clear();
 
     let id = id.to_string();
@@ -339,14 +344,14 @@ async fn delete(
 
 async fn advisories(repo: &str, environment: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let id = resolve_environment_id(&client, repo, environment).await?;
+    let id = resolve_environment_id(&client, repo, environment, global).await?;
     let spinner = output::spinner("Fetching advisories...");
     let (resp, raw) = artifact_keeper_sdk::raw::capture(
         client.get_environment_advisories().key(repo).id(id).send(),
     )
     .await;
-    let body = resp
-        .map_err(|e| sdk_err("get environment advisories", e))?
+    let body = or_since_1_11(resp, "get environment advisories", COMMAND, global)
+        .await?
         .into_inner();
     spinner.finish_and_clear();
     print_rows(
@@ -369,8 +374,8 @@ async fn lookup(purl: &str, max_paths: Option<u64>, global: &GlobalArgs) -> Resu
         req = req.max_paths(max_paths);
     }
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-    let body = resp
-        .map_err(|e| sdk_err("look up environments", e))?
+    let body = or_since_1_11(resp, "look up environments", COMMAND, global)
+        .await?
         .into_inner();
     spinner.finish_and_clear();
 

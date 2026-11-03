@@ -8,11 +8,14 @@ use miette::Result;
 
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, or_since_1_11, parse_uuid,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
+
+/// The group, for the message on a server older than these routes.
+const COMMAND: &str = "banner";
 
 const SEVERITIES: [&str; 3] = ["info", "warning", "critical"];
 const TARGETS: [&str; 3] = ["all", "ui", "api"];
@@ -286,8 +289,8 @@ async fn list_active(target: Option<&str>, global: &GlobalArgs) -> Result<()> {
         req = req.target(target);
     }
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-    let list = resp
-        .map_err(|e| sdk_err("list active banners", e))?
+    let list = or_since_1_11(resp, "list active banners", COMMAND, global)
+        .await?
         .into_inner();
     spinner.finish_and_clear();
 
@@ -317,7 +320,9 @@ async fn list_banners(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching banners...");
     let (resp, raw) = artifact_keeper_sdk::raw::capture(client.list_banners().send()).await;
-    let list = resp.map_err(|e| sdk_err("list banners", e))?.into_inner();
+    let list = or_since_1_11(resp, "list banners", COMMAND, global)
+        .await?
+        .into_inner();
     spinner.finish_and_clear();
 
     if list.banners.is_empty() && !output::is_machine_format(&global.format) {
@@ -348,7 +353,9 @@ async fn show_banner(id: &str, global: &GlobalArgs) -> Result<()> {
     let spinner = output::spinner("Fetching banner...");
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.get_banner().id(banner_id).send()).await;
-    let banner = resp.map_err(|e| sdk_err("get banner", e))?.into_inner();
+    let banner = or_since_1_11(resp, "get banner", COMMAND, global)
+        .await?
+        .into_inner();
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
@@ -372,7 +379,7 @@ async fn create_banner(input: BannerInput, global: &GlobalArgs) -> Result<()> {
     let spinner = output::spinner("Creating banner...");
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.create_banner().body(input).send()).await;
-    let banner = resp.map_err(|e| sdk_err("create banner", e))?;
+    let banner = or_since_1_11(resp, "create banner", COMMAND, global).await?;
     spinner.finish_and_clear();
 
     emit_mutation_raw(
@@ -389,18 +396,19 @@ async fn update_banner(id: &str, changes: BannerChanges, global: &GlobalArgs) ->
     let banner_id = parse_uuid(id, "banner")?;
     let client = client_for(global)?;
     let spinner = output::spinner("Updating banner...");
-    let current = client
-        .get_banner()
-        .id(banner_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get banner", e))?
-        .into_inner();
+    let current = or_since_1_11(
+        client.get_banner().id(banner_id).send().await,
+        "get banner",
+        COMMAND,
+        global,
+    )
+    .await?
+    .into_inner();
     let input = merged_input(current, changes);
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.update_banner().id(banner_id).body(input).send())
             .await;
-    let banner = resp.map_err(|e| sdk_err("update banner", e))?;
+    let banner = or_since_1_11(resp, "update banner", COMMAND, global).await?;
     spinner.finish_and_clear();
 
     emit_mutation_raw(
@@ -424,12 +432,13 @@ async fn delete_banner(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Res
     }
     let client = client_for(global)?;
     let spinner = output::spinner("Deleting banner...");
-    client
-        .delete_banner()
-        .id(banner_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("delete banner", e))?;
+    or_since_1_11(
+        client.delete_banner().id(banner_id).send().await,
+        "delete banner",
+        COMMAND,
+        global,
+    )
+    .await?;
     spinner.finish_and_clear();
 
     emit_mutation(

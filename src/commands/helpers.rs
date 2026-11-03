@@ -131,6 +131,38 @@ pub async fn since_1_11(
     sdk_err(action, error)
 }
 
+/// A result with [`since_1_11`] applied to its error, for a command group whose
+/// routes are all new in 1.11.
+pub async fn or_since_1_11<T>(
+    result: std::result::Result<T, artifact_keeper_sdk::Error>,
+    action: &str,
+    command: &str,
+    global: &GlobalArgs,
+) -> Result<T> {
+    match result {
+        Ok(value) => Ok(value),
+        Err(error) => Err(since_1_11(error, action, command, global).await.into()),
+    }
+}
+
+/// [`since_1_11`] for a failed raw HTTP call.
+pub async fn since_1_11_raw(
+    status: reqwest::StatusCode,
+    body: &str,
+    action: &str,
+    command: &str,
+    global: &GlobalArgs,
+) -> AkError {
+    if status == reqwest::StatusCode::NOT_FOUND
+        && let Some(version) = server_before_1_11(global).await
+    {
+        return AkError::ServerError(format!(
+            "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
+        ));
+    }
+    raw_err(action, status, body)
+}
+
 /// The bytes of a flag's value: the text itself, `@file` or `@-` for stdin.
 pub fn read_inline_or_file(value: &str, flag: &str) -> Result<Vec<u8>> {
     match value.strip_prefix('@') {
