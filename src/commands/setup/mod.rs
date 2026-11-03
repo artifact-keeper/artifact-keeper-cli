@@ -285,16 +285,10 @@ impl SetupContext {
                 );
                 Ok(created.into_inner().token)
             }
-            Err(e) => {
-                // A policy or a restricted login can refuse this. A config that
-                // works for now, with a warning, still beats none.
-                eprintln!(
-                    "Warning: couldn't create an API token ({}).",
-                    super::helpers::sdk_err("create token", e)
-                );
-                warn_short_lived(remaining);
-                Ok(self.token.clone())
-            }
+            // A config that works for 30 minutes passes every check at the time and
+            // fails later, somewhere harder to trace, so nothing is written. Whoever
+            // wants that can ask for it with --session-token.
+            Err(e) => Err(AkError::SetupToken(e.to_string()).into()),
         }
     }
 }
@@ -699,14 +693,20 @@ async fn setup_cargo(repo: Option<&str>, options: TokenOptions, global: &GlobalA
         return Ok(());
     }
 
+    let write_credentials = confirm_write(&creds_path, &credentials_content, global.no_input)?;
+    // Before any write, so that no token leaves the existing files as they were.
+    let token = if write_credentials {
+        Some(ctx.token_for_config().await?)
+    } else {
+        None
+    };
+
     write_config_file(&config_path, &config_content, "cargo config.toml")?;
 
-    if !confirm_write(&creds_path, &credentials_content, global.no_input)? {
+    let Some(token) = token else {
         eprintln!("Skipped Cargo credentials.");
         return Ok(());
-    }
-
-    let token = ctx.token_for_config().await?;
+    };
     write_config_file(
         &creds_path,
         &fill_token(&credentials_content, &token),
