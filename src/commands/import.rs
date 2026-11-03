@@ -367,19 +367,66 @@ impl AssessCommand {
 // Source connection operations
 // ---------------------------------------------------------------------------
 
-async fn source_list(global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
-
-    let spinner = output::spinner("Fetching source connections...");
-    let resp = client
-        .list_connections()
+/// GET a migration list endpoint, returning the items and the body as received.
+///
+/// The server wraps these lists as `{"items": [...], "pagination": ...}` while the
+/// spec declares a bare array (artifact-keeper-api#46), so the generated SDK can't
+/// parse them. This accepts both, so it keeps working once the spec or the server
+/// changes. Replace it with the SDK once a regenerated spec has the wrapper.
+async fn fetch_list<T: serde::de::DeserializeOwned>(
+    global: &GlobalArgs,
+    path: &str,
+    query: &[(&str, String)],
+    action: &str,
+) -> Result<(Vec<T>, Vec<u8>)> {
+    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
+    let response = super::client::raw_http_client()?
+        .get(format!("{}{path}", base_url.trim_end_matches('/')))
+        .header(reqwest::header::AUTHORIZATION, auth_header)
+        .query(query)
         .send()
         .await
-        .map_err(|e| sdk_err("list source connections", e))?;
-    let connections = resp.into_inner();
+        .map_err(|e| sdk_err(action, e.without_url()))?;
+    let status = response.status();
+    let body = response
+        .bytes()
+        .await
+        .map_err(|e| sdk_err(action, e.without_url()))?;
+    if !status.is_success() {
+        return Err(super::helpers::raw_err(
+            &format!("Failed to {action}"),
+            status,
+            &String::from_utf8_lossy(&body),
+        )
+        .into());
+    }
+    let items = parse_list(&body).map_err(|e| sdk_err(action, e))?;
+    Ok((items, body.to_vec()))
+}
+
+fn parse_list<T: serde::de::DeserializeOwned>(body: &[u8]) -> serde_json::Result<Vec<T>> {
+    let value: Value = serde_json::from_slice(body)?;
+    let items = match value {
+        Value::Object(mut wrapper) => wrapper
+            .remove("items")
+            .unwrap_or_else(|| Value::Array(vec![])),
+        other => other,
+    };
+    serde_json::from_value(items)
+}
+
+async fn source_list(global: &GlobalArgs) -> Result<()> {
+    let spinner = output::spinner("Fetching source connections...");
+    let (connections, raw) = fetch_list::<ConnectionResponse>(
+        global,
+        "/api/v1/migrations/connections",
+        &[],
+        "list source connections",
+    )
+    .await?;
     spinner.finish_and_clear();
 
-    if connections.is_empty() {
+    if connections.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No source connections found.");
         return Ok(());
     }
@@ -394,7 +441,7 @@ async fn source_list(global: &GlobalArgs) -> Result<()> {
     let (entries, table_str) = format_connections_table(&connections);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(Some(&raw), &entries, &global.format, Some(table_str))
     );
     Ok(())
 }
@@ -595,28 +642,28 @@ async fn job_list(
     per_page: Option<i64>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
-
-    let mut builder = client.list_migrations();
+    let mut query = Vec::new();
     if let Some(s) = status {
-        builder = builder.status(s.to_string());
+        query.push(("status", s.to_string()));
     }
     if let Some(p) = page {
-        builder = builder.page(p);
+        query.push(("page", p.to_string()));
     }
     if let Some(pp) = per_page {
-        builder = builder.per_page(pp);
+        query.push(("per_page", pp.to_string()));
     }
 
     let spinner = output::spinner("Fetching import jobs...");
-    let resp = builder
-        .send()
-        .await
-        .map_err(|e| sdk_err("list import jobs", e))?;
-    let jobs = resp.into_inner();
+    let (jobs, raw) = fetch_list::<MigrationJobResponse>(
+        global,
+        "/api/v1/migrations",
+        &query,
+        "list import jobs",
+    )
+    .await?;
     spinner.finish_and_clear();
 
-    if jobs.is_empty() {
+    if jobs.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No import jobs found.");
         return Ok(());
     }
@@ -631,7 +678,7 @@ async fn job_list(
     let (entries, table_str) = format_jobs_table(&jobs);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(Some(&raw), &entries, &global.format, Some(table_str))
     );
     Ok(())
 }
@@ -769,31 +816,32 @@ async fn job_items(
     global: &GlobalArgs,
 ) -> Result<()> {
     let job_id = parse_uuid(id, "job")?;
-    let client = client_for(global)?;
 
-    let mut builder = client.list_migration_items().id(job_id);
+    let mut query = Vec::new();
     if let Some(s) = status {
-        builder = builder.status(s.to_string());
+        query.push(("status", s.to_string()));
     }
     if let Some(t) = item_type {
-        builder = builder.item_type(t.to_string());
+        query.push(("item_type", t.to_string()));
     }
     if let Some(p) = page {
-        builder = builder.page(p);
+        query.push(("page", p.to_string()));
     }
     if let Some(pp) = per_page {
-        builder = builder.per_page(pp);
+        query.push(("per_page", pp.to_string()));
     }
 
     let spinner = output::spinner("Fetching import items...");
-    let resp = builder
-        .send()
-        .await
-        .map_err(|e| sdk_err("list import items", e))?;
-    let items = resp.into_inner();
+    let (items, raw) = fetch_list::<MigrationItemResponse>(
+        global,
+        &format!("/api/v1/migrations/{job_id}/items"),
+        &query,
+        "list import items",
+    )
+    .await?;
     spinner.finish_and_clear();
 
-    if items.is_empty() {
+    if items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No import items found for job {id}.");
         return Ok(());
     }
@@ -808,7 +856,7 @@ async fn job_items(
     let (entries, table_str) = format_items_table(&items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(Some(&raw), &entries, &global.format, Some(table_str))
     );
     Ok(())
 }
@@ -1279,6 +1327,17 @@ fn format_assessment_detail(a: &AssessmentResult) -> (Value, String) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_list_takes_the_wrapper_the_server_sends_or_a_bare_array() {
+        let wrapped: Vec<u32> = parse_list(br#"{"items":[1,2],"pagination":{"page":1}}"#).unwrap();
+        assert_eq!(wrapped, [1, 2]);
+        let bare: Vec<u32> = parse_list(b"[3]").unwrap();
+        assert_eq!(bare, [3]);
+        let missing: Vec<u32> = parse_list(br#"{"pagination":null}"#).unwrap();
+        assert!(missing.is_empty());
+        assert!(parse_list::<u32>(b"not json").is_err());
+    }
     use chrono::Utc;
     use clap::Parser;
     use uuid::Uuid;

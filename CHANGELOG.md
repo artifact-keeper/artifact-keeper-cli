@@ -51,6 +51,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak doctor` no longer reports false problems: the repo count uses your credentials when it has them (it read "0 repos" on a private instance) and says "public" when it does not, a login token shows the minutes left rather than warning "expires in 0 days", and a package manager config that points at the instance but not at its real route (like one from an older `ak setup`) is a warning rather than "configured". It also recognises a pip config with credentials in its URL.
 - A prompt with no terminal now says to pass `--yes` or `--no-input`, rather than failing with `IO error: not a terminal`.
 - With `--no-input` or `AK_NO_INPUT`, a secret that was not given (such as `ak webhook create` without `--secret`) no longer waits on an open stdin. To pipe a secret with `--no-input`, use the command's `--<flag>-stdin`.
+- `ak import source list`, `import job list` and `import job items` work against 1.11 and 1.10. The server wraps these lists in `{"items": [...]}` while the spec declares an array (artifact-keeper-api#46), so the SDK could not parse them. In JSON and YAML they print the body as received.
 
 ### Removed
 
