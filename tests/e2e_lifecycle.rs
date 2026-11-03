@@ -71,12 +71,56 @@ fn matched(env: &common::TestEnv, id: &str) -> i64 {
     preview["artifacts_matched"].as_i64().unwrap()
 }
 
-/// A policy created without `--repo` applies to all repositories. Backend 1.11
-/// made a policy without a repository dormant unless `applies_to_all` is sent, so
-/// the policy has to match something, not merely be created.
+/// With no scope given nothing is created, whatever the server would have done
+/// with it: a policy deletes, and it's enabled from the start.
 #[test]
 #[ignore = "requires E2E backend"]
-fn create_without_repo_applies_to_all_and_matches() {
+fn create_without_a_scope_is_refused_and_creates_nothing() {
+    let env = common::TestEnv::setup();
+    let name = format!("e2e-noscope-{}", std::process::id());
+
+    let output = env
+        .ak_cmd()
+        .args([
+            "lifecycle",
+            "create",
+            &name,
+            "--policy-type",
+            "max_age_days",
+            "--config",
+            r#"{"days":3650}"#,
+        ])
+        .assert()
+        .failure()
+        .get_output()
+        .stderr
+        .clone();
+    let stderr = String::from_utf8_lossy(&output);
+    assert!(stderr.contains("--all-repos"), "{stderr}");
+
+    let policies: Value = env
+        .api_client()
+        .get(format!("{}/api/v1/admin/lifecycle", env.url))
+        .bearer_auth(&env.token)
+        .send()
+        .unwrap()
+        .json()
+        .unwrap();
+    let names: Vec<_> = policies
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["name"].as_str().unwrap())
+        .collect();
+    assert!(!names.contains(&name.as_str()), "{names:?}");
+}
+
+/// `--all-repos` has to reach another repository's artifacts, not merely create
+/// a policy: backend 1.11 makes a policy with no repository dormant unless
+/// `applies_to_all` is sent.
+#[test]
+#[ignore = "requires E2E backend"]
+fn create_with_all_repos_applies_to_all_and_matches() {
     let env = common::TestEnv::setup();
     let suffix = std::process::id();
     let artifact = format!("lifecycle-global-{suffix}.bin");
@@ -91,6 +135,7 @@ fn create_without_repo_applies_to_all_and_matches() {
         "tag_pattern_delete",
         "--config",
         &config,
+        "--all-repos",
     ]));
     let id = policy["id"].as_str().unwrap().to_string();
     guard.policies.push(id.clone());
@@ -125,6 +170,9 @@ fn create_with_repo_applies_to_that_repo_and_update_keeps_scope() {
     let artifact = format!("lifecycle-repo-{suffix}.bin");
     let repo = format!("e2e-lc-repo-{suffix}");
     let mut guard = repo_with_artifact(&env, &repo, &artifact);
+    // Holds the same name, so a policy that reached past its repository matches 2.
+    let other = format!("e2e-lc-other-{suffix}");
+    let _other = repo_with_artifact(&env, &other, &artifact);
 
     // `ak repo show` doesn't print the ID.
     let repo_id: Value = env
