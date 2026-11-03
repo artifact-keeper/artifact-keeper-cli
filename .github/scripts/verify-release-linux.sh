@@ -53,20 +53,26 @@ echo "--- Checksum and static linking"
 chmod +x "$assets/$binary"
 "$here/check-static-binary.sh" "$assets/$binary"
 
-echo "--- cosign, every signed file"
+# Loop over what was published, not over names built here. GitHub rewrites some
+# characters in asset names, and an rc's packages have a ~ in their version.
+echo "--- cosign, every published file"
 count=0
-for sig in "$assets"/*.sig; do
-  file="${sig%.sig}"
+for file in "$assets"/*; do
+  case "$file" in
+    *.sha256|*.sig|*.pem) continue ;;
+  esac
   cosign verify-blob \
     --certificate "$file.pem" \
-    --signature "$sig" \
+    --signature "$file.sig" \
     --certificate-identity "https://github.com/$repo/.github/workflows/release.yml@refs/tags/$tag" \
     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
     "$file"
   count=$((count + 1))
 done
-if [ "$count" -eq 0 ]; then
-  echo "::error::$tag has no signatures"
+# Five binaries, completions, man pages, two debs, two rpms.
+if [ "$count" -ne 11 ]; then
+  echo "::error::Verified $count files, wanted 11"
+  ls -l "$assets"
   exit 1
 fi
 echo "Verified $count signatures"
@@ -84,11 +90,12 @@ docker run --rm -v "$assets:/w:ro" -e HOME=/tmp -e AK_NO_INPUT=true alpine:3.22 
   "/w/$binary" api GET https://github.com/ --anon --no-fail --head-only
 
 echo "--- deb on ubuntu:22.04"
+# Globs, for the same reason as above. Each matches one file, or the install fails.
 check_version "deb" "$(docker run --rm -v "$assets:/w:ro" ubuntu:22.04 \
-  sh -c "dpkg -i /w/ak_*_$arch.deb >&2 && ak --version")"
+  sh -c "dpkg -i /w/ak*_$arch.deb >&2 && ak --version")"
 
 echo "--- rpm on rockylinux:9"
 check_version "rpm" "$(docker run --rm -v "$assets:/w:ro" rockylinux:9 \
-  sh -c "rpm -i /w/ak-*.$rpm_arch.rpm >&2 && ak --version")"
+  sh -c "rpm -i /w/ak*.$rpm_arch.rpm >&2 && ak --version")"
 
 echo "All checks passed for $tag on $arch"
