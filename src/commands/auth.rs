@@ -5,7 +5,7 @@ use miette::{IntoDiagnostic, Result};
 
 use super::client::{anon_client, authenticated_client, build_client, client_for};
 use super::helpers::{
-    parse_json_arg, parse_uuid, raw_err, require_secret, resolve_secret, sdk_err, server_before,
+    guard_flags, parse_json_arg, parse_uuid, raw_err, require_secret, resolve_secret, sdk_err,
 };
 use crate::cli::GlobalArgs;
 use crate::config::credentials::{
@@ -223,7 +223,8 @@ impl AuthCommand {
                     // 1.10.2 honours a selector. 1.10.1 drops it and makes a token with
                     // all of your access, which is the opposite of what was asked.
                     if repo_selector.is_some()
-                        && let Some(version) = server_before(global, (1, 10, 2)).await
+                        && let Some(version) =
+                            guard_flags("--repo-selector", (1, 10, 2), global).await
                     {
                         return Err(AkError::ServerError(format!(
                             "--repo-selector needs a server on 1.10.2 or newer. This one is \
@@ -537,6 +538,14 @@ fn store_session(
     refresh_token: String,
     must_change_password: bool,
 ) -> Result<()> {
+    // Empty tokens can arrive with a 200, such as when another step is needed first.
+    // Stored, they'd read as logged in, and every command would then get a 401.
+    if access_token.trim().is_empty() {
+        return Err(AkError::NotAuthenticated(
+            "The server accepted the login but sent no session token. Check `ak doctor`.".into(),
+        )
+        .into());
+    }
     let cred = StoredCredential {
         access_token,
         refresh_token: Some(refresh_token),
@@ -914,6 +923,14 @@ async fn refresh(instance: Option<&str>, global: &GlobalArgs) -> Result<()> {
         .send()
         .await
         .map_err(|e| AkError::NotAuthenticated(format!("Token refresh failed: {e}")))?;
+
+    if resp.access_token.trim().is_empty() {
+        return Err(AkError::NotAuthenticated(
+            "The server refreshed the session but sent no token. Your stored login is unchanged."
+                .into(),
+        )
+        .into());
+    }
 
     let new_cred = StoredCredential {
         access_token: resp.access_token.clone(),

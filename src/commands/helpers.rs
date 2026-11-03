@@ -88,19 +88,20 @@ pub fn emit_mutation_raw<T: Serialize>(
 /// The version of the instance's server, if it's known to be older than 1.11. An
 /// unknown version isn't older: the server still gets to answer for itself.
 pub async fn server_before_1_11(global: &GlobalArgs) -> Option<String> {
-    let config = crate::config::AppConfig::load().ok()?;
-    let (_, instance) = config.resolve_instance(global.instance.as_deref()).ok()?;
-    let version = super::doctor::fetch_server_version(instance).await.ok()?;
+    let version = read_server_version(global).await?;
     let found = super::doctor::major_minor(&version)?;
     (found < (1, 11)).then_some(version)
 }
 
-/// The version of the instance's server, if it's known to be older than this one.
-pub async fn server_before(global: &GlobalArgs, wanted: (u64, u64, u64)) -> Option<String> {
+async fn read_server_version(global: &GlobalArgs) -> Option<String> {
     let config = crate::config::AppConfig::load().ok()?;
     let (_, instance) = config.resolve_instance(global.instance.as_deref()).ok()?;
-    let version = super::doctor::fetch_server_version(instance).await.ok()?;
-    let (major, minor) = super::doctor::major_minor(&version)?;
+    super::doctor::fetch_server_version(instance).await.ok()
+}
+
+/// A version as (major, minor, patch), if it has all three.
+fn full_version(version: &str) -> Option<(u64, u64, u64)> {
+    let (major, minor) = super::doctor::major_minor(version)?;
     let patch = version
         .trim()
         .trim_start_matches('v')
@@ -110,7 +111,34 @@ pub async fn server_before(global: &GlobalArgs, wanted: (u64, u64, u64)) -> Opti
         .next()?
         .parse()
         .ok()?;
-    ((major, minor, patch) < wanted).then_some(version)
+    Some((major, minor, patch))
+}
+
+/// Check a flag that an older server would accept and silently drop: the server's
+/// version, if it's older than `wanted`. With no version to go on, the flag goes
+/// ahead, because the server may well support it, but the user is told. `/health` can
+/// be blocked or slow, and then nothing checked it.
+pub async fn guard_flags(
+    flags: &str,
+    wanted: (u64, u64, u64),
+    global: &GlobalArgs,
+) -> Option<String> {
+    let Some(version) = read_server_version(global).await else {
+        warn_unchecked(flags, wanted);
+        return None;
+    };
+    let Some(found) = full_version(&version) else {
+        warn_unchecked(flags, wanted);
+        return None;
+    };
+    (found < wanted).then_some(version)
+}
+
+fn warn_unchecked(flags: &str, (major, minor, patch): (u64, u64, u64)) {
+    eprintln!(
+        "Warning: couldn't read this server's version to check {flags}. A server older than \
+         {major}.{minor}.{patch} would ignore it."
+    );
 }
 
 /// Refuse flags that a server before 1.11 would accept and silently drop, before
@@ -119,7 +147,7 @@ pub async fn refuse_flags_before_1_11(flags: &[&str], global: &GlobalArgs) -> Re
     if flags.is_empty() {
         return Ok(());
     }
-    match server_before_1_11(global).await {
+    match guard_flags(&flags.join(", "), (1, 11, 0), global).await {
         Some(version) => Err(AkError::ServerError(format!(
             "{} needs a server on 1.11 or newer. This one is {version}, which would ignore it. \
              Nothing was changed.",

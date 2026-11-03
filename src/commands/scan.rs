@@ -1768,7 +1768,8 @@ async fn update_repo_security(
     // A 1.10 server stores fail_closed and fail_open, and turns record_only into
     // fail_open, which is the reverse of keeping a record of what it let through.
     if settings.proxy_scan_action.as_deref() == Some("record_only")
-        && let Some(version) = crate::commands::helpers::server_before_1_11(global).await
+        && let Some(version) =
+            crate::commands::helpers::guard_flags("--proxy-scan-action", (1, 11, 0), global).await
     {
         return Err(AkError::ServerError(format!(
             "--proxy-scan-action record_only needs a server on 1.11 or newer. This one is \
