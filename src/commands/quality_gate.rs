@@ -6,7 +6,9 @@ use super::client::client_for;
 use super::helpers::{
     confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
-use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
+use super::helpers::{
+    print_page_info, resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id,
+};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -101,15 +103,31 @@ pub enum QualityGateCommand {
         repo: Option<String>,
     },
 
-    /// List the quality checks of an artifact
+    /// List the quality checks of an artifact, or with --all of the whole server
     Checks {
-        /// Artifact ID
-        #[arg(long)]
-        artifact: String,
+        /// Artifact ID or <repo-key>/<path>. Required unless --all is given
+        #[arg(long, required_unless_present = "all")]
+        artifact: Option<String>,
 
         /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
+
+        /// List checks across all artifacts (admin)
+        #[arg(long)]
+        all: bool,
+
+        /// With --all: only checks in this status
+        #[arg(long, requires = "all")]
+        status: Option<String>,
+
+        /// With --all: page number
+        #[arg(long, requires = "all")]
+        page: Option<i32>,
+
+        /// With --all: results per page
+        #[arg(long, requires = "all")]
+        per_page: Option<i32>,
     },
 
     /// Show a single quality check result
@@ -218,9 +236,27 @@ impl QualityGateCommand {
             Self::Check { artifact, repo } => {
                 check_artifact(&artifact, repo.as_deref(), global).await
             }
-            Self::Checks { artifact, repo } => {
-                list_checks(&artifact, repo.as_deref(), global).await
-            }
+            Self::Checks {
+                artifact,
+                repo,
+                all,
+                status,
+                page,
+                per_page,
+            } => match artifact {
+                Some(artifact) if !all => list_checks(&artifact, repo.as_deref(), global).await,
+                artifact => {
+                    list_all_checks(
+                        artifact.as_deref(),
+                        repo.as_deref(),
+                        status.as_deref(),
+                        page,
+                        per_page,
+                        global,
+                    )
+                    .await
+                }
+            },
             Self::CheckShow { id } => show_check(&id, global).await,
             Self::CheckTrigger { artifact, repo } => {
                 trigger_checks(artifact.as_deref(), repo.as_deref(), global).await
@@ -601,59 +637,115 @@ async fn check_artifact(
 
 async fn list_checks(artifact: &str, repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let artifact_id = parse_uuid(artifact, "artifact")?;
+    let artifact_id = resolve_artifact_id(&client, artifact).await?;
     let repository_id = resolve_optional_repo_id(&client, repo).await?;
 
     let spinner = output::spinner("Fetching quality checks...");
 
-    let checks = client
-        .list_checks()
-        .artifact_id(artifact_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list quality checks", e))?;
+    let (checks, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_checks().artifact_id(artifact_id).send())
+            .await;
+    let checks = checks.map_err(|e| sdk_err("list quality checks", e))?;
 
     // The `repository_id` query parameter was dropped from the API (the
     // backend ignored it); apply the `--repository` filter client-side so
-    // the documented behavior is preserved.
+    // the documented behavior is preserved. JSON output is the server's items
+    // minus the ones filtered out.
     let mut checks = checks.into_inner();
-    if let Some(r) = repository_id {
-        checks.retain(|c| c.repository_id == r);
-    }
+    let raw = match repository_id {
+        Some(r) => {
+            checks.retain(|c| c.repository_id == r);
+            raw.as_deref().and_then(|bytes| keep_repository(bytes, r))
+        }
+        None => raw,
+    };
     spinner.finish_and_clear();
 
-    if checks.is_empty() {
+    print_checks(&checks, raw.as_deref(), global);
+    if checks.is_empty() && !output::is_machine_format(&global.format) {
+        eprintln!("No quality checks found.");
+    }
+    Ok(())
+}
+
+/// Keep only one repository's items from a JSON array of checks.
+fn keep_repository(raw: &[u8], repository_id: uuid::Uuid) -> Option<Vec<u8>> {
+    let mut items: Vec<serde_json::Value> = serde_json::from_slice(raw).ok()?;
+    let wanted = repository_id.to_string();
+    items.retain(|item| item["repository_id"].as_str() == Some(wanted.as_str()));
+    serde_json::to_vec(&items).ok()
+}
+
+async fn list_all_checks(
+    artifact: Option<&str>,
+    repo: Option<&str>,
+    status: Option<&str>,
+    page: Option<i32>,
+    per_page: Option<i32>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let mut req = client.admin_list_checks();
+    if let Some(artifact) = artifact {
+        req = req.artifact_id(resolve_artifact_id(&client, artifact).await?);
+    }
+    if let Some(id) = resolve_optional_repo_id(&client, repo).await? {
+        req = req.repository_id(id);
+    }
+    if let Some(status) = status {
+        req = req.status(status);
+    }
+    if let Some(page) = page {
+        req = req.page(page);
+    }
+    if let Some(per_page) = per_page {
+        req = req.per_page(per_page);
+    }
+
+    let spinner = output::spinner("Fetching quality checks...");
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp
+        .map_err(|e| sdk_err("list quality checks", e))?
+        .into_inner();
+    spinner.finish_and_clear();
+
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No quality checks found.");
         return Ok(());
     }
+    print_checks(&resp.items, raw.as_deref(), global);
+    if resp.per_page > 0 {
+        let pages = (resp.total + i64::from(resp.per_page) - 1) / i64::from(resp.per_page);
+        print_page_info(
+            resp.page,
+            i32::try_from(pages).unwrap_or(i32::MAX),
+            resp.total,
+            "checks",
+        );
+    }
+    Ok(())
+}
 
+fn print_checks(
+    checks: &[artifact_keeper_sdk::types::CheckResponse],
+    raw: Option<&[u8]>,
+    global: &GlobalArgs,
+) {
+    if checks.is_empty() && !output::is_machine_format(&global.format) {
+        return;
+    }
     if matches!(global.format, OutputFormat::Quiet) {
-        for c in &checks {
+        for c in checks {
             println!("{}", c.id);
         }
-        return Ok(());
+        return;
     }
-
-    let entries: Vec<_> = checks
-        .iter()
-        .map(|c| {
-            serde_json::json!({
-                "id": c.id.to_string(),
-                "artifact_id": c.artifact_id.to_string(),
-                "check_type": c.check_type,
-                "status": c.status,
-                "score": c.score,
-                "issues_count": c.issues_count,
-                "passed": c.passed,
-            })
-        })
-        .collect();
 
     let table_str = {
         let mut table = new_table(vec![
             "ID", "ARTIFACT", "TYPE", "STATUS", "SCORE", "ISSUES", "PASSED",
         ]);
-        for c in &checks {
+        for c in checks {
             let id_short = short_id(&c.id);
             let art_short = short_id(&c.artifact_id);
             let score = c
@@ -681,10 +773,8 @@ async fn list_checks(artifact: &str, repo: Option<&str>, global: &GlobalArgs) ->
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw, &checks, &global.format, Some(table_str))
     );
-
-    Ok(())
 }
 
 async fn show_check(id: &str, global: &GlobalArgs) -> Result<()> {
@@ -1615,9 +1705,15 @@ mod tests {
     fn parse_checks_minimal() {
         let cli = parse(&["test", "checks", "--artifact", "a-id"]);
         match cli.command {
-            QualityGateCommand::Checks { artifact, repo } => {
-                assert_eq!(artifact, "a-id");
+            QualityGateCommand::Checks {
+                artifact,
+                repo,
+                all,
+                ..
+            } => {
+                assert_eq!(artifact.as_deref(), Some("a-id"));
                 assert!(repo.is_none());
+                assert!(!all);
             }
             _ => panic!("expected Checks"),
         }
@@ -1627,9 +1723,29 @@ mod tests {
     fn parse_checks_with_filters() {
         let cli = parse(&["test", "checks", "--artifact", "a-id", "--repo", "r-id"]);
         match cli.command {
-            QualityGateCommand::Checks { artifact, repo } => {
-                assert_eq!(artifact, "a-id");
+            QualityGateCommand::Checks { artifact, repo, .. } => {
+                assert_eq!(artifact.as_deref(), Some("a-id"));
                 assert_eq!(repo.as_deref(), Some("r-id"));
+            }
+            _ => panic!("expected Checks"),
+        }
+    }
+
+    #[test]
+    fn parse_checks_needs_artifact_or_all() {
+        assert!(TestCli::try_parse_from(["test", "checks"]).is_err());
+        assert!(TestCli::try_parse_from(["test", "checks", "--status", "failed"]).is_err());
+        let cli = parse(&["test", "checks", "--all", "--status", "failed"]);
+        match cli.command {
+            QualityGateCommand::Checks {
+                artifact,
+                all,
+                status,
+                ..
+            } => {
+                assert!(artifact.is_none());
+                assert!(all);
+                assert_eq!(status.as_deref(), Some("failed"));
             }
             _ => panic!("expected Checks"),
         }

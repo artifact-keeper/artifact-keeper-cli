@@ -27,6 +27,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak repo allowlist get|set|delete` for the package allowlist of a virtual conda repository, `ak repo upstream-filter get|set|delete`, `ak repo egress-proxy get|set` and `ak repo npm-scope-policy get|set` for remote repositories, `ak repo capabilities`, `ak repo storage [--tree]` and `ak repo storage-gc`.
 - `ak repo upstream-auth` takes `aws_ecr` and `aws_codeartifact` with `--aws` (JSON), `--allow-public-with-upstream-credentials` and `--password-stdin`. `ak repo list` takes `--project`.
 - `ak repo delete --wait` follows a background deletion to its end, and `--wait-timeout` limits how long it waits (default 30 minutes).
+- Admin observability commands, with every filter the API has: `ak admin audit list`, `ak admin downloads list|by-ip|by-user`, `ak admin blast-radius artifact|cve [--accessible-users]`, `ak admin proxy-scan-verdict show|delete`, `ak admin npm-feed status`, `ak admin holds quarantine|summary`, `ak age-gate reopen` and `ak quality-gate checks --all`.
 
 ### Changed
 
