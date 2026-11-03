@@ -71,6 +71,36 @@ fn matched(env: &common::TestEnv, id: &str) -> i64 {
     preview["artifacts_matched"].as_i64().unwrap()
 }
 
+/// Create a policy that the scheduler won't run. An enabled one gets executed for
+/// real within about a minute, which deletes the artifact a test is about to
+/// preview. A 1.10 server can't create one disabled, so there it's disabled just
+/// after, which leaves a small window.
+fn create_held(env: &common::TestEnv, name: &str, config: &str, scope: &[&str]) -> Value {
+    let older = common::server_older_than(1, 11, "--disabled on create");
+    let mut args = vec![
+        "lifecycle",
+        "create",
+        name,
+        "--policy-type",
+        "tag_pattern_delete",
+        "--config",
+        config,
+    ];
+    args.extend_from_slice(scope);
+    if !older {
+        args.push("--disabled");
+    }
+    let policy = json_output(env.ak_cmd().args(&args));
+    if older {
+        let id = policy["id"].as_str().unwrap();
+        env.ak_cmd()
+            .args(["lifecycle", "update", id, "--disabled"])
+            .assert()
+            .success();
+    }
+    policy
+}
+
 /// With no scope given nothing is created, whatever the server would have done
 /// with it: a policy deletes, and it's enabled from the start.
 #[test]
@@ -127,16 +157,12 @@ fn create_with_all_repos_applies_to_all_and_matches() {
     let mut guard = repo_with_artifact(&env, &format!("e2e-lc-global-{suffix}"), &artifact);
 
     let config = format!(r#"{{"pattern":"^{artifact}"}}"#);
-    let policy = json_output(env.ak_cmd().args([
-        "lifecycle",
-        "create",
+    let policy = create_held(
+        &env,
         &format!("e2e-global-{suffix}"),
-        "--policy-type",
-        "tag_pattern_delete",
-        "--config",
         &config,
-        "--all-repos",
-    ]));
+        &["--all-repos"],
+    );
     let id = policy["id"].as_str().unwrap().to_string();
     guard.policies.push(id.clone());
 
@@ -194,17 +220,12 @@ fn create_with_repo_applies_to_that_repo_and_update_keeps_scope() {
     let repo_id = repo_id["id"].as_str().unwrap();
 
     let config = format!(r#"{{"pattern":"^{artifact}"}}"#);
-    let policy = json_output(env.ak_cmd().args([
-        "lifecycle",
-        "create",
+    let policy = create_held(
+        &env,
         &format!("e2e-repo-{suffix}"),
-        "--policy-type",
-        "tag_pattern_delete",
-        "--config",
         &config,
-        "--repo",
-        repo_id,
-    ]));
+        &["--repo", repo_id],
+    );
     let id = policy["id"].as_str().unwrap().to_string();
     guard.policies.push(id.clone());
 
@@ -239,4 +260,67 @@ fn create_with_repo_applies_to_that_repo_and_update_keeps_scope() {
         &updated[scope][0]
     };
     assert_eq!(*kept, repo_id);
+}
+
+/// `--disabled` on create is the only way to look at a policy before it can
+/// delete. A server that ignores it mustn't be given the chance.
+#[test]
+#[ignore = "requires E2E backend"]
+fn create_disabled_stays_disabled_or_is_refused() {
+    let env = common::TestEnv::setup();
+    let suffix = std::process::id();
+    let artifact = format!("lifecycle-held-{suffix}.bin");
+    let repo = format!("e2e-lc-held-{suffix}");
+    let mut guard = repo_with_artifact(&env, &repo, &artifact);
+    let name = format!("e2e-held-{suffix}");
+    let config = format!(r#"{{"pattern":"^{artifact}"}}"#);
+    let args = [
+        "lifecycle",
+        "create",
+        &name,
+        "--policy-type",
+        "tag_pattern_delete",
+        "--config",
+        &config,
+        "--repo",
+        &repo,
+        "--disabled",
+    ];
+
+    if common::server_older_than(1, 11, "--disabled on create") {
+        env.ak_cmd().args(args).assert().failure();
+        let policies: Value = env
+            .api_client()
+            .get(format!("{}/api/v1/admin/lifecycle", env.url))
+            .bearer_auth(&env.token)
+            .send()
+            .unwrap()
+            .json()
+            .unwrap();
+        let found = policies
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|p| p["name"] == name);
+        assert!(!found, "a refused create left a policy");
+        return;
+    }
+
+    let policy = json_output(env.ak_cmd().args(args));
+    let id = policy["id"].as_str().unwrap().to_string();
+    guard.policies.push(id.clone());
+    assert_eq!(policy["enabled"], false);
+    let shown = json_output(env.ak_cmd().args(["lifecycle", "show", &id]));
+    assert_eq!(shown["enabled"], false);
+
+    // It can be previewed, but not run.
+    assert_eq!(matched(&env, &id), 1);
+    env.ak_cmd()
+        .args(["lifecycle", "execute", &id])
+        .assert()
+        .failure();
+    assert_eq!(matched(&env, &id), 1);
+
+    let enabled = json_output(env.ak_cmd().args(["lifecycle", "update", &id, "--enabled"]));
+    assert_eq!(enabled["enabled"], true);
 }
