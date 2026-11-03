@@ -5,9 +5,11 @@ use miette::Result;
 use super::client::client_for;
 use super::helpers::resolve_repo_id;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_uuid, print_page_info, sdk_err, short_id,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, print_page_info,
+    sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -345,44 +347,74 @@ async fn promote_artifact(
         skip_policy_check: skip_checks.then_some(true),
     };
 
-    let resp = client
-        .promote_artifact()
-        .key(from)
-        .artifact_id(aid)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("promote artifact", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .promote_artifact()
+            .key(from)
+            .artifact_id(aid)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let resp = resp
+        .map_err(|e| sdk_err("promote artifact", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        if let Some(id) = &resp.promotion_id {
-            println!("{id}");
+    // The server answers 200 when a policy blocks a promotion, so this is the only
+    // thing that tells a script it didn't happen.
+    if !resp.promoted {
+        if output::is_machine_format(&global.format) {
+            println!(
+                "{}",
+                output::render_raw(raw.as_deref(), &resp, &global.format, None)
+            );
         }
-        return Ok(());
+        return Err(AkError::PromotionBlocked(why_not_promoted(&resp)).into());
     }
 
-    if resp.promoted {
-        eprintln!("Artifact promoted: {} -> {}", resp.source, resp.target);
-        if let Some(msg) = &resp.message {
-            eprintln!("{msg}");
-        }
-    } else {
-        eprintln!("Promotion blocked.");
-        if let Some(msg) = &resp.message {
-            eprintln!("{msg}");
-        }
-        if !resp.policy_violations.is_empty() {
-            eprintln!("Policy violations:");
-            for v in &resp.policy_violations {
-                let info = serde_json::to_string(v).unwrap_or_default();
-                eprintln!("  - {info}");
-            }
-        }
+    let mut human = format!("Artifact promoted: {} -> {}", resp.source, resp.target);
+    if let Some(msg) = &resp.message {
+        human.push('\n');
+        human.push_str(msg);
     }
+    let id = resp
+        .promotion_id
+        .map(|id| id.to_string())
+        .unwrap_or_default();
+    emit_mutation_raw(raw.as_deref(), &resp, &id, &human, global);
 
     Ok(())
+}
+
+/// The server's reason for not promoting: its message, then each policy violation.
+/// A failed gate says the same as a violation, so gates count only if there are none.
+fn why_not_promoted(resp: &artifact_keeper_sdk::types::PromotionResponse) -> String {
+    let mut details: Vec<String> = resp
+        .policy_violations
+        .iter()
+        .map(|v| format!("{}: {}", v.rule, v.message))
+        .collect();
+    if details.is_empty() {
+        details = resp
+            .gate_results
+            .iter()
+            .filter(|gate| !gate.passed)
+            .map(|gate| format!("{}: {}", gate.rule, gate.reason))
+            .collect();
+    }
+    let message = resp
+        .message
+        .as_deref()
+        .unwrap_or("the server didn't promote it");
+    let reason = if details.is_empty() {
+        message.to_string()
+    } else {
+        format!("{message} ({})", details.join("; "))
+    };
+    // A server chooses these bytes, and a terminal displays them.
+    output::sanitize_terminal(&reason)
 }
 
 async fn list_rules(source_repo_id: Option<&str>, global: &GlobalArgs) -> Result<()> {
@@ -745,13 +777,13 @@ async fn bulk_promote(
         skip_policy_check: skip_checks.then_some(true),
     };
 
-    let resp = client
-        .promote_artifacts_bulk()
-        .key(from)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("bulk-promote artifacts", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client.promote_artifacts_bulk().key(from).body(body).send(),
+    )
+    .await;
+    let resp = resp
+        .map_err(|e| sdk_err("bulk-promote artifacts", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
@@ -761,42 +793,51 @@ async fn bulk_promote(
                 println!("{pid}");
             }
         }
-        return Ok(());
+    } else {
+        let table_str = {
+            let mut table = new_table(vec!["PROMOTED", "SOURCE", "TARGET", "MESSAGE"]);
+            for r in &resp.results {
+                let promoted = if r.promoted { "yes" } else { "no" };
+                let msg = r.message.as_deref().unwrap_or("-");
+                table.add_row(vec![promoted, &r.source, &r.target, msg]);
+            }
+            table.to_string()
+        };
+
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &resp, &global.format, Some(table_str))
+        );
+
+        eprintln!(
+            "{} promoted, {} failed of {} artifacts.",
+            resp.promoted, resp.failed, resp.total
+        );
     }
 
-    let entries: Vec<_> = resp
+    // The artifacts that could be promoted have been. A script still has to know
+    // about the rest.
+    let refused: Vec<String> = resp
         .results
         .iter()
+        .filter(|r| !r.promoted)
         .map(|r| {
-            serde_json::json!({
-                "promoted": r.promoted,
-                "source": r.source,
-                "target": r.target,
-                "promotion_id": r.promotion_id.map(|id| id.to_string()),
-                "message": r.message,
-            })
+            format!(
+                "{}: {}",
+                output::sanitize_terminal(&r.source),
+                why_not_promoted(r)
+            )
         })
         .collect();
-
-    let table_str = {
-        let mut table = new_table(vec!["PROMOTED", "SOURCE", "TARGET", "MESSAGE"]);
-        for r in &resp.results {
-            let promoted = if r.promoted { "yes" } else { "no" };
-            let msg = r.message.as_deref().unwrap_or("-");
-            table.add_row(vec![promoted, &r.source, &r.target, msg]);
-        }
-        table.to_string()
-    };
-
-    println!(
-        "{}",
-        output::render(&entries, &global.format, Some(table_str))
-    );
-
-    eprintln!(
-        "{} promoted, {} failed of {} artifacts.",
-        resp.promoted, resp.failed, resp.total
-    );
+    if !refused.is_empty() {
+        return Err(AkError::PromotionBlocked(format!(
+            "{} of {} artifacts weren't promoted. {}",
+            refused.len(),
+            resp.total,
+            refused.join(". ")
+        ))
+        .into());
+    }
 
     Ok(())
 }
@@ -1383,6 +1424,125 @@ mod tests {
         let result = promote_artifact("staging", NIL_UUID, "releases", None, false, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
+    }
+
+    fn blocked_json(source: &str) -> serde_json::Value {
+        json!({
+            "promoted": false,
+            "source": source,
+            "target": "rel/a",
+            "message": "Promotion blocked by policy violations",
+            "policy_violations": [
+                { "rule": "min-staging-hours", "severity": "high", "message": "too new" }
+            ],
+            "gate_results": [
+                { "rule": "min-staging-hours", "passed": false, "reason": "too new" },
+                { "rule": "other", "passed": true, "reason": "fine" }
+            ]
+        })
+    }
+
+    #[tokio::test]
+    async fn promote_blocked_by_a_policy_is_an_error_with_the_reason() {
+        for format in [
+            crate::output::OutputFormat::Table,
+            crate::output::OutputFormat::Json,
+            crate::output::OutputFormat::Quiet,
+        ] {
+            let (server, tmp) = crate::test_utils::mock_setup().await;
+            let _guard = crate::test_utils::setup_env(&tmp);
+            Mock::given(method("POST"))
+                .and(path(format!(
+                    "/api/v1/promotion/repositories/stg/artifacts/{NIL_UUID}/promote"
+                )))
+                .respond_with(ResponseTemplate::new(200).set_body_json(blocked_json("stg/a")))
+                .mount(&server)
+                .await;
+
+            let global = crate::test_utils::test_global(format);
+            let err = promote_artifact("stg", NIL_UUID, "rel", None, false, &global)
+                .await
+                .unwrap_err()
+                .to_string();
+            assert!(
+                err.contains("Promotion blocked by policy violations"),
+                "{err}"
+            );
+            assert!(err.contains("min-staging-hours: too new"), "{err}");
+            assert!(
+                !err.contains("other"),
+                "a gate that passed is no reason: {err}"
+            );
+            crate::test_utils::teardown_env();
+        }
+    }
+
+    #[test]
+    fn why_not_promoted_uses_gates_when_there_are_no_violations() {
+        let mut body = blocked_json("stg/a");
+        body["policy_violations"] = json!([]);
+        let resp: artifact_keeper_sdk::types::PromotionResponse =
+            serde_json::from_value(body).unwrap();
+        let reason = why_not_promoted(&resp);
+        assert!(reason.contains("min-staging-hours: too new"), "{reason}");
+    }
+
+    #[test]
+    fn why_not_promoted_escapes_control_characters() {
+        let mut body = blocked_json("stg/a");
+        body["message"] = json!("bad\u{1b}[31m");
+        let resp: artifact_keeper_sdk::types::PromotionResponse =
+            serde_json::from_value(body).unwrap();
+        assert!(!why_not_promoted(&resp).contains('\u{1b}'));
+    }
+
+    #[tokio::test]
+    async fn bulk_promote_with_any_refused_is_an_error_naming_it() {
+        for format in [
+            crate::output::OutputFormat::Table,
+            crate::output::OutputFormat::Json,
+            crate::output::OutputFormat::Quiet,
+        ] {
+            let (server, tmp) = crate::test_utils::mock_setup().await;
+            let _guard = crate::test_utils::setup_env(&tmp);
+            Mock::given(method("POST"))
+                .and(path("/api/v1/promotion/repositories/stg/promote"))
+                .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                    "total": 2,
+                    "promoted": 1,
+                    "failed": 1,
+                    "results": [
+                        {
+                            "promoted": true,
+                            "source": "stg/ok",
+                            "target": "rel/ok",
+                            "promotion_id": NIL_UUID,
+                            "policy_violations": []
+                        },
+                        blocked_json("stg/refused")
+                    ]
+                })))
+                .mount(&server)
+                .await;
+
+            let global = crate::test_utils::test_global(format);
+            let err = bulk_promote(
+                "stg",
+                &[NIL_UUID.to_string(), NIL_UUID.to_string()],
+                Some("rel"),
+                None,
+                false,
+                &global,
+            )
+            .await
+            .unwrap_err()
+            .to_string();
+            assert!(err.contains("1 of 2"), "{err}");
+            assert!(err.contains("stg/refused"), "{err}");
+            assert!(err.contains("too new"), "{err}");
+            assert!(!err.contains("stg/ok"), "{err}");
+            crate::test_utils::teardown_env();
+        }
     }
 
     #[tokio::test]
