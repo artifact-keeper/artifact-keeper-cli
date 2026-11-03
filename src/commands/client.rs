@@ -286,6 +286,19 @@ pub fn client_for_optional_auth(global: &GlobalArgs) -> Result<artifact_keeper_s
         return Ok(client);
     }
 
+    // An empty list reads as "there's nothing", when it can mean "nothing you can see".
+    eprintln!("Note: not logged in to '{name}', so this is the public view. Run `ak auth login`.");
+    anon_client(&instance.url)
+}
+
+/// [`client_for_optional_auth`] for what's the same whoever asks, such as a server's
+/// health, so not being logged in isn't worth mentioning.
+pub fn client_for_public(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
+    let config = AppConfig::load()?;
+    let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    if let Ok(client) = build_client(name, instance, None) {
+        return Ok(client);
+    }
     anon_client(&instance.url)
 }
 

@@ -56,8 +56,8 @@ pub enum RepoCommand {
         /// Repository key (URL slug)
         key: String,
 
-        /// Package format
-        #[arg(long = "pkg-format", id = "pkg_format_create")]
+        /// Package format. On a 1.11 server: alpine, ansible, bazel, cargo, chef, cocoapods, composer, conan, conda, conda_native, cran, debian, generic, gitlfs, go, helm, hex, huggingface, incus, jetbrains, maven, mlmodel, npm, nuget, oci, opkg, p2, pacman, protobuf, pub, puppet, pypi, rpm, rubygems, sbt, swift, terraform, vagrant, vscode. `ak admin formats list` shows your server's
+        #[arg(long = "pkg-format", id = "pkg_format_create", value_name = "FORMAT")]
         pkg_format: String,
 
         /// Repository type: local, remote, virtual or staging. `proxy` means

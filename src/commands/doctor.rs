@@ -8,6 +8,7 @@ use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use super::helpers::decode_jwt_expiry;
 use crate::config::credentials::{StoredCredential, get_credential};
 use crate::config::{AppConfig, InstanceConfig};
+use crate::output::{self, OutputFormat};
 
 const CHECK: &str = "*";
 const CROSS: &str = "x";
@@ -26,30 +27,50 @@ struct DiagResult {
     passes: u32,
     warnings: u32,
     failures: u32,
+    section: &'static str,
+    checks: Vec<serde_json::Value>,
 }
 
 impl DiagResult {
+    fn record(&mut self, status: &str, msg: &str) {
+        self.checks.push(serde_json::json!({
+            "section": self.section,
+            "status": status,
+            "message": msg,
+        }));
+    }
+
+    /// Start a section, on stderr and in `--format json`.
+    fn section(&mut self, name: &'static str) {
+        self.section = name;
+        eprintln!("  {}", style(name).bold().underlined());
+    }
+
     fn pass(&mut self, msg: &str) {
         self.passes += 1;
+        self.record("pass", msg);
         eprintln!("  {} {}", style(CHECK).green(), msg);
     }
 
     fn warn(&mut self, msg: &str) {
         self.warnings += 1;
+        self.record("warn", msg);
         eprintln!("  {} {}", style(WARN).yellow(), msg);
     }
 
     fn fail(&mut self, msg: &str) {
         self.failures += 1;
+        self.record("fail", msg);
         eprintln!("  {} {}", style(CROSS).red(), msg);
     }
 
-    fn skip(&self, msg: &str) {
+    fn skip(&mut self, msg: &str) {
+        self.record("skip", msg);
         eprintln!("  {} {}", style(DOT).dim(), msg);
     }
 }
 
-pub async fn execute(_global: &crate::cli::GlobalArgs) -> Result<()> {
+pub async fn execute(global: &crate::cli::GlobalArgs) -> Result<()> {
     let config = AppConfig::load()?;
 
     eprintln!();
@@ -58,35 +79,67 @@ pub async fn execute(_global: &crate::cli::GlobalArgs) -> Result<()> {
     eprintln!();
 
     let mut diag = DiagResult::default();
+    run_checks(&config, global.instance.as_deref(), &mut diag).await?;
+    print_summary(&diag);
+    finish(&diag, &global.format)
+}
 
-    if config.instances.is_empty() {
-        diag.fail("No instances configured. Run `ak instance add <name> <url>` to get started.");
-        print_summary(&diag);
+async fn run_checks(config: &AppConfig, only: Option<&str>, diag: &mut DiagResult) -> Result<()> {
+    let instances: Vec<(&str, &InstanceConfig)> = match only {
+        Some(name) => vec![config.resolve_instance(Some(name))?],
+        None => config
+            .instances
+            .iter()
+            .map(|(name, instance)| (name.as_str(), instance))
+            .collect(),
+    };
+
+    if instances.is_empty() {
+        diag.section = "Instances";
+        diag.fail("No instances configured. Run `ak auth login <url>` to get started.");
         return Ok(());
     }
 
-    eprintln!("  {}", style("Instances").bold().underlined());
-    for (name, instance) in &config.instances {
-        check_instance(name, instance, &mut diag).await;
-        check_server_version(name, instance, &mut diag).await;
+    diag.section("Instances");
+    for (name, instance) in &instances {
+        check_instance(name, instance, diag).await;
+        check_server_version(name, instance, diag).await;
     }
     eprintln!();
 
-    eprintln!("  {}", style("Authentication").bold().underlined());
-    for (name, instance) in &config.instances {
-        check_auth(name, instance, &mut diag).await;
+    diag.section("Authentication");
+    for (name, instance) in &instances {
+        check_auth(name, instance, diag).await;
     }
     eprintln!();
 
-    eprintln!("  {}", style("Package Manager Configs").bold().underlined());
-    check_package_configs(&config, &mut diag);
+    diag.section("Package Manager Configs");
+    let urls: Vec<&str> = instances.iter().map(|(_, i)| i.url.as_str()).collect();
+    check_package_configs(&urls, diag);
     eprintln!();
 
-    eprintln!("  {}", style("CLI").bold().underlined());
-    check_cli(&mut diag);
+    diag.section("CLI");
+    check_cli(diag);
     eprintln!();
+    Ok(())
+}
 
-    print_summary(&diag);
+/// `--format json` and `yaml` put the checks on stdout, and a failed check is a failed
+/// command, for a script or a CI step that runs this first. Warnings aren't.
+fn finish(diag: &DiagResult, format: &OutputFormat) -> Result<()> {
+    if output::is_machine_format(format) {
+        let report = serde_json::json!({
+            "ok": diag.failures == 0,
+            "passes": diag.passes,
+            "warnings": diag.warnings,
+            "failures": diag.failures,
+            "checks": diag.checks,
+        });
+        println!("{}", output::render(&report, format, None));
+    }
+    if diag.failures > 0 {
+        std::process::exit(crate::error::EXIT_GENERIC.into());
+    }
     Ok(())
 }
 
@@ -417,7 +470,7 @@ fn token_expiry_status(seconds_left: i64) -> TokenExpiry {
 // Package manager configs
 // ---------------------------------------------------------------------------
 
-fn check_package_configs(config: &AppConfig, diag: &mut DiagResult) {
+fn check_package_configs(instance_urls: &[&str], diag: &mut DiagResult) {
     let cwd = std::env::current_dir().unwrap_or_default();
     let home = dirs::home_dir().unwrap_or_default();
     let config_base = dirs::config_dir().unwrap_or_default();
@@ -450,15 +503,34 @@ fn check_package_configs(config: &AppConfig, diag: &mut DiagResult) {
             vec![home.join(".m2/settings.xml")],
             "maven",
         ),
+        (
+            "gradle",
+            "artifact-keeper.gradle",
+            vec![home.join(".gradle/init.d/artifact-keeper.gradle")],
+            "maven",
+        ),
+        (
+            "helm",
+            "repositories.yaml",
+            vec![config_base.join("helm/repositories.yaml")],
+            "helm",
+        ),
+        (
+            "nuget",
+            "NuGet.Config",
+            vec![
+                config_base.join("NuGet/NuGet.Config"),
+                home.join(".nuget/NuGet/NuGet.Config"),
+            ],
+            "nuget",
+        ),
     ];
-
-    let instance_urls: Vec<&str> = config.instances.values().map(|i| i.url.as_str()).collect();
 
     for (name, desc, paths, route) in configs {
         match paths.iter().find(|p| p.exists()) {
             Some(path) => {
                 let content = std::fs::read_to_string(path).unwrap_or_default();
-                match config_reference(&content, &instance_urls, route) {
+                match config_reference(&content, instance_urls, route) {
                     ConfigReference::Working => diag.pass(&format!(
                         "{name} ({desc}) -- configured, points to Artifact Keeper"
                     )),
@@ -478,7 +550,79 @@ fn check_package_configs(config: &AppConfig, diag: &mut DiagResult) {
         }
     }
 
-    check_docker_config(&home, &instance_urls, diag);
+    check_go(instance_urls, diag);
+    check_system_repos(
+        "yum",
+        std::path::Path::new("/etc/yum.repos.d"),
+        ".repo",
+        "rpm",
+        instance_urls,
+        diag,
+    );
+    check_system_repos(
+        "apt",
+        std::path::Path::new("/etc/apt/sources.list.d"),
+        ".list",
+        "debian",
+        instance_urls,
+        diag,
+    );
+    check_docker_config(&home, instance_urls, diag);
+}
+
+/// `ak setup go` tells you to export GOPROXY, so that's what there is to check.
+fn check_go(instance_urls: &[&str], diag: &mut DiagResult) {
+    let Ok(goproxy) = std::env::var("GOPROXY") else {
+        diag.skip("go -- GOPROXY isn't set");
+        return;
+    };
+    match config_reference(&goproxy, instance_urls, "go") {
+        ConfigReference::Working => diag.pass("go (GOPROXY) -- points to Artifact Keeper"),
+        ConfigReference::WrongRoute => diag.warn(
+            "go (GOPROXY) -- points at an instance, but not at its /go/ route (run: ak setup go)",
+        ),
+        ConfigReference::None => diag.skip("go -- GOPROXY doesn't reference a configured instance"),
+    }
+}
+
+/// The files `ak setup yum` and `ak setup apt` write, one for each repository.
+fn check_system_repos(
+    name: &str,
+    dir: &std::path::Path,
+    extension: &str,
+    route: &str,
+    instance_urls: &[&str],
+    diag: &mut DiagResult,
+) {
+    let found: Vec<_> = std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|file| file.to_str())
+                .is_some_and(|file| {
+                    file.starts_with("artifact-keeper-") && file.ends_with(extension)
+                })
+        })
+        .collect();
+    if found.is_empty() {
+        diag.skip(&format!("{name} -- not configured"));
+    }
+    for path in found {
+        let content = std::fs::read_to_string(&path).unwrap_or_default();
+        match config_reference(&content, instance_urls, route) {
+            ConfigReference::Working => diag.pass(&format!(
+                "{name} ({}) -- configured, points to Artifact Keeper",
+                path.display()
+            )),
+            _ => diag.warn(&format!(
+                "{name} ({}) -- doesn't point at a configured instance's /{route}/ route",
+                path.display()
+            )),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

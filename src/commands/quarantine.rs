@@ -149,6 +149,8 @@ async fn hold(
         return Ok(());
     }
 
+    check_existing_hold(&client, artifact, artifact_id, reason.is_some()).await?;
+
     let spinner = output::spinner("Quarantining artifact...");
 
     let body = artifact_keeper_sdk::types::QuarantineNowRequest { reason };
@@ -178,6 +180,44 @@ async fn hold(
     );
 
     Ok(())
+}
+
+/// Holding an artifact again replaces the stored reason, with the server's default if
+/// none is given, and that reason can be the only record of why. So with no reason
+/// this refuses, and with one it says what's being replaced. If the status can't be
+/// read, the server still decides whether this user can hold it.
+async fn check_existing_hold(
+    client: &artifact_keeper_sdk::Client,
+    artifact: &str,
+    artifact_id: uuid::Uuid,
+    new_reason: bool,
+) -> Result<()> {
+    let (_, raw) = capture(
+        client
+            .get_quarantine_status()
+            .artifact_id(artifact_id)
+            .send(),
+    )
+    .await;
+    let Some(status) = raw
+        .as_deref()
+        .and_then(|body| serde_json::from_slice::<serde_json::Value>(body).ok())
+    else {
+        return Ok(());
+    };
+    if status["quarantine_status"] != "quarantined" {
+        return Ok(());
+    }
+    let held_for = output::sanitize_terminal(status["quarantine_reason"].as_str().unwrap_or("-"));
+    if new_reason {
+        eprintln!("Warning: {artifact} is already held. This replaces its reason: {held_for}");
+        return Ok(());
+    }
+    Err(AkError::Usage(format!(
+        "{artifact} is already held, for this reason: {held_for}. Holding it again would \
+         replace that with the server's default. Pass --reason to replace it."
+    ))
+    .into())
 }
 
 async fn release(artifact: &str, yes: bool, global: &GlobalArgs) -> Result<()> {

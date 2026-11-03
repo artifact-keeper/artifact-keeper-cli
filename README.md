@@ -144,7 +144,7 @@ Core
   ak api           Send any HTTP request to the instance, with its auth and TLS settings
   ak pkg           Publish packages and use format APIs without the format's own client
   ak setup         Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more
-  ak doctor        Diagnose configuration and connectivity issues
+  ak doctor        Diagnose configuration and connectivity issues. Exits 1 if a check fails
   ak config        Get/set CLI configuration values
 
 Security & Compliance
@@ -177,7 +177,9 @@ Federation & Integration
   ak analytics     Usage analytics and storage insights
 
 Administration
-  ak admin         Backup, cleanup, metrics, users, plugins, settings, audit log, downloads, trash, storage checks
+  ak monitoring    Server health, readiness, metrics and alerting
+  ak catalog       Discover packages and browse repository trees
+  ak admin         Backup, cleanup, stats, users, plugins, settings, audit log, downloads, trash, storage checks
   ak project       Projects: grouped repositories, members and a storage quota
   ak banner        System-wide maintenance and downtime banners
   ak search        Quick, checksum, recent, suggested and trending artifact searches
@@ -191,7 +193,7 @@ Administration
   ak man-pages     Generate man pages for all commands
 ```
 
-Run `ak <command> --help` for detailed usage and examples.
+Run `ak <command> --help` for detailed usage and examples. `ak ls`, `ak rm`, `ak login`, `ak logout`, `ak whoami`, `ak upload` and `ak download` work as you'd expect. `ak ls` lists repositories, and `ak ls <repo>` what's in one.
 
 ## Output Formats
 

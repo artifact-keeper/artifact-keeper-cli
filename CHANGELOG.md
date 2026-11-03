@@ -63,10 +63,14 @@ These can change what you see, or break a script, coming from 1.2:
 - **`ak auth login <url>` adds the instance** if none has that URL, named from its host, once the login works. `--instance` and `AK_INSTANCE` also take a URL, so `AK_INSTANCE=https://... AK_TOKEN=...` works with no config file. A login stored for an instance only goes to that instance's exact URL. An empty `AK_INSTANCE` now means none rather than failing with `Instance '' not found`.
 - **`ak config set output_format` and `color` now work.** They were accepted and ignored. If your config sets `output_format` to `json`, `yaml` or `quiet`, or `color`, you get that now wherever `--format` or `AK_FORMAT` doesn't say otherwise. `--color always` and `AK_COLOR=always` also beat `NO_COLOR` now, and actually turn color on.
 - **JSON keeps the server's key order on a terminal**, as it already did on a pipe, instead of sorting. YAML keeps it too. `ak api` on a terminal is pretty printed with a trailing newline, like other commands; on a pipe it's still the bytes as received.
+- **`ak doctor` exits 1 when a check fails**, and 0 with only warnings. It used to exit 0 whatever it found, so a script that runs it and carries on needs `|| true`. On a pipe it now prints its checks as JSON on stdout, as other commands do, and honours `--format`. With `--instance` or `AK_INSTANCE`, it checks only that instance.
+- **Not being logged in is on stderr now.** Commands that also work without a login, such as `ak repo list`, say that this is the public view. Stdout and the exit code don't change.
+- **`ak quarantine hold` refuses an artifact that's already held**, unless you pass `--reason`. Holding it again replaced the stored reason with the server's default. With `--reason`, it warns and shows the reason it replaces.
 - **Redirects are stricter.** API requests don't follow a redirect to plain http or to another server. A redirect from `http://host:8080` to `https://host:8080` now drops your token, as other changes of port or host already did, so an instance set up over http that redirects like this needs its URL changed to https.
 
 ### Added
 
+- `ak ls`, `ak rm`, `ak login`, `ak logout`, `ak whoami`, `ak upload` and `ak download` are shortcuts for `ak repo list` (or `ak artifact list` with a repository), `ak artifact delete`, `ak auth login`, `ak auth logout`, `ak auth whoami`, `ak artifact push` and `ak artifact pull`.
 - `ak system openapi` prints the server's OpenAPI document, on a server running with `ENABLE_SWAGGER=true`. `ak system healthz`, `ready` and `swagger-ui` are hidden commands for the remaining routes that aren't in the spec.
 - `ak quarantine release-proxy <repo> --path <path>` releases a held path from a remote repository's cache, which `quarantine release` can't reach because proxied content has no artifact ID. Needs a 1.11 server.
 - `ak attestation policy` shows which publishers and keys the server trusts for attestations. Needs a 1.11 server.

@@ -1,9 +1,123 @@
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 use clap_complete::Shell;
 use miette::Result;
 
 use crate::commands;
 use crate::output::OutputFormat;
+
+const GLOBAL_OPTIONS: &str = "Global options";
+
+/// The order `ak --help` lists commands in: what most people want first, then the
+/// README's groups. A test holds every visible command to being here.
+const ROOT_ORDER: &[&str] = &[
+    // Core
+    "instance",
+    "auth",
+    "repo",
+    "artifact",
+    "api",
+    "pkg",
+    "setup",
+    "doctor",
+    "config",
+    // Security & compliance
+    "scan",
+    "sign",
+    "sbom",
+    "license",
+    "quality-gate",
+    "quarantine",
+    "curation",
+    "attestation",
+    "age-gate",
+    "totp",
+    // Organization
+    "group",
+    "permission",
+    "profile",
+    "label",
+    "sso",
+    "service-account",
+    "repo-token",
+    "project",
+    // Workflow & lifecycle
+    "promotion",
+    "approval",
+    "lifecycle",
+    "migrate",
+    "import",
+    "builds",
+    "bundle",
+    "environment",
+    "image-build",
+    // Federation & integration
+    "peer",
+    "sync-policy",
+    "webhook",
+    "email-subscriptions",
+    "dt",
+    "analytics",
+    "events",
+    // Administration
+    "admin",
+    "monitoring",
+    "system",
+    "catalog",
+    "search",
+    "banner",
+    // This tool
+    "tui",
+    "completion",
+    "man-pages",
+];
+
+/// What people type, and the command it means. `ls` is in [`expand_shortcuts`],
+/// because which command it means depends on its argument.
+const SHORTCUTS: &[(&str, &[&str])] = &[
+    ("rm", &["artifact", "delete"]),
+    ("login", &["auth", "login"]),
+    ("logout", &["auth", "logout"]),
+    ("whoami", &["auth", "whoami"]),
+    ("upload", &["artifact", "push"]),
+    ("download", &["artifact", "pull"]),
+];
+
+/// Global options that take a value, so the word after one isn't the command.
+const VALUE_OPTIONS: &[&str] = &["--format", "--instance", "--ca-cert", "--color"];
+
+/// Turn a shortcut into the command it stands for. Doing it here keeps them out of
+/// help, completions and man pages. Global options can come before it.
+fn expand_shortcuts(args: Vec<std::ffi::OsString>) -> Vec<std::ffi::OsString> {
+    let mut at = 1;
+    while let Some(arg) = args.get(at).and_then(|arg| arg.to_str()) {
+        if VALUE_OPTIONS.contains(&arg) {
+            at += 2;
+        } else if arg.starts_with('-') {
+            at += 1;
+        } else {
+            break;
+        }
+    }
+    let Some(word) = args.get(at).and_then(|arg| arg.to_str()) else {
+        return args;
+    };
+    let replacement: &[&str] = if word == "ls" {
+        // `ak ls` lists repositories, and `ak ls my-repo` what's in one.
+        match args.get(at + 1).and_then(|arg| arg.to_str()) {
+            Some(next) if !next.starts_with('-') => &["artifact", "list"],
+            _ => &["repo", "list"],
+        }
+    } else {
+        match SHORTCUTS.iter().find(|(name, _)| *name == word) {
+            Some((_, command)) => command,
+            None => return args,
+        }
+    };
+    let mut expanded = args[..at].to_vec();
+    expanded.extend(replacement.iter().map(std::ffi::OsString::from));
+    expanded.extend_from_slice(&args[at + 1..]);
+    expanded
+}
 
 /// Global options extracted before command dispatch.
 #[derive(Debug)]
@@ -37,16 +151,16 @@ Output:
 pub struct Cli {
     /// Output format. Without this, AK_FORMAT or `ak config set output_format`: table on a
     /// terminal, JSON on a pipe
-    #[arg(long, global = true, env = "AK_FORMAT")]
+    #[arg(long, global = true, env = "AK_FORMAT", help_heading = GLOBAL_OPTIONS)]
     pub format: Option<OutputFormat>,
 
     /// Suppress all output except primary identifiers (shorthand for --format quiet)
-    #[arg(short, long, global = true)]
+    #[arg(short, long, global = true, help_heading = GLOBAL_OPTIONS)]
     pub quiet: bool,
 
     /// Target instance: a name, or a URL such as https://registry.example.com (overrides
     /// the default)
-    #[arg(long, global = true, env = "AK_INSTANCE")]
+    #[arg(long, global = true, env = "AK_INSTANCE", help_heading = GLOBAL_OPTIONS)]
     pub instance: Option<String>,
 
     /// Never prompt. Destructive and security-decision commands then need --yes, the
@@ -56,6 +170,7 @@ pub struct Cli {
     #[arg(
         long,
         global = true,
+        help_heading = GLOBAL_OPTIONS,
         env = "AK_NO_INPUT",
         action = clap::ArgAction::SetTrue,
         value_parser = parse_no_input,
@@ -65,11 +180,11 @@ pub struct Cli {
     /// Path to a PEM file with additional root CA certificate(s) to trust,
     /// for instances behind a private/enterprise CA (may be a bundle with
     /// multiple certificates). TLS verification remains enabled.
-    #[arg(long, global = true, env = "AK_CA_CERT", value_name = "PATH")]
+    #[arg(long, global = true, env = "AK_CA_CERT", value_name = "PATH", help_heading = GLOBAL_OPTIONS)]
     pub ca_cert: Option<std::path::PathBuf>,
 
     /// Color output. Without this, AK_COLOR, NO_COLOR or `ak config set color`: auto
-    #[arg(long, global = true, env = "AK_COLOR")]
+    #[arg(long, global = true, env = "AK_COLOR", help_heading = GLOBAL_OPTIONS)]
     pub color: Option<ColorMode>,
 
     #[command(subcommand)]
@@ -83,6 +198,19 @@ fn parse_no_input(value: &str) -> Result<bool, String> {
         "1" | "true" | "yes" | "y" | "t" | "on" => Ok(true),
         "0" | "false" | "no" | "n" | "f" | "off" | "" => Ok(false),
         _ => Err("expected 1, true or yes, or 0, false, no or empty".to_string()),
+    }
+}
+
+impl Cli {
+    /// `Cli::parse`, with shortcuts expanded and `ak --help` in [`ROOT_ORDER`].
+    pub fn parse_args() -> Self {
+        let args = expand_shortcuts(std::env::args_os().collect());
+        let mut command = Self::command();
+        for (position, name) in ROOT_ORDER.iter().enumerate() {
+            command = command.mut_subcommand(name, |sub| sub.display_order(position));
+        }
+        let matches = command.get_matches_from(args);
+        Self::from_arg_matches(&matches).unwrap_or_else(|e| e.exit())
     }
 }
 
@@ -204,7 +332,7 @@ pub enum Command {
 
     /// Diagnose configuration and connectivity issues
     #[command(
-        after_help = "Runs diagnostics:\n  - Config file readability\n  - Instance connectivity\n  - Auth token validity\n  - Package manager detection"
+        after_help = "Checks each instance, or just the one --instance or AK_INSTANCE names: that it answers, its version and your login. Then what `ak setup` configures: npm, pip, cargo, docker, maven, gradle, go, helm, nuget, yum and apt.\n\nExits 1 if a check fails, and 0 if there are only warnings. --format json puts the checks on stdout."
     )]
     Doctor,
 
@@ -500,7 +628,7 @@ pub enum Command {
         command: commands::import::ImportCommand,
     },
 
-    /// Manage the quarantine hold on artifacts (#1770 quarantine subsystem)
+    /// Manage the quarantine hold on artifacts
     #[command(
         after_help = "Examples:\n  ak quarantine status <artifact-id>\n  ak quarantine hold <artifact-id> --reason \"Failed scan\"\n  ak quarantine release <artifact-id>\n  ak quarantine release-proxy <remote-repo> --path <path>\n  ak quarantine reject <artifact-id> --reason \"Malware detected\"\n  ak quarantine purge <artifact-id> --reason \"CVE\""
     )]
@@ -2764,6 +2892,85 @@ mod tests {
         ])
         .unwrap();
         assert!(matches!(cli.command, Command::ServiceAccount { .. }));
+    }
+
+    // ---- ak --help and shortcuts ----
+
+    #[test]
+    fn root_order_names_every_visible_command_once() {
+        let command = Cli::command();
+        for sub in command.get_subcommands().filter(|sub| !sub.is_hide_set()) {
+            assert!(
+                ROOT_ORDER.contains(&sub.get_name()),
+                "`{}` isn't in ROOT_ORDER",
+                sub.get_name()
+            );
+        }
+        for (at, name) in ROOT_ORDER.iter().enumerate() {
+            assert!(
+                command.find_subcommand(name).is_some(),
+                "ROOT_ORDER names `{name}`, which isn't a command"
+            );
+            assert!(!ROOT_ORDER[..at].contains(name), "`{name}` is there twice");
+        }
+    }
+
+    fn expanded(args: &[&str]) -> Vec<String> {
+        expand_shortcuts(args.iter().map(std::ffi::OsString::from).collect())
+            .into_iter()
+            .map(|arg| arg.into_string().unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn shortcuts_land_on_their_commands() {
+        for (typed, meant) in [
+            (&["ak", "ls"][..], &["ak", "repo", "list"][..]),
+            (
+                &["ak", "ls", "--per-page", "5"],
+                &["ak", "repo", "list", "--per-page", "5"],
+            ),
+            (
+                &["ak", "ls", "my-repo"],
+                &["ak", "artifact", "list", "my-repo"],
+            ),
+            (
+                &["ak", "rm", "r", "p", "--yes"],
+                &["ak", "artifact", "delete", "r", "p", "--yes"],
+            ),
+            (
+                &["ak", "login", "https://x"],
+                &["ak", "auth", "login", "https://x"],
+            ),
+            (&["ak", "logout"], &["ak", "auth", "logout"]),
+            (&["ak", "whoami"], &["ak", "auth", "whoami"]),
+            (
+                &["ak", "upload", "r", "f"],
+                &["ak", "artifact", "push", "r", "f"],
+            ),
+            (
+                &["ak", "download", "r", "f"],
+                &["ak", "artifact", "pull", "r", "f"],
+            ),
+            (
+                &["ak", "--format", "json", "--no-input", "whoami"],
+                &["ak", "--format", "json", "--no-input", "auth", "whoami"],
+            ),
+            (
+                &["ak", "--instance", "ls", "repo", "list"],
+                &["ak", "--instance", "ls", "repo", "list"],
+            ),
+            (&["ak", "repo", "ls"], &["ak", "repo", "ls"]),
+            (&["ak", "--help"], &["ak", "--help"]),
+        ] {
+            assert_eq!(expanded(typed), meant, "{typed:?}");
+            assert!(
+                typed.contains(&"--help")
+                    || Cli::try_parse_from(expanded(typed)).is_ok()
+                    || typed[1..] == ["repo", "ls"],
+                "{typed:?} doesn't parse"
+            );
+        }
     }
 
     // ---- Packages command parsing ----
