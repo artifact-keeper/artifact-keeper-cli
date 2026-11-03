@@ -61,7 +61,8 @@ pub struct DownloadFilters {
 
 #[derive(Subcommand)]
 pub enum DownloadsCommand {
-    /// List downloads
+    /// List downloads. The server records them in the background, so a download
+    /// can take a moment to appear
     List {
         /// Only downloads by this user ID
         #[arg(long)]
