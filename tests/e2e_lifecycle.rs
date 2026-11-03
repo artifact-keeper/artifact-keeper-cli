@@ -73,10 +73,15 @@ fn matched(env: &common::TestEnv, id: &str) -> i64 {
 
 /// Create a policy that the scheduler won't run. An enabled one gets executed for
 /// real within about a minute, which deletes the artifact a test is about to
-/// preview. A 1.10 server can't create one disabled, so there it's disabled just
-/// after, which leaves a small window.
+/// preview. A 1.10 server can't create one disabled, so there it starts out
+/// matching nothing, and gets its real config in the update that disables it.
 fn create_held(env: &common::TestEnv, name: &str, config: &str, scope: &[&str]) -> Value {
     let older = common::server_older_than(1, 11, "--disabled on create");
+    let initial = if older {
+        r#"{"pattern":"^nothing-has-this-name$"}"#
+    } else {
+        config
+    };
     let mut args = vec![
         "lifecycle",
         "create",
@@ -84,7 +89,7 @@ fn create_held(env: &common::TestEnv, name: &str, config: &str, scope: &[&str]) 
         "--policy-type",
         "tag_pattern_delete",
         "--config",
-        config,
+        initial,
     ];
     args.extend_from_slice(scope);
     if !older {
@@ -94,7 +99,7 @@ fn create_held(env: &common::TestEnv, name: &str, config: &str, scope: &[&str]) 
     if older {
         let id = policy["id"].as_str().unwrap();
         env.ak_cmd()
-            .args(["lifecycle", "update", id, "--disabled"])
+            .args(["lifecycle", "update", id, "--disabled", "--config", config])
             .assert()
             .success();
     }
