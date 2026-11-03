@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use miette::{IntoDiagnostic, Result};
+use reqwest::Url;
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
 use crate::cli::GlobalArgs;
@@ -8,6 +9,57 @@ use crate::config::credentials::{StoredCredential, get_credential};
 use crate::config::{AppConfig, InstanceConfig};
 use crate::error::AkError;
 use crate::transport;
+
+/// The redirect policy for every client that can send a credential.
+///
+/// reqwest decides whether to keep `Authorization` one hop at a time, looking only
+/// at that hop's host and port, and a policy can't change what it sends: only
+/// follow or refuse. So refuse the hops where the header would come back, or stay,
+/// somewhere it shouldn't. Everything else, including a redirect to storage on
+/// another host, which gets no token, goes by reqwest's default policy.
+pub fn redirect_policy() -> reqwest::redirect::Policy {
+    reqwest::redirect::Policy::custom(|attempt| {
+        match unsafe_redirect(attempt.previous(), attempt.url()) {
+            Some(reason) => attempt.error(reason),
+            None => reqwest::redirect::Policy::default().redirect(attempt),
+        }
+    })
+}
+
+/// Why following a redirect to `to` would expose a credential, if it would.
+/// `chain` is every URL requested so far, the one that redirected last.
+fn unsafe_redirect(chain: &[Url], to: &Url) -> Option<&'static str> {
+    let (origin, from) = (chain.first()?, chain.last()?);
+    // reqwest drops the header on any other hop, so nothing to protect there. On
+    // this kind of hop it sends the header, even if the hop before dropped it.
+    let header_sent = from.host_str() == to.host_str()
+        && from.port_or_known_default() == to.port_or_known_default();
+    if !header_sent {
+        return None;
+    }
+    if to.scheme() == "http" && chain.iter().any(|url| url.scheme() == "https") {
+        return Some(
+            "refusing a redirect from https to plain http, which would send your \
+             credentials unencrypted",
+        );
+    }
+    if chain.iter().any(|url| !same_server(url, origin)) {
+        return Some(
+            "refusing a redirect that has left the instance, which would send your \
+             credentials to another server",
+        );
+    }
+    None
+}
+
+/// The same host and port, where `http://host` and `https://host` count as the
+/// same: redirecting from one to the other is how a server moves clients to TLS.
+/// `api.rs` has a stricter `same_origin`, because it can drop the token itself.
+fn same_server(a: &Url, b: &Url) -> bool {
+    a.host_str() == b.host_str()
+        && (a.port_or_known_default() == b.port_or_known_default()
+            || (a.port().is_none() && b.port().is_none()))
+}
 
 /// Build an authenticated SDK client for the resolved instance.
 ///
@@ -40,6 +92,7 @@ pub fn build_client(
 
     let builder = reqwest::ClientBuilder::new()
         .default_headers(headers)
+        .redirect(redirect_policy())
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(30));
     let http_client = transport::apply_custom_ca(builder)?
@@ -59,6 +112,7 @@ pub fn build_client(
 /// against instances behind a private CA before any credentials exist.
 pub fn anon_client(url: &str) -> Result<artifact_keeper_sdk::Client> {
     let builder = reqwest::ClientBuilder::new()
+        .redirect(redirect_policy())
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(30));
     let http_client = transport::apply_custom_ca(builder)?
@@ -77,7 +131,7 @@ pub fn anon_client(url: &str) -> Result<artifact_keeper_sdk::Client> {
 /// Deliberately sets no overall request timeout: these paths stream large
 /// bodies (uploads/downloads) where a fixed deadline would be wrong.
 pub fn raw_http_client() -> Result<reqwest::Client> {
-    let builder = reqwest::ClientBuilder::new().connect_timeout(Duration::from_secs(15));
+    let builder = raw_http_client_builder(redirect_policy());
     transport::apply_custom_ca(builder)?
         .build()
         .into_diagnostic()
@@ -144,6 +198,54 @@ pub fn client_for_optional_auth(global: &GlobalArgs) -> Result<artifact_keeper_s
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn is_refused(chain: &[&str], to: &str) -> bool {
+        let chain: Vec<Url> = chain.iter().map(|u| Url::parse(u).unwrap()).collect();
+        unsafe_redirect(&chain, &Url::parse(to).unwrap()).is_some()
+    }
+
+    #[test]
+    fn redirects_that_would_expose_the_token_are_refused() {
+        for (chain, to) in [
+            // Same host and port, so reqwest keeps the header.
+            (vec!["https://h:8443/a"], "http://h:8443/a"),
+            // https://h to http://h drops it, and the next hop brings it back.
+            (vec!["https://h/a", "http://h/a"], "http://h/b"),
+            // Off to another server, which redirects to itself: it's sent the token.
+            (vec!["https://h/a", "https://other/a"], "https://other/b"),
+            (vec!["https://h/a", "https://h:8443/a"], "https://h:8443/b"),
+            // Back on the instance, but another server chose where.
+            (
+                vec!["https://h/a", "https://other/a", "https://h/b"],
+                "https://h/c",
+            ),
+        ] {
+            assert!(is_refused(&chain, to), "{chain:?} -> {to}");
+        }
+    }
+
+    #[test]
+    fn normal_redirects_are_followed() {
+        for (chain, to) in [
+            // Within the origin.
+            (vec!["https://h/a"], "https://h/b"),
+            (
+                vec!["https://h:8443/a", "https://h:8443/b"],
+                "https://h:8443/c",
+            ),
+            (vec!["http://h:8080/a"], "http://h:8080/b"),
+            // An upgrade to TLS, then a redirect there.
+            (vec!["http://h/a"], "https://h/a"),
+            (vec!["http://h/a", "https://h/a"], "https://h/b"),
+            (vec!["http://h:8080/a"], "https://h:8080/a"),
+            // Elsewhere, where reqwest drops the header: presigned storage URLs.
+            (vec!["https://h/a"], "https://storage/a"),
+            (vec!["https://h/a"], "http://storage:9000/a"),
+            (vec!["https://h/a"], "http://h/a"),
+        ] {
+            assert!(!is_refused(&chain, to), "{chain:?} -> {to}");
+        }
+    }
 
     #[test]
     fn build_client_with_valid_token() {
