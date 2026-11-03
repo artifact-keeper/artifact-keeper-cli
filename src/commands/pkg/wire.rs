@@ -7,7 +7,8 @@
 use std::path::{Path, PathBuf};
 
 use miette::{IntoDiagnostic, Result};
-use reqwest::{Method, RequestBuilder, StatusCode, Url};
+use reqwest::header::HeaderMap;
+use reqwest::{Method, RequestBuilder, Response, StatusCode, Url};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use tokio::io::AsyncReadExt;
@@ -28,6 +29,7 @@ pub struct Wire {
 /// A response whose status was a success.
 pub struct Reply {
     pub status: StatusCode,
+    pub headers: HeaderMap,
     pub body: Vec<u8>,
 }
 
@@ -36,6 +38,7 @@ impl Reply {
     pub fn new(body: Value) -> Self {
         Self {
             status: StatusCode::OK,
+            headers: HeaderMap::new(),
             body: body.to_string().into_bytes(),
         }
     }
@@ -86,17 +89,36 @@ impl Wire {
         self.auth.strip_prefix("Bearer ").unwrap_or(&self.auth)
     }
 
+    /// Send and hand back the response unread, for a download to stream. A failure still
+    /// comes back as the server's own message.
+    pub async fn send_streaming(&self, action: &str, request: RequestBuilder) -> Result<Response> {
+        let response = request.send().await.map_err(|e| {
+            AkError::ServerError(format!("Failed to {action}: {}", e.without_url()))
+        })?;
+        let status = response.status();
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(raw_err(action, status, &body).into());
+        }
+        Ok(response)
+    }
+
     /// Send, and turn any status but a success into the server's own message.
     pub async fn send(&self, action: &str, request: RequestBuilder) -> Result<Reply> {
         let response = request.send().await.map_err(|e| {
             AkError::ServerError(format!("Failed to {action}: {}", e.without_url()))
         })?;
         let status = response.status();
+        let headers = response.headers().clone();
         let body = response.bytes().await.into_diagnostic()?.to_vec();
         if !status.is_success() {
             return Err(raw_err(action, status, &String::from_utf8_lossy(&body)).into());
         }
-        Ok(Reply { status, body })
+        Ok(Reply {
+            status,
+            headers,
+            body,
+        })
     }
 }
 
@@ -114,6 +136,7 @@ impl Wire {
             AkError::ServerError(format!("Failed to {action}: {}", e.without_url()))
         })?;
         let status = response.status();
+        let headers = response.headers().clone();
         let body = response.bytes().await.into_diagnostic()?.to_vec();
         if !status.is_success() {
             let text = String::from_utf8_lossy(&body);
@@ -121,7 +144,11 @@ impl Wire {
                 .await
                 .into());
         }
-        Ok(Reply { status, body })
+        Ok(Reply {
+            status,
+            headers,
+            body,
+        })
     }
 }
 

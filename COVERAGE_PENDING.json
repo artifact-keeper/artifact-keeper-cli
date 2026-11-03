@@ -5,14 +5,6 @@
     {"method": "GET", "path": "/v2/token"},
     {"method": "POST", "path": "/v2/token"},
     {"method": "DELETE", "path": "/v2/{name}/blobs/{digest}"},
-    {"method": "HEAD", "path": "/v2/{name}/blobs/{digest}"},
-    {"method": "GET", "path": "/v2/_catalog"},
-    {"method": "GET", "path": "/v2/{name}/tags/list"},
-    {"method": "GET", "path": "/v2/{name}/manifests/{reference}"},
-    {"method": "HEAD", "path": "/v2/{name}/manifests/{reference}"},
-    {"method": "PUT", "path": "/v2/{name}/manifests/{reference}"},
-    {"method": "DELETE", "path": "/v2/{name}/manifests/{reference}"},
-    {"method": "GET", "path": "/v2/{name}/blobs/{digest}"},
-    {"method": "GET", "path": "/v2/{name}/referrers/{digest}"}
+    {"method": "HEAD", "path": "/v2/{name}/blobs/{digest}"}
   ]
 }

@@ -29,6 +29,7 @@ mod lfs;
 mod maven;
 mod npm;
 mod nuget;
+mod oci;
 mod pacman;
 mod proto;
 mod pub_dart;
@@ -61,6 +62,9 @@ pub struct PkgArgs {
 
 #[derive(Subcommand)]
 enum PkgCommand {
+    /// OCI and Docker images: catalog, tags, manifests and blobs
+    #[command(subcommand)]
+    Oci(oci::OciCommand),
     /// Ansible collections
     #[command(subcommand)]
     Ansible(ansible::AnsibleCommand),
@@ -164,6 +168,7 @@ enum PkgCommand {
 
 pub async fn execute(args: PkgArgs, global: &GlobalArgs) -> Result<()> {
     match args.format {
+        PkgCommand::Oci(c) => oci::execute(c, global).await,
         PkgCommand::Ansible(c) => ansible::execute(c, global).await,
         PkgCommand::Chef(c) => chef::execute(c, global).await,
         PkgCommand::Cocoapods(c) => cocoapods::execute(c, global).await,
