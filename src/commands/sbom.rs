@@ -1,22 +1,24 @@
 use artifact_keeper_sdk::ClientSbomExt;
+use artifact_keeper_sdk::raw::capture;
 use artifact_keeper_sdk::types::{ComponentResponse, CveHistoryEntry, SbomResponse};
 use clap::Subcommand;
 use miette::Result;
 use serde_json::Value;
 
-use super::client::client_for;
-use super::helpers::resolve_optional_repo_id;
+use super::client::{client_for, raw_http_client, resolve_base_url_and_auth};
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation_raw, new_table, parse_uuid, raw_err, resolve_artifact_id,
+    resolve_optional_repo_id, sdk_err, server_before_1_11, short_id,
 };
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
 pub enum SbomCommand {
     /// Generate an SBOM for an artifact
     Generate {
-        /// Artifact ID
+        /// Artifact ID, or <repo-key>/<path>
         artifact_id: String,
 
         /// SBOM format (spdx or cyclonedx)
@@ -30,7 +32,7 @@ pub enum SbomCommand {
 
     /// Show SBOM content for an artifact
     Show {
-        /// Artifact ID
+        /// Artifact ID, or <repo-key>/<path>
         artifact_id: String,
     },
 
@@ -44,7 +46,7 @@ pub enum SbomCommand {
         #[arg(long = "sbom-format")]
         sbom_format: Option<String>,
 
-        /// Filter by artifact ID
+        /// Filter by artifact ID, or <repo-key>/<path>
         #[arg(long)]
         artifact: Option<String>,
     },
@@ -85,6 +87,56 @@ pub enum SbomCommand {
         target_format: Option<String>,
     },
 
+    /// Show the SBOM of what a remote repository has cached at a path
+    ///
+    /// Built from the inventory taken when the artifact was scanned on download. A path
+    /// with no inventory is an error rather than an empty SBOM.
+    Proxy {
+        /// Remote repository key
+        repo: String,
+
+        /// Cached path
+        #[arg(long)]
+        path: String,
+
+        /// SBOM format (spdx or cyclonedx)
+        #[arg(long = "sbom-format")]
+        sbom_format: Option<String>,
+
+        /// Write the SBOM to this file rather than stdout
+        #[arg(long, short)]
+        output: Option<String>,
+    },
+
+    /// Make an SBOM from a lockfile, with one document per environment and platform
+    ///
+    /// Nothing is stored on the server. See `ak environment ingest` to store one.
+    Environment {
+        /// Path to pixi.lock, conda-lock.yml, package-lock.json, Cargo.lock, poetry.lock
+        /// or uv.lock, or - for stdin
+        lockfile: String,
+
+        /// Name that selects the parser (default: the lockfile's own). Required with stdin
+        #[arg(long)]
+        filename: Option<String>,
+
+        /// SBOM format (spdx or cyclonedx)
+        #[arg(long = "sbom-format")]
+        sbom_format: Option<String>,
+
+        /// Only this environment of the lockfile
+        #[arg(long)]
+        environment: Option<String>,
+
+        /// Only this platform of the lockfile
+        #[arg(long)]
+        platform: Option<String>,
+
+        /// Write the SBOMs to this file rather than stdout
+        #[arg(long, short)]
+        output: Option<String>,
+    },
+
     /// CVE (Common Vulnerabilities and Exposures) operations
     #[command(subcommand)]
     Cve(SbomCveCommand),
@@ -94,7 +146,7 @@ pub enum SbomCommand {
 pub enum SbomCveCommand {
     /// Show CVE history for an artifact
     History {
-        /// Artifact ID
+        /// Artifact ID, or <repo-key>/<path>
         artifact_id: String,
     },
 
@@ -121,6 +173,10 @@ pub enum SbomCveCommand {
         /// Reason for the status change
         #[arg(long)]
         reason: Option<String>,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Show CVE history for one artifact (typed UUID route)
@@ -128,7 +184,7 @@ pub enum SbomCveCommand {
     /// Canonical replacement for the artifact branch of the overloaded
     /// `history <id>` route. Takes a strict artifact UUID.
     HistoryByArtifact {
-        /// Artifact UUID
+        /// Artifact ID, or <repo-key>/<path>
         artifact_id: String,
     },
 
@@ -144,7 +200,7 @@ pub enum SbomCveCommand {
     /// row instead of a `cve_history` primary key, so synthesized findings
     /// (which have no `cve_history` row) can be acknowledged.
     UpdateStatusByArtifactCve {
-        /// Artifact UUID
+        /// Artifact ID, or <repo-key>/<path>
         artifact_id: String,
 
         /// CVE identifier (e.g. CVE-2019-10744)
@@ -157,6 +213,10 @@ pub enum SbomCveCommand {
         /// Reason for the status change
         #[arg(long)]
         reason: Option<String>,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 }
 
@@ -190,6 +250,40 @@ impl SbomCommand {
                 output,
                 target_format,
             } => export_sbom(&sbom_id, &output, target_format.as_deref(), global).await,
+            Self::Proxy {
+                repo,
+                path,
+                sbom_format,
+                output,
+            } => {
+                proxy_sbom(
+                    &repo,
+                    &path,
+                    sbom_format.as_deref(),
+                    output.as_deref(),
+                    global,
+                )
+                .await
+            }
+            Self::Environment {
+                lockfile,
+                filename,
+                sbom_format,
+                environment,
+                platform,
+                output,
+            } => {
+                environment_sbom(
+                    &lockfile,
+                    filename,
+                    sbom_format,
+                    environment,
+                    platform,
+                    output.as_deref(),
+                    global,
+                )
+                .await
+            }
             Self::Cve(cmd) => cmd.execute(global).await,
         }
     }
@@ -204,7 +298,8 @@ impl SbomCveCommand {
                 cve_id,
                 status,
                 reason,
-            } => cve_update_status(&cve_id, &status, reason.as_deref(), global).await,
+                yes,
+            } => cve_update_status(&cve_id, &status, reason.as_deref(), yes, global).await,
             Self::HistoryByArtifact { artifact_id } => {
                 cve_history_by_artifact(&artifact_id, global).await
             }
@@ -214,12 +309,14 @@ impl SbomCveCommand {
                 cve_id,
                 status,
                 reason,
+                yes,
             } => {
                 cve_update_status_by_artifact_cve(
                     &artifact_id,
                     &cve_id,
                     &status,
                     reason.as_deref(),
+                    yes,
                     global,
                 )
                 .await
@@ -239,7 +336,7 @@ async fn generate_sbom(
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let aid = parse_uuid(artifact_id, "artifact")?;
+    let aid = resolve_artifact_id(&client, artifact_id).await?;
 
     let spinner = output::spinner("Generating SBOM...");
 
@@ -249,12 +346,8 @@ async fn generate_sbom(
         format: sbom_format.map(|s| s.to_string()),
     };
 
-    let resp = client
-        .generate_sbom()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("generate SBOM", e))?;
+    let (resp, raw) = capture(client.generate_sbom().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("generate SBOM", e))?;
 
     let sbom = resp.into_inner();
     spinner.finish_and_clear();
@@ -291,23 +384,22 @@ async fn generate_sbom(
         sbom.generated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
 
 async fn show_sbom(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let aid = parse_uuid(artifact_id, "artifact")?;
+    let aid = resolve_artifact_id(&client, artifact_id).await?;
 
     let spinner = output::spinner("Fetching SBOM...");
 
-    let resp = client
-        .get_sbom_by_artifact()
-        .artifact_id(aid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get SBOM", e))?;
+    let (resp, raw) = capture(client.get_sbom_by_artifact().artifact_id(aid).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get SBOM", e))?;
 
     let sbom = resp.into_inner();
     spinner.finish_and_clear();
@@ -352,7 +444,10 @@ async fn show_sbom(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
         sbom.generated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -367,7 +462,10 @@ async fn list_sboms(
     let spinner = output::spinner("Fetching SBOMs...");
 
     let repo_id = resolve_optional_repo_id(&client, repo).await?;
-    let artifact_id = parse_optional_uuid(artifact, "artifact")?;
+    let artifact_id = match artifact {
+        Some(artifact) => Some(resolve_artifact_id(&client, artifact).await?),
+        None => None,
+    };
 
     let mut req = client.list_sboms();
     if let Some(rid) = repo_id {
@@ -380,12 +478,13 @@ async fn list_sboms(
         req = req.artifact_id(aid);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("list SBOMs", e))?;
+    let (resp, raw) = capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list SBOMs", e))?;
 
     let sboms = resp.into_inner();
     spinner.finish_and_clear();
 
-    if sboms.is_empty() {
+    if sboms.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No SBOMs found.");
         return Ok(());
     }
@@ -401,7 +500,7 @@ async fn list_sboms(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -413,12 +512,8 @@ async fn get_sbom(sbom_id: &str, global: &GlobalArgs) -> Result<()> {
 
     let spinner = output::spinner("Fetching SBOM...");
 
-    let resp = client
-        .get_sbom()
-        .id(sid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get SBOM", e))?;
+    let (resp, raw) = capture(client.get_sbom().id(sid).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get SBOM", e))?;
 
     let sbom = resp.into_inner();
     spinner.finish_and_clear();
@@ -463,7 +558,10 @@ async fn get_sbom(sbom_id: &str, global: &GlobalArgs) -> Result<()> {
         sbom.generated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -482,15 +580,12 @@ async fn delete_sbom(sbom_id: &str, skip_confirm: bool, global: &GlobalArgs) -> 
     let client = client_for(global)?;
     let spinner = output::spinner("Deleting SBOM...");
 
-    client
-        .delete_sbom()
-        .id(sid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("delete SBOM", e))?;
+    let (resp, raw) = capture(client.delete_sbom().id(sid).send()).await;
+    resp.map_err(|e| sdk_err("delete SBOM", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({ "id": sbom_id, "status": "deleted" }),
         sbom_id,
         &format!("SBOM {sbom_id} deleted."),
@@ -506,17 +601,13 @@ async fn get_components(sbom_id: &str, global: &GlobalArgs) -> Result<()> {
 
     let spinner = output::spinner("Fetching SBOM components...");
 
-    let resp = client
-        .get_sbom_components()
-        .id(sid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get SBOM components", e))?;
+    let (resp, raw) = capture(client.get_sbom_components().id(sid).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get SBOM components", e))?;
 
     let components = resp.into_inner();
     spinner.finish_and_clear();
 
-    if components.is_empty() {
+    if components.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No components found.");
         return Ok(());
     }
@@ -532,7 +623,7 @@ async fn get_components(sbom_id: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -549,7 +640,7 @@ async fn export_sbom(
 
     let spinner = output::spinner("Exporting SBOM...");
 
-    let resp = if let Some(fmt) = target_format {
+    let sbom = if let Some(fmt) = target_format {
         let body = artifact_keeper_sdk::types::ConvertSbomRequest {
             target_format: fmt.to_string(),
         };
@@ -561,30 +652,18 @@ async fn export_sbom(
             .await
             .map_err(|e| sdk_err("convert SBOM", e))?
     } else {
-        // No conversion needed: fetch the SBOM content and write it directly
-        let content_resp = client
+        client
             .get_sbom()
             .id(sid)
             .send()
             .await
-            .map_err(|e| sdk_err("get SBOM", e))?;
+            .map_err(|e| sdk_err("get SBOM", e))?
+    }
+    .into_inner();
 
-        let content = content_resp.into_inner();
-        let json = serde_json::to_string_pretty(&content.content)
-            .map_err(|e| sdk_err("serialize SBOM content", e))?;
-
-        std::fs::write(output_path, json).map_err(|e| sdk_err("write file", e))?;
-
-        spinner.finish_and_clear();
-        eprintln!("SBOM exported to {output_path}");
-        return Ok(());
-    };
-
-    let sbom = resp.into_inner();
-
-    // Write the response as JSON to the output file
-    let json = serde_json::to_string_pretty(&sbom).map_err(|e| sdk_err("serialize SBOM", e))?;
-
+    // The document, in both cases. A wrapper around it isn't an SBOM any tool can read.
+    let json = serde_json::to_string_pretty(&sbom.content)
+        .map_err(|e| sdk_err("serialize SBOM content", e))?;
     std::fs::write(output_path, json).map_err(|e| sdk_err("write file", e))?;
 
     spinner.finish_and_clear();
@@ -593,47 +672,158 @@ async fn export_sbom(
     Ok(())
 }
 
+/// Print a generated document, or write it to `--output`.
+fn deliver_document(
+    raw: &[u8],
+    output_path: Option<&str>,
+    what: &str,
+    global: &GlobalArgs,
+) -> Result<()> {
+    if let Some(path) = output_path {
+        std::fs::write(path, raw).map_err(|e| sdk_err("write file", e))?;
+        eprintln!("{what} written to {path}");
+        return Ok(());
+    }
+    if matches!(global.format, OutputFormat::Quiet) {
+        return Ok(());
+    }
+    let value: Value =
+        serde_json::from_slice(raw).map_err(|e| sdk_err("parse the server's response", e))?;
+    let pretty = serde_json::to_string_pretty(&value).unwrap_or_default();
+    println!(
+        "{}",
+        output::render_raw(Some(raw), &value, &global.format, Some(pretty))
+    );
+    Ok(())
+}
+
+async fn proxy_sbom(
+    repo: &str,
+    path: &str,
+    sbom_format: Option<&str>,
+    output_path: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
+    let spinner = output::spinner("Fetching proxy SBOM...");
+
+    // The API declares no body for this route, so the SDK's call would throw the
+    // document away.
+    let mut url = reqwest::Url::parse(base_url.trim_end_matches('/'))
+        .map_err(|e| AkError::ConfigError(format!("Invalid instance URL: {e}")))?;
+    url.path_segments_mut()
+        .map_err(|()| AkError::ConfigError("Invalid instance URL".to_string()))?
+        .extend(["api", "v1", "repositories", repo, "security", "proxy-sbom"]);
+    let mut query = vec![("path", path)];
+    if let Some(format) = sbom_format {
+        query.push(("format", format));
+    }
+
+    let resp = raw_http_client()?
+        .get(url)
+        .header(reqwest::header::AUTHORIZATION, auth_header)
+        .query(&query)
+        .send()
+        .await
+        .map_err(|e| sdk_err("get proxy SBOM", e))?;
+    let status = resp.status();
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| sdk_err("get proxy SBOM", e))?;
+
+    spinner.finish_and_clear();
+
+    if !status.is_success() {
+        let text = String::from_utf8_lossy(&bytes);
+        return Err(raw_err("Failed to get proxy SBOM", status, &text).into());
+    }
+
+    deliver_document(&bytes, output_path, "SBOM", global)
+}
+
+async fn environment_sbom(
+    lockfile: &str,
+    filename: Option<String>,
+    sbom_format: Option<String>,
+    environment: Option<String>,
+    platform: Option<String>,
+    output_path: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let filename = super::environment::parser_filename(lockfile, filename)?;
+    let bytes = super::bundle::read_input(lockfile)?;
+    let client = client_for(global)?;
+    let spinner = output::spinner("Generating SBOM from the lockfile...");
+
+    let mut req = client
+        .generate_environment_sbom()
+        .filename(filename)
+        .body(bytes);
+    if let Some(format) = sbom_format {
+        req = req.format(format);
+    }
+    if let Some(environment) = environment {
+        req = req.environment(environment);
+    }
+    if let Some(platform) = platform {
+        req = req.platform(platform);
+    }
+
+    let (resp, raw) = capture(req.send()).await;
+    spinner.finish_and_clear();
+    if let Err(error) = resp {
+        // A server without the route answers 405 with no message.
+        if matches!(
+            error.status(),
+            Some(reqwest::StatusCode::METHOD_NOT_ALLOWED | reqwest::StatusCode::NOT_FOUND)
+        ) && let Some(version) = server_before_1_11(global).await
+        {
+            return Err(AkError::ServerError(format!(
+                "`ak sbom environment` needs a server on 1.11 or newer. This one is {version}."
+            ))
+            .into());
+        }
+        return Err(sdk_err("generate SBOM from the lockfile", error).into());
+    }
+
+    let raw = raw.unwrap_or_default();
+    deliver_document(&raw, output_path, "SBOMs", global)
+}
+
 // ---------------------------------------------------------------------------
 // CVE handlers
 // ---------------------------------------------------------------------------
 
 async fn cve_history(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let aid = parse_uuid(artifact_id, "artifact")?;
+    let aid = resolve_artifact_id(&client, artifact_id).await?;
 
     let spinner = output::spinner("Fetching CVE history...");
 
-    let resp = client
-        .get_cve_history()
-        .id(aid.to_string())
-        .send()
-        .await
-        .map_err(|e| sdk_err("get CVE history", e))?;
+    let (resp, raw) = capture(client.get_cve_history().id(aid.to_string()).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get CVE history", e))?;
 
     let entries = resp.into_inner();
     spinner.finish_and_clear();
 
-    render_cve_history(&entries, global);
+    render_cve_history(raw.as_deref(), &entries, global);
     Ok(())
 }
 
 async fn cve_history_by_artifact(artifact_id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let aid = parse_uuid(artifact_id, "artifact")?;
+    let aid = resolve_artifact_id(&client, artifact_id).await?;
 
     let spinner = output::spinner("Fetching CVE history...");
 
-    let resp = client
-        .get_cve_history_by_artifact()
-        .artifact_id(aid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get CVE history by artifact", e))?;
+    let (resp, raw) = capture(client.get_cve_history_by_artifact().artifact_id(aid).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get CVE history by artifact", e))?;
 
     let entries = resp.into_inner();
     spinner.finish_and_clear();
 
-    render_cve_history(&entries, global);
+    render_cve_history(raw.as_deref(), &entries, global);
     Ok(())
 }
 
@@ -642,23 +832,19 @@ async fn cve_history_by_cve(cve_id: &str, global: &GlobalArgs) -> Result<()> {
 
     let spinner = output::spinner("Fetching CVE history...");
 
-    let resp = client
-        .get_cve_history_by_cve()
-        .cve_id(cve_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get CVE history by CVE", e))?;
+    let (resp, raw) = capture(client.get_cve_history_by_cve().cve_id(cve_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get CVE history by CVE", e))?;
 
     let entries = resp.into_inner();
     spinner.finish_and_clear();
 
-    render_cve_history(&entries, global);
+    render_cve_history(raw.as_deref(), &entries, global);
     Ok(())
 }
 
 /// Render a list of CVE history entries honoring the output format.
-fn render_cve_history(entries: &[CveHistoryEntry], global: &GlobalArgs) {
-    if entries.is_empty() {
+fn render_cve_history(raw: Option<&[u8]>, entries: &[CveHistoryEntry], global: &GlobalArgs) {
+    if entries.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No CVE history found.");
         return;
     }
@@ -674,7 +860,7 @@ fn render_cve_history(entries: &[CveHistoryEntry], global: &GlobalArgs) {
 
     println!(
         "{}",
-        output::render(&json_entries, &global.format, Some(table_str))
+        output::render_raw(raw, &json_entries, &global.format, Some(table_str))
     );
 }
 
@@ -689,7 +875,8 @@ async fn cve_trends(days: i32, repo: Option<&str>, global: &GlobalArgs) -> Resul
         req = req.repository_id(rid);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("get CVE trends", e))?;
+    let (resp, raw) = capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("get CVE trends", e))?;
 
     let trends = resp.into_inner();
     spinner.finish_and_clear();
@@ -740,7 +927,10 @@ async fn cve_trends(days: i32, repo: Option<&str>, global: &GlobalArgs) -> Resul
         avg_fix,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -749,10 +939,20 @@ async fn cve_update_status(
     cve_id: &str,
     status: &str,
     reason: Option<&str>,
+    yes: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
     let id = parse_uuid(cve_id, "CVE history entry")?;
+
+    if !confirm_action(
+        &format!("Mark CVE entry {cve_id} as {status}? This can change what the gates allow."),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let client = client_for(global)?;
 
     let spinner = output::spinner("Updating CVE status...");
 
@@ -761,18 +961,13 @@ async fn cve_update_status(
         reason: reason.map(|s| s.to_string()),
     };
 
-    let resp = client
-        .update_cve_status()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update CVE status", e))?;
+    let (resp, raw) = capture(client.update_cve_status().id(id).body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("update CVE status", e))?;
 
     let entry = resp.into_inner();
     spinner.finish_and_clear();
 
-    render_updated_cve(&entry, global);
+    render_updated_cve(raw.as_deref(), &entry, global);
     Ok(())
 }
 
@@ -781,10 +976,21 @@ async fn cve_update_status_by_artifact_cve(
     cve_id: &str,
     status: &str,
     reason: Option<&str>,
+    yes: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let aid = parse_uuid(artifact_id, "artifact")?;
+    let aid = resolve_artifact_id(&client, artifact_id).await?;
+
+    if !confirm_action(
+        &format!(
+            "Mark {cve_id} on {artifact_id} as {status}? This can change what the gates allow."
+        ),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
 
     let spinner = output::spinner("Updating CVE status...");
 
@@ -793,24 +999,26 @@ async fn cve_update_status_by_artifact_cve(
         reason: reason.map(|s| s.to_string()),
     };
 
-    let resp = client
-        .update_cve_status_by_artifact_cve()
-        .artifact_id(aid)
-        .cve_id(cve_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update CVE status by artifact/CVE", e))?;
+    let (resp, raw) = capture(
+        client
+            .update_cve_status_by_artifact_cve()
+            .artifact_id(aid)
+            .cve_id(cve_id)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("update CVE status by artifact/CVE", e))?;
 
     let entry = resp.into_inner();
     spinner.finish_and_clear();
 
-    render_updated_cve(&entry, global);
+    render_updated_cve(raw.as_deref(), &entry, global);
     Ok(())
 }
 
 /// Render the result of a CVE status update honoring the output format.
-fn render_updated_cve(entry: &CveHistoryEntry, global: &GlobalArgs) {
+fn render_updated_cve(raw: Option<&[u8]>, entry: &CveHistoryEntry, global: &GlobalArgs) {
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", entry.id);
         return;
@@ -841,7 +1049,10 @@ fn render_updated_cve(entry: &CveHistoryEntry, global: &GlobalArgs) {
         entry.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw, &info, &global.format, Some(table_str))
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1249,6 +1460,7 @@ mod tests {
             cve_id,
             status,
             reason,
+            ..
         }) = cli.command
         {
             assert_eq!(cve_id, "cve-id-123");
@@ -1322,6 +1534,7 @@ mod tests {
             cve_id,
             status,
             reason,
+            ..
         }) = cli.command
         {
             assert_eq!(artifact_id, "artifact-uuid");
@@ -1957,7 +2170,8 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = cve_update_status(NIL_UUID, "fixed", Some("Patched in v2"), &global).await;
+        let result =
+            cve_update_status(NIL_UUID, "fixed", Some("Patched in v2"), true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1995,7 +2209,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = cve_update_status(NIL_UUID, "false_positive", None, &global).await;
+        let result = cve_update_status(NIL_UUID, "false_positive", None, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2086,6 +2300,7 @@ mod tests {
             "CVE-2019-10744",
             "acknowledged",
             Some("not exploitable"),
+            true,
             &global,
         )
         .await;

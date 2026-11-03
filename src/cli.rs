@@ -111,7 +111,7 @@ pub enum Command {
 
     /// Trigger and view security scan results
     #[command(
-        after_help = "Examples:\n  ak scan run my-repo org/pkg/1.0/pkg.jar\n  ak scan list --repo my-repo\n  ak scan show <scan-id>"
+        after_help = "Examples:\n  ak scan run my-repo org/pkg/1.0/pkg.jar\n  ak scan list --repo my-repo\n  ak scan show <scan-id>\n  ak scan proxy list <remote-repo>\n  ak scan finding ingest findings.json --artifact my-repo/pkg.jar --scanner acme"
     )]
     Scan {
         #[command(subcommand)]
@@ -207,7 +207,7 @@ pub enum Command {
 
     /// Signing & key management
     #[command(
-        after_help = "Examples:\n  ak sign key list\n  ak sign key create my-key --algorithm rsa4096 --type rsa --repo <repo>\n  ak sign config show <repo>"
+        after_help = "Examples:\n  ak sign key list\n  ak sign key create my-key --algorithm rsa4096 --type rsa --repo <repo>\n  ak sign config show <repo>\n  ak sign artifact my-repo/pkg.jar"
     )]
     Sign {
         #[command(subcommand)]
@@ -216,7 +216,7 @@ pub enum Command {
 
     /// Software Bill of Materials operations
     #[command(
-        after_help = "Examples:\n  ak sbom generate <artifact-id>\n  ak sbom list --repo <repo>\n  ak sbom components <sbom-id>\n  ak sbom cve history <artifact-id>"
+        after_help = "Examples:\n  ak sbom generate <artifact-id>\n  ak sbom list --repo <repo>\n  ak sbom components <sbom-id>\n  ak sbom cve history <artifact-id>\n  ak sbom proxy <remote-repo> --path <path>\n  ak sbom environment uv.lock"
     )]
     Sbom {
         #[command(subcommand)]
@@ -415,7 +415,7 @@ pub enum Command {
 
     /// Manage the quarantine hold on artifacts (#1770 quarantine subsystem)
     #[command(
-        after_help = "Examples:\n  ak quarantine status <artifact-id>\n  ak quarantine hold <artifact-id> --reason \"Failed scan\"\n  ak quarantine release <artifact-id>\n  ak quarantine reject <artifact-id> --reason \"Malware detected\"\n  ak quarantine purge <artifact-id> --reason \"CVE\""
+        after_help = "Examples:\n  ak quarantine status <artifact-id>\n  ak quarantine hold <artifact-id> --reason \"Failed scan\"\n  ak quarantine release <artifact-id>\n  ak quarantine release-proxy <remote-repo> --path <path>\n  ak quarantine reject <artifact-id> --reason \"Malware detected\"\n  ak quarantine purge <artifact-id> --reason \"CVE\""
     )]
     Quarantine {
         #[command(subcommand)]
@@ -423,7 +423,7 @@ pub enum Command {
     },
     /// Curate proxied/staged packages: rules, approvals, and quarantine actions
     #[command(
-        after_help = "Examples:\n  ak curation packages --staging-repo <repo> --status pending\n  ak curation package <package-id>\n  ak curation approve <package-id>\n  ak curation block <package-id>\n  ak curation bulk-approve <id> <id> --reason \"Vetted\"\n  ak curation re-evaluate --staging-repo <repo> --default-action block\n  ak curation rules --staging-repo <repo>\n  ak curation create-rule 'lodash*' --action block --reason \"Banned\"\n  ak curation update-rule <rule-id> --action approve --package-pattern 'left-pad*' --reason \"OK\" --enabled\n  ak curation delete-rule <rule-id>\n  ak curation stats --staging-repo <repo>"
+        after_help = "Examples:\n  ak curation packages --staging-repo <repo> --status pending\n  ak curation package <package-id>\n  ak curation approve <package-id>\n  ak curation block <package-id>\n  ak curation bulk-approve <id> <id> --reason \"Vetted\"\n  ak curation re-evaluate --staging-repo <repo> --default-action block\n  ak curation rules --staging-repo <repo>\n  ak curation create-rule 'lodash*' --action block --reason \"Banned\"\n  ak curation update-rule <rule-id> --disabled\n  ak curation delete-rule <rule-id>\n  ak curation stats --staging-repo <repo>\n  ak curation search <repo> --q left\n  ak curation sync <repo>\n  ak curation version create <repo>\n  ak curation version publish <repo> 1"
     )]
     Curation {
         #[command(subcommand)]
@@ -497,6 +497,13 @@ pub enum Command {
     ImageBuild {
         #[command(subcommand)]
         command: commands::image_build::ImageBuildCommand,
+    },
+
+    /// See which publishers and keys this server trusts for attestations
+    #[command(after_help = "Examples:\n  ak attestation policy")]
+    Attestation {
+        #[command(subcommand)]
+        command: commands::attestation::AttestationCommand,
     },
 }
 
@@ -597,6 +604,7 @@ impl Cli {
             Command::Bundle { command } => command.execute(&global).await,
             Command::Environment { command } => command.execute(&global).await,
             Command::ImageBuild { command } => command.execute(&global).await,
+            Command::Attestation { command } => command.execute(&global).await,
         }
     }
 }
@@ -2804,6 +2812,12 @@ mod tests {
         ])
         .unwrap();
         assert!(matches!(cli.command, Command::Environment { .. }));
+    }
+
+    #[test]
+    fn parse_attestation_policy() {
+        let cli = parse(&["ak", "attestation", "policy"]).unwrap();
+        assert!(matches!(cli.command, Command::Attestation { .. }));
     }
 
     #[test]

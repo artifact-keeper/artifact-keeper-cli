@@ -1,9 +1,10 @@
 use artifact_keeper_sdk::ClientQuarantineExt;
+use artifact_keeper_sdk::raw::capture;
 use clap::Subcommand;
 use miette::Result;
 
-use super::client::{client_for, resolve_base_url_and_auth};
-use super::helpers::{emit_mutation, resolve_artifact_id, sdk_err};
+use super::client::client_for;
+use super::helpers::{confirm_action, emit_mutation_raw, resolve_artifact_id, sdk_err, since_1_11};
 use crate::cli::GlobalArgs;
 use crate::output;
 
@@ -24,12 +25,36 @@ pub enum QuarantineCommand {
         /// (defaults server-side when omitted)
         #[arg(long)]
         reason: Option<String>,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Release a quarantined artifact so it can be served (admin only)
     Release {
         /// Artifact ID, or <repo-key>/<path>
         artifact: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
+
+    /// Release a quarantined path from a remote repository's cache (admin only)
+    ///
+    /// Proxied content has no artifact ID, so `release` can't reach it.
+    ReleaseProxy {
+        /// Remote repository key
+        repo: String,
+
+        /// Cached path to release
+        #[arg(long)]
+        path: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Reject (purge) a quarantined artifact, blocking it permanently (admin only)
@@ -41,6 +66,10 @@ pub enum QuarantineCommand {
         /// Reason for the rejection
         #[arg(long)]
         reason: Option<String>,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 }
 
@@ -48,9 +77,20 @@ impl QuarantineCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Status { artifact } => status(&artifact, global).await,
-            Self::Hold { artifact, reason } => hold(&artifact, reason.as_deref(), global).await,
-            Self::Release { artifact } => release(&artifact, global).await,
-            Self::Reject { artifact, reason } => reject(&artifact, reason.as_deref(), global).await,
+            Self::Hold {
+                artifact,
+                reason,
+                yes,
+            } => hold(&artifact, reason, yes, global).await,
+            Self::Release { artifact, yes } => release(&artifact, yes, global).await,
+            Self::ReleaseProxy { repo, path, yes } => {
+                release_proxy(&repo, &path, yes, global).await
+            }
+            Self::Reject {
+                artifact,
+                reason,
+                yes,
+            } => reject(&artifact, reason, yes, global).await,
         }
     }
 }
@@ -60,12 +100,14 @@ async fn status(artifact: &str, global: &GlobalArgs) -> Result<()> {
     let artifact_id = resolve_artifact_id(&client, artifact).await?;
     let spinner = output::spinner("Fetching quarantine status...");
 
-    let status = client
-        .get_quarantine_status()
-        .artifact_id(artifact_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get quarantine status", e))?;
+    let (status, raw) = capture(
+        client
+            .get_quarantine_status()
+            .artifact_id(artifact_id)
+            .send(),
+    )
+    .await;
+    let status = status.map_err(|e| sdk_err("get quarantine status", e))?;
 
     spinner.finish_and_clear();
 
@@ -74,123 +116,202 @@ async fn status(artifact: &str, global: &GlobalArgs) -> Result<()> {
         "is_blocked": status.is_blocked,
         "quarantine_status": status.quarantine_status,
         "quarantine_until": status.quarantine_until.map(|t| t.to_rfc3339()),
+        "quarantine_reason": status.quarantine_reason,
     });
 
     let table_str = format_status_detail(&info);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
 
-async fn hold(artifact: &str, reason: Option<&str>, global: &GlobalArgs) -> Result<()> {
+async fn hold(
+    artifact: &str,
+    reason: Option<String>,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
     let artifact_id = resolve_artifact_id(&client, artifact).await?;
 
-    // The vendored SDK's `ClientQuarantineExt` predates this route and exposes
-    // no quarantine-now operation, so call it over raw HTTP the way other
-    // post-SDK endpoints do (see email_subscriptions.rs).
-    let (base_url, auth_header) = resolve_base_url_and_auth(global)?;
-    let spinner = output::spinner("Quarantining artifact...");
-
-    let http = super::client::raw_http_client()?;
-    let resp = http
-        .post(format!(
-            "{}/api/v1/quarantine/{artifact_id}/quarantine",
-            base_url.trim_end_matches('/')
-        ))
-        .header(reqwest::header::AUTHORIZATION, auth_header)
-        .json(&serde_json::json!({ "reason": reason }))
-        .send()
-        .await
-        .map_err(|e| sdk_err("quarantine artifact", e))?;
-
-    let status = resp.status();
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| sdk_err("quarantine artifact", e))?;
-
-    spinner.finish_and_clear();
-
-    if !status.is_success() {
-        return Err(super::helpers::raw_err("Failed to quarantine artifact", status, &text).into());
+    if !confirm_action(
+        &format!("Quarantine {artifact}? Downloads are blocked until it's released."),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
-    let action: serde_json::Value =
-        serde_json::from_str(&text).map_err(|e| sdk_err("parse quarantine response", e))?;
+    let spinner = output::spinner("Quarantining artifact...");
 
-    let id = action["artifact_id"]
-        .as_str()
-        .map(str::to_string)
-        .unwrap_or_else(|| artifact_id.to_string());
-    let new_status = action["new_status"].as_str().unwrap_or("quarantined");
-    let message = action["message"].as_str().unwrap_or("Artifact quarantined");
+    let body = artifact_keeper_sdk::types::QuarantineNowRequest { reason };
+    let (action, raw) = capture(
+        client
+            .quarantine_artifact_now()
+            .artifact_id(artifact_id)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let action = action
+        .map_err(|e| sdk_err("quarantine artifact", e))?
+        .into_inner();
 
-    let human = format!("Quarantined artifact {id} (status: {new_status}). {message}");
-    emit_mutation(&action, &id, &human, global);
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &action,
+        &action.artifact_id.to_string(),
+        &format!(
+            "Quarantined artifact {} (status: {}). {}",
+            action.artifact_id, action.new_status, action.message
+        ),
+        global,
+    );
 
     Ok(())
 }
 
-async fn release(artifact: &str, global: &GlobalArgs) -> Result<()> {
+async fn release(artifact: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let artifact_id = resolve_artifact_id(&client, artifact).await?;
+
+    if !confirm_action(
+        &format!("Release {artifact} from quarantine? Clients can then download it."),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
     let spinner = output::spinner("Releasing artifact from quarantine...");
 
-    let action = client
-        .release_artifact()
-        .artifact_id(artifact_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("release artifact from quarantine", e))?;
+    let (action, raw) = capture(client.release_artifact().artifact_id(artifact_id).send()).await;
+    let action = action
+        .map_err(|e| sdk_err("release artifact from quarantine", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    let info = serde_json::json!({
-        "artifact_id": action.artifact_id.to_string(),
-        "message": action.message,
-        "new_status": action.new_status,
-    });
-
-    let human = format!(
-        "Released artifact {} (status: {}). {}",
-        action.artifact_id, action.new_status, action.message
+    emit_mutation_raw(
+        raw.as_deref(),
+        &action,
+        &action.artifact_id.to_string(),
+        &format!(
+            "Released artifact {} (status: {}). {}",
+            action.artifact_id, action.new_status, action.message
+        ),
+        global,
     );
-    emit_mutation(&info, &action.artifact_id.to_string(), &human, global);
 
     Ok(())
 }
 
-async fn reject(artifact: &str, reason: Option<&str>, global: &GlobalArgs) -> Result<()> {
+async fn release_proxy(repo: &str, path: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
+    if !confirm_action(
+        &format!(
+            "Release '{path}' in '{repo}' from quarantine? Clients can then download it from \
+             the cache."
+        ),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
     let client = client_for(global)?;
-    let artifact_id = resolve_artifact_id(&client, artifact).await?;
-    let spinner = output::spinner("Rejecting quarantined artifact...");
+    let spinner = output::spinner("Releasing cached artifact from quarantine...");
 
-    let body = artifact_keeper_sdk::types::RejectRequest {
-        reason: reason.map(|s| s.to_string()),
+    let body = artifact_keeper_sdk::types::ReleaseProxyCacheRequest {
+        path: path.to_string(),
     };
-
-    let action = client
-        .reject_quarantined_artifact()
-        .artifact_id(artifact_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("reject quarantined artifact", e))?;
+    let (resp, raw) = capture(
+        client
+            .release_proxy_cache_entry()
+            .repo_key(repo)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let released = match resp {
+        Ok(resp) => resp.into_inner(),
+        Err(e) => {
+            return Err(since_1_11(
+                e,
+                "release cached artifact from quarantine",
+                "quarantine release-proxy",
+                global,
+            )
+            .await
+            .into());
+        }
+    };
 
     spinner.finish_and_clear();
 
-    let info = serde_json::json!({
-        "artifact_id": action.artifact_id.to_string(),
-        "message": action.message,
-        "new_status": action.new_status,
-    });
-
-    let human = format!(
-        "Rejected artifact {} (status: {}). {}",
-        action.artifact_id, action.new_status, action.message
+    emit_mutation_raw(
+        raw.as_deref(),
+        &released,
+        &released.path,
+        &format!(
+            "Released '{}' in '{}'. {}",
+            released.path, released.repository, released.message
+        ),
+        global,
     );
-    emit_mutation(&info, &action.artifact_id.to_string(), &human, global);
+
+    Ok(())
+}
+
+async fn reject(
+    artifact: &str,
+    reason: Option<String>,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, artifact).await?;
+
+    if !confirm_action(
+        &format!("Reject {artifact}? It's blocked permanently, and this can't be undone."),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let spinner = output::spinner("Rejecting quarantined artifact...");
+
+    let body = artifact_keeper_sdk::types::RejectRequest { reason };
+
+    let (action, raw) = capture(
+        client
+            .reject_quarantined_artifact()
+            .artifact_id(artifact_id)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let action = action
+        .map_err(|e| sdk_err("reject quarantined artifact", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &action,
+        &action.artifact_id.to_string(),
+        &format!(
+            "Rejected artifact {} (status: {}). {}",
+            action.artifact_id, action.new_status, action.message
+        ),
+        global,
+    );
 
     Ok(())
 }
@@ -257,7 +378,7 @@ mod tests {
     fn parse_release() {
         let cli = parse(&["test", "release", "some-id"]);
         match cli.command {
-            QuarantineCommand::Release { artifact } => assert_eq!(artifact, "some-id"),
+            QuarantineCommand::Release { artifact, .. } => assert_eq!(artifact, "some-id"),
             _ => panic!("expected Release"),
         }
     }
@@ -273,7 +394,9 @@ mod tests {
     fn parse_reject_no_reason() {
         let cli = parse(&["test", "reject", "some-id"]);
         match cli.command {
-            QuarantineCommand::Reject { artifact, reason } => {
+            QuarantineCommand::Reject {
+                artifact, reason, ..
+            } => {
                 assert_eq!(artifact, "some-id");
                 assert!(reason.is_none());
             }
@@ -285,7 +408,9 @@ mod tests {
     fn parse_reject_with_reason() {
         let cli = parse(&["test", "reject", "some-id", "--reason", "Malware"]);
         match cli.command {
-            QuarantineCommand::Reject { artifact, reason } => {
+            QuarantineCommand::Reject {
+                artifact, reason, ..
+            } => {
                 assert_eq!(artifact, "some-id");
                 assert_eq!(reason.as_deref(), Some("Malware"));
             }
@@ -297,7 +422,9 @@ mod tests {
     fn parse_purge_alias() {
         let cli = parse(&["test", "purge", "some-id", "--reason", "CVE"]);
         match cli.command {
-            QuarantineCommand::Reject { artifact, reason } => {
+            QuarantineCommand::Reject {
+                artifact, reason, ..
+            } => {
                 assert_eq!(artifact, "some-id");
                 assert_eq!(reason.as_deref(), Some("CVE"));
             }
@@ -316,7 +443,9 @@ mod tests {
     fn parse_hold_no_reason() {
         let cli = parse(&["test", "hold", "some-id"]);
         match cli.command {
-            QuarantineCommand::Hold { artifact, reason } => {
+            QuarantineCommand::Hold {
+                artifact, reason, ..
+            } => {
                 assert_eq!(artifact, "some-id");
                 // The endpoint substitutes a default reason for an absent one,
                 // so --reason stays optional (matching `reject`).
@@ -330,7 +459,9 @@ mod tests {
     fn parse_hold_with_reason() {
         let cli = parse(&["test", "hold", "some-id", "--reason", "Failed scan"]);
         match cli.command {
-            QuarantineCommand::Hold { artifact, reason } => {
+            QuarantineCommand::Hold {
+                artifact, reason, ..
+            } => {
                 assert_eq!(artifact, "some-id");
                 assert_eq!(reason.as_deref(), Some("Failed scan"));
             }
@@ -434,7 +565,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = release(NIL_UUID, &global).await;
+        let result = release(NIL_UUID, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -451,7 +582,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = reject(NIL_UUID, Some("Malware"), &global).await;
+        let result = reject(NIL_UUID, Some("Malware".to_string()), true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -468,7 +599,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = reject(NIL_UUID, None, &global).await;
+        let result = reject(NIL_UUID, None, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -489,7 +620,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = hold(NIL_UUID, Some("Failed scan"), &global).await;
+        let result = hold(NIL_UUID, Some("Failed scan".to_string()), true, &global).await;
         assert!(result.is_ok(), "hold failed: {:?}", result.err());
         crate::test_utils::teardown_env();
     }
@@ -506,7 +637,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = hold(NIL_UUID, None, &global).await;
+        let result = hold(NIL_UUID, None, true, &global).await;
         assert!(result.is_ok(), "hold failed: {:?}", result.err());
         crate::test_utils::teardown_env();
     }
@@ -514,7 +645,7 @@ mod tests {
     #[tokio::test]
     async fn handler_hold_invalid_uuid() {
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = hold("not-a-uuid", None, &global).await;
+        let result = hold("not-a-uuid", None, true, &global).await;
         assert!(result.is_err());
     }
 
@@ -532,7 +663,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let err = hold(NIL_UUID, None, &global).await.unwrap_err();
+        let err = hold(NIL_UUID, None, true, &global).await.unwrap_err();
         let msg = err.to_string();
         assert!(msg.contains("403"), "should carry the status: {msg}");
         assert!(
@@ -557,7 +688,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let err = hold(NIL_UUID, None, &global).await.unwrap_err();
+        let err = hold(NIL_UUID, None, true, &global).await.unwrap_err();
         let msg = err.to_string();
         assert!(msg.contains("404"), "should carry the status: {msg}");
         assert!(
@@ -582,7 +713,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let err = hold(NIL_UUID, None, &global).await.unwrap_err();
+        let err = hold(NIL_UUID, None, true, &global).await.unwrap_err();
         let msg = err.to_string();
         assert!(msg.contains("409"), "should carry the status: {msg}");
         crate::test_utils::teardown_env();

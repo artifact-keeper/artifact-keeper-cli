@@ -172,7 +172,7 @@ impl EnvironmentCommand {
 }
 
 /// The name that selects the server's parser, from `--filename` or the path.
-fn parser_filename(lockfile: &str, filename: Option<String>) -> Result<String> {
+pub(super) fn parser_filename(lockfile: &str, filename: Option<String>) -> Result<String> {
     if let Some(filename) = filename {
         return Ok(filename);
     }
