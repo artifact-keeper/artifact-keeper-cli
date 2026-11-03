@@ -114,7 +114,7 @@ These can change what you see, or break a script, coming from 1.2:
 
 ### Security
 
-- `ak` no longer follows a redirect that would send your token where it shouldn't go. reqwest kept `Authorization` on a redirect from https to plain http on the same host and port, and it sent the header to another host once that host redirected to itself. Both now fail with an error. Other redirects work as before, including one to presigned storage on another host, which gets no token.
+- `ak` no longer follows a redirect that would send your token where it shouldn't go. reqwest kept `Authorization` on a redirect from https to plain http on the same host and port, and it sent the header to another host once that host redirected to itself. Both now fail with an error. Other redirects work as before, including one to presigned storage on another host, which gets no token. `ak auth login` and `ak auth verify-totp` refuse any redirect from https to plain http, because a 307 or 308 would resend the password in the body.
 - Updated `quinn-proto` to 0.11.19 (RUSTSEC-2026-0338/0340, RUSTSEC-2026-0339/0341/0342). `ak` doesn't compile `quinn-proto`, so it was never affected: this only clears `cargo audit` on `Cargo.lock`
 - Updated `rustls` to 0.23.46 (RUSTSEC-2026-0285 handshake messages accepted across encryption levels, RUSTSEC-2026-0346 TLS secrets in `Debug` output, RUSTSEC-2026-0348 pre-authentication allocation, RUSTSEC-2026-0349 ServerHello downgrade)
 - Updated `rustls-webpki` to 0.103.16 (RUSTSEC-2026-0382, distrusted intermediates accepted) and `webpki-root-certs` to 1.0.11 (RUSTSEC-2026-0383, distrusted emSign intermediates)

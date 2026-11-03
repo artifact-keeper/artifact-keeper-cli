@@ -3,7 +3,7 @@ use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 
-use super::client::{anon_client, authenticated_client, build_client, client_for};
+use super::client::{anon_client, authenticated_client, build_client, client_for, login_client};
 use super::helpers::{parse_uuid, resolve_secret, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::config::credentials::{
@@ -306,7 +306,7 @@ async fn login_with_password(instance_name: &str, instance: &InstanceConfig) -> 
         .interact()
         .into_diagnostic()?;
 
-    let anon_client = anon_client(&instance.url)?;
+    let anon_client = login_client(&instance.url)?;
 
     let body = artifact_keeper_sdk::types::LoginRequest {
         username: username.clone(),
@@ -441,7 +441,7 @@ async fn verify_totp(code: &str, totp_token: &str, global: &GlobalArgs) -> Resul
     let (instance_name, instance_cfg) = config.resolve_instance(global.instance.as_deref())?;
     let instance_name = instance_name.to_string();
 
-    let anon_client = anon_client(&instance_cfg.url)?;
+    let anon_client = login_client(&instance_cfg.url)?;
     let body = artifact_keeper_sdk::types::TotpVerifyRequest {
         code: code.to_string(),
         totp_token: totp_token.to_string(),

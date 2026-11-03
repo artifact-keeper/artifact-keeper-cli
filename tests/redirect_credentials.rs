@@ -146,8 +146,9 @@ async fn answer<S: AsyncRead + AsyncWrite + Unpin>(
     log.lock().unwrap().push(seen.clone());
 
     let response = match route(&seen) {
+        // A 307, because that's the one that resends a body.
         Reply::Redirect(to) => format!(
-            "HTTP/1.1 302 Found\r\nLocation: {to}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            "HTTP/1.1 307 Temporary Redirect\r\nLocation: {to}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
         ),
         Reply::Ok => {
             let body = json!({
@@ -354,6 +355,46 @@ async fn another_host_redirecting_to_itself_does_not_get_the_token() {
     );
     assert!(
         stderr(&output).contains("another server"),
+        "{}",
+        stderr(&output)
+    );
+}
+
+/// A 307 from https to http on another port drops the token but resends the body,
+/// so what's in the body has to be protected differently. `auth verify-totp` runs
+/// with no prompt, and it uses the same client as `auth login`.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_login_body_does_not_follow_a_downgrade() {
+    let pki = Pki::new();
+    let log = Log::default();
+    let (origin, origin_port) = bind().await;
+    let (plain, plain_port) = bind().await;
+    serve(
+        origin,
+        &pki,
+        &log,
+        Arc::new(move |s: &Seen| {
+            Reply::Redirect(format!("http://127.0.0.1:{plain_port}{}", s.path))
+        }),
+    );
+    serve(plain, &pki, &log, Arc::new(|_: &Seen| Reply::Ok));
+
+    let output = ak(
+        &pki,
+        origin_port,
+        &["auth", "verify-totp", "123456", "--totp-token", "tok"],
+    )
+    .await;
+
+    assert!(!output.status.success());
+    let log = seen(&log);
+    assert!(log.iter().any(|s| s.tls), "{log:?}");
+    assert!(
+        !log.iter().any(|s| !s.tls),
+        "the login went over plain HTTP: {log:?}"
+    );
+    assert!(
+        stderr(&output).contains("plain http"),
         "{}",
         stderr(&output)
     );
