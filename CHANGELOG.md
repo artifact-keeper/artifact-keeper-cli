@@ -163,6 +163,7 @@ These can change what you see, or break a script, coming from 1.2:
 
 - `install.sh` takes `--version <tag>` and `--install-dir <dir>`.
 - A tag now runs the tests, the SDK drift check and the E2E tests before anything builds, and it must match `Cargo.toml` and the changelog. Every release starts as a prerelease, and only becomes the latest after its published files pass: `install.sh`, the binary on Alpine, Ubuntu 22.04 and Debian 12, `cosign verify-blob`, the `.deb` on Ubuntu 22.04, the `.rpm` on Rocky Linux 9, and Homebrew on macOS. If any of those fails it stays a prerelease and an issue is opened.
+- The Homebrew tap moves only after a release passes Linux verification, so one that fails it never reaches brew users. The macOS and brew check installs from the tap, so it still runs after the tap moves. If it fails, the release stays a prerelease, and the failure issue says to revert the formula if the release is broken. An rc tag never touches the tap.
 
 ### Security
 
