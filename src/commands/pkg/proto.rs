@@ -132,7 +132,7 @@ pub async fn execute(command: ProtoCommand, global: &GlobalArgs) -> Result<()> {
                 Some(body) => {
                     let text = read_inline_or_file(&body, "--body")?;
                     serde_json::from_slice(&text)
-                        .map_err(|e| AkError::ConfigError(format!("--body isn't JSON: {e}")))?
+                        .map_err(|e| AkError::Usage(format!("--body isn't JSON: {e}")))?
                 }
                 None => json!({}),
             };
@@ -151,17 +151,15 @@ fn upload_request(
     labels: &[String],
 ) -> Result<Value> {
     let Some((owner, name)) = module.split_once('/') else {
-        return Err(
-            AkError::ConfigError(format!("`{module}` isn't a module: use owner/name")).into(),
-        );
+        return Err(AkError::Usage(format!("`{module}` isn't a module: use owner/name")).into());
     };
     let mut entries = Vec::with_capacity(files.len());
     for file in files {
         let content = std::fs::read(file)
-            .map_err(|e| AkError::ConfigError(format!("Can't read {}: {e}", file.display())))?;
+            .map_err(|e| AkError::Usage(format!("Can't read {}: {e}", file.display())))?;
         let relative = match root {
             Some(root) => file.strip_prefix(root).map_err(|_| {
-                AkError::ConfigError(format!("{} isn't under {}", file.display(), root.display()))
+                AkError::Usage(format!("{} isn't under {}", file.display(), root.display()))
             })?,
             None => file.as_path(),
         };

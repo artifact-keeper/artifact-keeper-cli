@@ -321,9 +321,9 @@ async fn manifest(wire: &Wire, command: ManifestCommand, global: &GlobalArgs) ->
                 .await?;
             // The digest is of these exact bytes, so they aren't reformatted.
             match output {
-                Some(path) => tokio::fs::write(&path, &reply.body).await.map_err(|e| {
-                    AkError::ConfigError(format!("Can't write {}: {e}", path.display()))
-                })?,
+                Some(path) => tokio::fs::write(&path, &reply.body)
+                    .await
+                    .map_err(|e| AkError::Local(format!("Can't write {}: {e}", path.display())))?,
                 None => {
                     let mut stdout = tokio::io::stdout();
                     stdout.write_all(&reply.body).await.into_diagnostic()?;
@@ -370,14 +370,14 @@ async fn manifest(wire: &Wire, command: ManifestCommand, global: &GlobalArgs) ->
             } else {
                 tokio::fs::read(&file)
                     .await
-                    .map_err(|e| AkError::ConfigError(format!("Can't read {file}: {e}")))?
+                    .map_err(|e| AkError::Usage(format!("Can't read {file}: {e}")))?
             };
             let parsed: Value = serde_json::from_slice(&body)
-                .map_err(|e| AkError::ConfigError(format!("The manifest isn't JSON: {e}")))?;
+                .map_err(|e| AkError::Usage(format!("The manifest isn't JSON: {e}")))?;
             let media_type = match media_type.or_else(|| manifest_type(&parsed)) {
                 Some(media_type) => media_type,
                 None => {
-                    return Err(AkError::ConfigError(
+                    return Err(AkError::Usage(
                         "The manifest has no mediaType. Give --media-type".to_string(),
                     )
                     .into());
@@ -467,7 +467,7 @@ async fn blob(wire: &Wire, command: BlobCommand) -> Result<()> {
                         .filter(|p| !p.as_os_str().is_empty())
                         .map_or_else(|| PathBuf::from("."), PathBuf::from);
                     let temp = tempfile::NamedTempFile::new_in(&dir).map_err(|e| {
-                        AkError::ConfigError(format!("Can't write in {}: {e}", dir.display()))
+                        AkError::Local(format!("Can't write in {}: {e}", dir.display()))
                     })?;
                     let mut writer = tokio::fs::File::from_std(temp.reopen().into_diagnostic()?);
                     while let Some(chunk) = stream.next().await {
@@ -478,7 +478,7 @@ async fn blob(wire: &Wire, command: BlobCommand) -> Result<()> {
                     writer.flush().await.into_diagnostic()?;
                     check_digest(hasher, expected.as_deref())?;
                     temp.persist(&path).map_err(|e| {
-                        AkError::ConfigError(format!("Can't write {}: {e}", path.display()))
+                        AkError::Local(format!("Can't write {}: {e}", path.display()))
                     })?;
                 }
                 None => {

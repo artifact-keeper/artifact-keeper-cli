@@ -10,7 +10,6 @@ use reqwest::{Method, Url};
 
 use super::wire::{Upload, Wire, emit};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 
 #[derive(Subcommand)]
 pub enum PubCommand {
@@ -57,7 +56,7 @@ pub async fn execute(command: PubCommand, global: &GlobalArgs) -> Result<()> {
                 .header(reqwest::header::ACCEPT, "application/vnd.pub.v2+json"),
         )
         .await
-        .map_err(|e| AkError::ServerError(format!("The package was sent, but: {e}")))?;
+        .map_err(|e| e.wrap_err("The package was sent, but"))?;
     emit(
         &reply,
         &upload.name,

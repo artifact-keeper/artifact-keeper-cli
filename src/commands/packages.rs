@@ -408,9 +408,8 @@ async fn fetch_content(
     max_bytes: Option<i64>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let path = path.ok_or_else(|| {
-        AkError::ConfigError("--path is required when using --content".to_string())
-    })?;
+    let path =
+        path.ok_or_else(|| AkError::Usage("--path is required when using --content".to_string()))?;
 
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching content...");
@@ -427,8 +426,9 @@ async fn fetch_content(
     let mut stream = resp.into_inner();
     let mut stdout = tokio::io::stdout();
     while let Some(chunk) = stream.next().await {
-        let chunk =
-            chunk.map_err(|e| AkError::ServerError(format!("content stream error: {e}")))?;
+        let chunk = chunk.map_err(|e| {
+            crate::commands::helpers::classified(format!("content stream error: {e}"), &e)
+        })?;
         tokio::io::AsyncWriteExt::write_all(&mut stdout, &chunk)
             .await
             .into_diagnostic()?;

@@ -533,7 +533,7 @@ fn parse_visibility(
     value
         .map(|v| {
             v.parse()
-                .map_err(|e| AkError::ConfigError(format!("Invalid --visibility: {e}")).into())
+                .map_err(|e| AkError::Usage(format!("Invalid --visibility: {e}")).into())
         })
         .transpose()
 }
@@ -543,9 +543,8 @@ fn trusted_key(value: Option<String>) -> Result<Option<String>> {
     value
         .map(|v| {
             let bytes = read_inline_or_file(&v, "--trusted-gpg-key")?;
-            String::from_utf8(bytes).map_err(|_| {
-                AkError::ConfigError("--trusted-gpg-key: the key isn't text".into()).into()
-            })
+            String::from_utf8(bytes)
+                .map_err(|_| AkError::Usage("--trusted-gpg-key: the key isn't text".into()).into())
         })
         .transpose()
 }
@@ -563,9 +562,9 @@ fn api_repo_type(repo_type: &str) -> &str {
 fn parse_member(entry: &str) -> Result<artifact_keeper_sdk::types::CreateVirtualMemberInput> {
     let (repo_key, priority) = match entry.split_once('=') {
         Some((key, priority)) => {
-            let priority = priority.parse().map_err(|_| {
-                AkError::ConfigError(format!("Invalid priority in --member '{entry}'"))
-            })?;
+            let priority = priority
+                .parse()
+                .map_err(|_| AkError::Usage(format!("Invalid priority in --member '{entry}'")))?;
             (key, Some(priority))
         }
         None => (entry, None),
@@ -1013,8 +1012,7 @@ async fn list_repos(
     }
 
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-    let resp =
-        resp.map_err(|e| AkError::ServerError(format!("Failed to list repositories: {e}")))?;
+    let resp = resp.map_err(|e| crate::commands::helpers::sdk_err("list repositories", e))?;
 
     spinner.finish_and_clear();
 
@@ -1183,7 +1181,7 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
 
     let (repo, raw) =
         artifact_keeper_sdk::raw::capture(client.get_repository().key(key).send()).await;
-    let repo = repo.map_err(|e| AkError::ServerError(format!("Failed to get repository: {e}")))?;
+    let repo = repo.map_err(|e| crate::commands::helpers::sdk_err("get repository", e))?;
 
     let info = serde_json::json!({
         "id": repo.id,
@@ -1247,8 +1245,7 @@ async fn create_repo(
 
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.create_repository().body(body).send()).await;
-    let resp =
-        resp.map_err(|e| AkError::ServerError(format!("Failed to create repository: {e}")))?;
+    let resp = resp.map_err(|e| crate::commands::helpers::sdk_err("create repository", e))?;
 
     emit_mutation_raw(
         raw.as_deref(),
@@ -1407,7 +1404,7 @@ async fn wait_for_deletion(
                     Some(status @ ("failed" | "cancelled")) => {
                         spinner.finish_and_clear();
                         let reason = job["error_summary"].as_str().unwrap_or("no reason given");
-                        return Err(AkError::ServerError(format!(
+                        return Err(AkError::ReportedFailure(format!(
                             "Deletion job {job_id} for '{key}' {status}: {}",
                             output::sanitize_terminal(reason)
                         ))
@@ -1452,7 +1449,7 @@ async fn browse_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         .per_page(100)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to list artifacts: {e}")))?;
+        .map_err(|e| crate::commands::helpers::sdk_err("list artifacts", e))?;
 
     spinner.finish_and_clear();
 
@@ -1657,12 +1654,12 @@ async fn reorder_members(key: &str, members: &[String], global: &GlobalArgs) -> 
     let mut priorities = Vec::with_capacity(members.len());
     for entry in members {
         let (member_key, priority) = entry.split_once('=').ok_or_else(|| {
-            AkError::ConfigError(format!(
+            AkError::Usage(format!(
                 "Member priority must be in 'member_key=priority' format: {entry}"
             ))
         })?;
         let priority: i32 = priority.parse().map_err(|_| {
-            AkError::ConfigError(format!("Invalid priority '{priority}' in entry '{entry}'"))
+            AkError::Usage(format!("Invalid priority '{priority}' in entry '{entry}'"))
         })?;
         priorities.push(artifact_keeper_sdk::types::VirtualMemberPriority {
             member_key: member_key.to_string(),
@@ -1751,7 +1748,7 @@ async fn set_routing_rules(key: &str, rules: &[String], global: &GlobalArgs) -> 
     let mut parsed = Vec::with_capacity(rules.len());
     for rule in rules {
         let (pattern, rewrite) = rule.split_once("=>").ok_or_else(|| {
-            AkError::ConfigError(format!(
+            AkError::Usage(format!(
                 "Routing rule must be in '<pattern>=><rewrite>' format: {rule}"
             ))
         })?;

@@ -46,7 +46,7 @@ fn classify(source: &str, is_file: bool) -> std::result::Result<Source, String> 
 pub async fn install(source: &str, git_ref: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let kind = classify(source, Path::new(source).is_file()).map_err(AkError::ConfigError)?;
     if kind != Source::Git && git_ref.is_some() {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "--ref applies only to a git URL, and this is a local file.".into(),
         )
         .into());
@@ -62,7 +62,7 @@ async fn install_manifest(path: &str, global: &GlobalArgs) -> Result<()> {
     // Not in the generated SDK, as it's multipart.
     let bytes = tokio::fs::read(path)
         .await
-        .map_err(|e| AkError::ConfigError(format!("Failed to read {path}: {e}")))?;
+        .map_err(|e| AkError::Usage(format!("Failed to read {path}: {e}")))?;
     let file_name = Path::new(path)
         .file_name()
         .and_then(std::ffi::OsStr::to_str)
@@ -99,8 +99,8 @@ async fn install_manifest(path: &str, global: &GlobalArgs) -> Result<()> {
         .into());
     }
 
-    let plugin: PluginResponse =
-        serde_json::from_slice(&body).map_err(|e| sdk_err("parse plugin install response", e))?;
+    let plugin: PluginResponse = serde_json::from_slice(&body)
+        .map_err(|e| crate::commands::helpers::bad_response("parse plugin install response", e))?;
     emit_mutation_raw(
         Some(&body),
         &plugin,

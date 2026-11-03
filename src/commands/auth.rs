@@ -226,7 +226,7 @@ impl AuthCommand {
                         && let Some(version) =
                             guard_flags("--repo-selector", (1, 10, 2), global).await
                     {
-                        return Err(AkError::ServerError(format!(
+                        return Err(AkError::UnsupportedServer(format!(
                             "--repo-selector needs a server on 1.10.2 or newer. This one is \
                              {version}, which would ignore it and make a token with all of \
                              your access. Nothing was changed."
@@ -314,7 +314,7 @@ fn resolve_login_instance(
             .iter()
             .find(|(_, instance)| instance.url == url)
             .ok_or_else(|| {
-                AkError::ConfigError(format!(
+                AkError::Usage(format!(
                     "No instance configured with URL '{url}'. Run `ak instance add <name> {url}` first."
                 ))
             })?;
@@ -356,7 +356,7 @@ async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
             "Cannot prompt for credentials in non-interactive mode. Use `--username` with \
              `--password-stdin`, `--token-stdin`, or set AK_TOKEN."
         };
-        return Err(AkError::ConfigError(hint.into()).into());
+        return Err(AkError::Usage(hint.into()).into());
     }
 
     // If --token flag was explicitly passed, go straight to token flow
@@ -421,11 +421,9 @@ async fn store_token(instance_name: &str, instance: &InstanceConfig, token: Stri
     };
 
     let client = build_client(instance_name, instance, Some(&cred))?;
-    let resp = client
-        .get_current_user()
-        .send()
-        .await
-        .map_err(|e| AkError::NotAuthenticated(format!("Token validation failed: {e}")))?;
+    let resp = client.get_current_user().send().await.map_err(|e| {
+        crate::commands::helpers::classified(format!("Token validation failed: {e}"), &e)
+    })?;
 
     store_credential(instance_name, &cred)?;
     eprintln!(
@@ -453,7 +451,7 @@ fn login_credentials(args: &LoginArgs, global: &GlobalArgs) -> Result<(String, S
     let username = match &args.username {
         Some(username) => username.clone(),
         None if global.no_input => {
-            return Err(AkError::ConfigError(
+            return Err(AkError::Usage(
                 "Cannot prompt for a username in non-interactive mode. Use `--username` with \
                  `--password-stdin`."
                     .into(),
@@ -500,7 +498,7 @@ async fn login_with_password(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::NotAuthenticated(format!("Login failed: {e}")))?
+        .map_err(|e| crate::commands::helpers::classified(format!("Login failed: {e}"), &e))?
         .into_inner();
 
     // A server that wants a TOTP step first sends empty tokens, which must never be
@@ -613,7 +611,7 @@ async fn enroll_during_login(
         return Ok(());
     }
     if global.no_input {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "This server requires you to set up TOTP before logging in. Use \
              --print-totp-ticket and `ak totp enroll`, or run this at a terminal."
                 .into(),
@@ -668,7 +666,7 @@ impl SsoKind {
 
 fn parse_sso(value: &str) -> Result<(SsoKind, uuid::Uuid)> {
     let wrong = || {
-        AkError::ConfigError(format!(
+        AkError::Usage(format!(
             "--sso: '{value}' isn't `ldap:<id>`, `oidc:<id>` or `saml:<id>`. Run `ak sso \
              providers` to see them."
         ))
@@ -720,7 +718,7 @@ async fn login_with_ldap(
         })
         .send()
         .await
-        .map_err(|e| AkError::NotAuthenticated(format!("LDAP login failed: {e}")))?;
+        .map_err(|e| crate::commands::helpers::classified(format!("LDAP login failed: {e}"), &e))?;
     let status = resp.status();
     let bytes = resp.bytes().await.into_diagnostic()?;
     if !status.is_success() {
@@ -790,7 +788,7 @@ async fn login_with_browser(
     global: &GlobalArgs,
 ) -> Result<()> {
     if kind == SsoKind::Saml && args.prompt.is_some() {
-        return Err(AkError::ConfigError("--prompt is for OIDC only.".into()).into());
+        return Err(AkError::Usage("--prompt is for OIDC only.".into()).into());
     }
     let login_url = sso_login_url(instance, kind, provider, args.prompt.as_deref()).await?;
     let info = serde_json::json!({
@@ -858,7 +856,7 @@ async fn exchange_and_store(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::NotAuthenticated(format!("SSO exchange failed: {e}")))?
+        .map_err(|e| crate::commands::helpers::classified(format!("SSO exchange failed: {e}"), &e))?
         .into_inner();
     store_session(instance_name, resp.access_token, resp.refresh_token, false)?;
     eprintln!("Logged in to '{instance_name}'.");
@@ -922,7 +920,9 @@ async fn refresh(instance: Option<&str>, global: &GlobalArgs) -> Result<()> {
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::NotAuthenticated(format!("Token refresh failed: {e}")))?;
+        .map_err(|e| {
+            crate::commands::helpers::classified(format!("Token refresh failed: {e}"), &e)
+        })?;
 
     if resp.access_token.trim().is_empty() {
         return Err(AkError::NotAuthenticated(
@@ -1001,7 +1001,9 @@ async fn complete_totp(
         .body(body)
         .send()
         .await
-        .map_err(|e| AkError::NotAuthenticated(format!("TOTP verification failed: {e}")))?
+        .map_err(|e| {
+            crate::commands::helpers::classified(format!("TOTP verification failed: {e}"), &e)
+        })?
         .into_inner();
 
     store_session(
@@ -1054,7 +1056,7 @@ async fn download_ticket(resource_path: &str, purpose: &str, global: &GlobalArgs
 async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let provider = parse_uuid(provider_id, "provider")?;
     let jwt = jwt.ok_or_else(|| {
-        AkError::ConfigError(
+        AkError::Usage(
             "No OIDC JWT provided. Pipe it to --jwt-stdin, set AK_CI_JWT, or pass --jwt <token>."
                 .into(),
         )
@@ -1077,8 +1079,9 @@ async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) 
 
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.exchange_ci_token().body(body).send()).await;
-    let resp =
-        resp.map_err(|e| AkError::NotAuthenticated(format!("CI token exchange failed: {e}")))?;
+    let resp = resp.map_err(|e| {
+        crate::commands::helpers::classified(format!("CI token exchange failed: {e}"), &e)
+    })?;
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", resp.access_token);
@@ -1142,8 +1145,7 @@ async fn whoami(global: &GlobalArgs) -> Result<()> {
     let (instance_name, instance, client) = authenticated_client(global)?;
 
     let (user, raw) = artifact_keeper_sdk::raw::capture(client.get_current_user().send()).await;
-    let user =
-        user.map_err(|e| AkError::NotAuthenticated(format!("Failed to get user info: {e}")))?;
+    let user = user.map_err(|e| crate::commands::helpers::sdk_err("get user info", e))?;
 
     let info = serde_json::json!({
         "username": user.username,
@@ -1216,7 +1218,7 @@ async fn token_create(
 
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.create_api_token().body(body).send()).await;
-    let resp = resp.map_err(|e| AkError::ServerError(format!("Failed to create token: {e}")))?;
+    let resp = resp.map_err(|e| crate::commands::helpers::sdk_err("create token", e))?;
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", resp.token);
@@ -1941,11 +1943,11 @@ async fn token_list(global: &GlobalArgs) -> Result<()> {
         .get_current_user()
         .send()
         .await
-        .map_err(|e| AkError::NotAuthenticated(format!("Failed to get user info: {e}")))?;
+        .map_err(|e| crate::commands::helpers::sdk_err("get user info", e))?;
 
     let (tokens, raw) =
         artifact_keeper_sdk::raw::capture(client.list_user_tokens().id(user.id).send()).await;
-    let tokens = tokens.map_err(|e| AkError::ServerError(format!("Failed to list tokens: {e}")))?;
+    let tokens = tokens.map_err(|e| crate::commands::helpers::sdk_err("list tokens", e))?;
 
     if tokens.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No API tokens found. Run `ak auth token create` to create one.");

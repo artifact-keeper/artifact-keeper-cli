@@ -407,7 +407,7 @@ pub struct SamlOptions {
 /// A flag holding a PEM certificate: the text, or @file for the contents.
 fn certificate_arg(value: &str, flag: &str) -> Result<String> {
     String::from_utf8(read_inline_or_file(value, flag)?)
-        .map_err(|_| AkError::ConfigError(format!("{flag}: not text")).into())
+        .map_err(|_| AkError::Usage(format!("{flag}: not text")).into())
 }
 
 fn optional_certificate(value: Option<String>, flag: &str) -> Result<Option<String>> {
@@ -933,7 +933,7 @@ async fn create_oidc(
     // Secret resolution (prompt/stdin/env) happens at the dispatch layer via
     // `resolve_secret`; here the secret only needs to be present.
     let client_secret = client_secret.ok_or_else(|| {
-        AkError::ConfigError(
+        AkError::Usage(
             "OIDC client secret is required. Provide --client-secret, pipe it to \
              --client-secret-stdin, or set AK_SSO_CLIENT_SECRET."
                 .to_string(),
@@ -1088,7 +1088,7 @@ async fn test_provider(id: &str, provider_type: &str, global: &GlobalArgs) -> Re
     // those up front with a clear message instead of hitting the LDAP endpoint
     // (which would 404 for a non-LDAP provider id).
     if provider_type != "ldap" {
-        return Err(AkError::ConfigError(format!(
+        return Err(AkError::Usage(format!(
             "Connectivity testing is only supported for LDAP providers, not '{provider_type}'. \
              OIDC/SAML providers are validated at login time."
         ))

@@ -187,7 +187,7 @@ async fn list_labels(repo_key: &str, global: &GlobalArgs) -> Result<()> {
 async fn add_label(repo_key: &str, label: &str, global: &GlobalArgs) -> Result<()> {
     let (label_key, label_value) = label
         .split_once('=')
-        .ok_or_else(|| AkError::ConfigError("Label must be in key=value format".to_string()))?;
+        .ok_or_else(|| AkError::Usage("Label must be in key=value format".to_string()))?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Adding label...");
@@ -380,7 +380,7 @@ async fn add_artifact_label(id: &str, label: &str, global: &GlobalArgs) -> Resul
     let artifact_id = parse_uuid(id, "artifact")?;
     let (label_key, label_value) = label
         .split_once('=')
-        .ok_or_else(|| AkError::ConfigError("Label must be in key=value format".to_string()))?;
+        .ok_or_else(|| AkError::Usage("Label must be in key=value format".to_string()))?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Adding label...");

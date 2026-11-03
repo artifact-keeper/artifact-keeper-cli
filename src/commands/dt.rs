@@ -255,7 +255,9 @@ async fn project_show(uuid: &str, global: &GlobalArgs) -> Result<()> {
         .into_inner()
         .into_iter()
         .find(|p| p.uuid == uuid)
-        .ok_or_else(|| sdk_err("find project", format!("not found: {uuid}")))?;
+        .ok_or_else(|| {
+            crate::error::AkError::NotFound(format!("No Dependency-Track project {uuid}"))
+        })?;
     let raw = raw_project(raw.as_deref(), uuid);
 
     spinner.finish_and_clear();

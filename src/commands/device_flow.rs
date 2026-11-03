@@ -234,7 +234,7 @@ pub(crate) fn normalize_scopes(requested: &[String]) -> Result<Vec<String>> {
                 continue;
             }
             if part == "*" || part == "admin" {
-                return Err(AkError::ConfigError(
+                return Err(AkError::Usage(
                     "the device grant cannot request '*' or 'admin'; ask for specific scopes such \
                      as read:artifacts or write:artifacts"
                         .into(),
@@ -242,7 +242,7 @@ pub(crate) fn normalize_scopes(requested: &[String]) -> Result<Vec<String>> {
                 .into());
             }
             if matches!(part, "openid" | "profile" | "email") {
-                return Err(AkError::ConfigError(format!(
+                return Err(AkError::Usage(format!(
                     "scope '{part}' is an OIDC scope and is not available: Artifact Keeper's \
                      device grant issues AK-native tokens, not an id_token"
                 ))

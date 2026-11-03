@@ -72,10 +72,12 @@ async fn get(route: &str, query: &[(&str, &str)], global: &GlobalArgs) -> Result
         .query(query)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to get {route}: {e}")))?;
+        .map_err(|e| {
+            crate::commands::helpers::classified(format!("Failed to get {route}: {e}"), &e)
+        })?;
     let status = resp.status();
     if status == reqwest::StatusCode::NOT_FOUND {
-        return Err(AkError::ServerError(format!(
+        return Err(AkError::UnsupportedServer(format!(
             "This server has no {route} route. It exists only in a server built with the \
              `profiling` feature."
         ))
@@ -94,7 +96,7 @@ fn save_profile(body: &[u8], path: &Path) -> Result<()> {
         return std::io::stdout().write_all(body).into_diagnostic();
     }
     std::fs::write(path, body)
-        .map_err(|e| AkError::ConfigError(format!("Couldn't write {}: {e}", path.display())))?;
+        .map_err(|e| AkError::Local(format!("Couldn't write {}: {e}", path.display())))?;
     eprintln!(
         "Saved heap profile to {} ({}).",
         path.display(),

@@ -18,7 +18,7 @@ pub fn tar_gz_entry(
     wanted: impl Fn(&[&str]) -> bool,
 ) -> Result<Option<(String, Vec<u8>)>> {
     let bad = |e: std::io::Error| {
-        AkError::ConfigError(format!("{} isn't a readable .tar.gz: {e}", file.display()))
+        AkError::Usage(format!("{} isn't a readable .tar.gz: {e}", file.display()))
     };
     let opened = std::fs::File::open(file).map_err(bad)?;
     let mut archive = tar::Archive::new(GzDecoder::new(opened));
@@ -49,6 +49,6 @@ pub fn require_tar_gz_entry(
 ) -> Result<Vec<u8>> {
     match tar_gz_entry(file, wanted)? {
         Some((_, content)) => Ok(content),
-        None => Err(AkError::ConfigError(format!("{} has no {what}", file.display())).into()),
+        None => Err(AkError::Usage(format!("{} has no {what}", file.display())).into()),
     }
 }

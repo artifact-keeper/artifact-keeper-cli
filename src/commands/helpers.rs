@@ -22,18 +22,85 @@ pub fn short_id(id: &uuid::Uuid) -> String {
     id.to_string()[..8].to_string()
 }
 
+/// A failure from talking to the server, which can say which kind it was. Goes by
+/// the error's type and status, not its text: a server's message can say anything.
+pub trait RequestFailure: std::fmt::Display {
+    /// The status, when the server answered.
+    fn http_status(&self) -> Option<reqwest::StatusCode>;
+    /// True when no answer came: connecting, DNS, TLS, a timeout or a broken stream.
+    fn is_network(&self) -> bool;
+}
+
+impl RequestFailure for artifact_keeper_sdk::Error {
+    fn http_status(&self) -> Option<reqwest::StatusCode> {
+        self.status()
+    }
+
+    fn is_network(&self) -> bool {
+        self.is_communication()
+    }
+}
+
+impl RequestFailure for reqwest::Error {
+    fn http_status(&self) -> Option<reqwest::StatusCode> {
+        self.status()
+    }
+
+    fn is_network(&self) -> bool {
+        !self.is_decode() && !self.is_builder()
+    }
+}
+
+/// The `AkError` for a failed response, by its status.
+fn by_status(status: reqwest::StatusCode, message: String) -> AkError {
+    match status {
+        reqwest::StatusCode::UNAUTHORIZED => AkError::NotAuthenticated(message),
+        reqwest::StatusCode::FORBIDDEN => AkError::Forbidden(message),
+        reqwest::StatusCode::NOT_FOUND => AkError::NotFound(message),
+        _ => AkError::ServerError(message),
+    }
+}
+
+/// `message` as the `AkError` for the kind of failure `e` is.
+pub fn classified(message: String, e: &impl RequestFailure) -> AkError {
+    match e.http_status() {
+        Some(status) => by_status(status, message),
+        None if e.is_network() => AkError::NetworkError(message),
+        None => AkError::ServerError(message),
+    }
+}
+
 /// Map an SDK error to an AkError with a descriptive message.
-pub fn sdk_err(action: &str, e: impl std::fmt::Display) -> AkError {
+pub fn sdk_err(action: &str, e: impl RequestFailure) -> AkError {
+    classified(format!("Failed to {action}: {e}"), &e)
+}
+
+/// A raw request that got no answer: the cause, without the URL, which can hold a
+/// token (`ak pkg conda --token-in-url`).
+pub fn network_err(action: &str, e: reqwest::Error) -> AkError {
+    let e = e.without_url();
+    let mut message = format!("Failed to {action}: {e}");
+    let mut source = std::error::Error::source(&e);
+    while let Some(cause) = source {
+        message.push_str(&format!(": {cause}"));
+        source = cause.source();
+    }
+    AkError::NetworkError(message)
+}
+
+/// The server answered, and its response isn't what the API says it should be.
+pub fn bad_response(action: &str, e: impl std::fmt::Display) -> AkError {
     AkError::ServerError(format!("Failed to {action}: {e}"))
 }
 
 /// An error for a failed raw HTTP call, in the form `sdk_err` gives SDK errors:
 /// the status and the server's message rather than its raw JSON.
 pub fn raw_err(action: &str, status: reqwest::StatusCode, body: &str) -> AkError {
-    match artifact_keeper_sdk::error::server_message(body.as_bytes()) {
-        Some(message) => AkError::ServerError(format!("{action}: {status}: {message}")),
-        None => AkError::ServerError(format!("{action}: {status}")),
-    }
+    let message = match artifact_keeper_sdk::error::server_message(body.as_bytes()) {
+        Some(message) => format!("{action}: {status}: {message}"),
+        None => format!("{action}: {status}"),
+    };
+    by_status(status, message)
 }
 
 /// The error for a failure the server reported in a 2xx response. The caller has
@@ -169,7 +236,7 @@ pub async fn refuse_flags_before_1_11(flags: &[&str], global: &GlobalArgs) -> Re
         return Ok(());
     }
     match guard_flags(&flags.join(", "), (1, 11, 0), global).await {
-        Some(version) => Err(AkError::ServerError(format!(
+        Some(version) => Err(AkError::UnsupportedServer(format!(
             "{} needs a server on 1.11 or newer. This one is {version}, which would ignore it. \
              Nothing was changed.",
             flags.join(", ")
@@ -191,7 +258,7 @@ pub async fn since_1_11(
     if error.status() == Some(reqwest::StatusCode::NOT_FOUND)
         && let Some(version) = server_before_1_11(global).await
     {
-        return AkError::ServerError(format!(
+        return AkError::UnsupportedServer(format!(
             "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
         ));
     }
@@ -223,7 +290,7 @@ pub async fn since_1_11_raw(
     if status == reqwest::StatusCode::NOT_FOUND
         && let Some(version) = server_before_1_11(global).await
     {
-        return AkError::ServerError(format!(
+        return AkError::UnsupportedServer(format!(
             "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
         ));
     }
@@ -239,7 +306,7 @@ pub async fn since_1_11_any_status(
     global: &GlobalArgs,
 ) -> AkError {
     if let Some(version) = server_before_1_11(global).await {
-        return AkError::ServerError(format!(
+        return AkError::UnsupportedServer(format!(
             "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
         ));
     }
@@ -255,11 +322,11 @@ pub fn read_inline_or_file(value: &str, flag: &str) -> Result<Vec<u8>> {
             std::io::stdin()
                 .lock()
                 .read_to_end(&mut bytes)
-                .map_err(|e| AkError::ConfigError(format!("{flag}: can't read stdin: {e}")))?;
+                .map_err(|e| AkError::Local(format!("{flag}: can't read stdin: {e}")))?;
             Ok(bytes)
         }
         Some(path) => std::fs::read(path)
-            .map_err(|e| AkError::ConfigError(format!("{flag}: can't read '{path}': {e}")).into()),
+            .map_err(|e| AkError::Usage(format!("{flag}: can't read '{path}': {e}")).into()),
         None => Ok(value.as_bytes().to_vec()),
     }
 }
@@ -273,12 +340,12 @@ where
 {
     let bytes = read_inline_or_file(value, flag)?;
     let given: serde_json::Value = serde_json::from_slice(&bytes)
-        .map_err(|e| AkError::ConfigError(format!("{flag}: invalid JSON: {e}")))?;
+        .map_err(|e| AkError::Usage(format!("{flag}: invalid JSON: {e}")))?;
     let parsed: T = serde_json::from_value(given.clone())
-        .map_err(|e| AkError::ConfigError(format!("{flag}: {e}")))?;
+        .map_err(|e| AkError::Usage(format!("{flag}: {e}")))?;
     let kept = serde_json::to_value(&parsed).into_diagnostic()?;
     if let Some(field) = dropped_field(&given, &kept) {
-        return Err(AkError::ConfigError(format!("{flag}: unknown field '{field}'")).into());
+        return Err(AkError::Usage(format!("{flag}: unknown field '{field}'")).into());
     }
     Ok(parsed)
 }
@@ -319,7 +386,7 @@ fn has_no_value(value: &serde_json::Value) -> bool {
 /// Parse a string as a UUID, returning a friendly error with the given label.
 pub fn parse_uuid(id: &str, label: &str) -> Result<uuid::Uuid> {
     id.parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid {label} ID: {id}")).into())
+        .map_err(|_| AkError::Usage(format!("Invalid {label} ID: {id}")).into())
 }
 
 /// Parse an optional string as a UUID.
@@ -340,7 +407,7 @@ pub async fn resolve_repo_id(
     match client.get_repository().key(key_or_id).send().await {
         Ok(repo) => Ok(repo.id),
         Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => {
-            Err(AkError::ConfigError(format!(
+            Err(AkError::NotFound(format!(
                 "No repository with key '{key_or_id}'. Run `ak repo list` to see repositories."
             ))
             .into())
@@ -373,7 +440,7 @@ pub async fn resolve_artifact_id(
         .split_once('/')
         .filter(|(r, p)| !r.is_empty() && !p.is_empty())
     else {
-        return Err(AkError::ConfigError(format!(
+        return Err(AkError::Usage(format!(
             "'{id_or_path}' isn't an artifact ID or a <repo-key>/<path>"
         ))
         .into());
@@ -386,7 +453,7 @@ pub async fn resolve_artifact_id(
         .await {
         Ok(artifact) => Ok(artifact.id),
         Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => {
-            Err(AkError::ConfigError(format!(
+            Err(AkError::NotFound(format!(
                 "No artifact '{path}' in repository '{repo}'. Run `ak artifact list {repo}` to see artifacts."
             ))
             .into())
@@ -421,7 +488,7 @@ fn read_secret<R: std::io::Read>(reader: &mut R) -> Result<String> {
     let mut buf = String::new();
     reader
         .read_to_string(&mut buf)
-        .map_err(|e| AkError::ConfigError(format!("Failed to read secret from stdin: {e}")))?;
+        .map_err(|e| AkError::Local(format!("Failed to read secret from stdin: {e}")))?;
     Ok(buf.trim_end_matches(['\r', '\n']).to_string())
 }
 
@@ -467,7 +534,7 @@ pub fn resolve_secret(
 /// `how` the flags or variables that give it without a terminal.
 pub fn require_secret(secret: Option<String>, what: &str, how: &str) -> Result<String> {
     secret.ok_or_else(|| {
-        AkError::ConfigError(format!(
+        AkError::Usage(format!(
             "{what} wasn't given, and there's no terminal to ask on. Use {how}."
         ))
         .into()
@@ -525,7 +592,7 @@ pub fn prompt_err(what: &str, e: dialoguer::Error) -> AkError {
     if is_no_terminal_io_error(io) {
         AkError::NoTerminal
     } else {
-        AkError::ConfigError(format!("{what}: {e}"))
+        AkError::Usage(format!("{what}: {e}"))
     }
 }
 
@@ -700,7 +767,7 @@ mod tests {
 
     #[test]
     fn sdk_err_message() {
-        let err = sdk_err("list keys", "connection refused");
+        let err = bad_response("list keys", "connection refused");
         assert!(err.to_string().contains("Failed to list keys"));
         assert!(err.to_string().contains("connection refused"));
     }

@@ -44,9 +44,9 @@ pub async fn execute(command: GoCommand, global: &GlobalArgs) -> Result<()> {
     let go_mod = match &r#mod {
         Some(path) => tokio::fs::read(path)
             .await
-            .map_err(|e| AkError::ConfigError(format!("Can't read {}: {e}", path.display())))?,
+            .map_err(|e| AkError::Usage(format!("Can't read {}: {e}", path.display())))?,
         None => contents.go_mod.ok_or_else(|| {
-            AkError::ConfigError(format!(
+            AkError::Usage(format!(
                 "{} has no go.mod at its top level. Give one with --mod",
                 file.display()
             ))
@@ -89,7 +89,7 @@ struct ModuleZip {
 }
 
 fn read_module_zip(file: &Path) -> Result<ModuleZip> {
-    let bad = |e: String| AkError::ConfigError(format!("{}: {e}", file.display()));
+    let bad = |e: String| AkError::Usage(format!("{}: {e}", file.display()));
     let opened = std::fs::File::open(file).map_err(|e| bad(e.to_string()))?;
     let mut archive = zip::ZipArchive::new(opened).map_err(|e| bad(e.to_string()))?;
     let first = archive

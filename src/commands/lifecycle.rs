@@ -439,7 +439,7 @@ async fn create_policy(
     // A policy is live once it's created and it deletes, so its reach has to be
     // asked for, not assumed from a flag that was left off.
     if repo_id.is_none() && repos.is_empty() && !all_repos {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "say what this policy applies to: --repo <key> for one repository, --repos for \
              several, or --all-repos for every repository. Unless it's --disabled, it's live \
              as soon as it's created"
@@ -450,7 +450,7 @@ async fn create_policy(
 
     let client = client_for(global)?;
     if !VALID_POLICY_TYPES.contains(&policy_type) {
-        return Err(AkError::ConfigError(format!(
+        return Err(AkError::Usage(format!(
             "Invalid policy type '{policy_type}'. Must be one of: {}",
             VALID_POLICY_TYPES.join(", ")
         ))
@@ -595,10 +595,10 @@ async fn resolve_repos(
 /// Parse a `--config` value, which must be a JSON object.
 fn parse_config(config: &str) -> Result<serde_json::Map<String, serde_json::Value>> {
     let value: serde_json::Value = serde_json::from_str(config)
-        .map_err(|e| AkError::ConfigError(format!("--config must be a JSON object: {e}")))?;
+        .map_err(|e| AkError::Usage(format!("--config must be a JSON object: {e}")))?;
     match value {
         serde_json::Value::Object(map) => Ok(map),
-        _ => Err(AkError::ConfigError("--config must be a JSON object".into()).into()),
+        _ => Err(AkError::Usage("--config must be a JSON object".into()).into()),
     }
 }
 
@@ -639,7 +639,7 @@ async fn update_policy(
         && repos.is_none()
         && all_repos.is_none()
     {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "No fields to update; provide at least one of --name/--enabled/--disabled/--priority/--description/--config/--cron-schedule/--repos/--all-repos".into(),
         )
         .into());

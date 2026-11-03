@@ -134,15 +134,12 @@ async fn subscribe(
     global: &GlobalArgs,
 ) -> Result<()> {
     if recipients.is_empty() {
-        return Err(AkError::ConfigError(
-            "At least one --recipients address is required.".to_string(),
-        )
-        .into());
+        return Err(
+            AkError::Usage("At least one --recipients address is required.".to_string()).into(),
+        );
     }
     if events.is_empty() {
-        return Err(
-            AkError::ConfigError("At least one --events type is required.".to_string()).into(),
-        );
+        return Err(AkError::Usage("At least one --events type is required.".to_string()).into());
     }
 
     let body = artifact_keeper_sdk::types::CreateEmailSubscriptionRequest {

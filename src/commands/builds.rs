@@ -618,10 +618,10 @@ fn parse_metadata(metadata: Option<&str>) -> Result<serde_json::Map<String, serd
         None => Ok(serde_json::Map::new()),
         Some(raw) => {
             let value: serde_json::Value = serde_json::from_str(raw)
-                .map_err(|e| AkError::ConfigError(format!("Invalid metadata JSON: {e}")))?;
+                .map_err(|e| AkError::Usage(format!("Invalid metadata JSON: {e}")))?;
             match value {
                 serde_json::Value::Object(map) => Ok(map),
-                _ => Err(AkError::ConfigError("Metadata must be a JSON object".to_string()).into()),
+                _ => Err(AkError::Usage("Metadata must be a JSON object".to_string()).into()),
             }
         }
     }
@@ -633,7 +633,7 @@ fn parse_datetime(value: Option<&str>) -> Result<Option<chrono::DateTime<chrono:
         None => Ok(None),
         Some(raw) => {
             let dt = chrono::DateTime::parse_from_rfc3339(raw)
-                .map_err(|e| AkError::ConfigError(format!("Invalid timestamp '{raw}': {e}")))?;
+                .map_err(|e| AkError::Usage(format!("Invalid timestamp '{raw}': {e}")))?;
             Ok(Some(dt.with_timezone(&chrono::Utc)))
         }
     }
@@ -645,14 +645,14 @@ fn parse_artifact_spec(
 ) -> Result<artifact_keeper_sdk::types::BuildArtifactInputPayload> {
     let parts: Vec<&str> = spec.splitn(5, ':').collect();
     if parts.len() < 4 {
-        return Err(AkError::ConfigError(format!(
+        return Err(AkError::Usage(format!(
             "Invalid artifact spec '{spec}': expected name:path:sha256:size_bytes[:module]"
         ))
         .into());
     }
     let size_bytes: i64 = parts[3]
         .parse()
-        .map_err(|_| AkError::ConfigError(format!("Invalid size in artifact spec '{spec}'")))?;
+        .map_err(|_| AkError::Usage(format!("Invalid size in artifact spec '{spec}'")))?;
     let module_name = parts
         .get(4)
         .filter(|m| !m.is_empty())

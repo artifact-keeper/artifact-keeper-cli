@@ -2413,15 +2413,15 @@ async fn set_plugin_config(
 
     if let Some(path) = config_file {
         let contents = tokio::fs::read_to_string(path).await.map_err(|e| {
-            crate::error::AkError::ConfigError(format!("Failed to read config file {path}: {e}"))
+            crate::error::AkError::Usage(format!("Failed to read config file {path}: {e}"))
         })?;
         let parsed: serde_json::Value = serde_json::from_str(&contents).map_err(|e| {
-            crate::error::AkError::ConfigError(format!("Invalid JSON in config file {path}: {e}"))
+            crate::error::AkError::Usage(format!("Invalid JSON in config file {path}: {e}"))
         })?;
         match parsed {
             serde_json::Value::Object(map) => config = map,
             _ => {
-                return Err(crate::error::AkError::ConfigError(
+                return Err(crate::error::AkError::Usage(
                     "Config file must contain a JSON object".to_string(),
                 )
                 .into());
@@ -2431,7 +2431,7 @@ async fn set_plugin_config(
 
     for entry in values {
         let (key, raw) = entry.split_once('=').ok_or_else(|| {
-            crate::error::AkError::ConfigError(format!(
+            crate::error::AkError::Usage(format!(
                 "Invalid config entry '{entry}': expected KEY=VALUE"
             ))
         })?;
@@ -2443,7 +2443,7 @@ async fn set_plugin_config(
     }
 
     if config.is_empty() {
-        return Err(crate::error::AkError::ConfigError(
+        return Err(crate::error::AkError::Usage(
             "No configuration provided: pass KEY=VALUE pairs or --config-file".to_string(),
         )
         .into());
@@ -2537,9 +2537,7 @@ async fn test_format_handler(
     // --content (raw string). One of the two is required.
     let (body_content, is_base64, default_path) = if let Some(sample_path) = sample {
         let bytes = tokio::fs::read(sample_path).await.map_err(|e| {
-            crate::error::AkError::ConfigError(format!(
-                "Failed to read sample file '{sample_path}': {e}"
-            ))
+            crate::error::AkError::Usage(format!("Failed to read sample file '{sample_path}': {e}"))
         })?;
         let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
         let name = std::path::Path::new(sample_path)
@@ -2551,7 +2549,7 @@ async fn test_format_handler(
     } else if let Some(raw) = content {
         (raw.to_string(), false, "test-artifact".to_string())
     } else {
-        return Err(crate::error::AkError::ConfigError(
+        return Err(crate::error::AkError::Usage(
             "Provide either --sample <file> or --content <string> to test".to_string(),
         )
         .into());
@@ -2703,7 +2701,7 @@ async fn install_plugin_local(path: &str, global: &GlobalArgs) -> Result<()> {
             Ok(())
         }
         Err(e) if e.status().map(|s| s.as_u16()) == Some(501) => {
-            Err(crate::error::AkError::ServerError(
+            Err(crate::error::AkError::UnsupportedServer(
                 "This server does not implement local-path plugin installs. \
                  Use `ak admin plugins install-zip` instead."
                     .to_string(),
@@ -2720,7 +2718,7 @@ async fn install_plugin_zip(path: &str, global: &GlobalArgs) -> Result<()> {
     // this is wired via a raw multipart HTTP request — the same raw-HTTP
     // workaround used by chunked upload and migration streaming.
     let bytes = tokio::fs::read(path).await.map_err(|e| {
-        crate::error::AkError::ConfigError(format!("Failed to read ZIP file {path}: {e}"))
+        crate::error::AkError::Usage(format!("Failed to read ZIP file {path}: {e}"))
     })?;
 
     let file_name = std::path::Path::new(path)
@@ -2764,8 +2762,8 @@ async fn install_plugin_zip(path: &str, global: &GlobalArgs) -> Result<()> {
         .bytes()
         .await
         .map_err(|e| sdk_err("read ZIP install response", e))?;
-    let parsed: artifact_keeper_sdk::types::PluginInstallResponse =
-        serde_json::from_slice(&raw).map_err(|e| sdk_err("parse ZIP install response", e))?;
+    let parsed: artifact_keeper_sdk::types::PluginInstallResponse = serde_json::from_slice(&raw)
+        .map_err(|e| crate::commands::helpers::bad_response("parse ZIP install response", e))?;
     spinner.finish_and_clear();
 
     emit_mutation_raw(
@@ -3314,7 +3312,7 @@ async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let body: artifact_keeper_sdk::types::SystemSettings = serde_json::from_str(json_str)
-        .map_err(|e| crate::error::AkError::ConfigError(format!("Invalid settings JSON: {e}")))?;
+        .map_err(|e| crate::error::AkError::Usage(format!("Invalid settings JSON: {e}")))?;
 
     let spinner = output::spinner("Updating settings...");
 
@@ -3501,15 +3499,14 @@ async fn submit_crashes(ids_str: &str, global: &GlobalArgs) -> Result<()> {
         .filter(|s| !s.is_empty())
         .map(|s| {
             s.parse()
-                .map_err(|_| crate::error::AkError::ConfigError(format!("Invalid crash ID: {s}")))
+                .map_err(|_| crate::error::AkError::Usage(format!("Invalid crash ID: {s}")))
         })
         .collect::<std::result::Result<Vec<_>, _>>()?;
 
     if ids.is_empty() {
-        return Err(crate::error::AkError::ConfigError(
-            "No crash report IDs provided.".to_string(),
-        )
-        .into());
+        return Err(
+            crate::error::AkError::Usage("No crash report IDs provided.".to_string()).into(),
+        );
     }
 
     let spinner = output::spinner("Submitting crash reports...");
@@ -4238,9 +4235,8 @@ async fn create_ci_oidc_mapping(
     let client = client_for(global)?;
     let id = parse_uuid(provider_id, "provider")?;
 
-    let filters: serde_json::Value = serde_json::from_str(claim_filters).map_err(|e| {
-        crate::error::AkError::ConfigError(format!("Invalid claim-filters JSON: {e}"))
-    })?;
+    let filters: serde_json::Value = serde_json::from_str(claim_filters)
+        .map_err(|e| crate::error::AkError::Usage(format!("Invalid claim-filters JSON: {e}")))?;
     let allowed = parse_repo_ids(&client, allowed_repo_ids).await?;
 
     let spinner = output::spinner("Creating identity mapping...");
@@ -4291,7 +4287,7 @@ async fn update_ci_oidc_mapping(
     let filters = match claim_filters {
         None => None,
         Some(s) => Some(serde_json::from_str::<serde_json::Value>(s).map_err(|e| {
-            crate::error::AkError::ConfigError(format!("Invalid claim-filters JSON: {e}"))
+            crate::error::AkError::Usage(format!("Invalid claim-filters JSON: {e}"))
         })?),
     };
     let allowed = parse_repo_ids(&client, allowed_repo_ids).await?;
@@ -4778,10 +4774,9 @@ async fn proxy_request(
             .map_err(|e| sdk_err("proxy request", e))?
             .status(),
         other => {
-            return Err(crate::error::AkError::ConfigError(format!(
-                "Unsupported proxy method: {other}"
-            ))
-            .into());
+            return Err(
+                crate::error::AkError::Usage(format!("Unsupported proxy method: {other}")).into(),
+            );
         }
     };
 

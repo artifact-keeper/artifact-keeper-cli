@@ -218,7 +218,7 @@ pub async fn execute(command: NpmCommand, global: &GlobalArgs) -> Result<()> {
         NpmCommand::Audit { repo, body, kind } => {
             let text = read_inline_or_file(&body, "--body")?;
             let parsed: Value = serde_json::from_slice(&text)
-                .map_err(|e| AkError::ConfigError(format!("--body isn't JSON: {e}")))?;
+                .map_err(|e| AkError::Usage(format!("--body isn't JSON: {e}")))?;
             let tail: &[&str] = match kind {
                 AuditKind::Bulk => &["advisories", "bulk"],
                 AuditKind::Quick => &["audits", "quick"],
@@ -250,7 +250,7 @@ async fn publish(
         parts.len() == 2 && parts[1] == "package.json"
     })?;
     let manifest: Value = serde_json::from_slice(&manifest)
-        .map_err(|e| AkError::ConfigError(format!("The package.json in the tarball: {e}")))?;
+        .map_err(|e| AkError::Usage(format!("The package.json in the tarball: {e}")))?;
     let tarball = upload.read().await?;
     let tarball_url = wire.url(&[]).to_string();
     let document = publish_document(manifest, &tarball, tag, repo, &tarball_url)?;
@@ -299,7 +299,7 @@ fn publish_document(
         manifest["name"].as_str().map(str::to_string),
         manifest["version"].as_str().map(str::to_string),
     ) else {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "The tarball's package.json has no name or version".to_string(),
         )
         .into());
@@ -362,7 +362,7 @@ async fn packument_without(wire: &Wire, repo: &str, package: &str, version: &str
         .and_then(|v| v.as_object_mut())
         .and_then(|versions| versions.remove(version));
     if removed.is_none() {
-        return Err(AkError::ConfigError(format!("{package} has no version {version}")).into());
+        return Err(AkError::NotFound(format!("{package} has no version {version}")).into());
     }
     Ok(document)
 }

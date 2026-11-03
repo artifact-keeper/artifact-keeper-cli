@@ -176,7 +176,7 @@ impl TokenPolicyCommand {
                     && !no_default_days
                     && apply_to_service_accounts.is_none()
                 {
-                    return Err(AkError::ConfigError(
+                    return Err(AkError::Usage(
                         "Nothing to change. Run `ak admin settings token-policy set --help` to \
                          see the fields."
                             .into(),

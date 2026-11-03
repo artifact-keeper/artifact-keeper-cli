@@ -127,7 +127,7 @@ impl fmt::Display for Error {
         match self {
             Self::InvalidRequest(reason) => write!(f, "invalid request: {reason}"),
             Self::Communication(e) => {
-                write!(f, "{e}")?;
+                write!(f, "{}", without_secrets(e))?;
                 // reqwest's top-level message is "error sending request for url":
                 // the cause is further down the chain.
                 let mut source = std::error::Error::source(e);
@@ -147,6 +147,20 @@ impl fmt::Display for Error {
             },
         }
     }
+}
+
+/// A reqwest error's text, with its URL cut down to where it went. Userinfo and a
+/// query can hold secrets, and the text ends up on a terminal and in CI logs.
+fn without_secrets(e: &reqwest::Error) -> String {
+    let text = e.to_string();
+    let Some(url) = e.url() else {
+        return text;
+    };
+    let mut shown = url.clone();
+    let _ = shown.set_username("");
+    let _ = shown.set_password(None);
+    shown.set_query(None);
+    text.replace(url.as_str(), shown.as_str())
 }
 
 impl std::error::Error for Error {

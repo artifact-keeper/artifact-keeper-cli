@@ -170,8 +170,7 @@ fn parse_entries(value: Option<&str>) -> Result<Vec<types::AllowlistEntry>> {
         return Ok(Vec::new());
     };
     let bytes = read_inline_or_file(value, "--entries")?;
-    serde_json::from_slice(&bytes)
-        .map_err(|e| AkError::ConfigError(format!("--entries: {e}")).into())
+    serde_json::from_slice(&bytes).map_err(|e| AkError::Usage(format!("--entries: {e}")).into())
 }
 
 impl AllowlistCommand {
@@ -210,7 +209,7 @@ impl AllowlistCommand {
                 let scope = scope
                     .map(|s| {
                         s.parse::<types::AllowlistScope>()
-                            .map_err(|e| AkError::ConfigError(format!("Invalid --scope: {e}")))
+                            .map_err(|e| AkError::Usage(format!("Invalid --scope: {e}")))
                     })
                     .transpose()?;
                 let body = types::CondaAllowlist {

@@ -663,10 +663,10 @@ async fn export_sbom(
 
     // The document, in both cases. A wrapper around it isn't an SBOM any tool can read.
     let json = serde_json::to_string_pretty(&sbom.content)
-        .map_err(|e| sdk_err("serialize SBOM content", e))?;
+        .map_err(|e| AkError::Local(format!("Failed to serialize SBOM content: {e}")))?;
     tokio::fs::write(output_path, json)
         .await
-        .map_err(|e| sdk_err("write file", e))?;
+        .map_err(|e| AkError::Local(format!("Can't write {output_path}: {e}")))?;
 
     spinner.finish_and_clear();
     eprintln!("SBOM exported to {output_path} (format: {})", sbom.format);
@@ -682,15 +682,16 @@ fn deliver_document(
     global: &GlobalArgs,
 ) -> Result<()> {
     if let Some(path) = output_path {
-        std::fs::write(path, raw).map_err(|e| sdk_err("write file", e))?;
+        std::fs::write(path, raw)
+            .map_err(|e| AkError::Local(format!("Can't write {path}: {e}")))?;
         eprintln!("{what} written to {path}");
         return Ok(());
     }
     if matches!(global.format, OutputFormat::Quiet) {
         return Ok(());
     }
-    let value: Value =
-        serde_json::from_slice(raw).map_err(|e| sdk_err("parse the server's response", e))?;
+    let value: Value = serde_json::from_slice(raw)
+        .map_err(|e| crate::commands::helpers::bad_response("parse the server's response", e))?;
     let pretty = serde_json::to_string_pretty(&value).unwrap_or_default();
     println!(
         "{}",
@@ -781,7 +782,7 @@ async fn environment_sbom(
             Some(reqwest::StatusCode::METHOD_NOT_ALLOWED | reqwest::StatusCode::NOT_FOUND)
         ) && let Some(version) = server_before_1_11(global).await
         {
-            return Err(AkError::ServerError(format!(
+            return Err(AkError::UnsupportedServer(format!(
                 "`ak sbom environment` needs a server on 1.11 or newer. This one is {version}."
             ))
             .into());

@@ -562,7 +562,7 @@ async fn sync(repo: &str, global: &GlobalArgs) -> Result<()> {
     // The server answers 200 and keeps the reason in its log, so a sync that
     // failed upstream is only visible in this field.
     if !result.succeeded {
-        return Err(AkError::ServerError(format!(
+        return Err(AkError::ReportedFailure(format!(
             "The sync of '{}' failed upstream. The server's log has the reason.",
             result.repository
         ))

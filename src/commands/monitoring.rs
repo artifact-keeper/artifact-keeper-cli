@@ -189,7 +189,9 @@ async fn metrics(global: &GlobalArgs) -> Result<()> {
     let mut stream = resp.into_inner();
     let mut body = Vec::new();
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| AkError::ServerError(format!("Metrics read error: {e}")))?;
+        let chunk = chunk.map_err(|e| {
+            crate::commands::helpers::classified(format!("Metrics read error: {e}"), &e)
+        })?;
         body.extend_from_slice(&chunk);
     }
     let text = String::from_utf8_lossy(&body).into_owned();
@@ -279,7 +281,7 @@ async fn alerts(global: &GlobalArgs) -> Result<()> {
 
 async fn suppress(service: &str, until: &str, global: &GlobalArgs) -> Result<()> {
     let until_ts = chrono::DateTime::parse_from_rfc3339(until)
-        .map_err(|e| AkError::ConfigError(format!("Invalid --until timestamp '{until}': {e}")))?
+        .map_err(|e| AkError::Usage(format!("Invalid --until timestamp '{until}': {e}")))?
         .with_timezone(&chrono::Utc);
 
     let client = client_for(global)?;

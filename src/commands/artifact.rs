@@ -294,7 +294,7 @@ fn json_flag(value: Option<String>, flag: &str) -> Result<Option<serde_json::Val
         .map(|v| {
             let bytes = read_inline_or_file(&v, flag)?;
             serde_json::from_slice(&bytes)
-                .map_err(|e| AkError::ConfigError(format!("{flag}: invalid JSON: {e}")).into())
+                .map_err(|e| AkError::Usage(format!("{flag}: invalid JSON: {e}")).into())
         })
         .transpose()
 }
@@ -620,9 +620,7 @@ async fn push(
             if path.is_file() {
                 files_to_upload.push(path);
             } else {
-                return Err(
-                    AkError::ConfigError(format!("No files match pattern: {pattern}")).into(),
-                );
+                return Err(AkError::Usage(format!("No files match pattern: {pattern}")).into());
             }
         } else {
             files_to_upload.extend(matches);
@@ -877,7 +875,7 @@ async fn multipart_upload(
     let part = reqwest::multipart::Part::stream_with_length(body, file_size)
         .file_name(file_name.to_string())
         .mime_str(content_type)
-        .map_err(|e| AkError::ConfigError(format!("Invalid content type: {e}")))?;
+        .map_err(|e| AkError::Usage(format!("Invalid content type: {e}")))?;
     let mut form = reqwest::multipart::Form::new();
     if let Some(path) = form_path {
         form = form.text("path", path.to_string());
@@ -941,7 +939,7 @@ async fn open_pull_output(out_path: &Path, force: bool) -> Result<tokio::fs::Fil
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
             Err(e) => {
-                return Err(AkError::ConfigError(format!(
+                return Err(AkError::Local(format!(
                     "Cannot overwrite '{}': {e}",
                     out_path.display()
                 ))
@@ -957,14 +955,14 @@ async fn open_pull_output(out_path: &Path, force: bool) -> Result<tokio::fs::Fil
         .await
         .map_err(|e| {
             if e.kind() == std::io::ErrorKind::AlreadyExists {
-                AkError::ConfigError(format!(
+                AkError::Usage(format!(
                     "Output file '{}' already exists. Pass --force to overwrite it, \
                      or use --output to choose a different path.",
                     out_path.display()
                 ))
                 .into()
             } else {
-                AkError::ConfigError(format!(
+                AkError::Local(format!(
                     "Cannot create output file '{}': {e}",
                     out_path.display()
                 ))
@@ -1012,7 +1010,9 @@ async fn pull(
     let mut total_bytes: u64 = 0;
     let copy_result: Result<()> = async {
         while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|e| AkError::ServerError(format!("Download error: {e}")))?;
+            let chunk = chunk.map_err(|e| {
+                crate::commands::helpers::classified(format!("Download error: {e}"), &e)
+            })?;
             tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
                 .await
                 .into_diagnostic()?;
@@ -1081,7 +1081,7 @@ async fn list(
     }
 
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-    let resp = resp.map_err(|e| AkError::ServerError(format!("Failed to list artifacts: {e}")))?;
+    let resp = resp.map_err(|e| crate::commands::helpers::sdk_err("list artifacts", e))?;
 
     spinner.finish_and_clear();
 
@@ -1221,9 +1221,9 @@ async fn info(
     let (artifact, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
     let artifact = artifact.map_err(|e| {
         if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
-            AkError::ServerError(format!("Artifact '{artifact_path}' not found in '{repo}'"))
+            AkError::NotFound(format!("Artifact '{artifact_path}' not found in '{repo}'"))
         } else {
-            AkError::ServerError(format!("Failed to find artifact: {e}"))
+            crate::commands::helpers::sdk_err("find artifact", e)
         }
     })?;
 
@@ -1277,7 +1277,7 @@ async fn show_by_id(id: &str, global: &GlobalArgs) -> Result<()> {
     let (artifact, raw) =
         artifact_keeper_sdk::raw::capture(client.get_artifact().id(artifact_id).send()).await;
     let artifact = artifact
-        .map_err(|e| AkError::ServerError(format!("Failed to get artifact: {e}")))?
+        .map_err(|e| crate::commands::helpers::sdk_err("get artifact", e))?
         .into_inner();
 
     let info = serde_json::json!({
@@ -1333,7 +1333,7 @@ async fn show_metadata(id: &str, global: &GlobalArgs) -> Result<()> {
         artifact_keeper_sdk::raw::capture(client.get_artifact_metadata().id(artifact_id).send())
             .await;
     let meta = meta
-        .map_err(|e| AkError::ServerError(format!("Failed to get artifact metadata: {e}")))?
+        .map_err(|e| crate::commands::helpers::sdk_err("get artifact metadata", e))?
         .into_inner();
 
     let info = serde_json::json!({
@@ -1369,7 +1369,7 @@ async fn show_stats(id: &str, global: &GlobalArgs) -> Result<()> {
     let (stats, raw) =
         artifact_keeper_sdk::raw::capture(client.get_artifact_stats().id(artifact_id).send()).await;
     let stats = stats
-        .map_err(|e| AkError::ServerError(format!("Failed to get artifact stats: {e}")))?
+        .map_err(|e| crate::commands::helpers::sdk_err("get artifact stats", e))?
         .into_inner();
 
     let info = serde_json::json!({
@@ -1507,9 +1507,9 @@ async fn versions(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Resul
 
 /// `path=sha256`
 fn parse_presence_item(entry: &str) -> Result<artifact_keeper_sdk::types::ArtifactPresenceItem> {
-    let (path, sha256) = entry.rsplit_once('=').ok_or_else(|| {
-        AkError::ConfigError(format!("--item must be 'path=sha256', got '{entry}'"))
-    })?;
+    let (path, sha256) = entry
+        .rsplit_once('=')
+        .ok_or_else(|| AkError::Usage(format!("--item must be 'path=sha256', got '{entry}'")))?;
     Ok(artifact_keeper_sdk::types::ArtifactPresenceItem {
         path: path.to_string(),
         sha256: sha256.to_string(),
@@ -1523,13 +1523,13 @@ fn parse_presence_list(
 ) -> Result<Vec<artifact_keeper_sdk::types::ArtifactPresenceItem>> {
     if text.trim_start().starts_with('[') {
         return serde_json::from_str(text)
-            .map_err(|e| AkError::ConfigError(format!("--from: invalid JSON: {e}")).into());
+            .map_err(|e| AkError::Usage(format!("--from: invalid JSON: {e}")).into());
     }
     text.lines()
         .filter(|line| !line.trim().is_empty())
         .map(|line| {
             let (sha256, path) = line.split_once(char::is_whitespace).ok_or_else(|| {
-                AkError::ConfigError(format!("--from: expected '<sha256>  <path>', got '{line}'"))
+                AkError::Usage(format!("--from: expected '<sha256>  <path>', got '{line}'"))
             })?;
             // sha256sum marks a binary-mode file with `*` before its name.
             let path = path.trim_start();
@@ -1560,11 +1560,11 @@ async fn missing(
         };
         let bytes = read_inline_or_file(&source, "--from")?;
         let text = String::from_utf8(bytes)
-            .map_err(|_| AkError::ConfigError("--from: the input isn't text".into()))?;
+            .map_err(|_| AkError::Usage("--from: the input isn't text".into()))?;
         all.extend(parse_presence_list(&text)?);
     }
     if all.is_empty() {
-        return Err(AkError::ConfigError("Give at least one --item, or --from".into()).into());
+        return Err(AkError::Usage("Give at least one --item, or --from".into()).into());
     }
 
     let client = client_for(global)?;
@@ -1724,7 +1724,7 @@ async fn delete(
         .path(artifact_path)
         .send()
         .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete artifact: {e}")))?;
+        .map_err(|e| crate::commands::helpers::sdk_err("delete artifact", e))?;
 
     emit_mutation(
         &serde_json::json!({ "repo_key": repo, "path": artifact_path, "status": "deleted" }),
@@ -1791,7 +1791,8 @@ async fn search(
     }
 
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-    let resp = resp.map_err(|e| AkError::ServerError(format!("Search failed: {e}")))?;
+    let resp =
+        resp.map_err(|e| crate::commands::helpers::classified(format!("Search failed: {e}"), &e))?;
 
     spinner.finish_and_clear();
 
@@ -1866,7 +1867,7 @@ fn parse_copy_destination<'a>(
         None => (destination, ""),
     };
     if repo.is_empty() {
-        return Err(AkError::ConfigError(format!(
+        return Err(AkError::Usage(format!(
             "Destination must be 'repo' or 'repo/path', got '{destination}'"
         ))
         .into());
@@ -1885,7 +1886,7 @@ async fn copy(
     let (src_repo, src_path) = source
         .split_once('/')
         .filter(|(repo, path)| !repo.is_empty() && !path.is_empty())
-        .ok_or_else(|| AkError::ConfigError("Source must be in format 'repo/path'".into()))?;
+        .ok_or_else(|| AkError::Usage("Source must be in format 'repo/path'".into()))?;
     let (dst_repo, dst_path) = parse_copy_destination(destination, src_path)?;
 
     let is_cross_instance = from_instance.is_some() || to_instance.is_some();
@@ -1894,7 +1895,7 @@ async fn copy(
     // and an upload.
     if is_cross_instance || dst_path != src_path {
         if promotion.notes.is_some() || promotion.skip_policy_check.is_some() {
-            return Err(AkError::ConfigError(
+            return Err(AkError::Usage(
                 "--notes and --skip-policy-check apply to a promotion, which needs the same \
                  instance and the same path"
                     .into(),
@@ -1936,7 +1937,7 @@ async fn same_instance_copy(
         .map_err(|e| {
             spinner.finish_and_clear();
             if e.status() == Some(reqwest::StatusCode::NOT_FOUND) {
-                AkError::ServerError(format!("Artifact '{src_path}' not found in '{src_repo}'"))
+                AkError::NotFound(format!("Artifact '{src_path}' not found in '{src_repo}'"))
             } else {
                 sdk_err("find source artifact", e)
             }
@@ -1959,7 +1960,8 @@ async fn same_instance_copy(
     )
     .await;
     spinner.finish_and_clear();
-    let result = result.map_err(|e| AkError::ServerError(format!("Copy failed: {e}")))?;
+    let result = result
+        .map_err(|e| crate::commands::helpers::classified(format!("Copy failed: {e}"), &e))?;
 
     // A promotion a policy turned down still answers 200.
     if !result.promoted {
@@ -1970,7 +1972,7 @@ async fn same_instance_copy(
             .collect::<Vec<_>>()
             .join("; ");
         let message = result.message.as_deref().unwrap_or("refused by policy");
-        return Err(AkError::ServerError(format!(
+        return Err(AkError::ReportedFailure(format!(
             "Copy failed: {}{}{}",
             output::sanitize_terminal(message),
             if reasons.is_empty() { "" } else { ": " },
@@ -2034,7 +2036,9 @@ async fn transfer_copy(
     let mut stream = resp.bytes_stream();
     let mut total_bytes: u64 = 0;
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| AkError::ServerError(format!("Download error: {e}")))?;
+        let chunk = chunk.map_err(|e| {
+            crate::commands::helpers::classified(format!("Download error: {e}"), &e)
+        })?;
         tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
             .await
             .into_diagnostic()?;

@@ -342,12 +342,12 @@ async fn resolve_setup(
             .per_page(100)
             .send()
             .await
-            .map_err(|e| AkError::ServerError(format!("Failed to list repositories: {e}")))?;
+            .map_err(|e| crate::commands::helpers::sdk_err("list repositories", e))?;
 
         spinner.finish_and_clear();
 
         if repos.items.is_empty() {
-            return Err(AkError::ConfigError(format!(
+            return Err(AkError::NotFound(format!(
                 "No {format} repositories found. Create one with `ak repo create <key> --pkg-format {format}`"
             ))
             .into());
@@ -358,7 +358,7 @@ async fn resolve_setup(
             eprintln!("Using repository: {key}");
             key
         } else if global.no_input {
-            return Err(AkError::ConfigError(format!(
+            return Err(AkError::Usage(format!(
                 "Multiple {format} repositories found. Use --repo to specify one."
             ))
             .into());
@@ -478,7 +478,7 @@ fn write_backup(target: &Path, content: &[u8]) -> Result<PathBuf> {
         }
         return Ok(backup);
     }
-    Err(AkError::ConfigError(format!("No free backup name for {}", target.display())).into())
+    Err(AkError::Local(format!("No free backup name for {}", target.display())).into())
 }
 
 /// Stands in for the token in every config template, and is what the user sees
@@ -523,7 +523,7 @@ fn read_existing(path: &Path) -> Result<String> {
     match std::fs::read_to_string(path) {
         Ok(text) => Ok(text),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
-        Err(e) => Err(AkError::ConfigError(format!("Can't read {}: {e}", path.display())).into()),
+        Err(e) => Err(AkError::Usage(format!("Can't read {}: {e}", path.display())).into()),
     }
 }
 
@@ -646,7 +646,7 @@ fn sudo_write(path: &Path, content: &str, mode: &str) -> Result<()> {
         .into_diagnostic()?;
 
     if !status.success() {
-        return Err(AkError::ConfigError(format!("Failed to write {}", path.display())).into());
+        return Err(AkError::Local(format!("Failed to write {}", path.display())).into());
     }
 
     Ok(())
@@ -901,9 +901,7 @@ async fn setup_docker(
     )?;
 
     if !status.success() {
-        return Err(
-            AkError::ConfigError("Docker login failed. Check your credentials.".into()).into(),
-        );
+        return Err(AkError::Local("Docker login failed. Check your credentials.".into()).into());
     }
 
     eprintln!(
@@ -1134,7 +1132,7 @@ async fn setup_helm(repo: Option<&str>, options: SetupOptions, global: &GlobalAr
     )?;
 
     if !status.success() {
-        return Err(AkError::ConfigError("helm repo add failed".into()).into());
+        return Err(AkError::Local("helm repo add failed".into()).into());
     }
 
     eprintln!("Helm repository added. Run `helm repo update` to fetch charts.");

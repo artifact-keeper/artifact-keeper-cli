@@ -88,7 +88,7 @@ fn package_name(file: &str) -> Result<&str> {
         Some(parts) if parts.len() == 3 && parts.iter().all(|p| !p.is_empty()) => {
             Ok(file.split('_').next().unwrap_or_default())
         }
-        _ => Err(AkError::ConfigError(format!(
+        _ => Err(AkError::Usage(format!(
             "`{file}` isn't named <name>_<version>_<arch>.deb, which the server needs"
         ))
         .into()),

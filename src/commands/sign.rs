@@ -483,8 +483,9 @@ async fn export_key(id: &str, global: &GlobalArgs) -> Result<()> {
         bytes.extend_from_slice(&chunk);
     }
 
-    let pem =
-        String::from_utf8(bytes).map_err(|e| sdk_err("decode public key (invalid UTF-8)", e))?;
+    let pem = String::from_utf8(bytes).map_err(|e| {
+        crate::commands::helpers::bad_response("decode public key (invalid UTF-8)", e)
+    })?;
     print!("{pem}");
 
     Ok(())
@@ -529,7 +530,7 @@ async fn update_config(
         && sign_packages.is_none()
         && signing_key_id.is_none()
     {
-        return Err(AkError::ConfigError(
+        return Err(AkError::Usage(
             "Nothing to update. Pass at least one setting, such as --sign-packages true."
                 .to_string(),
         )
@@ -596,8 +597,9 @@ async fn export_repo_key(repo_id: &str, global: &GlobalArgs) -> Result<()> {
         bytes.extend_from_slice(&chunk);
     }
 
-    let pem =
-        String::from_utf8(bytes).map_err(|e| sdk_err("decode public key (invalid UTF-8)", e))?;
+    let pem = String::from_utf8(bytes).map_err(|e| {
+        crate::commands::helpers::bad_response("decode public key (invalid UTF-8)", e)
+    })?;
     print!("{pem}");
 
     Ok(())
