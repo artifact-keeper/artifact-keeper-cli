@@ -267,7 +267,7 @@ jobs:
         if: steps.backend.outputs.skip != 'true'
         env:
           E2E_BACKEND_URL: http://localhost:8081
-        run: cargo test --test 'e2e_*' -- --include-ignored --test-threads=1
+        run: cargo test --no-fail-fast --test 'e2e_*' -- --include-ignored --test-threads=1
       - name: Backend logs (on failure)
         if: failure() && steps.backend.outputs.skip != 'true'
         run: docker logs e2e-backend
