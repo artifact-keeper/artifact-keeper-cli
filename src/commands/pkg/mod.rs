@@ -39,7 +39,7 @@ mod rpm;
 mod swift;
 mod terraform;
 mod vscode;
-mod wire;
+pub(crate) mod wire;
 
 use clap::{Args, Subcommand};
 use miette::Result;

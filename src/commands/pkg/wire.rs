@@ -61,6 +61,40 @@ impl Wire {
         })
     }
 
+    /// [`Wire::new`] that goes without a login when there isn't one, for reads a public
+    /// repository answers anonymously.
+    pub fn new_optional_auth(global: &GlobalArgs) -> Result<Self> {
+        match Self::new(global) {
+            Ok(wire) => Ok(wire),
+            Err(e)
+                if matches!(
+                    e.downcast_ref::<AkError>(),
+                    Some(AkError::NotAuthenticated(_))
+                ) =>
+            {
+                let config = crate::config::AppConfig::load()?;
+                let (_, instance) = config.resolve_instance(global.instance.as_deref())?;
+                let base = Url::parse(&instance.url).map_err(|e| {
+                    AkError::ConfigError(format!(
+                        "The instance URL {} isn't valid: {e}",
+                        instance.url
+                    ))
+                })?;
+                Ok(Self {
+                    client: raw_http_client()?,
+                    base,
+                    auth: String::new(),
+                })
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    /// The instance's URL.
+    pub fn base(&self) -> &Url {
+        &self.base
+    }
+
     /// The URL of a path on the instance. Each segment is encoded on its own, so a
     /// `/` inside a segment stays part of it.
     pub fn url(&self, segments: &[&str]) -> Url {
@@ -74,9 +108,11 @@ impl Wire {
     }
 
     pub fn request(&self, method: Method, url: Url) -> RequestBuilder {
-        self.client
-            .request(method, url)
-            .header(reqwest::header::AUTHORIZATION, &self.auth)
+        let request = self.client.request(method, url);
+        if self.auth.is_empty() {
+            return request;
+        }
+        request.header(reqwest::header::AUTHORIZATION, &self.auth)
     }
 
     /// A request that carries its credential in the URL, so no header. See [`Wire::token`].

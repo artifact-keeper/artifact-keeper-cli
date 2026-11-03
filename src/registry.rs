@@ -760,6 +760,12 @@ pub static COMMANDS: &[Op] = &[
         &[],
     ),
     covered(
+        "DELETE",
+        "/api/v1/repositories/{key}/artifacts/{path}",
+        "agent plugins delete",
+        &[],
+    ),
+    covered(
         "GET",
         "/api/v1/repositories/{key}/download/{path}",
         "artifact pull",

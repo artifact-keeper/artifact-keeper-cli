@@ -21,6 +21,11 @@ use quote::ToTokens;
 /// `(file under src/commands, function or "*", why it doesn't print the server's body)`.
 const OPT_OUTS: &[(&str, &str, &str)] = &[
     (
+        "agent/plugins.rs",
+        "print_local",
+        "Prints what this machine has or did: installs, a dry run, entries filtered from a marketplace",
+    ),
+    (
         "admin.rs",
         "proxy_request",
         "The SDK gives no proxied body to print, only the status",

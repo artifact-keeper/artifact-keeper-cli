@@ -143,6 +143,7 @@ Core
   ak artifact      Push, pull, list, search, copy, and delete artifacts; revisions and upload sessions
   ak api           Send any HTTP request to the instance, with its auth and TLS settings
   ak pkg           Publish packages and use format APIs without the format's own client
+  ak agent         Publish and install AI coding-agent plugins (Claude Code, Cursor, Codex, Copilot)
   ak setup         Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more
   ak doctor        Diagnose configuration and connectivity issues. Exits 1 if a check fails
   ak config        Get/set CLI configuration values
@@ -194,6 +195,51 @@ Administration
 ```
 
 Run `ak <command> --help` for detailed usage and examples. `ak ls`, `ak rm`, `ak login`, `ak logout`, `ak whoami`, `ak upload` and `ak download` work as you'd expect. `ak ls` lists repositories, and `ak ls <repo>` what's in one.
+
+## Agent Plugins
+
+An Agent Plugins repository (`--pkg-format agentplugins`) holds plugin bundles for
+AI coding agents. `ak agent plugins` publishes a plugin directory and installs it
+where each agent looks for plugins:
+
+```bash
+# Publish: the manifests name the plugin, --version sets the version in all of them
+ak repo create plugins --pkg-format agentplugins --repo-type local
+ak agent plugins publish ./deploy-tools --repo plugins
+ak agent plugins publish ./deploy-tools --repo plugins --version 1.3.0 --dry-run
+
+# Install for one or more agents, then keep up to date
+ak agent plugins install deploy-tools --repo plugins --harness claude,cursor
+ak agent plugins list --check-updates
+ak agent plugins update --all
+ak agent plugins uninstall deploy-tools --harness cursor
+
+# Find and remove published versions
+ak agent plugins search deploy --repo plugins --harness codex
+ak agent plugins delete deploy-tools --version 1.2.0 --repo plugins --yes
+```
+
+`publish` finds `.claude-plugin/plugin.json`, a root `plugin.json` with an
+agent-plugins.org `$schema`, `.cursor-plugin/plugin.json`,
+`.codex-plugin/plugin.json` and `gemini-extension.json`. It zips the directory
+with the same bytes for the same files, leaves out `.git`, refuses symbolic links,
+and never changes the directory: a `--version` is written only into the upload.
+
+`install` checks the zip's SHA-256 against the repository's index, refuses entries
+that would land outside the plugin, and records what it installed in
+`<plugin>/.ak/plugin-info.json`:
+
+| `--harness` | Installed to | Then |
+|---|---|---|
+| `claude` | `~/.claude/plugins/local/ak/<repo>/<slug>`, listed in the local marketplace `ak-<repo>` | `claude plugin marketplace add` (or `update`) and `claude plugin install <slug>@ak-<repo>` |
+| `cursor` | `~/.cursor/plugins/local/<slug>` | Reload Cursor |
+| `codex` | `~/.agents/plugins/local/ak/<repo>/<slug>`, listed in the local marketplace `ak-<repo>` | `codex plugin marketplace add` |
+| `vscode` | `~/.copilot/installed-plugins/ak-<repo>/<slug>` | `copilot plugin install` |
+
+The follow-up commands run when the agent's CLI is on `PATH`, and are printed
+otherwise. `--path DIR` installs to `DIR/<slug>` and runs nothing. Claude Code can
+also read the repository itself, with no `ak`:
+`claude plugin marketplace add https://<host>/agentplugins/<repo>/claude-marketplace.json`.
 
 ## Output Formats
 

@@ -1775,7 +1775,7 @@ async fn upload_session_cancel(
     Ok(())
 }
 
-async fn delete(
+pub(crate) async fn delete(
     repo: &str,
     artifact_path: &str,
     skip_confirm: bool,
