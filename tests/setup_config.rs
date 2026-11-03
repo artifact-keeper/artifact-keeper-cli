@@ -372,6 +372,39 @@ async fn a_refused_mint_leaves_existing_cargo_files_alone() {
     assert!(!sandbox.path("home/.cargo/credentials.toml").exists());
 }
 
+/// What a user had before `setup` must still be somewhere after any number of
+/// runs: a second run used to overwrite the backup with `setup`'s own file.
+#[tokio::test]
+async fn running_setup_twice_keeps_the_original_in_a_backup() {
+    let sandbox = Sandbox::new(None).await;
+    for (tool, file) in [
+        ("npm", "home/.npmrc"),
+        ("pip", "home/.config/pip/pip.conf"),
+        ("cargo", "home/.cargo/config.toml"),
+        ("cargo", "home/.cargo/credentials.toml"),
+        ("maven", "home/.m2/settings.xml"),
+        ("gradle", "home/.gradle/init.d/artifact-keeper.gradle"),
+    ] {
+        let original = format!("original of {file}\n");
+        std::fs::create_dir_all(sandbox.path(file).parent().unwrap()).unwrap();
+        std::fs::write(sandbox.path(file), &original).unwrap();
+
+        // Two tokens, so the second run also replaces something different.
+        for token in ["lasting-token-one", "lasting-token-two"] {
+            let output = sandbox.run(token, &[tool, "--repo", "r"]);
+            assert_eq!(output.status.code(), Some(0), "setup {tool}");
+        }
+
+        let dir = sandbox.path(file).parent().unwrap().to_path_buf();
+        let survived = std::fs::read_dir(&dir).unwrap().any(|entry| {
+            let path = entry.unwrap().path();
+            path != sandbox.path(file)
+                && std::fs::read_to_string(&path).is_ok_and(|text| text == original)
+        });
+        assert!(survived, "the original of {file} is gone");
+    }
+}
+
 #[tokio::test]
 async fn a_lasting_token_is_used_as_it_is() {
     let sandbox = Sandbox::new(None).await;
