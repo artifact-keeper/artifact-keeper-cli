@@ -12,14 +12,55 @@ mod transport;
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    quiet_exit_on_closed_pipe();
     let cli = cli::Cli::parse();
     match cli.execute().await.map_err(explain_no_terminal) {
         Ok(()) => ExitCode::SUCCESS,
+        // The reader has what it wanted, as with `ak repo list | head -1`.
+        Err(e) if is_broken_pipe(&e) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("Error: {e:?}");
             ExitCode::from(exit_code(&e))
         }
     }
+}
+
+/// `println!` and `eprintln!` panic when the reader has gone. With `| head -1` that's
+/// normal, so leave quietly, as the command would have if it had finished.
+fn quiet_exit_on_closed_pipe() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let message = info
+            .payload()
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| info.payload().downcast_ref::<&str>().copied())
+            .unwrap_or_default();
+        if is_closed_pipe_panic(message) {
+            std::process::exit(0);
+        }
+        default_hook(info);
+    }));
+}
+
+/// The text is the standard library's, and nothing from a server reaches it. Windows
+/// has its own error numbers for a pipe that's closed or being closed.
+fn is_closed_pipe_panic(message: &str) -> bool {
+    (message.starts_with("failed printing to stdout")
+        || message.starts_with("failed printing to stderr"))
+        && (message.contains("Broken pipe")
+            || message.contains("os error 32")
+            || message.contains("os error 109")
+            || message.contains("os error 232"))
+}
+
+/// Goes by the error's type. A failure from another pipe the command has open, such
+/// as a child's stdin, isn't this: those are reported with their own message.
+fn is_broken_pipe(e: &miette::Report) -> bool {
+    matches!(
+        e.downcast_ref::<error::AkError>(),
+        Some(error::AkError::Io(io)) if io.kind() == std::io::ErrorKind::BrokenPipe
+    )
 }
 
 /// The exit code for a failed command: that of the `AkError` in its chain, which a
@@ -101,6 +142,30 @@ pub(crate) mod test_utils {
             std::env::remove_var("AK_CONFIG_DIR");
             std::env::remove_var("AK_TOKEN");
         }
+    }
+}
+
+#[cfg(test)]
+mod closed_pipe_tests {
+    use super::*;
+
+    #[test]
+    fn a_closed_pipe_panic_is_recognised() {
+        assert!(is_closed_pipe_panic(
+            "failed printing to stdout: Broken pipe (os error 32)"
+        ));
+        assert!(is_closed_pipe_panic(
+            "failed printing to stderr: The pipe is being closed. (os error 232)"
+        ));
+    }
+
+    #[test]
+    fn another_panic_isnt() {
+        assert!(!is_closed_pipe_panic("index out of bounds"));
+        assert!(!is_closed_pipe_panic("the server said: Broken pipe"));
+        assert!(!is_closed_pipe_panic(
+            "failed printing to stdout: Permission denied (os error 13)"
+        ));
     }
 }
 

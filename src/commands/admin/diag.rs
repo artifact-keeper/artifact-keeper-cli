@@ -92,8 +92,7 @@ async fn get(route: &str, query: &[(&str, &str)], global: &GlobalArgs) -> Result
 
 fn save_profile(body: &[u8], path: &Path) -> Result<()> {
     if path == Path::new("-") {
-        use std::io::Write;
-        return std::io::stdout().write_all(body).into_diagnostic();
+        return crate::commands::helpers::write_stdout(body);
     }
     std::fs::write(path, body)
         .map_err(|e| AkError::Local(format!("Couldn't write {}: {e}", path.display())))?;

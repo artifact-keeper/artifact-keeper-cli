@@ -74,7 +74,7 @@ pub enum ArtifactCommand {
         /// Artifact path within the repository
         path: String,
 
-        /// Output file path (defaults to artifact filename)
+        /// Output file path (defaults to artifact filename). `-` writes to stdout
         #[arg(short, long)]
         output: Option<String>,
 
@@ -981,6 +981,10 @@ async fn pull(
 ) -> Result<()> {
     let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
 
+    if output == Some("-") {
+        return pull_to_stdout(&base_url, &auth_header, repo, artifact_path, version).await;
+    }
+
     let out_path = output.map(PathBuf::from).unwrap_or_else(|| {
         let filename = Path::new(artifact_path)
             .file_name()
@@ -1044,6 +1048,38 @@ async fn pull(
         format_bytes(total_bytes as i64),
     );
 
+    Ok(())
+}
+
+/// `artifact pull -o -`: the artifact's bytes on stdout, and everything else on
+/// stderr, so it works in a pipeline. A terminal gets them made safe to display.
+async fn pull_to_stdout(
+    base_url: &str,
+    auth_header: &str,
+    repo: &str,
+    artifact_path: &str,
+    version: Option<&str>,
+) -> Result<()> {
+    let spinner = output::spinner(&format!("Downloading {artifact_path}..."));
+    let resp = fetch_artifact(base_url, auth_header, repo, artifact_path, version).await;
+    spinner.finish_and_clear();
+
+    let terminal = console::Term::stdout().is_term();
+    let mut filter = super::api::TerminalFilter::default();
+    let mut stream = resp?.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| {
+            crate::commands::helpers::classified(format!("Download error: {e}"), &e)
+        })?;
+        if terminal {
+            super::helpers::write_stdout(filter.push(&chunk).as_bytes())?;
+        } else {
+            super::helpers::write_stdout(&chunk)?;
+        }
+    }
+    if terminal {
+        super::helpers::write_stdout(filter.finish().as_bytes())?;
+    }
     Ok(())
 }
 

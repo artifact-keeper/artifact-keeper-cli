@@ -98,7 +98,7 @@ Examples:
         name: String,
         /// Tag or digest
         reference: String,
-        /// Write to a file instead of stdout
+        /// Write to a file instead of stdout, which `-` also means
         #[arg(short = 'o', long)]
         output: Option<PathBuf>,
     },
@@ -161,7 +161,7 @@ Examples:
         name: String,
         /// The blob's digest
         digest: String,
-        /// Write to a file instead of stdout
+        /// Write to a file instead of stdout, which `-` also means
         #[arg(short = 'o', long)]
         output: Option<PathBuf>,
     },
@@ -320,14 +320,14 @@ async fn manifest(wire: &Wire, command: ManifestCommand, global: &GlobalArgs) ->
                 )
                 .await?;
             // The digest is of these exact bytes, so they aren't reformatted.
-            match output {
+            match output.filter(|path| path.as_os_str() != "-") {
                 Some(path) => tokio::fs::write(&path, &reply.body)
                     .await
                     .map_err(|e| AkError::Local(format!("Can't write {}: {e}", path.display())))?,
                 None => {
                     let mut stdout = tokio::io::stdout();
-                    stdout.write_all(&reply.body).await.into_diagnostic()?;
-                    stdout.flush().await.into_diagnostic()?;
+                    stdout.write_all(&reply.body).await.map_err(AkError::Io)?;
+                    stdout.flush().await.map_err(AkError::Io)?;
                 }
             }
             Ok(())
@@ -460,7 +460,7 @@ async fn blob(wire: &Wire, command: BlobCommand) -> Result<()> {
             let expected = digest.strip_prefix("sha256:").map(str::to_string);
             let mut hasher = Sha256::new();
             let mut stream = response.bytes_stream();
-            match output {
+            match output.filter(|path| path.as_os_str() != "-") {
                 Some(path) => {
                     let dir = path
                         .parent()
@@ -486,9 +486,9 @@ async fn blob(wire: &Wire, command: BlobCommand) -> Result<()> {
                     while let Some(chunk) = stream.next().await {
                         let chunk = chunk.into_diagnostic()?;
                         hasher.update(&chunk);
-                        stdout.write_all(&chunk).await.into_diagnostic()?;
+                        stdout.write_all(&chunk).await.map_err(AkError::Io)?;
                     }
-                    stdout.flush().await.into_diagnostic()?;
+                    stdout.flush().await.map_err(AkError::Io)?;
                     check_digest(hasher, expected.as_deref())?;
                 }
             }
