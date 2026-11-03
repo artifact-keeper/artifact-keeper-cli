@@ -664,7 +664,9 @@ async fn export_sbom(
     // The document, in both cases. A wrapper around it isn't an SBOM any tool can read.
     let json = serde_json::to_string_pretty(&sbom.content)
         .map_err(|e| sdk_err("serialize SBOM content", e))?;
-    std::fs::write(output_path, json).map_err(|e| sdk_err("write file", e))?;
+    tokio::fs::write(output_path, json)
+        .await
+        .map_err(|e| sdk_err("write file", e))?;
 
     spinner.finish_and_clear();
     eprintln!("SBOM exported to {output_path} (format: {})", sbom.format);
