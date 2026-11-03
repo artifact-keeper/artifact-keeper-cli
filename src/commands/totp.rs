@@ -1,15 +1,17 @@
 use artifact_keeper_sdk::ClientAuthExt;
 use artifact_keeper_sdk::types::{
-    TotpCodeRequest, TotpDisableRequest, TotpEnableResponse, TotpSetupResponse,
+    TotpCodeRequest, TotpDisableRequest, TotpEnableResponse, TotpEnrollCompleteRequest,
+    TotpEnrollCompleteResponse, TotpEnrollSetupRequest, TotpSetupResponse,
 };
 use clap::Subcommand;
 use miette::Result;
 use serde_json::Value;
 
-use super::client::client_for;
-use super::helpers::sdk_err;
+use super::client::{client_for, login_client};
+use super::helpers::{require_secret, resolve_secret, sdk_err};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
+use crate::config::AppConfig;
+use crate::config::credentials::{StoredCredential, store_credential};
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -19,33 +21,156 @@ pub enum TotpCommand {
 
     /// Enable TOTP after verifying authenticator code
     Enable {
-        /// Six-digit code from your authenticator app
+        /// Six-digit code from your authenticator app (omit to use --code-stdin or a
+        /// prompt)
         #[arg(long)]
-        code: String,
+        code: Option<String>,
+
+        /// Read the code from stdin
+        #[arg(long)]
+        code_stdin: bool,
     },
 
     /// Disable TOTP (requires password and current code)
     Disable {
-        /// Account password (omit to enter interactively)
-        #[arg(long)]
+        /// Account password. Prefer --password-stdin, AK_PASSWORD or the prompt, which
+        /// keep it out of shell history
+        #[arg(long, env = "AK_PASSWORD", hide_env_values = true)]
         password: Option<String>,
 
-        /// Six-digit code from your authenticator app (omit to enter interactively)
+        /// Read the password from stdin
+        #[arg(long, conflicts_with = "code_stdin")]
+        password_stdin: bool,
+
+        /// Six-digit code from your authenticator app (omit to use --code-stdin or a
+        /// prompt)
         #[arg(long)]
         code: Option<String>,
+
+        /// Read the code from stdin
+        #[arg(long)]
+        code_stdin: bool,
     },
 
     /// Check whether TOTP is currently enabled
     Status,
+
+    /// Set up TOTP during a login, when the server's policy requires it before you
+    /// get a session. The ticket comes from `ak auth login --print-totp-ticket`
+    Enroll {
+        #[command(subcommand)]
+        command: EnrollCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum EnrollCommand {
+    /// Start: prints the secret to add to your authenticator app
+    Setup {
+        #[command(flatten)]
+        ticket: TicketArgs,
+    },
+
+    /// Finish with a code from the app: logs you in and prints your backup codes
+    Complete {
+        #[command(flatten)]
+        ticket: TicketArgs,
+
+        /// Six-digit code from your authenticator app (omit to use a prompt)
+        #[arg(long)]
+        code: Option<String>,
+
+        /// Read the code from stdin
+        #[arg(long, conflicts_with = "totp_token_stdin")]
+        code_stdin: bool,
+    },
+}
+
+#[derive(clap::Args)]
+pub struct TicketArgs {
+    /// The one-time ticket. Prefer --totp-token-stdin or AK_TOTP_TOKEN
+    #[arg(long, env = "AK_TOTP_TOKEN", hide_env_values = true)]
+    totp_token: Option<String>,
+
+    /// Read the ticket from stdin
+    #[arg(long)]
+    totp_token_stdin: bool,
+}
+
+impl TicketArgs {
+    fn resolve(self, global: &GlobalArgs) -> Result<String> {
+        require_secret(
+            resolve_secret(
+                self.totp_token,
+                self.totp_token_stdin,
+                "--totp-token",
+                None,
+                global.no_input,
+            )?,
+            "The one-time ticket",
+            "--totp-token-stdin or AK_TOTP_TOKEN",
+        )
+    }
+}
+
+fn resolve_code(code: Option<String>, from_stdin: bool, global: &GlobalArgs) -> Result<String> {
+    require_secret(
+        resolve_secret(
+            code,
+            from_stdin,
+            "--code",
+            Some("TOTP code"),
+            global.no_input,
+        )?,
+        "The TOTP code",
+        "--code-stdin",
+    )
 }
 
 impl TotpCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Setup => setup(global).await,
-            Self::Enable { code } => enable(&code, global).await,
-            Self::Disable { password, code } => disable(password, code, global).await,
+            Self::Enable { code, code_stdin } => {
+                let code = resolve_code(code, code_stdin, global)?;
+                enable(&code, global).await
+            }
+            Self::Disable {
+                password,
+                password_stdin,
+                code,
+                code_stdin,
+            } => {
+                let password = require_secret(
+                    resolve_secret(
+                        password,
+                        password_stdin,
+                        "--password",
+                        Some("Account password"),
+                        global.no_input,
+                    )?,
+                    "The account password",
+                    "--password-stdin or AK_PASSWORD",
+                )?;
+                let code = resolve_code(code, code_stdin, global)?;
+                disable(password, code, global).await
+            }
             Self::Status => status(global).await,
+            Self::Enroll { command } => match command {
+                EnrollCommand::Setup { ticket } => {
+                    let ticket = ticket.resolve(global)?;
+                    enroll_setup(&ticket, global).await
+                }
+                EnrollCommand::Complete {
+                    ticket,
+                    code,
+                    code_stdin,
+                } => {
+                    let ticket = ticket.resolve(global)?;
+                    let code = resolve_code(code, code_stdin, global)?;
+                    enroll_complete(&ticket, &code, global).await
+                }
+            },
         }
     }
 }
@@ -58,12 +183,8 @@ async fn setup(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Setting up TOTP...");
 
-    let resp = client
-        .setup_totp()
-        .send()
-        .await
-        .map_err(|e| sdk_err("set up TOTP", e))?;
-    let result = resp.into_inner();
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.setup_totp().send()).await;
+    let result = resp.map_err(|e| sdk_err("set up TOTP", e))?.into_inner();
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
@@ -72,7 +193,10 @@ async fn setup(global: &GlobalArgs) -> Result<()> {
     }
 
     let (info, table_str) = format_setup_result(&result);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -85,13 +209,9 @@ async fn enable(code: &str, global: &GlobalArgs) -> Result<()> {
         code: code.to_string(),
     };
 
-    let resp = client
-        .enable_totp()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("enable TOTP", e))?;
-    let result = resp.into_inner();
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.enable_totp().body(body).send()).await;
+    let result = resp.map_err(|e| sdk_err("enable TOTP", e))?.into_inner();
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
@@ -102,46 +222,15 @@ async fn enable(code: &str, global: &GlobalArgs) -> Result<()> {
     }
 
     let (info, table_str) = format_backup_codes(&result);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
 
-async fn disable(
-    password: Option<String>,
-    code: Option<String>,
-    global: &GlobalArgs,
-) -> Result<()> {
-    let password = match password {
-        Some(p) => p,
-        None => {
-            if global.no_input {
-                return Err(AkError::ConfigError(
-                    "TOTP disable requires interactive input. Provide --password and --code, or remove --no-input.".to_string(),
-                ).into());
-            }
-            dialoguer::Password::new()
-                .with_prompt("Account password")
-                .interact()
-                .map_err(|e| super::helpers::prompt_err("Failed to read password", e))?
-        }
-    };
-
-    let code = match code {
-        Some(c) => c,
-        None => {
-            if global.no_input {
-                return Err(AkError::ConfigError(
-                    "TOTP disable requires interactive input. Provide --password and --code, or remove --no-input.".to_string(),
-                ).into());
-            }
-            dialoguer::Input::new()
-                .with_prompt("TOTP code")
-                .interact_text()
-                .map_err(|e| super::helpers::prompt_err("Failed to read code", e))?
-        }
-    };
-
+async fn disable(password: String, code: String, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Disabling TOTP...");
 
@@ -170,12 +259,10 @@ async fn status(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Checking TOTP status...");
 
-    let user = client
-        .get_current_user()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get current user", e))?;
-    let user = user.into_inner();
+    let (user, raw) = artifact_keeper_sdk::raw::capture(client.get_current_user().send()).await;
+    let user = user
+        .map_err(|e| sdk_err("get current user", e))?
+        .into_inner();
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
@@ -202,8 +289,100 @@ async fn status(global: &GlobalArgs) -> Result<()> {
     };
     let table_str = format!("User:   {}\nTOTP:   {}", user.username, status_text,);
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
+    Ok(())
+}
+
+/// `POST /auth/totp/enroll/setup`. The ticket in the body is the only credential.
+pub(crate) async fn enroll_setup_request(
+    client: &artifact_keeper_sdk::Client,
+    ticket: &str,
+) -> Result<TotpSetupResponse> {
+    let body = TotpEnrollSetupRequest {
+        totp_token: ticket.to_string(),
+    };
+    let resp = client
+        .enroll_setup()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("start TOTP enrollment", e))?;
+    Ok(resp.into_inner())
+}
+
+/// `POST /auth/totp/enroll/complete`. The ticket in the body is the only credential.
+pub(crate) async fn enroll_complete_request(
+    client: &artifact_keeper_sdk::Client,
+    ticket: &str,
+    code: &str,
+) -> Result<TotpEnrollCompleteResponse> {
+    let body = TotpEnrollCompleteRequest {
+        totp_token: ticket.to_string(),
+        code: code.to_string(),
+    };
+    let resp = client
+        .enroll_complete()
+        .body(body)
+        .send()
+        .await
+        .map_err(|e| sdk_err("complete TOTP enrollment", e))?;
+    Ok(resp.into_inner())
+}
+
+async fn enroll_setup(ticket: &str, global: &GlobalArgs) -> Result<()> {
+    let config = AppConfig::load()?;
+    let (_, instance) = config.resolve_instance(global.instance.as_deref())?;
+    let result = enroll_setup_request(&login_client(&instance.url)?, ticket).await?;
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", result.secret);
+        return Ok(());
+    }
+    let (info, _) = format_setup_result(&result);
+    let table_str = format!(
+        "TOTP Secret:    {}\n\
+         QR Code URL:    {}\n\n\
+         Add this secret to your authenticator app, then run:\n  \
+         ak totp enroll complete --totp-token-stdin --code <code>",
+        result.secret, result.qr_code_url,
+    );
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    Ok(())
+}
+
+async fn enroll_complete(ticket: &str, code: &str, global: &GlobalArgs) -> Result<()> {
+    let config = AppConfig::load()?;
+    let (instance_name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    let done = enroll_complete_request(&login_client(&instance.url)?, ticket, code).await?;
+
+    store_credential(
+        instance_name,
+        &StoredCredential {
+            access_token: done.access_token.clone(),
+            refresh_token: Some(done.refresh_token.clone()),
+        },
+    )?;
+    eprintln!("Two-factor login is on, and you're logged in to '{instance_name}'.");
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for code in &done.backup_codes {
+            println!("{code}");
+        }
+        return Ok(());
+    }
+    // Not the server's body: it holds the session tokens, which were just stored.
+    let info = serde_json::json!({
+        "backup_codes": done.backup_codes,
+        "must_change_password": done.must_change_password,
+    });
+    let (_, table_str) = format_backup_codes(&TotpEnableResponse {
+        backup_codes: done.backup_codes.clone(),
+    });
+    println!("{}", output::render(&info, &global.format, Some(table_str)));
     Ok(())
 }
 
@@ -275,8 +454,8 @@ mod tests {
     #[test]
     fn parse_enable() {
         let cli = parse(&["test", "enable", "--code", "123456"]);
-        if let TotpCommand::Enable { code } = cli.command {
-            assert_eq!(code, "123456");
+        if let TotpCommand::Enable { code, .. } = cli.command {
+            assert_eq!(code.as_deref(), Some("123456"));
         } else {
             panic!("Expected Enable");
         }
@@ -292,7 +471,7 @@ mod tests {
             "--code",
             "654321",
         ]);
-        if let TotpCommand::Disable { password, code } = cli.command {
+        if let TotpCommand::Disable { password, code, .. } = cli.command {
             assert_eq!(password.unwrap(), "placeholder");
             assert_eq!(code.unwrap(), "654321");
         } else {
@@ -307,8 +486,21 @@ mod tests {
     }
 
     #[test]
-    fn parse_enable_missing_code() {
-        let result = TestCli::try_parse_from(&["test", "enable"]);
+    fn parse_enable_takes_the_code_from_stdin() {
+        let cli = parse(&["test", "enable", "--code-stdin"]);
+        assert!(matches!(
+            cli.command,
+            TotpCommand::Enable {
+                code: None,
+                code_stdin: true
+            }
+        ));
+    }
+
+    #[test]
+    fn parse_disable_cannot_read_both_secrets_from_stdin() {
+        let result =
+            TestCli::try_parse_from(["test", "disable", "--password-stdin", "--code-stdin"]);
         assert!(result.is_err());
     }
 
@@ -423,24 +615,6 @@ mod tests {
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = enable("123456", &global).await;
-        assert!(result.is_ok());
-
-        crate::test_utils::teardown_env();
-    }
-
-    #[tokio::test]
-    async fn handler_disable() {
-        let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = crate::test_utils::setup_env(&tmp);
-
-        Mock::given(method("POST"))
-            .and(path("/api/v1/auth/totp/disable"))
-            .respond_with(ResponseTemplate::new(200))
-            .mount(&server)
-            .await;
-
-        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = disable(Some("mypassword".into()), Some("654321".into()), &global).await;
         assert!(result.is_ok());
 
         crate::test_utils::teardown_env();

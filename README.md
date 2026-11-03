@@ -182,6 +182,8 @@ Administration
   ak admin         Backup, cleanup, metrics, users, plugins, settings, audit log, downloads, trash, storage checks
   ak project       Projects: grouped repositories, members and a storage quota
   ak banner        System-wide maintenance and downtime banners
+  ak search        Quick, checksum, recent, suggested and trending artifact searches
+  ak events        Follow the server's stream of change events
   ak bundle        Offline bundles: format, manifest checks, export and import jobs
   ak environment   Stored lockfiles, and which of them contain a component
   ak image-build   Server-side container image builds and image inspection

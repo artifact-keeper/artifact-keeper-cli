@@ -68,8 +68,6 @@ const fn excluded(method: &'static str, path: &'static str, reason: &'static str
 
 const IDP_CALLBACK: &str = "An identity provider sends a browser here with a code or an \
                             assertion. A CLI never starts this request";
-const SSO_REDIRECT: &str = "A 302 to the identity provider, which the planned \
-                            `auth login --sso` prints with --no-follow";
 const WASM_PASSTHROUGH: &str = "A WASM plugin defines what this does, so `ak api` is the \
                                 right interface";
 
@@ -143,13 +141,163 @@ pub static COMMANDS: &[Op] = &[
         "POST",
         "/api/v1/auth/tokens",
         "auth token create",
-        &["name", "expires_in_days"],
+        &["name", "expires_in_days", "scopes", "repo_selector"],
     ),
     covered(
         "DELETE",
         "/api/v1/auth/tokens/{token_id}",
         "auth revoke-token",
         &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/auth/ticket",
+        "auth download-ticket",
+        &["purpose", "resource_path"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/auth/ci/token",
+        "auth ci-exchange",
+        &["provider_id"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/auth/totp/verify",
+        "auth verify-totp",
+        &["code", "totp_token"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/auth/sso/ldap/{id}/login",
+        "auth login",
+        &["username", "password"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/auth/sso/oidc/{id}/login",
+        "auth login",
+        &["prompt"],
+    ),
+    covered("GET", "/api/v1/auth/sso/saml/{id}/login", "auth login", &[]),
+    covered(
+        "POST",
+        "/api/v1/auth/sso/exchange",
+        "auth sso-exchange",
+        &["code"],
+    ),
+    // ---- totp ----
+    covered("POST", "/api/v1/auth/totp/setup", "totp setup", &[]),
+    covered("POST", "/api/v1/auth/totp/enable", "totp enable", &["code"]),
+    covered(
+        "POST",
+        "/api/v1/auth/totp/disable",
+        "totp disable",
+        &["code", "password"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/auth/totp/enroll/setup",
+        "totp enroll setup",
+        &["totp_token"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/auth/totp/enroll/complete",
+        "totp enroll complete",
+        &["code", "totp_token"],
+    ),
+    // ---- search ----
+    covered(
+        "GET",
+        "/api/v1/search/quick",
+        "search quick",
+        &["q", "limit", "types"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/search/checksum",
+        "search checksum",
+        &["checksum", "algorithm"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/search/suggest",
+        "search suggest",
+        &["prefix", "limit"],
+    ),
+    covered("GET", "/api/v1/search/recent", "search recent", &["limit"]),
+    covered(
+        "GET",
+        "/api/v1/search/trending",
+        "search trending",
+        &["days", "limit"],
+    ),
+    // ---- events ----
+    covered("GET", "/api/v1/events/stream", "events tail", &[]),
+    // ---- profile and users ----
+    covered("GET", "/api/v1/users/me", "profile whoami", &[]),
+    covered(
+        "POST",
+        "/api/v1/users/me/password",
+        "profile change-password",
+        &["current_password", "new_password"],
+    ),
+    covered("GET", "/api/v1/users/me/tokens", "profile tokens list", &[]),
+    covered(
+        "POST",
+        "/api/v1/users/me/tokens",
+        "profile tokens create",
+        &["name", "scopes", "expires_in_days"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/users/me/tokens/{token_id}",
+        "profile tokens revoke",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/profile/access-tokens",
+        "profile access-tokens list",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/profile/access-tokens",
+        "profile access-tokens create",
+        &["name", "scopes", "expires_in_days"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/profile/access-tokens/{token_id}",
+        "profile access-tokens revoke",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/users",
+        "admin users list",
+        &[
+            "search",
+            "is_active",
+            "is_admin",
+            "is_service_account",
+            "page",
+            "per_page",
+        ],
+    ),
+    covered(
+        "POST",
+        "/api/v1/users",
+        "admin users create",
+        &["username", "email", "display_name", "is_admin", "password"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/users/{id}/password",
+        "admin users set-password",
+        &["current_password", "new_password"],
     ),
     // ---- repositories ----
     covered(
@@ -1870,8 +2018,6 @@ pub static COMMANDS: &[Op] = &[
     excluded("GET", "/api/v1/auth/sso/oidc/{id}/callback", IDP_CALLBACK),
     excluded("GET", "/api/v1/auth/sso/oidc/callback", IDP_CALLBACK),
     excluded("POST", "/api/v1/auth/sso/saml/{id}/acs", IDP_CALLBACK),
-    excluded("GET", "/api/v1/auth/sso/oidc/{id}/login", SSO_REDIRECT),
-    excluded("GET", "/api/v1/auth/sso/saml/{id}/login", SSO_REDIRECT),
     excluded("ANY", "/ext/{format_key}/{repo_key}", WASM_PASSTHROUGH),
     excluded(
         "ANY",

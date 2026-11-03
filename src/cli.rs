@@ -471,6 +471,22 @@ pub enum Command {
         command: commands::banner::BannerCommand,
     },
 
+    /// Search artifacts: by name, by checksum, what's recent and what's trending
+    #[command(
+        after_help = "Examples:\n  ak search quick nginx --limit 5\n  ak search checksum <sha256>\n  ak search suggest ngi\n  ak search recent\n  ak search trending --days 30"
+    )]
+    Search {
+        #[command(subcommand)]
+        command: commands::search::SearchCommand,
+    },
+
+    /// Follow the server's stream of change events
+    #[command(after_help = "Examples:\n  ak events tail\n  ak --format json events tail --count 1")]
+    Events {
+        #[command(subcommand)]
+        command: commands::events::EventsCommand,
+    },
+
     /// Export and import repositories as offline bundles, and inspect bundle jobs
     #[command(
         after_help = "Examples:\n  ak bundle format\n  ak bundle validate-manifest manifest.json\n  ak bundle jobs list --direction export --status failed\n  ak bundle jobs items <job-id>"
@@ -601,6 +617,8 @@ impl Cli {
             Command::System { command } => command.execute(&global).await,
             Command::Project { command } => command.execute(&global).await,
             Command::Banner { command } => command.execute(&global).await,
+            Command::Search { command } => command.execute(&global).await,
+            Command::Events { command } => command.execute(&global).await,
             Command::Bundle { command } => command.execute(&global).await,
             Command::Environment { command } => command.execute(&global).await,
             Command::ImageBuild { command } => command.execute(&global).await,
@@ -721,9 +739,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_auth_switch() {
-        let cli = parse(&["ak", "auth", "switch"]).unwrap();
-        assert!(matches!(cli.command, Command::Auth { .. }));
+    fn parse_auth_switch_is_gone() {
+        assert!(parse(&["ak", "auth", "switch"]).is_err());
     }
 
     #[test]
@@ -2590,8 +2607,8 @@ mod tests {
     }
 
     #[test]
-    fn parse_totp_enable_missing_code() {
-        assert!(parse(&["ak", "totp", "enable"]).is_err());
+    fn parse_totp_enable_code_on_stdin() {
+        assert!(parse(&["ak", "totp", "enable", "--code-stdin"]).is_ok());
     }
 
     #[test]
