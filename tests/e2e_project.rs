@@ -28,6 +28,7 @@ fn json_output(cmd: &mut assert_cmd::Command) -> Value {
 }
 
 #[test]
+#[ignore = "requires E2E backend"]
 fn project_lifecycle_by_key_and_by_id() {
     let env = common::TestEnv::setup();
     let key = format!("e2e-project-{}", std::process::id());
@@ -98,6 +99,7 @@ fn project_lifecycle_by_key_and_by_id() {
 }
 
 #[test]
+#[ignore = "requires E2E backend"]
 fn project_members_add_list_remove() {
     let env = common::TestEnv::setup();
     let key = format!("e2e-project-members-{}", std::process::id());
@@ -162,6 +164,7 @@ fn project_members_add_list_remove() {
 }
 
 #[test]
+#[ignore = "requires E2E backend"]
 fn a_duplicate_key_shows_the_servers_message() {
     let env = common::TestEnv::setup();
     let key = format!("e2e-project-dup-{}", std::process::id());
