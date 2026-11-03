@@ -45,10 +45,20 @@ fn list_of(item: Value) -> Value {
 }
 
 async fn run(route: &str, verb: &str, body: &Value, args: &[&str]) -> Output {
+    run_with_status(200, route, verb, body, args).await
+}
+
+async fn run_with_status(
+    status: u16,
+    route: &str,
+    verb: &str,
+    body: &Value,
+    args: &[&str],
+) -> Output {
     let server = MockServer::start().await;
     Mock::given(method(verb))
         .and(path(route))
-        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .respond_with(ResponseTemplate::new(status).set_body_json(body))
         .mount(&server)
         .await;
     run_against(&server, args)
@@ -91,6 +101,28 @@ async fn assert_prints_the_body(route: &str, verb: &str, body: Value, args: &[&s
     let output = run(route, verb, &body, &with_format).await;
     let shown: Value = serde_yaml::from_slice(&output.stdout)
         .unwrap_or_else(|e| panic!("{args:?}: not YAML: {e}"));
+    assert_eq!(shown, body, "{args:?}");
+}
+
+/// [`assert_prints_the_body`] for an operation whose success is a 201.
+async fn assert_created_prints_the_body(route: &str, verb: &str, body: Value, args: &[&str]) {
+    assert_status_prints_the_body(201, route, verb, body, args).await;
+}
+
+async fn assert_status_prints_the_body(
+    status: u16,
+    route: &str,
+    verb: &str,
+    body: Value,
+    args: &[&str],
+) {
+    let mut with_format = args.to_vec();
+    with_format.extend(["--format", "json"]);
+    let output = run_with_status(status, route, verb, &body, &with_format).await;
+    let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
+    assert_eq!(output.status.code(), Some(0), "{args:?}: {stderr}");
+    let shown: Value = serde_json::from_slice(&output.stdout)
+        .unwrap_or_else(|e| panic!("{args:?}: not JSON: {e}"));
     assert_eq!(shown, body, "{args:?}");
 }
 
@@ -737,5 +769,788 @@ fn artifact_detail_commands() {
         tokio::runtime::Runtime::new()
             .expect("runtime")
             .block_on(assert_prints_the_body(&route, verb, body, &args));
+    }
+}
+
+// Contract, not E2E: the bodies below are written for the mock. Run for real, these
+// commands were also compared with curl on a 1.11.11 backend, with Dependency-Track
+// replaced by a stand-in upstream.
+
+const OTHER: &str = "00000000-0000-0000-0000-000000000002";
+
+fn dt_component() -> Value {
+    json!({"uuid": UUID, "name": "c", "from_a_newer_server": 1})
+}
+
+fn dt_finding(severity: &str) -> Value {
+    json!({
+        "component": dt_component(),
+        "vulnerability": {
+            "uuid": UUID, "vulnId": "CVE-1", "source": "NVD", "severity": severity,
+            "from_a_newer_server": 1
+        },
+        "from_a_newer_server": 1
+    })
+}
+
+fn dt_metrics() -> Value {
+    json!({
+        "critical": 1, "high": 0, "medium": 0, "low": 0, "unassigned": 0,
+        "findingsTotal": 1, "findingsAudited": 0, "findingsUnaudited": 1, "suppressions": 0,
+        "inheritedRiskScore": 1.0, "policyViolationsFail": 0, "policyViolationsWarn": 0,
+        "policyViolationsInfo": 0, "policyViolationsTotal": 0, "projects": 1,
+        "from_a_newer_server": 1
+    })
+}
+
+fn dt_project(uuid: &str) -> Value {
+    json!({"uuid": uuid, "name": "p", "from_a_newer_server": 1})
+}
+
+#[tokio::test]
+async fn dt_commands() {
+    let base = "/api/v1/dependency-track";
+    let project = format!("{base}/projects/{UUID}");
+    assert_prints_the_body(
+        &format!("{base}/status"),
+        "GET",
+        json!({"enabled": true, "healthy": true, "from_a_newer_server": 1}),
+        &["dt", "status"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/projects"),
+        "GET",
+        json!([dt_project(UUID)]),
+        &["dt", "project", "list"],
+    )
+    .await;
+    assert_prints_the_body(
+        &project,
+        "GET",
+        json!([dt_finding("LOW")]),
+        &["dt", "project", "get", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{project}/findings"),
+        "GET",
+        json!([dt_finding("LOW")]),
+        &["dt", "project", "findings", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{project}/components"),
+        "GET",
+        json!([dt_component()]),
+        &["dt", "project", "components", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{project}/violations"),
+        "GET",
+        json!([{
+            "uuid": UUID, "type": "LICENSE", "component": dt_component(),
+            "policyCondition": {
+                "uuid": UUID, "subject": "s", "operator": "o", "value": "v",
+                "policy": {"uuid": UUID, "name": "n", "violationState": "FAIL"}
+            },
+            "from_a_newer_server": 1
+        }]),
+        &["dt", "project", "violations", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{project}/metrics"),
+        "GET",
+        dt_metrics(),
+        &["dt", "project", "metrics", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{project}/metrics/history"),
+        "GET",
+        json!([dt_metrics()]),
+        &["dt", "project", "metrics-history", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/metrics/portfolio"),
+        "GET",
+        dt_metrics(),
+        &["dt", "metrics"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/policies"),
+        "GET",
+        json!([{
+            "uuid": UUID, "name": "n", "violationState": "FAIL", "policyConditions": [],
+            "projects": [], "tags": [], "from_a_newer_server": 1
+        }]),
+        &["dt", "policies"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/analysis"),
+        "PUT",
+        json!({"analysisState": "NOT_AFFECTED", "isSuppressed": false, "from_a_newer_server": 1}),
+        &[
+            "dt",
+            "analyze",
+            "--project",
+            UUID,
+            "--vulnerability",
+            UUID,
+            "--component",
+            UUID,
+            "--state",
+            "NOT_AFFECTED",
+        ],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn dt_project_show_keeps_only_that_project_as_sent() {
+    let list = json!([dt_project(OTHER), dt_project(UUID)]);
+    let output = run(
+        "/api/v1/dependency-track/projects",
+        "GET",
+        &list,
+        &["dt", "project", "show", UUID, "--format", "json"],
+    )
+    .await;
+    let shown: Value = serde_json::from_slice(&output.stdout).expect("JSON");
+    assert_eq!(shown, dt_project(UUID));
+}
+
+#[tokio::test]
+async fn dt_findings_severity_filters_the_body_and_can_print_none() {
+    let route = format!("/api/v1/dependency-track/projects/{UUID}/findings");
+    let list = json!([dt_finding("LOW"), dt_finding("CRITICAL")]);
+    let args = [
+        "dt",
+        "project",
+        "findings",
+        UUID,
+        "--format",
+        "json",
+        "--severity",
+    ];
+
+    let with = |severity: &'static str| {
+        let mut all = args.to_vec();
+        all.push(severity);
+        all
+    };
+    let output = run(&route, "GET", &list, &with("critical")).await;
+    let shown: Value = serde_json::from_slice(&output.stdout).expect("JSON");
+    assert_eq!(shown, json!([dt_finding("CRITICAL")]));
+
+    let output = run(&route, "GET", &list, &with("medium")).await;
+    let shown: Value = serde_json::from_slice(&output.stdout).expect("JSON");
+    assert_eq!(shown, json!([]));
+}
+
+fn connection() -> Value {
+    json!({
+        "id": UUID, "name": "s", "url": "https://example.com", "auth_type": "api_token",
+        "source_type": "artifactory", "created_at": "2026-01-15T12:00:00Z",
+        "from_a_newer_server": 1
+    })
+}
+
+fn migration_job() -> Value {
+    json!({
+        "id": UUID, "source_connection_id": UUID, "status": "paused", "job_type": "full",
+        "config": {}, "total_items": 0, "completed_items": 0, "failed_items": 0,
+        "skipped_items": 0, "total_bytes": 0, "transferred_bytes": 0,
+        "progress_percent": 0.0, "created_at": "2026-01-15T12:00:00Z",
+        "from_a_newer_server": 1
+    })
+}
+
+#[tokio::test]
+async fn import_commands() {
+    let connections = "/api/v1/migrations/connections";
+    let jobs = "/api/v1/migrations";
+    assert_created_prints_the_body(
+        connections,
+        "POST",
+        connection(),
+        &[
+            "import",
+            "source",
+            "add",
+            "s",
+            "https://example.com",
+            "--auth-type",
+            "api_token",
+            "--token",
+            "t",
+        ],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{connections}/{UUID}"),
+        "GET",
+        connection(),
+        &["import", "source", "show", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{connections}/{UUID}/test"),
+        "POST",
+        json!({"success": true, "message": "ok", "from_a_newer_server": 1}),
+        &["import", "source", "test", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{connections}/{UUID}/repositories"),
+        "GET",
+        json!([{
+            "key": "r", "type": "local", "package_type": "npm", "url": "https://example.com/r",
+            "from_a_newer_server": 1
+        }]),
+        &["import", "source", "repos", UUID],
+    )
+    .await;
+    assert_created_prints_the_body(
+        jobs,
+        "POST",
+        migration_job(),
+        &["import", "job", "create", "--source", UUID],
+    )
+    .await;
+    for (verb, command, tail) in [
+        ("GET", "status", ""),
+        ("POST", "start", "/start"),
+        ("POST", "pause", "/pause"),
+        ("POST", "resume", "/resume"),
+        ("POST", "cancel", "/cancel"),
+    ] {
+        assert_prints_the_body(
+            &format!("{jobs}/{UUID}{tail}"),
+            verb,
+            migration_job(),
+            &["import", "job", command, UUID],
+        )
+        .await;
+    }
+    assert_status_prints_the_body(
+        202,
+        &format!("{jobs}/{UUID}/assess"),
+        "POST",
+        migration_job(),
+        &["import", "assess", "run", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{jobs}/{UUID}/assessment"),
+        "GET",
+        json!({
+            "job_id": UUID, "status": "completed", "repositories": [], "users_count": 0,
+            "groups_count": 0, "permissions_count": 0, "total_artifacts": 0,
+            "total_size_bytes": 0, "estimated_duration_seconds": 0, "warnings": [],
+            "blockers": [], "from_a_newer_server": 1
+        }),
+        &["import", "assess", "result", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{jobs}/{UUID}/report"),
+        "GET",
+        json!({
+            "id": UUID, "job_id": UUID, "generated_at": "2026-01-15T12:00:00Z",
+            "summary": {}, "warnings": {}, "errors": {}, "recommendations": {},
+            "from_a_newer_server": 1
+        }),
+        &["import", "job", "report", UUID],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn analytics_commands() {
+    let base = "/api/v1/admin/analytics";
+    let snapshot = json!({
+        "snapshot_date": "2026-01-15", "total_repositories": 0, "total_artifacts": 0,
+        "total_storage_bytes": 0, "total_downloads": 0, "total_users": 0,
+        "proxy_artifact_count": 0, "proxy_download_count": 0, "proxy_storage_bytes": 0,
+        "from_a_newer_server": 1
+    });
+    assert_prints_the_body(
+        &format!("{base}/downloads/trend"),
+        "GET",
+        json!([{"date": "2026-01-15", "download_count": 1, "from_a_newer_server": 1}]),
+        &["analytics", "downloads"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/storage/breakdown"),
+        "GET",
+        json!([{
+            "repository_id": UUID, "repository_key": "r", "repository_name": "r",
+            "format": "generic", "artifact_count": 1, "storage_bytes": 1, "download_count": 1,
+            "proxy_artifact_count": 0, "proxy_storage_bytes": 0, "proxy_download_count": 0,
+            "from_a_newer_server": 1
+        }]),
+        &["analytics", "storage"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/storage/growth"),
+        "GET",
+        json!({
+            "period_start": "2026-01-01", "period_end": "2026-01-15", "storage_bytes_start": 0,
+            "storage_bytes_end": 0, "storage_growth_bytes": 0, "storage_growth_percent": 0.0,
+            "artifacts_start": 0, "artifacts_end": 0, "artifacts_added": 0,
+            "downloads_in_period": 0, "from_a_newer_server": 1
+        }),
+        &["analytics", "growth"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/storage/trend"),
+        "GET",
+        json!([snapshot.clone()]),
+        &["analytics", "storage-trend"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/artifacts/stale"),
+        "GET",
+        json!([{
+            "artifact_id": UUID, "repository_key": "r", "name": "a", "path": "a",
+            "size_bytes": 1, "days_since_download": 90, "download_count": 0,
+            "created_at": "2026-01-15T12:00:00Z", "from_a_newer_server": 1
+        }]),
+        &["analytics", "top-stale"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/snapshot"),
+        "POST",
+        snapshot,
+        &["analytics", "snapshot"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/repositories/{UUID}/trend"),
+        "GET",
+        json!([{
+            "repository_id": UUID, "snapshot_date": "2026-01-15", "artifact_count": 1,
+            "storage_bytes": 1, "download_count": 1, "proxy_artifact_count": 0,
+            "proxy_storage_bytes": 0, "proxy_download_count": 0, "from_a_newer_server": 1
+        }]),
+        &["analytics", "repo-trend", UUID],
+    )
+    .await;
+}
+
+fn health_entry() -> Value {
+    json!({
+        "service_name": "db", "status": "ok", "checked_at": "2026-01-15T12:00:00Z",
+        "from_a_newer_server": 1
+    })
+}
+
+#[tokio::test]
+async fn monitoring_commands() {
+    assert_prints_the_body(
+        "/health",
+        "GET",
+        json!({
+            "status": "healthy", "version": "1", "demo_mode": false,
+            "checks": {"database": {"status": "ok"}, "storage": {"status": "ok"}},
+            "from_a_newer_server": 1
+        }),
+        &["monitoring", "health"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/livez",
+        "GET",
+        json!({"status": "ok", "from_a_newer_server": 1}),
+        &["monitoring", "live"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/readyz",
+        "GET",
+        json!({
+            "status": "ready",
+            "checks": {
+                "database": {"status": "ok"}, "migrations": {"status": "ok"},
+                "setup_complete": {"status": "ok"}
+            },
+            "dependencies": {
+                "opensearch": {"status": "ok", "required": false},
+                "storage": {"status": "ok", "required": false},
+                "scanner": {"status": "ok", "required": false},
+                "ldap": {"status": "ok", "required": false}
+            },
+            "from_a_newer_server": 1
+        }),
+        &["monitoring", "ready"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/api/v1/admin/monitoring/alerts",
+        "GET",
+        json!([{
+            "service_name": "db", "current_status": "ok", "consecutive_failures": 0,
+            "updated_at": "2026-01-15T12:00:00Z", "from_a_newer_server": 1
+        }]),
+        &["monitoring", "alerts"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/api/v1/admin/monitoring/check",
+        "POST",
+        json!([health_entry()]),
+        &["monitoring", "check"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/api/v1/admin/monitoring/health-log",
+        "GET",
+        json!([health_entry()]),
+        &["monitoring", "health-log"],
+    )
+    .await;
+}
+
+fn service_account() -> Value {
+    json!({
+        "id": UUID, "username": "svc-a", "is_active": true,
+        "created_at": "2026-01-15T12:00:00Z", "updated_at": "2026-01-15T12:00:00Z",
+        "from_a_newer_server": 1
+    })
+}
+
+fn service_account_token() -> Value {
+    json!({
+        "id": UUID, "name": "t", "token_prefix": "ak_", "scopes": [], "is_expired": false,
+        "created_at": "2026-01-15T12:00:00Z", "repository_ids": [], "from_a_newer_server": 1
+    })
+}
+
+#[tokio::test]
+async fn service_account_commands() {
+    let base = "/api/v1/service-accounts";
+    let summary = json!({
+        "id": UUID, "username": "svc-a", "is_active": true, "token_count": 0,
+        "created_at": "2026-01-15T12:00:00Z", "updated_at": "2026-01-15T12:00:00Z",
+        "from_a_newer_server": 1
+    });
+    assert_prints_the_body(
+        base,
+        "GET",
+        json!({"items": [summary], "from_a_newer_server": 1}),
+        &["service-account", "list"],
+    )
+    .await;
+    assert_prints_the_body(
+        base,
+        "POST",
+        service_account(),
+        &["service-account", "create", "a"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/{UUID}"),
+        "GET",
+        service_account(),
+        &["service-account", "show", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/{UUID}"),
+        "PATCH",
+        service_account(),
+        &["service-account", "update", UUID, "--inactive"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/{UUID}/tokens"),
+        "GET",
+        json!({"items": [service_account_token()], "from_a_newer_server": 1}),
+        &["service-account", "token", "list", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{base}/repo-selector/preview"),
+        "POST",
+        json!({
+            "matched_repositories": [{"id": UUID, "key": "r", "format": "generic"}],
+            "total": 1, "from_a_newer_server": 1
+        }),
+        &["service-account", "preview-selector", "--selector", "{}"],
+    )
+    .await;
+}
+
+/// A new token is the one secret these commands print, because the server shows it
+/// once and showing it is the point of the command.
+#[tokio::test]
+async fn creating_a_token_shows_it_once() {
+    assert_prints_the_body(
+        &format!("/api/v1/service-accounts/{UUID}/tokens"),
+        "POST",
+        json!({
+            "id": UUID, "name": "t", "token": "the-new-token", "policy_applied": false,
+            "from_a_newer_server": 1
+        }),
+        &[
+            "service-account",
+            "token",
+            "create",
+            UUID,
+            "t",
+            "--scope",
+            "read",
+        ],
+    )
+    .await;
+    assert_prints_the_body(
+        "/api/v1/repositories/r/tokens",
+        "POST",
+        json!({
+            "id": UUID, "name": "t", "token": "the-new-token", "repository_key": "r",
+            "policy_applied": false, "from_a_newer_server": 1
+        }),
+        &["repo-token", "create", "r", "t"],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn repo_token_commands() {
+    let token = json!({
+        "id": UUID, "name": "t", "token_prefix": "ak_", "scopes": [], "is_expired": false,
+        "is_revoked": false, "created_at": "2026-01-15T12:00:00Z", "from_a_newer_server": 1
+    });
+    assert_prints_the_body(
+        "/api/v1/repositories/r/tokens",
+        "GET",
+        json!({"items": [token.clone()], "from_a_newer_server": 1}),
+        &["repo-token", "list", "r"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("/api/v1/repositories/r/tokens/{UUID}"),
+        "GET",
+        token,
+        &["repo-token", "show", "r", UUID],
+    )
+    .await;
+}
+
+fn label(owner: &str) -> Value {
+    json!({
+        "id": UUID, owner: UUID, "key": "k", "value": "v",
+        "created_at": "2026-01-15T12:00:00Z", "from_a_newer_server": 1
+    })
+}
+
+#[tokio::test]
+async fn label_commands() {
+    let repo = "/api/v1/repositories/r/labels";
+    let artifact = format!("/api/v1/artifacts/{UUID}/labels");
+    let repo_list =
+        json!({"items": [label("repository_id")], "total": 1, "from_a_newer_server": 1});
+    let artifact_list =
+        json!({"items": [label("artifact_id")], "total": 1, "from_a_newer_server": 1});
+
+    assert_prints_the_body(
+        repo,
+        "GET",
+        repo_list.clone(),
+        &["label", "repo", "list", "r"],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{repo}/k"),
+        "POST",
+        label("repository_id"),
+        &["label", "repo", "add", "r", "k=v"],
+    )
+    .await;
+    assert_prints_the_body(
+        repo,
+        "PUT",
+        repo_list,
+        &["label", "repo", "set", "r", "k=v"],
+    )
+    .await;
+    assert_prints_the_body(
+        &artifact,
+        "GET",
+        artifact_list.clone(),
+        &["label", "artifact", "list", UUID],
+    )
+    .await;
+    assert_prints_the_body(
+        &format!("{artifact}/k"),
+        "POST",
+        label("artifact_id"),
+        &["label", "artifact", "add", UUID, "k=v"],
+    )
+    .await;
+    assert_prints_the_body(
+        &artifact,
+        "PUT",
+        artifact_list,
+        &["label", "artifact", "set", UUID, "k=v"],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn email_subscription_commands() {
+    let route = "/api/v1/repositories/r/email-subscriptions";
+    let sub = json!({
+        "id": UUID, "repository_id": UUID, "event_types": ["e"], "recipients": ["a@example.com"],
+        "enabled": true, "created_at": "2026-01-15T12:00:00Z",
+        "updated_at": "2026-01-15T12:00:00Z", "from_a_newer_server": 1
+    });
+    assert_prints_the_body(
+        route,
+        "GET",
+        json!({"subscriptions": [sub.clone()], "from_a_newer_server": 1}),
+        &["email-subscriptions", "list", "r"],
+    )
+    .await;
+    assert_created_prints_the_body(
+        route,
+        "POST",
+        sub,
+        &[
+            "email-subscriptions",
+            "subscribe",
+            "r",
+            "--recipients",
+            "a@example.com",
+            "--events",
+            "e",
+        ],
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn system_commands() {
+    assert_prints_the_body(
+        "/api/v1/system/config",
+        "GET",
+        json!({
+            "max_upload_size_bytes": 1, "demo_mode": false, "guest_access_enabled": true,
+            "auth": {
+                "oidc_enabled": false, "ldap_enabled": false, "sso_enabled": false,
+                "local_login_enabled": true, "silent_sso_enabled": true
+            },
+            "from_a_newer_server": 1
+        }),
+        &["system", "config"],
+    )
+    .await;
+    assert_prints_the_body(
+        "/health",
+        "GET",
+        json!({
+            "status": "healthy", "version": "1", "demo_mode": false,
+            "checks": {"database": {"status": "ok"}, "storage": {"status": "ok"}},
+            "from_a_newer_server": 1
+        }),
+        &["system", "health"],
+    )
+    .await;
+}
+
+/// `sso list` is three requests, so it prints each body under its type, and `null`
+/// for a type the server wouldn't list.
+#[tokio::test]
+async fn sso_list_prints_each_body_under_its_type() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/admin/sso/oidc"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/admin/sso/saml"))
+        .respond_with(ResponseTemplate::new(403).set_body_json(json!({"message": "no"})))
+        .mount(&server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/admin/sso/ldap"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([ldap_config()])))
+        .mount(&server)
+        .await;
+
+    let output = run_against(&server, &["sso", "list", "--format", "json"]);
+    let shown: Value = serde_json::from_slice(&output.stdout).expect("JSON");
+    assert_eq!(
+        shown,
+        json!({"ldap": [ldap_config()], "oidc": [], "saml": null})
+    );
+}
+
+fn ldap_config() -> Value {
+    json!({
+        "id": UUID, "name": "l", "server_url": "ldap://x", "bind_dn": null,
+        "has_bind_password": true, "user_base_dn": "dc=x", "user_filter": "(uid={0})",
+        "username_attribute": "uid", "email_attribute": "mail",
+        "display_name_attribute": "cn", "groups_attribute": "memberOf", "group_base_dn": null,
+        "group_filter": null, "admin_group_dn": null, "use_starttls": false,
+        "is_enabled": true, "priority": 0, "insecure_skip_verify": false,
+        "has_ca_certificate": false, "created_at": "2026-01-15T12:00:00Z",
+        "updated_at": "2026-01-15T12:00:00Z", "from_a_newer_server": 1
+    })
+}
+
+#[tokio::test]
+async fn an_empty_list_prints_its_body_on_every_moved_command() {
+    for (route, verb, body, args) in [
+        (
+            "/api/v1/admin/analytics/downloads/trend",
+            "GET",
+            json!([]),
+            vec!["analytics", "downloads"],
+        ),
+        (
+            "/api/v1/admin/monitoring/alerts",
+            "GET",
+            json!([]),
+            vec!["monitoring", "alerts"],
+        ),
+        (
+            "/api/v1/dependency-track/projects",
+            "GET",
+            json!([]),
+            vec!["dt", "project", "list"],
+        ),
+        (
+            "/api/v1/repositories/r/tokens",
+            "GET",
+            json!({"items": []}),
+            vec!["repo-token", "list", "r"],
+        ),
+        (
+            "/api/v1/service-accounts",
+            "GET",
+            json!({"items": []}),
+            vec!["service-account", "list"],
+        ),
+        (
+            "/api/v1/repositories/r/labels",
+            "GET",
+            json!({"items": [], "total": 0}),
+            vec!["label", "repo", "list", "r"],
+        ),
+    ] {
+        assert_prints_the_body(route, verb, body, &args).await;
     }
 }

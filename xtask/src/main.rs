@@ -18,6 +18,7 @@ use std::process::Command;
 use anyhow::{Context, Result, bail, ensure};
 
 mod coverage;
+mod raw_layer;
 mod routes;
 
 /// Operations left out of the SDK, because Progenitor cannot generate

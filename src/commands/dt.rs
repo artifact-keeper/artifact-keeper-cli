@@ -177,11 +177,8 @@ async fn dt_status(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Checking Dependency-Track status...");
 
-    let resp = client
-        .dt_status()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get DT status", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.dt_status().send()).await;
+    let resp = resp.map_err(|e| sdk_err("get DT status", e))?;
 
     spinner.finish_and_clear();
 
@@ -204,7 +201,10 @@ async fn dt_status(global: &GlobalArgs) -> Result<()> {
         resp.url.as_deref().unwrap_or("-"),
     );
 
-    println!("{}", output::render(&data, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &data, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -213,17 +213,14 @@ async fn project_list(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Fetching projects...");
 
-    let projects = client
-        .list_projects()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list projects", e))?;
+    let (projects, raw) = artifact_keeper_sdk::raw::capture(client.list_projects().send()).await;
+    let projects = projects.map_err(|e| sdk_err("list projects", e))?;
 
     spinner.finish_and_clear();
 
     let projects = projects.into_inner();
 
-    if projects.is_empty() {
+    if projects.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No projects found.");
         return Ok(());
     }
@@ -239,7 +236,7 @@ async fn project_list(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -251,17 +248,15 @@ async fn project_show(uuid: &str, global: &GlobalArgs) -> Result<()> {
 
     // get_project() returns Vec<DtFinding> in the SDK, so we list all projects
     // and find the matching one to get project details.
-    let projects = client
-        .list_projects()
-        .send()
-        .await
-        .map_err(|e| sdk_err("fetch projects", e))?;
+    let (projects, raw) = artifact_keeper_sdk::raw::capture(client.list_projects().send()).await;
+    let projects = projects.map_err(|e| sdk_err("fetch projects", e))?;
 
     let project = projects
         .into_inner()
         .into_iter()
         .find(|p| p.uuid == uuid)
         .ok_or_else(|| sdk_err("find project", format!("not found: {uuid}")))?;
+    let raw = raw_project(raw.as_deref(), uuid);
 
     spinner.finish_and_clear();
 
@@ -292,7 +287,10 @@ async fn project_show(uuid: &str, global: &GlobalArgs) -> Result<()> {
         project.last_bom_import_format.as_deref().unwrap_or("-"),
     );
 
-    println!("{}", output::render(&data, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &data, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -301,18 +299,17 @@ async fn project_components(uuid: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Fetching components...");
 
-    let components = client
-        .get_project_components()
-        .project_uuid(uuid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get components", e))?;
+    let (components, raw) = artifact_keeper_sdk::raw::capture(
+        client.get_project_components().project_uuid(uuid).send(),
+    )
+    .await;
+    let components = components.map_err(|e| sdk_err("get components", e))?;
 
     spinner.finish_and_clear();
 
     let components = components.into_inner();
 
-    if components.is_empty() {
+    if components.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No components found.");
         return Ok(());
     }
@@ -328,7 +325,7 @@ async fn project_components(uuid: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} component(s).", components.len());
@@ -344,12 +341,10 @@ async fn project_findings(
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Fetching findings...");
 
-    let findings = client
-        .get_project_findings()
-        .project_uuid(uuid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get findings", e))?;
+    let (findings, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_project_findings().project_uuid(uuid).send())
+            .await;
+    let findings = findings.map_err(|e| sdk_err("get findings", e))?;
 
     spinner.finish_and_clear();
 
@@ -365,7 +360,7 @@ async fn project_findings(
         findings.iter().collect()
     };
 
-    if filtered.is_empty() {
+    if filtered.is_empty() && !output::is_machine_format(&global.format) {
         let msg = if severity_filter.is_some() {
             "No findings match the severity filter."
         } else {
@@ -382,13 +377,17 @@ async fn project_findings(
         return Ok(());
     }
 
+    let raw = match severity_filter {
+        Some(sev) => raw_findings_of_severity(raw.as_deref(), sev),
+        None => raw,
+    };
     let findings_count = filtered.len();
     let findings_vec: Vec<_> = filtered.into_iter().cloned().collect();
     let (entries, table_str) = format_findings_table(&findings_vec);
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} finding(s).", findings_count);
@@ -400,18 +399,15 @@ async fn project_get(uuid: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Fetching project findings...");
 
-    let findings = client
-        .get_project()
-        .project_uuid(uuid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get project", e))?;
+    let (findings, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_project().project_uuid(uuid).send()).await;
+    let findings = findings.map_err(|e| sdk_err("get project", e))?;
 
     spinner.finish_and_clear();
 
     let findings = findings.into_inner();
 
-    if findings.is_empty() {
+    if findings.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No findings found.");
         return Ok(());
     }
@@ -427,7 +423,7 @@ async fn project_get(uuid: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} finding(s).", findings.len());
@@ -439,18 +435,17 @@ async fn project_violations(uuid: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Fetching violations...");
 
-    let violations = client
-        .get_project_violations()
-        .project_uuid(uuid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get violations", e))?;
+    let (violations, raw) = artifact_keeper_sdk::raw::capture(
+        client.get_project_violations().project_uuid(uuid).send(),
+    )
+    .await;
+    let violations = violations.map_err(|e| sdk_err("get violations", e))?;
 
     spinner.finish_and_clear();
 
     let violations = violations.into_inner();
 
-    if violations.is_empty() {
+    if violations.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No policy violations found.");
         return Ok(());
     }
@@ -505,7 +500,7 @@ async fn project_violations(uuid: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} violation(s).", violations.len());
@@ -517,12 +512,10 @@ async fn project_metrics(uuid: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Fetching project metrics...");
 
-    let metrics = client
-        .get_project_metrics()
-        .project_uuid(uuid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get project metrics", e))?;
+    let (metrics, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_project_metrics().project_uuid(uuid).send())
+            .await;
+    let metrics = metrics.map_err(|e| sdk_err("get project metrics", e))?;
 
     spinner.finish_and_clear();
 
@@ -534,7 +527,10 @@ async fn project_metrics(uuid: &str, global: &GlobalArgs) -> Result<()> {
 
     let (data, table_str) = format_project_metrics_detail(&metrics);
 
-    println!("{}", output::render(&data, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &data, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -543,19 +539,21 @@ async fn project_metrics_history(uuid: &str, days: i32, global: &GlobalArgs) -> 
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Fetching metrics history...");
 
-    let history = client
-        .get_project_metrics_history()
-        .project_uuid(uuid)
-        .days(days)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get metrics history", e))?;
+    let (history, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .get_project_metrics_history()
+            .project_uuid(uuid)
+            .days(days)
+            .send(),
+    )
+    .await;
+    let history = history.map_err(|e| sdk_err("get metrics history", e))?;
 
     spinner.finish_and_clear();
 
     let history = history.into_inner();
 
-    if history.is_empty() {
+    if history.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No metrics history found.");
         return Ok(());
     }
@@ -616,7 +614,7 @@ async fn project_metrics_history(uuid: &str, days: i32, global: &GlobalArgs) -> 
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} data point(s) over {} days.", history.len(), days);
@@ -628,11 +626,9 @@ async fn portfolio_metrics(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Fetching portfolio metrics...");
 
-    let metrics = client
-        .get_portfolio_metrics()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get portfolio metrics", e))?;
+    let (metrics, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_portfolio_metrics().send()).await;
+    let metrics = metrics.map_err(|e| sdk_err("get portfolio metrics", e))?;
 
     spinner.finish_and_clear();
 
@@ -644,7 +640,10 @@ async fn portfolio_metrics(global: &GlobalArgs) -> Result<()> {
 
     let (data, table_str) = format_portfolio_metrics_detail(&metrics);
 
-    println!("{}", output::render(&data, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &data, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -653,17 +652,15 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Fetching policies...");
 
-    let policies = client
-        .list_dependency_track_policies()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list policies", e))?;
+    let (policies, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_dependency_track_policies().send()).await;
+    let policies = policies.map_err(|e| sdk_err("list policies", e))?;
 
     spinner.finish_and_clear();
 
     let policies = policies.into_inner();
 
-    if policies.is_empty() {
+    if policies.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No policies found.");
         return Ok(());
     }
@@ -679,7 +676,7 @@ async fn list_policies(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} policy/policies.", policies.len());
@@ -711,12 +708,9 @@ async fn update_analysis(
         suppressed,
     };
 
-    let resp = client
-        .update_analysis()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update analysis", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_analysis().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("update analysis", e))?;
 
     spinner.finish_and_clear();
 
@@ -740,7 +734,10 @@ async fn update_analysis(
         resp.analysis_details.as_deref().unwrap_or("-"),
     );
 
-    println!("{}", output::render(&data, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &data, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -748,6 +745,29 @@ async fn update_analysis(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/// The server has no route for one project's details, so `project show` picks it from
+/// the list. This keeps the object as the server sent it.
+fn raw_project(raw: Option<&[u8]>, uuid: &str) -> Option<Vec<u8>> {
+    let projects: Vec<serde_json::Value> = serde_json::from_slice(raw?).ok()?;
+    let project = projects.into_iter().find(|p| p["uuid"] == uuid)?;
+    serde_json::to_vec(&project).ok()
+}
+
+/// `--severity` filters here, not on the server. This keeps the matching findings as
+/// the server sent them.
+fn raw_findings_of_severity(raw: Option<&[u8]>, severity: &str) -> Option<Vec<u8>> {
+    let findings: Vec<serde_json::Value> = serde_json::from_slice(raw?).ok()?;
+    let matching: Vec<_> = findings
+        .into_iter()
+        .filter(|f| {
+            f["vulnerability"]["severity"]
+                .as_str()
+                .is_some_and(|s| s.eq_ignore_ascii_case(severity))
+        })
+        .collect();
+    serde_json::to_vec(&matching).ok()
+}
 
 fn format_timestamp(epoch_millis: i64) -> String {
     let secs = epoch_millis / 1000;

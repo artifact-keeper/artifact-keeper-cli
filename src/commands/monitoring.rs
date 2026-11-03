@@ -80,11 +80,8 @@ async fn health(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching health status...");
 
-    let resp = client
-        .health_check()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get health status", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.health_check().send()).await;
+    let resp = resp.map_err(|e| sdk_err("get health status", e))?;
     let h = resp.into_inner();
 
     spinner.finish_and_clear();
@@ -114,7 +111,10 @@ async fn health(global: &GlobalArgs) -> Result<()> {
     });
 
     let table_str = format_health_detail(&info);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -123,18 +123,18 @@ async fn live(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Checking liveness...");
 
-    let resp = client
-        .liveness_check()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get liveness", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.liveness_check().send()).await;
+    let resp = resp.map_err(|e| sdk_err("get liveness", e))?;
     let l = resp.into_inner();
 
     spinner.finish_and_clear();
 
     let info = serde_json::json!({ "status": l.status });
     let table_str = format!("Status: {}", l.status);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -143,11 +143,8 @@ async fn ready(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Checking readiness...");
 
-    let resp = client
-        .readiness_check()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get readiness", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.readiness_check().send()).await;
+    let resp = resp.map_err(|e| sdk_err("get readiness", e))?;
     let r = resp.into_inner();
 
     spinner.finish_and_clear();
@@ -169,7 +166,10 @@ async fn ready(global: &GlobalArgs) -> Result<()> {
         info["migrations"].as_str().unwrap_or("-"),
         info["setup_complete"].as_str().unwrap_or("-"),
     );
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -211,16 +211,13 @@ async fn alerts(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching alert states...");
 
-    let resp = client
-        .get_alert_states()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get alert states", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.get_alert_states().send()).await;
+    let resp = resp.map_err(|e| sdk_err("get alert states", e))?;
     let states = resp.into_inner();
 
     spinner.finish_and_clear();
 
-    if states.is_empty() {
+    if states.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No alert states found.");
         return Ok(());
     }
@@ -274,7 +271,7 @@ async fn alerts(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -314,15 +311,12 @@ async fn check(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Running health checks...");
 
-    let resp = client
-        .run_health_check()
-        .send()
-        .await
-        .map_err(|e| sdk_err("run health check", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.run_health_check().send()).await;
+    let resp = resp.map_err(|e| sdk_err("run health check", e))?;
     let entries = resp.into_inner();
 
     spinner.finish_and_clear();
-    render_health_entries(&entries, global);
+    render_health_entries(&entries, raw.as_deref(), global);
     Ok(())
 }
 
@@ -338,19 +332,21 @@ async fn health_log(limit: Option<i64>, service: Option<&str>, global: &GlobalAr
         req = req.service(s);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("get health log", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("get health log", e))?;
     let entries = resp.into_inner();
 
     spinner.finish_and_clear();
-    render_health_entries(&entries, global);
+    render_health_entries(&entries, raw.as_deref(), global);
     Ok(())
 }
 
 fn render_health_entries(
     entries: &[artifact_keeper_sdk::types::ServiceHealthEntry],
+    raw: Option<&[u8]>,
     global: &GlobalArgs,
 ) {
-    if entries.is_empty() {
+    if entries.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No health-check entries found.");
         return;
     }
@@ -407,7 +403,7 @@ fn render_health_entries(
 
     println!(
         "{}",
-        output::render(&json_entries, &global.format, Some(table_str))
+        output::render_raw(raw, &json_entries, &global.format, Some(table_str))
     );
 }
 

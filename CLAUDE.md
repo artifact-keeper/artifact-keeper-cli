@@ -103,6 +103,7 @@ The `Coverage` CI job holds the CLI to "anything curl can do". It isn't a requir
 - `xtask coverage --check` reads those, the spec, and the registry from `ak __registry`. Each route needs a line in `src/registry.rs`, a class exclusion there, or a place in `COVERAGE_PENDING.json`. It prints the per-tag table.
 - `COVERAGE_PENDING.json` lists package-format routes waiting for the WS-F helpers. It only shrinks. The gate fails if a route is added to it, or if a route on it gets a command and stays.
 - Every field in a covered operation's schema has to be in that route's `binds`, or in `FIELD_OPT_OUTS` with a reason.
+- `xtask/src/raw_layer.rs` reads `src/commands`, and fails on a function that calls an SDK operation with a JSON response without `raw::capture`, or that prints with `output::render`, unless its `OPT_OUTS` says why. It checks the source, not behaviour.
 - `tests/registry_contract.rs` runs each registry line against a mock server, and fails if the command doesn't send that request, or if a listed field doesn't reach the server. A new command that it can't drive needs an entry in that test's `hints` or `preflight`.
 
 ### Version policy
