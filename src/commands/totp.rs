@@ -123,7 +123,7 @@ async fn disable(
             dialoguer::Password::new()
                 .with_prompt("Account password")
                 .interact()
-                .map_err(|e| AkError::ConfigError(format!("Failed to read password: {e}")))?
+                .map_err(|e| super::helpers::prompt_err("Failed to read password", e))?
         }
     };
 
@@ -138,7 +138,7 @@ async fn disable(
             dialoguer::Input::new()
                 .with_prompt("TOTP code")
                 .interact_text()
-                .map_err(|e| AkError::ConfigError(format!("Failed to read code: {e}")))?
+                .map_err(|e| super::helpers::prompt_err("Failed to read code", e))?
         }
     };
 

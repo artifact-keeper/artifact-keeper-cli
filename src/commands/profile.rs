@@ -203,13 +203,13 @@ async fn change_password(global: &GlobalArgs) -> Result<()> {
     let current = dialoguer::Password::new()
         .with_prompt("Current password")
         .interact()
-        .map_err(|e| AkError::ConfigError(format!("Failed to read password: {e}")))?;
+        .map_err(|e| super::helpers::prompt_err("Failed to read password", e))?;
 
     let new_pass = dialoguer::Password::new()
         .with_prompt("New password")
         .with_confirmation("Confirm new password", "Passwords do not match")
         .interact()
-        .map_err(|e| AkError::ConfigError(format!("Failed to read password: {e}")))?;
+        .map_err(|e| super::helpers::prompt_err("Failed to read password", e))?;
 
     let client = client_for(global)?;
 

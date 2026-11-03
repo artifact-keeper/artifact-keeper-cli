@@ -20,11 +20,21 @@ async fn main() -> Result<()> {
 /// A prompt with no terminal fails deep inside dialoguer, in 20-odd places, with
 /// "not a terminal" and no way forward. Say what to do instead.
 fn explain_no_terminal(e: miette::Report) -> miette::Report {
-    if e.to_string().contains("not a terminal") {
+    if is_no_terminal(&e) {
         error::AkError::NoTerminal.into()
     } else {
         e
     }
+}
+
+/// Goes by the error's type, not its text: a server's message can say anything,
+/// and it reaches here as text.
+fn is_no_terminal(e: &miette::Report) -> bool {
+    e.chain().any(|cause| {
+        cause
+            .downcast_ref::<std::io::Error>()
+            .is_some_and(commands::helpers::is_no_terminal_io_error)
+    })
 }
 
 /// Shared test utilities — single ENV_LOCK for all modules that touch AK_CONFIG_DIR.
@@ -75,5 +85,44 @@ pub(crate) mod test_utils {
             std::env::remove_var("AK_CONFIG_DIR");
             std::env::remove_var("AK_TOKEN");
         }
+    }
+}
+
+#[cfg(test)]
+mod no_terminal_tests {
+    use miette::IntoDiagnostic;
+
+    use super::*;
+
+    fn prompt_error() -> dialoguer::Error {
+        std::io::Error::new(std::io::ErrorKind::NotConnected, "not a terminal").into()
+    }
+
+    #[test]
+    fn a_failed_prompt_is_recognised() {
+        let e = Err::<(), _>(prompt_error()).into_diagnostic().unwrap_err();
+        assert!(is_no_terminal(&e));
+    }
+
+    #[test]
+    fn a_message_saying_the_same_thing_is_not() {
+        for message in [
+            "not a terminal",
+            "IO error: not a terminal",
+            "Failed to read password: IO error: not a terminal",
+        ] {
+            let server: miette::Report = error::AkError::ServerError(message.to_string()).into();
+            assert!(!is_no_terminal(&server), "{message}");
+            let config: miette::Report = error::AkError::ConfigError(message.to_string()).into();
+            assert!(!is_no_terminal(&config), "{message}");
+        }
+    }
+
+    #[test]
+    fn another_io_error_is_not() {
+        let e = Err::<(), _>(std::io::Error::other("not a terminal"))
+            .into_diagnostic()
+            .unwrap_err();
+        assert!(!is_no_terminal(&e));
     }
 }
