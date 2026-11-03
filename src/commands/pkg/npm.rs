@@ -76,7 +76,7 @@ Examples:
         #[arg(long, conflicts_with = "tarball")]
         encoded_name: bool,
         /// Don't ask for confirmation
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
     /// Send an audit request, as `npm audit` does

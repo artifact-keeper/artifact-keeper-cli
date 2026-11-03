@@ -34,8 +34,17 @@ pub struct Cli {
     #[arg(long, global = true, env = "AK_INSTANCE")]
     pub instance: Option<String>,
 
-    /// Disable interactive prompts
-    #[arg(long, global = true, env = "AK_NO_INPUT")]
+    /// Never prompt. Destructive and security-decision commands then need --yes, the
+    /// only consent: without it they fail and send nothing. Everything else carries on
+    /// without asking. AK_NO_INPUT takes 1, true or yes, and 0, false, no or empty to
+    /// leave it off
+    #[arg(
+        long,
+        global = true,
+        env = "AK_NO_INPUT",
+        action = clap::ArgAction::SetTrue,
+        value_parser = parse_no_input,
+    )]
     pub no_input: bool,
 
     /// Path to a PEM file with additional root CA certificate(s) to trust,
@@ -50,6 +59,16 @@ pub struct Cli {
 
     #[command(subcommand)]
     pub command: Command,
+}
+
+/// `AK_NO_INPUT` as CI systems set it. clap's boolean parsers refuse an empty value,
+/// which is what an unset variable in a pipeline's template becomes.
+fn parse_no_input(value: &str) -> Result<bool, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "1" | "true" | "yes" | "y" | "t" | "on" => Ok(true),
+        "0" | "false" | "no" | "n" | "f" | "off" | "" => Ok(false),
+        _ => Err("expected 1, true or yes, or 0, false, no or empty".to_string()),
+    }
 }
 
 #[derive(Clone, clap::ValueEnum)]
@@ -1117,6 +1136,39 @@ mod tests {
     fn parse_instance_flag() {
         let cli = parse(&["ak", "--instance", "prod", "doctor"]).unwrap();
         assert_eq!(cli.instance, Some("prod".into()));
+    }
+
+    #[test]
+    fn no_input_values() {
+        for on in ["1", "true", "TRUE", "yes", "on"] {
+            assert_eq!(parse_no_input(on), Ok(true), "{on}");
+        }
+        for off in ["0", "false", "no", "off", "", " "] {
+            assert_eq!(parse_no_input(off), Ok(false), "{off}");
+        }
+        assert!(parse_no_input("maybe").is_err());
+    }
+
+    /// `-y` wherever `--yes` is, including on a command added later.
+    #[test]
+    fn every_yes_has_its_short_flag() {
+        fn walk(command: &clap::Command, path: &str, missing: &mut Vec<String>) {
+            for arg in command.get_arguments() {
+                if arg.get_long() == Some("yes") && arg.get_short() != Some('y') {
+                    missing.push(path.to_string());
+                }
+            }
+            for sub in command.get_subcommands() {
+                walk(sub, &format!("{path} {}", sub.get_name()), missing);
+            }
+        }
+        let mut missing = Vec::new();
+        walk(
+            &<Cli as clap::CommandFactory>::command(),
+            "ak",
+            &mut missing,
+        );
+        assert!(missing.is_empty(), "no -y on: {missing:?}");
     }
 
     #[test]

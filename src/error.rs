@@ -64,11 +64,22 @@ pub enum AkError {
     #[diagnostic(
         code(ak::no_terminal),
         help(
-            "Pass --yes where the command has it, or --no-input to run without prompts. \
-             --no-input accepts confirmations."
+            "Pass --yes to confirm a destructive or security-decision command: --no-input \
+             doesn't confirm those. For any other prompt, --no-input runs without it."
         )
     )]
     NoTerminal,
+
+    /// A destructive or security-decision command, with prompts off and no `--yes`.
+    #[error("Nothing was done: this needs confirmation, and prompts are off: {0}")]
+    #[diagnostic(
+        code(ak::confirmation_refused),
+        help(
+            "Pass --yes to go ahead: it's the only consent. --no-input and AK_NO_INPUT turn \
+             prompts off, and don't answer them."
+        )
+    )]
+    ConfirmationRefused(String),
 
     #[error("Couldn't create an API token for this configuration, so nothing was written: {0}")]
     #[diagnostic(

@@ -35,7 +35,7 @@ Examples:
         /// Package file name
         filename: String,
         /// Don't ask for confirmation
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }

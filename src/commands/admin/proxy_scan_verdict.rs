@@ -24,7 +24,7 @@ pub enum ProxyScanVerdictCommand {
         digest: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }

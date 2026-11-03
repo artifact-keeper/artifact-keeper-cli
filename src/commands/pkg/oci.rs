@@ -142,7 +142,7 @@ Examples:
         /// Tag or digest
         reference: String,
         /// Don't ask for confirmation
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }

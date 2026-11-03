@@ -271,6 +271,10 @@ pub enum BackupCommand {
         #[arg(long)]
         target_repo: Option<String>,
 
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+
         /// Restore an archive even if its integrity can't be verified
         #[arg(long)]
         allow_unverified_archive: bool,
@@ -286,7 +290,7 @@ pub enum BackupCommand {
         id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
     /// Cancel a running backup
@@ -383,7 +387,7 @@ pub enum UsersCommand {
         id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -517,7 +521,7 @@ pub enum PluginsCommand {
         id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
     /// Show details for a single plugin
@@ -719,7 +723,7 @@ pub enum TelemetryCommand {
         id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }
@@ -790,7 +794,7 @@ pub enum CiOidcCommand {
         id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
     /// Enable or disable a CI OIDC provider
@@ -933,7 +937,7 @@ pub enum CiOidcMappingCommand {
         mapping_id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
     /// Enable or disable an identity mapping
@@ -988,7 +992,7 @@ pub enum RemoteInstanceCommand {
         id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
     /// Proxy a request through a remote instance
@@ -1076,6 +1080,7 @@ impl AdminCommand {
                     database,
                     artifacts,
                     target_repo,
+                    yes,
                     allow_unverified_archive,
                 } => {
                     restore_backup(
@@ -1083,6 +1088,7 @@ impl AdminCommand {
                         database,
                         artifacts,
                         target_repo.as_deref(),
+                        yes,
                         allow_unverified_archive,
                         global,
                     )
@@ -1574,22 +1580,23 @@ async fn restore_backup(
     database: bool,
     artifacts: bool,
     target_repo: Option<&str>,
+    yes: bool,
     allow_unverified_archive: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
-    let target_repository_id =
-        super::helpers::resolve_optional_repo_id(&client, target_repo).await?;
-
     let id = parse_uuid(backup_id, "backup")?;
 
     if !confirm_action(
         &format!("Restore from backup {backup_id}? This may overwrite existing data"),
-        false,
+        yes,
         global.no_input,
     )? {
         return Ok(());
     }
+
+    let client = client_for(global)?;
+    let target_repository_id =
+        super::helpers::resolve_optional_repo_id(&client, target_repo).await?;
 
     let spinner = output::spinner("Restoring backup...");
 
@@ -6238,7 +6245,7 @@ mod tests {
                 .await;
 
             let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-            restore_backup(NIL_UUID, database, artifacts, None, false, &global)
+            restore_backup(NIL_UUID, database, artifacts, None, true, false, &global)
                 .await
                 .unwrap();
             server.verify().await;

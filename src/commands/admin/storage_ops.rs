@@ -34,7 +34,7 @@ pub enum StorageScrubCommand {
         max_bytes: Option<i64>,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -82,7 +82,7 @@ pub struct ReindexStorageArgs {
     limit: Option<i64>,
 
     /// Skip confirmation prompt
-    #[arg(long)]
+    #[arg(long, short = 'y')]
     yes: bool,
 }
 

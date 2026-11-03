@@ -529,10 +529,29 @@ pub fn prompt_err(what: &str, e: dialoguer::Error) -> AkError {
     }
 }
 
-/// Prompt the user to confirm a destructive action. Returns `true` if the
-/// action should proceed, `false` if cancelled.
-pub fn confirm_action(prompt: &str, skip_confirm: bool, no_input: bool) -> Result<bool> {
-    if skip_confirm || no_input {
+/// Refuse now if nothing can answer a confirmation. For a command that has to read
+/// from the server to write its prompt: call this first, so that `--no-input`
+/// without `--yes` sends nothing at all, and a missing terminal fails before the
+/// reads rather than after.
+pub fn ensure_can_confirm(prompt: &str, yes: bool, no_input: bool) -> Result<()> {
+    if yes {
+        return Ok(());
+    }
+    if no_input {
+        return Err(AkError::ConfirmationRefused(prompt.trim_end_matches('?').to_string()).into());
+    }
+    if !console::user_attended_stderr() {
+        return Err(AkError::NoTerminal.into());
+    }
+    Ok(())
+}
+
+/// Ask before a destructive or security-decision action. Returns `true` to go ahead,
+/// `false` if the user said no. `--yes` is the only way past it without a person:
+/// `--no-input` turns the prompt off, and it isn't an answer, so that's an error.
+pub fn confirm_action(prompt: &str, yes: bool, no_input: bool) -> Result<bool> {
+    ensure_can_confirm(prompt, yes, no_input)?;
+    if yes {
         return Ok(true);
     }
     let confirmed = dialoguer::Confirm::new()
@@ -638,10 +657,10 @@ mod tests {
     }
 
     #[test]
-    fn confirm_action_no_input() {
-        let result = confirm_action("Delete?", false, true);
-        assert!(result.is_ok());
-        assert!(result.unwrap());
+    fn confirm_action_no_input_is_not_a_yes() {
+        let e = confirm_action("Delete repo r?", false, true).unwrap_err();
+        assert!(e.to_string().contains("Delete repo r"), "{e}");
+        assert!(format!("{:?}", e).contains("--yes"), "{e:?}");
     }
 
     #[test]
@@ -649,6 +668,14 @@ mod tests {
         let result = confirm_action("Really?", true, true);
         assert!(result.is_ok());
         assert!(result.unwrap());
+    }
+
+    #[test]
+    fn ensure_can_confirm_goes_by_the_same_rule() {
+        assert!(ensure_can_confirm("Really?", true, true).is_ok());
+        assert!(ensure_can_confirm("Really?", true, false).is_ok());
+        let e = ensure_can_confirm("Really?", false, true).unwrap_err();
+        assert!(format!("{e:?}").contains("--yes"), "{e:?}");
     }
 
     // ---- print_page_info ----

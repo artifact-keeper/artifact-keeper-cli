@@ -233,7 +233,7 @@ fn a_quarantine_hold_shows_in_holds() {
     }
     let (key, id) = repo_with_artifact(&env, "holds");
     env.ak_cmd()
-        .args(["quarantine", "hold", &id, "--reason", "e2e"])
+        .args(["quarantine", "hold", &id, "--reason", "e2e", "--yes"])
         .assert()
         .success();
 
@@ -265,7 +265,7 @@ fn a_quarantine_hold_shows_in_holds() {
     );
 
     env.ak_cmd()
-        .args(["quarantine", "release", &id])
+        .args(["quarantine", "release", &id, "--yes"])
         .assert()
         .success();
 }

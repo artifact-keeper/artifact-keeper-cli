@@ -80,7 +80,7 @@ pub enum PeerCommand {
         id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -297,7 +297,7 @@ pub enum PeerSubscriptionCommand {
         repo_id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -398,7 +398,7 @@ pub enum PeerLabelCommand {
         key: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }

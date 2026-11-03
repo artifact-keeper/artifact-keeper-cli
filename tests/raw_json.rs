@@ -520,7 +520,7 @@ async fn admin_mutations() {
             "artifacts_restored": 1, "errors": [], "integrity_anchor": "none",
             "tables_restored": ["t"], "from_a_newer_server": true
         }),
-        &["admin", "backup", "restore", UUID],
+        &["admin", "backup", "restore", UUID, "--yes"],
     )
     .await;
 }

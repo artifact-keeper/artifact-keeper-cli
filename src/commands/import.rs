@@ -101,7 +101,7 @@ pub enum SourceCommand {
         id: String,
 
         /// Skip the confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -187,7 +187,7 @@ pub enum JobCommand {
         id: String,
 
         /// Skip the confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -513,16 +513,12 @@ async fn source_show(id: &str, global: &GlobalArgs) -> Result<()> {
 async fn source_delete(id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
     let conn_id = parse_uuid(id, "connection")?;
 
-    if !yes && !global.no_input {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!("Delete source connection {id}?"))
-            .default(false)
-            .interact()
-            .map_err(|e| super::helpers::prompt_err("prompt failed", e))?;
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !super::helpers::confirm_action(
+        &format!("Delete source connection {id}?"),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
     let client = client_for(global)?;
@@ -788,16 +784,8 @@ async fn job_cancel(id: &str, global: &GlobalArgs) -> Result<()> {
 async fn job_delete(id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
     let job_id = parse_uuid(id, "job")?;
 
-    if !yes && !global.no_input {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!("Delete import job {id}?"))
-            .default(false)
-            .interact()
-            .map_err(|e| super::helpers::prompt_err("prompt failed", e))?;
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+    if !super::helpers::confirm_action(&format!("Delete import job {id}?"), yes, global.no_input)? {
+        return Ok(());
     }
 
     let client = client_for(global)?;

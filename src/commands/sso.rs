@@ -49,7 +49,7 @@ pub enum SsoCommand {
         r#type: String,
 
         /// Skip confirmation
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 

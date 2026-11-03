@@ -265,6 +265,8 @@ export AK_NO_INPUT=1
 ak artifact push my-repo ./build/output.tar.gz
 ```
 
+`AK_NO_INPUT` and `--no-input` mean never prompt. They don't answer a prompt: `--yes` (`-y`) is the only consent. A destructive or security-decision command, such as `ak repo delete` or `ak quarantine release`, fails without it, with exit code 2, and sends nothing. Everything else runs without asking.
+
 See the [CI/CD Integration Guide](https://artifactkeeper.com/docs/guides/ci-cd/) for GitHub Actions, GitLab CI, and Jenkins examples.
 
 ## Environment Variables
@@ -274,7 +276,7 @@ See the [CI/CD Integration Guide](https://artifactkeeper.com/docs/guides/ci-cd/)
 | `AK_FORMAT` | Default output format (`table`, `json`, `yaml`, `quiet`) |
 | `AK_INSTANCE` | Override default instance |
 | `AK_TOKEN` | API token (alternative to keychain) |
-| `AK_NO_INPUT` | Disable interactive prompts |
+| `AK_NO_INPUT` | Never prompt, as `--no-input` does: `1`, `true` or `yes`. `0`, `false`, `no` or empty leave it off. Destructive and security-decision commands then need `--yes` |
 | `AK_CA_CERT` | Path to a PEM file with additional root CA certificate(s) to trust (same as `--ca-cert`) |
 | `AK_COLOR` | Color mode (`auto`, `always`, `never`) |
 | `AK_CONFIG_DIR` | Override config directory |

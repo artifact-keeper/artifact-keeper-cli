@@ -124,13 +124,15 @@ The first two numbers of the CLI version are the server version it's built for. 
 - **Raw JSON**: `--format json` and `yaml` must print the response as received. Wrap the SDK call in `artifact_keeper_sdk::raw::capture` and print with `output::render_raw`, or `helpers::emit_mutation_raw` for a mutation. New commands use these rather than `output::render`
 - **Repository and artifact arguments**: `helpers::resolve_repo_id` and `resolve_artifact_id` take a key or a UUID. Use them rather than `parse_uuid` for any repository parameter
 
+- **Confirmations**: a destructive or security-decision command takes `--yes` and `-y`, and calls `helpers::confirm_action` before it sends anything. `--no-input` means never prompt and isn't an answer: `--yes` is the only consent. Without it that's an error, exit code 2, and nothing goes out. A prompt that has to read from the server first calls `helpers::ensure_can_confirm` before those reads. `tests/registry_contract.rs` checks every command with `--yes` refuses this way. Elsewhere `--no-input` just disables prompts
+
 ### Environment Variables
 
 | Variable | Purpose |
 |----------|---------|
 | `AK_FORMAT` | Default output format |
 | `AK_INSTANCE` | Override default instance |
-| `AK_NO_INPUT` | Disable interactive prompts |
+| `AK_NO_INPUT` | Never prompt, as `--no-input` does: `1`, `true` or `yes`. `0`, `false`, `no` or empty leave it off. Destructive and security-decision commands then need `--yes` |
 | `AK_COLOR` | Color mode (auto/always/never) |
 | `AK_CONFIG_DIR` | Override config directory |
 | `AK_TOKEN` | API token (alternative to keychain) |
