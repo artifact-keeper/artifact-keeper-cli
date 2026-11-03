@@ -5,8 +5,7 @@ use miette::{IntoDiagnostic, Result};
 
 use super::client::{anon_client, authenticated_client, build_client, client_for};
 use super::helpers::{
-    parse_json_arg, parse_uuid, raw_err, refuse_flags_before_1_11, require_secret, resolve_secret,
-    sdk_err,
+    parse_json_arg, parse_uuid, raw_err, require_secret, resolve_secret, sdk_err, server_before,
 };
 use crate::cli::GlobalArgs;
 use crate::config::credentials::{
@@ -221,10 +220,17 @@ impl AuthCommand {
                     let repo_selector = repo_selector
                         .map(|value| parse_json_arg(&value, "--repo-selector"))
                         .transpose()?;
-                    // A 1.10 server would drop the selector and make a token with
+                    // 1.10.2 honours a selector. 1.10.1 drops it and makes a token with
                     // all of your access, which is the opposite of what was asked.
-                    if repo_selector.is_some() {
-                        refuse_flags_before_1_11(&["--repo-selector"], global).await?;
+                    if repo_selector.is_some()
+                        && let Some(version) = server_before(global, (1, 10, 2)).await
+                    {
+                        return Err(AkError::ServerError(format!(
+                            "--repo-selector needs a server on 1.10.2 or newer. This one is \
+                             {version}, which would ignore it and make a token with all of \
+                             your access. Nothing was changed."
+                        ))
+                        .into());
                     }
                     token_create(
                         description.as_deref(),

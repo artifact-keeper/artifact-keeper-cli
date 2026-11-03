@@ -95,6 +95,24 @@ pub async fn server_before_1_11(global: &GlobalArgs) -> Option<String> {
     (found < (1, 11)).then_some(version)
 }
 
+/// The version of the instance's server, if it's known to be older than this one.
+pub async fn server_before(global: &GlobalArgs, wanted: (u64, u64, u64)) -> Option<String> {
+    let config = crate::config::AppConfig::load().ok()?;
+    let (_, instance) = config.resolve_instance(global.instance.as_deref()).ok()?;
+    let version = super::doctor::fetch_server_version(instance).await.ok()?;
+    let (major, minor) = super::doctor::major_minor(&version)?;
+    let patch = version
+        .trim()
+        .trim_start_matches('v')
+        .split('.')
+        .nth(2)?
+        .split(|c: char| !c.is_ascii_digit())
+        .next()?
+        .parse()
+        .ok()?;
+    ((major, minor, patch) < wanted).then_some(version)
+}
+
 /// Refuse flags that a server before 1.11 would accept and silently drop, before
 /// anything changes: it answers 200, so the command would report what never happened.
 pub async fn refuse_flags_before_1_11(flags: &[&str], global: &GlobalArgs) -> Result<()> {
