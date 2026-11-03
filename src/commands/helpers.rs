@@ -135,6 +135,36 @@ pub fn fail_on_errors(what: &str, errors: &[String]) -> Result<()> {
     Err(reported_failure(&message))
 }
 
+/// How long a command waits between tries for a proxied path the server hasn't recorded
+/// yet. A server answers a download, or the 409 for a held one, before it has recorded
+/// the path, for as long as it takes to fetch and store it.
+pub const PROXY_RECORD_WAITS: [std::time::Duration; 4] = [
+    std::time::Duration::from_millis(250),
+    std::time::Duration::from_millis(500),
+    std::time::Duration::from_secs(1),
+    std::time::Duration::from_secs(2),
+];
+
+/// What to add to the error when a proxied path still isn't recorded after those waits.
+pub const PROXY_NOT_RECORDED_HINT: &str = "If this path was only just downloaded, or a download \
+     of it just got a 409, the server may still be recording it, which takes as long as \
+     fetching it from upstream. Try again shortly.";
+
+/// Whether a 404 means the server has no finished record of a cached path, as opposed to
+/// no such repository, which is also a 404 and isn't worth a wait. The server words this
+/// differently per route.
+pub fn is_proxy_path_not_recorded(status: reqwest::StatusCode, message: Option<&str>) -> bool {
+    status == reqwest::StatusCode::NOT_FOUND
+        && matches!(
+            message,
+            Some(
+                "No cached artifact at that path"
+                    | "No proxy-cached artifact at that path"
+                    | "No proxy-cached artifact at that path in this repository."
+            )
+        )
+}
+
 /// Emit the result of a mutation (create/update/delete) honoring the output
 /// format so results are machine-consumable.
 ///

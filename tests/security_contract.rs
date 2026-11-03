@@ -203,6 +203,73 @@ async fn release_proxy_waits_for_a_hold_to_be_recorded() {
     assert_eq!(mocked.server.received_requests().await.unwrap().len(), 3);
 }
 
+/// `sbom proxy` and `scan proxy` wait the same way, on the server's wording for each route.
+#[tokio::test]
+async fn proxy_reads_wait_for_a_path_to_be_recorded() {
+    for (verb, route, message, args, body) in [
+        (
+            "GET",
+            "/api/v1/repositories/rem/security/proxy-sbom",
+            "No proxy-cached artifact at that path in this repository.",
+            vec!["sbom", "proxy", "rem", "--path", "a"],
+            json!({"bomFormat": "CycloneDX"}),
+        ),
+        (
+            "POST",
+            "/api/v1/repositories/rem/security/proxy-scans/rescan",
+            "No proxy-cached artifact at that path",
+            vec!["scan", "proxy", "rescan", "rem", "--path", "a"],
+            json!({
+                "repository_key": "rem", "path": "a", "digest": "d", "state": "clean",
+                "findings_count": 0, "critical_count": 0, "high_count": 0, "medium_count": 0,
+                "low_count": 0, "package_count": 0, "findings": []
+            }),
+        ),
+        (
+            "GET",
+            "/api/v1/repositories/rem/security/proxy-scans",
+            "No proxy-cached artifact at that path",
+            vec!["scan", "proxy", "list", "rem", "--path", "a"],
+            json!({
+                "repository_key": "rem", "scan_on_proxy": false, "proxy_scan_action": "fail_open",
+                "items": [], "total": 0, "page": 1, "per_page": 50
+            }),
+        ),
+    ] {
+        let mocked = Mocked::start().await;
+        Mock::given(method(verb))
+            .and(path(route))
+            .respond_with(ResponseTemplate::new(404).set_body_json(json!({"message": message})))
+            .up_to_n_times(1)
+            .mount(&mocked.server)
+            .await;
+        mocked.respond(verb, route, 200, body.clone()).await;
+        assert_eq!(mocked.json(&args), body, "{args:?}");
+        assert_eq!(
+            mocked.server.received_requests().await.unwrap().len(),
+            2,
+            "{args:?}"
+        );
+    }
+}
+
+/// An SBOM with no inventory recorded is a final answer, not something to wait for.
+#[tokio::test]
+async fn a_proxy_sbom_does_not_wait_when_there_is_no_inventory() {
+    let mocked = Mocked::start().await;
+    mocked
+        .respond(
+            "GET",
+            "/api/v1/repositories/rem/security/proxy-sbom",
+            404,
+            json!({"message": "No SBOM recorded for this proxy-cached artifact."}),
+        )
+        .await;
+    let output = mocked.ak(&["sbom", "proxy", "rem", "--path", "a"]);
+    assert_eq!(output.status.code(), Some(5));
+    assert_eq!(mocked.server.received_requests().await.unwrap().len(), 1);
+}
+
 /// It gives up in a few seconds, and never reports a release the server didn't make.
 #[tokio::test]
 async fn release_proxy_stops_waiting_and_says_nothing_was_released() {
@@ -227,7 +294,7 @@ async fn release_proxy_stops_waiting_and_says_nothing_was_released() {
         "json",
     ]);
     assert!(started.elapsed() < std::time::Duration::from_secs(15));
-    assert_eq!(output.status.code(), Some(6));
+    assert_eq!(output.status.code(), Some(5));
     assert!(output.stdout.is_empty());
     let stderr = unwrapped(&output.stderr);
     assert!(
@@ -235,7 +302,7 @@ async fn release_proxy_stops_waiting_and_says_nothing_was_released() {
         "{stderr}"
     );
     assert!(stderr.contains("Nothing was released"), "{stderr}");
-    assert!(stderr.contains("recording the hold"), "{stderr}");
+    assert!(stderr.contains("still be recording"), "{stderr}");
     assert_eq!(mocked.server.received_requests().await.unwrap().len(), 5);
 }
 
