@@ -37,3 +37,29 @@ fn auth_token_list() {
         .assert()
         .success();
 }
+
+/// A failed assertion on a command prints the command, its environment and its
+/// output, and in CI that goes to the log.
+#[test]
+#[ignore = "requires E2E backend"]
+fn a_failing_command_does_not_print_the_token() {
+    let env = common::TestEnv::setup();
+    let mut cmd = env.ak_cmd();
+    cmd.args(["repo", "show", "e2e-no-such-repository"]);
+
+    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        cmd.assert().success();
+    }))
+    .expect_err("the command should fail");
+    let printed = panic
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| panic.downcast_ref::<&str>().map(ToString::to_string))
+        .expect("a panic message");
+
+    assert!(
+        printed.contains("e2e-no-such-repository"),
+        "this isn't the failure it should be"
+    );
+    assert!(!printed.contains(&env.token), "the token was printed");
+}

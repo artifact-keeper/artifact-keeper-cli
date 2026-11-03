@@ -85,12 +85,8 @@ fn banner_lifecycle() {
     assert!(!shows(&ui, &id), "{ui}");
 
     // `active` is public: it works with no credentials at all.
-    let anonymous = json_output(
-        env.ak_cmd()
-            .env_remove("AK_TOKEN")
-            .env("AK_CREDENTIAL_STORE", "file")
-            .args(["banner", "active"]),
-    );
+    let (mut anonymous, _anonymous_config) = env.anonymous_cmd();
+    let anonymous = json_output(anonymous.args(["banner", "active"]));
     assert!(shows(&anonymous, &id), "{anonymous}");
 
     // An update keeps what it wasn't told to change, and can clear a field.

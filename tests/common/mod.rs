@@ -95,6 +95,24 @@ fn get_auth_token() -> &'static str {
     })
 }
 
+/// Store the token as `ak auth login` does, for the instance in the test config.
+///
+/// The harness doesn't use `AK_TOKEN`: when an assertion on a command fails,
+/// assert_cmd prints the command with its environment, so the token would reach
+/// the CI log.
+fn write_credentials(config_dir: &std::path::Path, token: &str) {
+    let credential = serde_json::json!({ "access_token": token, "refresh_token": null });
+    let file = serde_json::json!({ "e2e": credential.to_string() });
+    let path = config_dir.join("credentials.json");
+    std::fs::write(&path, file.to_string()).expect("Failed to write test credentials");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+            .expect("Failed to protect test credentials");
+    }
+}
+
 /// Test environment with temp config dir and pre-authenticated CLI.
 pub struct TestEnv {
     pub url: String,
@@ -118,6 +136,7 @@ impl TestEnv {
         );
         std::fs::write(config_dir.path().join("config.toml"), config)
             .expect("Failed to write test config");
+        write_credentials(config_dir.path(), &token);
 
         TestEnv {
             url,
@@ -127,23 +146,42 @@ impl TestEnv {
     }
 
     /// Build an `ak` command pre-configured with the test environment.
-    /// Sets AK_CONFIG_DIR, AK_TOKEN, and --no-input --format json.
+    /// Uses the credentials file in the temp config dir, and --no-input --format json.
     pub fn ak_cmd(&self) -> Command {
-        let mut cmd = Command::cargo_bin("ak").expect("Failed to find ak binary");
-        cmd.env("AK_CONFIG_DIR", self.config_dir.path())
-            .env("AK_TOKEN", &self.token)
-            .arg("--no-input")
-            .arg("--format")
-            .arg("json");
+        let mut cmd = self.bare_cmd();
+        cmd.arg("--no-input").arg("--format").arg("json");
         cmd
     }
 
     /// Build an `ak` command with table output (for snapshot tests).
     pub fn ak_cmd_table(&self) -> Command {
+        let mut cmd = self.bare_cmd();
+        cmd.arg("--no-input");
+        cmd
+    }
+
+    /// `ak` for this backend with no credentials at all. The returned directory
+    /// holds its config, and has to outlive the command.
+    #[allow(dead_code)]
+    pub fn anonymous_cmd(&self) -> (Command, tempfile::TempDir) {
+        let dir = tempfile::TempDir::new().expect("Failed to create temp config dir");
+        std::fs::copy(
+            self.config_dir.path().join("config.toml"),
+            dir.path().join("config.toml"),
+        )
+        .expect("Failed to copy test config");
+        let mut cmd = self.bare_cmd();
+        cmd.env("AK_CONFIG_DIR", dir.path())
+            .args(["--no-input", "--format", "json"]);
+        (cmd, dir)
+    }
+
+    fn bare_cmd(&self) -> Command {
         let mut cmd = Command::cargo_bin("ak").expect("Failed to find ak binary");
-        cmd.env("AK_CONFIG_DIR", self.config_dir.path())
-            .env("AK_TOKEN", &self.token)
-            .arg("--no-input");
+        // A token already in this shell would win over the credentials file.
+        cmd.env_remove("AK_TOKEN")
+            .env("AK_CONFIG_DIR", self.config_dir.path())
+            .env("AK_CREDENTIAL_STORE", "file");
         cmd
     }
 
