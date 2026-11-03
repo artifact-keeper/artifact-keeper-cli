@@ -204,6 +204,10 @@ ak repo list --format yaml      # YAML
 ak repo list -q                 # Quiet: IDs only, one per line
 ```
 
+`--format json` is the server's response as sent, so its shape follows the server's version, and ak doesn't normalize it. For a script that has to work across server versions, `-q` prints the stable IDs.
+
+The format comes from `--format`, then `AK_FORMAT`, then `ak config set output_format`, and otherwise table on a terminal and JSON on a pipe. `ak config set output_format table` is that default, so a pipe still gets JSON; `--format table` keeps a table on a pipe. Color goes the same way: `--color`, then `AK_COLOR` and `NO_COLOR`, then `ak config set color`, and otherwise `auto`.
+
 ## Multi-Instance Support
 
 Manage multiple Artifact Keeper servers with named contexts:

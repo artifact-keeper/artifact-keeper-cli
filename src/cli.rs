@@ -28,12 +28,17 @@ pub struct GlobalArgs {
   5   not found (404)
   6   any other server error, or a server too old for the command
   7   the server answered 2xx, and its response says it failed or a check didn't pass
-  22  `ak api --fail` on a failure status. `ak api` has its own table: `ak api --help`"
+  22  `ak api --fail` on a failure status. `ak api` has its own table: `ak api --help`
+
+Output:
+  --format json is the server's response as sent, so its shape follows the server's
+  version. For scripts that have to work across versions, -q prints the stable IDs."
 )]
 pub struct Cli {
-    /// Output format (auto-detects: table for TTY, json for pipes)
-    #[arg(long, global = true, default_value = "table", env = "AK_FORMAT")]
-    pub format: OutputFormat,
+    /// Output format. Without this, AK_FORMAT or `ak config set output_format`: table on a
+    /// terminal, JSON on a pipe
+    #[arg(long, global = true, env = "AK_FORMAT")]
+    pub format: Option<OutputFormat>,
 
     /// Suppress all output except primary identifiers (shorthand for --format quiet)
     #[arg(short, long, global = true)]
@@ -63,9 +68,9 @@ pub struct Cli {
     #[arg(long, global = true, env = "AK_CA_CERT", value_name = "PATH")]
     pub ca_cert: Option<std::path::PathBuf>,
 
-    /// Color output
-    #[arg(long, global = true, default_value = "auto", env = "AK_COLOR")]
-    pub color: ColorMode,
+    /// Color output. Without this, AK_COLOR, NO_COLOR or `ak config set color`: auto
+    #[arg(long, global = true, env = "AK_COLOR")]
+    pub color: Option<ColorMode>,
 
     #[command(subcommand)]
     pub command: Command,
@@ -81,11 +86,57 @@ fn parse_no_input(value: &str) -> Result<bool, String> {
     }
 }
 
-#[derive(Clone, clap::ValueEnum)]
+#[derive(Clone, Copy, clap::ValueEnum)]
 pub enum ColorMode {
     Auto,
     Always,
     Never,
+}
+
+/// The format in the config file. A file that can't be read isn't this command's
+/// problem, and one that's needed will say so when it's loaded.
+fn configured_format() -> Option<OutputFormat> {
+    match crate::config::AppConfig::load()
+        .ok()?
+        .output_format
+        .as_str()
+    {
+        "json" => Some(OutputFormat::Json),
+        "yaml" => Some(OutputFormat::Yaml),
+        "quiet" => Some(OutputFormat::Quiet),
+        _ => None,
+    }
+}
+
+fn configured_color() -> Option<ColorMode> {
+    match crate::config::AppConfig::load().ok()?.color.as_str() {
+        "always" => Some(ColorMode::Always),
+        "never" => Some(ColorMode::Never),
+        _ => None,
+    }
+}
+
+/// Flag or AK_COLOR, then NO_COLOR, then the config file, and otherwise leave it to
+/// the terminal.
+fn apply_color(chosen: Option<ColorMode>) {
+    let mode = chosen.or_else(|| {
+        if std::env::var_os("NO_COLOR").is_some() {
+            Some(ColorMode::Never)
+        } else {
+            configured_color()
+        }
+    });
+    let colored = match mode {
+        Some(ColorMode::Always) => true,
+        Some(ColorMode::Never) => false,
+        Some(ColorMode::Auto) | None => return,
+    };
+    console::set_colors_enabled(colored);
+    console::set_colors_enabled_stderr(colored);
+    // Errors are drawn by miette, which decides for itself otherwise.
+    let _ = miette::set_hook(Box::new(move |_| {
+        Box::new(miette::MietteHandlerOpts::new().color(colored).build())
+    }));
 }
 
 #[derive(Subcommand)]
@@ -563,21 +614,20 @@ pub enum Command {
 
 impl Cli {
     pub async fn execute(self) -> Result<()> {
-        // Respect NO_COLOR env var
-        if std::env::var("NO_COLOR").is_ok() || matches!(self.color, ColorMode::Never) {
-            console::set_colors_enabled(false);
-            console::set_colors_enabled_stderr(false);
-        }
+        apply_color(self.color);
 
         // --quiet flag overrides --format
         let format = if self.quiet {
             OutputFormat::Quiet
         } else {
-            // Auto-detect: when stdout is piped and format wasn't explicitly set
-            // via CLI or env, switch from table to JSON.
-            let explicitly_set = std::env::var("AK_FORMAT").is_ok()
-                || std::env::args().any(|a| a == "--format" || a.starts_with("--format="));
-            self.format.resolve(explicitly_set)
+            match self.format {
+                Some(format) => format,
+                // `table` is what a config file holds unless someone changed it, so
+                // it can't mean "even on a pipe". Table on a pipe takes --format table.
+                None => configured_format()
+                    .unwrap_or(OutputFormat::Table)
+                    .resolve(false),
+            }
         };
 
         // Record the custom CA path for all HTTP client construction sites
@@ -1124,19 +1174,19 @@ mod tests {
     #[test]
     fn parse_format_json() {
         let cli = parse(&["ak", "--format", "json", "doctor"]).unwrap();
-        assert!(matches!(cli.format, OutputFormat::Json));
+        assert!(matches!(cli.format, Some(OutputFormat::Json)));
     }
 
     #[test]
     fn parse_format_yaml() {
         let cli = parse(&["ak", "--format", "yaml", "doctor"]).unwrap();
-        assert!(matches!(cli.format, OutputFormat::Yaml));
+        assert!(matches!(cli.format, Some(OutputFormat::Yaml)));
     }
 
     #[test]
     fn parse_format_quiet() {
         let cli = parse(&["ak", "--format", "quiet", "doctor"]).unwrap();
-        assert!(matches!(cli.format, OutputFormat::Quiet));
+        assert!(matches!(cli.format, Some(OutputFormat::Quiet)));
     }
 
     #[test]
@@ -1193,13 +1243,13 @@ mod tests {
     #[test]
     fn parse_color_never() {
         let cli = parse(&["ak", "--color", "never", "doctor"]).unwrap();
-        assert!(matches!(cli.color, ColorMode::Never));
+        assert!(matches!(cli.color, Some(ColorMode::Never)));
     }
 
     #[test]
     fn parse_color_always() {
         let cli = parse(&["ak", "--color", "always", "doctor"]).unwrap();
-        assert!(matches!(cli.color, ColorMode::Always));
+        assert!(matches!(cli.color, Some(ColorMode::Always)));
     }
 
     // ---- Group command parsing ----
@@ -1943,7 +1993,7 @@ mod tests {
     #[test]
     fn default_format_is_table() {
         let cli = parse(&["ak", "doctor"]).unwrap();
-        assert!(matches!(cli.format, OutputFormat::Table));
+        assert!(cli.format.is_none());
     }
 
     #[test]
@@ -1967,7 +2017,7 @@ mod tests {
     #[test]
     fn default_color_is_auto() {
         let cli = parse(&["ak", "doctor"]).unwrap();
-        assert!(matches!(cli.color, ColorMode::Auto));
+        assert!(cli.color.is_none());
     }
 
     // ---- DT (Dependency-Track) command parsing ----

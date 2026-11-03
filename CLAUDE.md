@@ -130,10 +130,10 @@ The first two numbers of the CLI version are the server version it's built for. 
 
 | Variable | Purpose |
 |----------|---------|
-| `AK_FORMAT` | Default output format |
+| `AK_FORMAT` | Output format: wins over `ak config set output_format`, loses to `--format` |
 | `AK_INSTANCE` | Override default instance: a name or a URL |
 | `AK_NO_INPUT` | Never prompt, as `--no-input` does: `1`, `true` or `yes`. `0`, `false`, `no` or empty leave it off. Destructive and security-decision commands then need `--yes` |
-| `AK_COLOR` | Color mode (auto/always/never) |
+| `AK_COLOR` | Color mode (auto/always/never): wins over `NO_COLOR` and `ak config set color`, loses to `--color` |
 | `AK_CONFIG_DIR` | Override config directory |
 | `AK_TOKEN` | API token (alternative to keychain) |
 | `AK_CREDENTIAL_STORE` | `file` skips the OS keychain and uses the credentials file only |

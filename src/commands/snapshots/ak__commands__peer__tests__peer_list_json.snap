@@ -1,17 +1,16 @@
 ---
 source: src/commands/peer.rs
-assertion_line: 1310
 expression: parsed
 ---
-- cache_size_bytes: 1073741824
-  cache_usage_percent: 50
-  cache_used_bytes: 536870912
-  created_at: "2026-01-01T00:00:00Z"
+- id: 00000000-0000-0000-0000-000000000000
+  name: test-peer
   endpoint_url: "https://peer.example.com"
-  id: 00000000-0000-0000-0000-000000000000
+  status: active
+  region: us-east-1
   is_local: false
+  cache_size_bytes: 1073741824
+  cache_used_bytes: 536870912
+  cache_usage_percent: 50
   last_heartbeat_at: "2026-01-15T12:00:00Z"
   last_sync_at: ~
-  name: test-peer
-  region: us-east-1
-  status: active
+  created_at: "2026-01-01T00:00:00Z"

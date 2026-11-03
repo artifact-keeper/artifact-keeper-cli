@@ -1,19 +1,18 @@
 ---
 source: src/commands/webhook.rs
-assertion_line: 1585
 expression: parsed
 ---
-- created_at: "2026-01-15T12:00:00Z"
-  event_schema_version: 2026-04-01
+- id: 00000000-0000-0000-0000-000000000000
+  name: deploy-hook
+  url: "https://ci.example.com/hook"
   events:
     - artifact.pushed
     - artifact.promoted
-  headers: ~
-  id: 00000000-0000-0000-0000-000000000000
   is_enabled: true
-  last_triggered_at: ~
-  name: deploy-hook
-  payload_template: generic
   repository_id: ~
+  headers: ~
+  last_triggered_at: ~
+  created_at: "2026-01-15T12:00:00Z"
+  event_schema_version: 2026-04-01
+  payload_template: generic
   signing_mode: hmac
-  url: "https://ci.example.com/hook"

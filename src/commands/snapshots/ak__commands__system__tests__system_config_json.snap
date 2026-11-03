@@ -19,8 +19,8 @@ plugin_signing:
   required: true
   trusted_key_configured: false
 scanners:
-  dependency_track_enabled: true
-  openscap_enabled: false
   trivy_enabled: true
+  openscap_enabled: false
+  dependency_track_enabled: true
 search_engine: opensearch
 storage_backend: s3

@@ -1,32 +1,31 @@
 ---
 source: src/commands/repo.rs
-assertion_line: 1078
 expression: parsed
 ---
-allow_anonymous_access: false
-allow_public_with_upstream_credentials: false
-created_at: "2026-01-15T12:00:00Z"
-curation_default_action: allow
-curation_enabled: false
-description: Test repo
-format: npm
-has_trusted_gpg_key: false
 id: 00000000-0000-0000-0000-000000000001
-is_public: true
 key: npm-local
 name: npm-local
-promotion_only: false
-public_with_upstream_credentials: false
-quota_bytes: ~
+format: npm
 repo_type: local
+is_public: true
+allow_anonymous_access: false
+promotion_only: false
+description: Test repo
+storage_used_bytes: 1024
+quota_bytes: ~
+upstream_url: ~
+upstream_auth_type: ~
+upstream_auth_configured: false
+created_at: "2026-01-15T12:00:00Z"
+updated_at: "2026-01-15T12:00:00Z"
 repodata_depth: 0
 repodata_depth_editable: true
-storage_backend: filesystem
-storage_used_bytes: 1024
-updated_at: "2026-01-15T12:00:00Z"
-upstream_auth_configured: false
-upstream_auth_type: ~
-upstream_url: ~
-upstream_url_has_credentials: false
-versioning_enabled: false
 visibility: public
+versioning_enabled: false
+storage_backend: filesystem
+has_trusted_gpg_key: false
+upstream_url_has_credentials: false
+public_with_upstream_credentials: false
+allow_public_with_upstream_credentials: false
+curation_enabled: false
+curation_default_action: allow
