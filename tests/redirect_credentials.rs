@@ -1,0 +1,378 @@
+//! Where the token goes when a server redirects. Each server here is real TLS and
+//! real plain HTTP on one port, because that's the case that matters: reqwest
+//! compares only host and port when it decides to drop `Authorization`.
+
+use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
+
+use assert_cmd::Command;
+use serde_json::json;
+use tempfile::TempDir;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
+use tokio_rustls::TlsAcceptor;
+
+const TOKEN: &str = "sentinel-api-token";
+const TLS_HANDSHAKE: u8 = 0x16;
+
+#[derive(Clone, Debug)]
+struct Seen {
+    tls: bool,
+    host: String,
+    path: String,
+    has_token: bool,
+}
+
+/// What to answer: a redirect to this URL, or the list `repo list` expects.
+enum Reply {
+    Redirect(String),
+    Ok,
+}
+
+type Route = Arc<dyn Fn(&Seen) -> Reply + Send + Sync>;
+
+struct Pki {
+    dir: TempDir,
+    acceptor: TlsAcceptor,
+}
+
+impl Pki {
+    /// A CA, trusted through `AK_CA_CERT`, and a certificate for two names that
+    /// reach the same listener, so a test can have a second host.
+    fn new() -> Self {
+        use rcgen::{BasicConstraints, CertificateParams, IsCa, Issuer, KeyPair};
+        let ca_key = KeyPair::generate().unwrap();
+        let mut ca_params = CertificateParams::new(Vec::new()).unwrap();
+        ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        let ca_cert = ca_params.self_signed(&ca_key).unwrap();
+        let issuer = Issuer::new(ca_params, ca_key);
+
+        let key = KeyPair::generate().unwrap();
+        let cert = CertificateParams::new(vec!["127.0.0.1".to_string(), "localhost".to_string()])
+            .unwrap()
+            .signed_by(&key, &issuer)
+            .unwrap();
+
+        let private = rustls::pki_types::PrivateKeyDer::try_from(key.serialize_der()).unwrap();
+        let config = rustls::ServerConfig::builder_with_provider(Arc::new(
+            rustls::crypto::aws_lc_rs::default_provider(),
+        ))
+        .with_safe_default_protocol_versions()
+        .unwrap()
+        .with_no_client_auth()
+        .with_single_cert(vec![cert.der().clone()], private)
+        .unwrap();
+
+        let dir = TempDir::new().unwrap();
+        std::fs::write(dir.path().join("ca.pem"), ca_cert.pem()).unwrap();
+        Self {
+            dir,
+            acceptor: TlsAcceptor::from(Arc::new(config)),
+        }
+    }
+
+    fn ca_path(&self) -> std::path::PathBuf {
+        self.dir.path().join("ca.pem")
+    }
+}
+
+type Log = Arc<Mutex<Vec<Seen>>>;
+
+async fn bind() -> (TcpListener, u16) {
+    let listener = TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 0)))
+        .await
+        .unwrap();
+    let port = listener.local_addr().unwrap().port();
+    (listener, port)
+}
+
+/// Serve TLS and plain HTTP on the one port, telling them apart by the first byte.
+fn serve(listener: TcpListener, pki: &Pki, log: &Log, route: Route) {
+    let acceptor = pki.acceptor.clone();
+    let log = log.clone();
+    tokio::spawn(async move {
+        loop {
+            let Ok((stream, _)) = listener.accept().await else {
+                return;
+            };
+            let (acceptor, log, route) = (acceptor.clone(), log.clone(), route.clone());
+            tokio::spawn(async move {
+                let tls = is_tls(&stream).await;
+                if tls {
+                    if let Ok(stream) = acceptor.accept(stream).await {
+                        answer(stream, true, &log, &route).await;
+                    }
+                } else {
+                    answer(stream, false, &log, &route).await;
+                }
+            });
+        }
+    });
+}
+
+async fn is_tls(stream: &TcpStream) -> bool {
+    let mut first = [0u8; 1];
+    matches!(stream.peek(&mut first).await, Ok(1)) && first[0] == TLS_HANDSHAKE
+}
+
+async fn answer<S: AsyncRead + AsyncWrite + Unpin>(
+    mut stream: S,
+    tls: bool,
+    log: &Log,
+    route: &Route,
+) {
+    let mut request = Vec::new();
+    let mut chunk = [0u8; 4096];
+    while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+        match stream.read(&mut chunk).await {
+            Ok(0) | Err(_) => return,
+            Ok(n) => request.extend_from_slice(&chunk[..n]),
+        }
+    }
+    let request = String::from_utf8_lossy(&request);
+    let seen = Seen {
+        tls,
+        host: request
+            .lines()
+            .find_map(|line| {
+                let (name, value) = line.split_once(':')?;
+                name.eq_ignore_ascii_case("host")
+                    .then(|| value.trim().to_string())
+            })
+            .unwrap_or_default(),
+        path: request.split(' ').nth(1).unwrap_or("").to_string(),
+        has_token: request.contains(TOKEN),
+    };
+    log.lock().unwrap().push(seen.clone());
+
+    let response = match route(&seen) {
+        Reply::Redirect(to) => format!(
+            "HTTP/1.1 302 Found\r\nLocation: {to}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+        ),
+        Reply::Ok => {
+            let body = json!({
+                "items": [],
+                "pagination": {"page": 1, "per_page": 20, "total": 0, "total_pages": 0}
+            })
+            .to_string();
+            format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                body.len()
+            )
+        }
+    };
+    let _ = stream.write_all(response.as_bytes()).await;
+    let _ = stream.shutdown().await;
+}
+
+/// Run `ak` with the instance at `https://127.0.0.1:<port>`.
+async fn ak(pki: &Pki, port: u16, args: &[&str]) -> std::process::Output {
+    let dir = TempDir::new().unwrap();
+    std::fs::write(
+        dir.path().join("config.toml"),
+        format!(
+            "default_instance = \"t\"\n[instances.t]\nurl = \"https://127.0.0.1:{port}\"\napi_version = \"v1\"\n"
+        ),
+    )
+    .unwrap();
+    let ca = pki.ca_path();
+    let args: Vec<String> = args.iter().map(ToString::to_string).collect();
+    tokio::task::spawn_blocking(move || {
+        Command::cargo_bin("ak")
+            .unwrap()
+            .env_clear()
+            .env("HOME", dir.path())
+            .env("AK_CONFIG_DIR", dir.path())
+            .env("AK_TOKEN", TOKEN)
+            .env("AK_CREDENTIAL_STORE", "file")
+            .env("AK_CA_CERT", ca)
+            .env("AK_NO_INPUT", "true")
+            .args(args)
+            .output()
+            .unwrap()
+    })
+    .await
+    .unwrap()
+}
+
+fn seen(log: &Log) -> Vec<Seen> {
+    log.lock().unwrap().clone()
+}
+
+fn stderr(output: &std::process::Output) -> String {
+    String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+/// Commands that reach a server each of the ways `ak` builds an authenticated
+/// client: the SDK client, the raw client, and `doctor`'s own.
+const COMMANDS: [&[&str]; 3] = [
+    &["repo", "list", "--format", "json"],
+    &["import", "source", "list", "--format", "json"],
+    &["doctor"],
+];
+
+/// The bug: to `http://` on the same host and port, reqwest keeps the header.
+#[tokio::test(flavor = "multi_thread")]
+async fn https_to_http_on_the_same_port_does_not_send_the_token() {
+    for command in COMMANDS {
+        let pki = Pki::new();
+        let log = Log::default();
+        let (listener, port) = bind().await;
+        serve(
+            listener,
+            &pki,
+            &log,
+            Arc::new(move |s: &Seen| {
+                if s.tls {
+                    Reply::Redirect(format!("http://127.0.0.1:{port}{}", s.path))
+                } else {
+                    Reply::Ok
+                }
+            }),
+        );
+
+        let output = ak(&pki, port, command).await;
+
+        let log = seen(&log);
+        assert!(
+            log.iter().any(|s| s.tls && s.has_token),
+            "{command:?}: the first request should carry the token: {log:?}"
+        );
+        assert!(
+            !log.iter().any(|s| !s.tls && s.has_token),
+            "{command:?}: the token went over plain HTTP: {log:?}"
+        );
+        assert!(
+            !stderr(&output).contains(TOKEN),
+            "{command:?}: the token was printed"
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_refusal_says_why() {
+    let pki = Pki::new();
+    let log = Log::default();
+    let (listener, port) = bind().await;
+    serve(
+        listener,
+        &pki,
+        &log,
+        Arc::new(move |s: &Seen| Reply::Redirect(format!("http://127.0.0.1:{port}{}", s.path))),
+    );
+
+    let output = ak(&pki, port, &["repo", "list"]).await;
+    assert!(!output.status.success());
+    let err = stderr(&output);
+    assert!(err.contains("https"), "{err}");
+    assert!(err.contains("plain http"), "{err}");
+}
+
+/// A normal redirect on the same origin keeps the token and works.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_redirect_within_the_origin_keeps_working() {
+    let pki = Pki::new();
+    let log = Log::default();
+    let (listener, port) = bind().await;
+    serve(
+        listener,
+        &pki,
+        &log,
+        Arc::new(move |s: &Seen| {
+            if s.path.starts_with("/moved") {
+                Reply::Ok
+            } else {
+                Reply::Redirect(format!("https://127.0.0.1:{port}/moved{}", s.path))
+            }
+        }),
+    );
+
+    let output = ak(&pki, port, &["repo", "list", "--format", "json"]).await;
+    assert!(output.status.success(), "{}", stderr(&output));
+    let log = seen(&log);
+    assert_eq!(log.len(), 2, "{log:?}");
+    assert!(log.iter().all(|s| s.has_token), "{log:?}");
+}
+
+/// A presigned storage URL is on another host and can be plain HTTP, such as
+/// MinIO inside a cluster. It gets no token, and it has to keep working.
+#[tokio::test(flavor = "multi_thread")]
+async fn https_to_http_elsewhere_is_followed_without_the_token() {
+    let pki = Pki::new();
+    let log = Log::default();
+    let (origin, origin_port) = bind().await;
+    let (storage, storage_port) = bind().await;
+    serve(
+        origin,
+        &pki,
+        &log,
+        Arc::new(move |s: &Seen| {
+            Reply::Redirect(format!("http://127.0.0.1:{storage_port}{}", s.path))
+        }),
+    );
+    serve(storage, &pki, &log, Arc::new(|_: &Seen| Reply::Ok));
+
+    let output = ak(&pki, origin_port, &["repo", "list", "--format", "json"]).await;
+    assert!(output.status.success(), "{}", stderr(&output));
+    let log = seen(&log);
+    assert_eq!(log.len(), 2, "{log:?}");
+    assert!(log[0].tls && log[0].has_token, "{log:?}");
+    assert!(!log[1].tls && !log[1].has_token, "{log:?}");
+}
+
+/// reqwest drops the header on the way to another host, then sends it there on
+/// that host's own next redirect. So following this hop would hand it the token.
+#[tokio::test(flavor = "multi_thread")]
+async fn another_host_redirecting_to_itself_does_not_get_the_token() {
+    let pki = Pki::new();
+    let log = Log::default();
+    let (listener, port) = bind().await;
+    serve(
+        listener,
+        &pki,
+        &log,
+        Arc::new(move |s: &Seen| {
+            if s.host.starts_with("localhost") {
+                Reply::Redirect(format!("https://localhost:{port}/again{}", s.path))
+            } else {
+                Reply::Redirect(format!("https://localhost:{port}{}", s.path))
+            }
+        }),
+    );
+
+    let output = ak(&pki, port, &["repo", "list", "--format", "json"]).await;
+    assert!(!output.status.success());
+    let log = seen(&log);
+    assert!(
+        log.iter().any(|s| s.host.starts_with("localhost")),
+        "{log:?}"
+    );
+    assert!(
+        !log.iter()
+            .any(|s| s.host.starts_with("localhost") && s.has_token),
+        "the token reached the other host: {log:?}"
+    );
+    assert!(
+        stderr(&output).contains("another server"),
+        "{}",
+        stderr(&output)
+    );
+}
+
+/// The limit on redirects has to survive a custom policy.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_redirect_loop_still_ends() {
+    let pki = Pki::new();
+    let log = Log::default();
+    let (listener, port) = bind().await;
+    serve(
+        listener,
+        &pki,
+        &log,
+        Arc::new(move |s: &Seen| Reply::Redirect(format!("https://127.0.0.1:{port}{}", s.path))),
+    );
+
+    let output = ak(&pki, port, &["repo", "list"]).await;
+    assert!(!output.status.success());
+    assert!(seen(&log).len() <= 11, "{}", seen(&log).len());
+}

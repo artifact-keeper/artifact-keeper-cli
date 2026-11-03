@@ -157,6 +157,7 @@ fn build_diag_client_with_auth(
 
     let builder = reqwest::ClientBuilder::new()
         .default_headers(headers)
+        .redirect(super::client::redirect_policy())
         .connect_timeout(DIAG_CONNECT_TIMEOUT)
         .timeout(DIAG_REQUEST_TIMEOUT);
     let http_client = crate::transport::apply_custom_ca(builder)
