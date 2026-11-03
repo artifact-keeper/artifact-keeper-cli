@@ -221,10 +221,9 @@ async fn wait_for_image(
                 let reason = body["finalize_error"]
                     .as_str()
                     .unwrap_or("the server gave no reason");
-                return Err(AkError::ServerError(format!(
+                return Err(crate::commands::helpers::reported_failure(&format!(
                     "The server couldn't store the image: {reason} (session {session})"
-                ))
-                .into());
+                )));
             }
             _ => {}
         }
