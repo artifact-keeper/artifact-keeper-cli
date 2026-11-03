@@ -355,10 +355,7 @@ async fn create_account(name: &str, description: Option<&str>, global: &GlobalAr
         spinner.finish_and_clear();
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(AkError::ServerError(format!(
-            "Create service account failed ({status}): {text}"
-        ))
-        .into());
+        return Err(super::helpers::raw_err("Create service account failed", status, &text).into());
     }
 
     let sa: CreateAccountResponse = match resp.json().await {

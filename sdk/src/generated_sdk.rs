@@ -2,7 +2,8 @@
 #![allow(clippy::all, unused, dead_code, unreachable_code)]
 
 #[allow(unused_imports)]
-pub use progenitor_client::{ByteStream, ClientInfo, Error, ResponseValue};
+pub use crate::error::Error;
+pub use progenitor_client::{ByteStream, ClientInfo, ResponseValue};
 #[allow(unused_imports)]
 use progenitor_client::{ClientHooks, OperationInfo, RequestBuilderExt, encode_path};
 #[doc = r" Types used as operation parameters and responses."]
@@ -105999,9 +106000,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/age-gate/reviews`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::AgeGateReviewListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewListResponse>, Error> {
             let Self {
                 client,
                 page,
@@ -106039,13 +106038,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_reviews",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106072,7 +106071,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/age-gate/reviews/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -106098,13 +106097,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_review",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106153,7 +106152,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/age-gate/reviews/{id}/approve`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -106183,13 +106182,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "approve_review",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106238,7 +106237,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/age-gate/reviews/{id}/reject`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -106268,13 +106267,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "reject_review",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106323,7 +106322,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/age-gate/reviews/{id}/reopen`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateReviewResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -106353,13 +106352,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "reopen_review",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106401,7 +106400,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/analytics/artifacts/stale`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::StaleArtifact>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::StaleArtifact>>, Error> {
             let Self {
                 client,
                 days,
@@ -106430,13 +106429,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_stale_artifacts",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106476,7 +106475,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/analytics/downloads/trend`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::DownloadTrend>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::DownloadTrend>>, Error> {
             let Self { client, from, to } = self;
             let from = from.map_err(Error::InvalidRequest)?;
             let to = to.map_err(Error::InvalidRequest)?;
@@ -106501,13 +106500,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_download_trends",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106558,7 +106557,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/analytics/repositories/{id}/trend`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::RepositorySnapshot>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::RepositorySnapshot>>, Error> {
             let Self {
                 client,
                 id,
@@ -106593,13 +106592,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repository_trend",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106613,7 +106612,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/analytics/snapshot`"]
-        pub async fn send(self) -> Result<ResponseValue<types::StorageSnapshot>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::StorageSnapshot>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/analytics/snapshot", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -106634,13 +106633,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "capture_snapshot",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106656,7 +106655,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/analytics/storage/breakdown`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::RepositoryStorageBreakdown>>, Error<()>>
+        ) -> Result<ResponseValue<::std::vec::Vec<types::RepositoryStorageBreakdown>>, Error>
         {
             let Self { client } = self;
             let url = format!(
@@ -106681,13 +106680,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_storage_breakdown",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106725,7 +106724,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/analytics/storage/growth`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GrowthSummary>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::GrowthSummary>, Error> {
             let Self { client, from, to } = self;
             let from = from.map_err(Error::InvalidRequest)?;
             let to = to.map_err(Error::InvalidRequest)?;
@@ -106750,13 +106749,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_growth_summary",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106796,7 +106795,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/analytics/storage/trend`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::StorageSnapshot>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::StorageSnapshot>>, Error> {
             let Self { client, from, to } = self;
             let from = from.map_err(Error::InvalidRequest)?;
             let to = to.map_err(Error::InvalidRequest)?;
@@ -106821,13 +106820,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_storage_trend",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -106942,7 +106941,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/audit`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AuditLogListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AuditLogListResponse>, Error> {
             let Self {
                 client,
                 action,
@@ -107001,14 +107000,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_audit_logs",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107070,7 +107069,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/backups`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BackupListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BackupListResponse>, Error> {
             let Self {
                 client,
                 page,
@@ -107105,14 +107104,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_backups",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107150,7 +107149,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/backups`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BackupResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BackupResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateBackupRequest::try_from(v).map_err(|e| e.to_string()))
@@ -107175,14 +107174,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_backup",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107209,7 +107208,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/backups/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BackupResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BackupResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -107235,15 +107234,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_backup",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107270,7 +107269,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/backups/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -107288,15 +107287,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_backup",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107323,7 +107322,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/backups/{id}/cancel`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -107341,16 +107340,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "cancel_backup",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107377,7 +107376,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/backups/{id}/execute`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BackupResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BackupResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -107403,16 +107402,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "execute_backup",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107459,7 +107458,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/backups/{id}/restore`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RestoreResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RestoreResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -107489,16 +107488,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "restore_backup",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107512,7 +107511,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/banners`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BannerListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BannerListResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/banners", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -107533,14 +107532,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_banners",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107576,7 +107575,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/banners`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AdminBanner>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AdminBanner>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::BannerInput::try_from(v).map_err(|e| e.to_string()))
@@ -107601,15 +107600,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_banner",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107636,7 +107635,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/banners/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AdminBanner>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AdminBanner>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -107662,15 +107661,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_banner",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107717,7 +107716,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/banners/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AdminBanner>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AdminBanner>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -107747,16 +107746,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_banner",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107783,7 +107782,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/banners/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -107801,15 +107800,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_banner",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107825,8 +107824,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::CiOidcProviderResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CiOidcProviderResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/ci-oidc", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -107847,15 +107845,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ci_oidc_list_providers",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107896,7 +107894,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/ci-oidc`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -107923,16 +107921,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_provider",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -107959,7 +107957,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -107985,16 +107983,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_provider",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108046,7 +108044,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/ci-oidc/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -108078,17 +108076,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_provider",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108115,7 +108113,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/ci-oidc/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -108133,16 +108131,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_provider",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108171,8 +108169,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/{id}/mappings`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::CiOidcMappingResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CiOidcMappingResponse>>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -108198,16 +108195,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_mappings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108259,7 +108256,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/ci-oidc/{id}/mappings`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -108291,18 +108288,18 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_mapping",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108340,7 +108337,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error> {
             let Self { client, id, mid } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let mid = mid.map_err(Error::InvalidRequest)?;
@@ -108368,16 +108365,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_mapping",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108440,7 +108437,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -108479,17 +108476,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_mapping",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108527,7 +108524,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, mid } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let mid = mid.map_err(Error::InvalidRequest)?;
@@ -108547,16 +108544,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_mapping",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108616,7 +108613,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/ci-oidc/{id}/mappings/{mid}/toggle`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcMappingResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -108653,17 +108650,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "toggle_mapping",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108712,7 +108709,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/ci-oidc/{id}/toggle`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CiOidcProviderResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -108742,17 +108739,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "toggle_provider",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108788,7 +108785,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/cleanup`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CleanupResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CleanupResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CleanupRequest::try_from(v).map_err(|e| e.to_string()))
@@ -108813,14 +108810,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "run_cleanup",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -108940,7 +108937,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/downloads`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DownloadListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DownloadListResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -108996,15 +108993,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_downloads",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109124,7 +109121,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/downloads/by-ip/{ip}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DownloadListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DownloadListResponse>, Error> {
             let Self {
                 client,
                 ip,
@@ -109183,15 +109180,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_downloads_by_ip",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109310,7 +109307,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/downloads/by-user/{user_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DownloadListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DownloadListResponse>, Error> {
             let Self {
                 client,
                 user_id,
@@ -109369,14 +109366,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_downloads_by_user",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109438,9 +109435,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/holds/quarantine`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::QuarantineHoldListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::QuarantineHoldListResponse>, Error> {
             let Self {
                 client,
                 kind,
@@ -109478,13 +109473,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_quarantine",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109498,7 +109493,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/holds/summary`"]
-        pub async fn send(self) -> Result<ResponseValue<types::HoldsSummaryResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::HoldsSummaryResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/holds/summary", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -109519,13 +109514,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "holds_summary",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109554,7 +109549,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/lifecycle`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::LifecyclePolicy>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::LifecyclePolicy>>, Error> {
             let Self {
                 client,
                 repository_id,
@@ -109583,13 +109578,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_lifecycle_policies",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109630,7 +109625,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/lifecycle`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -109657,14 +109652,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_lifecycle_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109678,7 +109673,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/lifecycle/capabilities`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LifecycleCapabilities>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LifecycleCapabilities>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/lifecycle/capabilities", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -109699,15 +109694,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_lifecycle_capabilities",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109723,8 +109718,7 @@ pub mod builder {
         #[doc = "Sends a `POST` request to `/api/v1/admin/lifecycle/execute-all`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::PolicyExecutionResult>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::PolicyExecutionResult>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/lifecycle/execute-all", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -109745,13 +109739,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "execute_all_policies",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109778,7 +109772,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/lifecycle/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -109804,13 +109798,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_lifecycle_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109837,7 +109831,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/lifecycle/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -109855,13 +109849,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_lifecycle_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109913,7 +109907,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/lifecycle/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -109945,14 +109939,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_lifecycle_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -109979,7 +109973,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/lifecycle/{id}/execute`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PolicyExecutionResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PolicyExecutionResult>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -110005,13 +109999,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "execute_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110038,7 +110032,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/lifecycle/{id}/preview`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PolicyExecutionResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PolicyExecutionResult>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -110064,13 +110058,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "preview_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110108,7 +110102,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/lifecycle/{id}/repositories/{repository_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error> {
             let Self {
                 client,
                 id,
@@ -110140,18 +110134,18 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "attach_lifecycle_repository",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110189,7 +110183,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/lifecycle/{id}/repositories/{repository_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LifecyclePolicy>, Error> {
             let Self {
                 client,
                 id,
@@ -110221,18 +110215,18 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "detach_lifecycle_repository",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110246,7 +110240,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/metrics`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/metrics", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -110259,13 +110253,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "metrics",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110281,7 +110275,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/monitoring/alerts`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::AlertState>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::AlertState>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/monitoring/alerts", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -110302,13 +110296,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_alert_states",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110344,7 +110338,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/monitoring/alerts/suppress`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::SuppressRequest::try_from(v).map_err(|e| e.to_string()))
@@ -110365,13 +110359,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "suppress_alert",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110387,7 +110381,7 @@ pub mod builder {
         #[doc = "Sends a `POST` request to `/api/v1/admin/monitoring/check`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::ServiceHealthEntry>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ServiceHealthEntry>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/monitoring/check", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -110408,13 +110402,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "run_health_check",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110455,7 +110449,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/monitoring/health-log`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::ServiceHealthEntry>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ServiceHealthEntry>>, Error> {
             let Self {
                 client,
                 limit,
@@ -110484,13 +110478,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_health_log",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110504,7 +110498,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/npm/upstream-feed/status`"]
-        pub async fn send(self) -> Result<ResponseValue<types::NpmUpstreamFeedStatus>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::NpmUpstreamFeedStatus>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/npm/upstream-feed/status", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -110525,16 +110519,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_npm_upstream_feed_status",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110561,9 +110555,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/packages/backfill`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PackagesBackfillResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PackagesBackfillResponse>, Error> {
             let Self {
                 client,
                 repository_key,
@@ -110592,16 +110584,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "backfill_packages",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110630,7 +110622,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/proxy-scan-verdicts/{digest}`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::ProxyScanVerdictListResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::ProxyScanVerdictListResponse>, Error> {
             let Self { client, digest } = self;
             let digest = digest.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -110656,16 +110648,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_proxy_scan_verdicts",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110694,7 +110686,7 @@ pub mod builder {
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/proxy-scan-verdicts/{digest}`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::ProxyScanVerdictListResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::ProxyScanVerdictListResponse>, Error> {
             let Self { client, digest } = self;
             let digest = digest.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -110720,16 +110712,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_proxy_scan_verdicts",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110803,9 +110795,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/quality-checks`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::QualityCheckListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::QualityCheckListResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -110849,14 +110839,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "admin_list_checks",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110870,7 +110860,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/reindex`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ReindexResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ReindexResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/reindex", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -110891,15 +110881,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "trigger_reindex",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -110950,7 +110940,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/repositories/{key}/reindex-storage`"]
-        pub async fn send(self) -> Result<ResponseValue<types::StorageReindexResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::StorageReindexResult>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -110980,16 +110970,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "reindex_repository_storage",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111030,9 +111020,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/rescan-for-inventory`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::RescanForInventoryResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RescanForInventoryResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -111059,15 +111047,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "rescan_for_inventory",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111081,7 +111069,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/search/reindex`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SearchReindexResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SearchReindexResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/search/reindex", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -111102,14 +111090,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "trigger_search_reindex",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111171,9 +111159,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/security/artifact/{artifact_id}/accessible-users`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::AccessibleUsersResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AccessibleUsersResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -111214,15 +111200,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "artifact_accessible_users",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111295,7 +111281,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/security/artifact/{artifact_id}/blast-radius`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BlastRadiusResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BlastRadiusResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -111336,15 +111322,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "artifact_blast_radius",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111406,9 +111392,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/security/cve/{cve_id}/accessible-users`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::AccessibleUsersResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AccessibleUsersResponse>, Error> {
             let Self {
                 client,
                 cve_id,
@@ -111449,16 +111433,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "cve_accessible_users",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111531,7 +111515,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/security/cve/{cve_id}/blast-radius`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BlastRadiusResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BlastRadiusResponse>, Error> {
             let Self {
                 client,
                 cve_id,
@@ -111572,15 +111556,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "cve_blast_radius",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111594,7 +111578,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/settings`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SystemSettings>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SystemSettings>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/settings", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -111615,14 +111599,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_settings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111658,7 +111642,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/settings`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SystemSettings>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SystemSettings>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::SystemSettings::try_from(v).map_err(|e| e.to_string()))
@@ -111683,14 +111667,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_settings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111704,9 +111688,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/settings/system`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::RuntimeSettingsResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RuntimeSettingsResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/settings/system", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -111727,15 +111709,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_runtime_settings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111776,9 +111758,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/settings/system`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::RuntimeSettingsResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RuntimeSettingsResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -111805,16 +111785,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_runtime_settings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111828,7 +111808,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/settings/token-policy`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TokenPolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TokenPolicyResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/settings/token-policy", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -111849,14 +111829,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_token_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111896,7 +111876,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/settings/token-policy`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TokenPolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TokenPolicyResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -111923,16 +111903,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_token_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -111946,7 +111926,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/settings/totp-policy`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TotpPolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TotpPolicyResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/settings/totp-policy", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -111967,14 +111947,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_totp_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112014,7 +111994,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/settings/totp-policy`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TotpPolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TotpPolicyResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -112041,15 +112021,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_totp_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112085,7 +112065,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/smtp/test`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SmtpTestResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SmtpTestResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::SmtpTestRequest::try_from(v).map_err(|e| e.to_string()))
@@ -112110,17 +112090,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "send_test_email",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                502u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                502u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112136,7 +112116,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/ldap`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::LdapConfigResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::LdapConfigResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/sso/ldap", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -112157,14 +112137,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_ldap",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112204,7 +112184,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/sso/ldap`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LdapConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LdapConfigResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -112231,14 +112211,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_ldap",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112265,7 +112245,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/ldap/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LdapConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LdapConfigResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -112291,15 +112271,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_ldap",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112350,7 +112330,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/sso/ldap/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LdapConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LdapConfigResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -112382,15 +112362,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_ldap",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112417,7 +112397,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/sso/ldap/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -112435,15 +112415,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_ldap",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112470,7 +112450,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/sso/ldap/{id}/test`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LdapTestResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LdapTestResult>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -112496,15 +112476,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "test_ldap",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112551,7 +112531,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/sso/ldap/{id}/toggle`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -112577,15 +112557,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "toggle_ldap",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112601,7 +112581,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/oidc`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::OidcConfigResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::OidcConfigResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/sso/oidc", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -112622,14 +112602,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_oidc",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112669,7 +112649,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/sso/oidc`"]
-        pub async fn send(self) -> Result<ResponseValue<types::OidcConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::OidcConfigResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -112696,14 +112676,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_oidc",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112730,7 +112710,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/oidc/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::OidcConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::OidcConfigResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -112756,15 +112736,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_oidc",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112815,7 +112795,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/sso/oidc/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::OidcConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::OidcConfigResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -112847,15 +112827,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_oidc",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112882,7 +112862,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/sso/oidc/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -112900,15 +112880,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_oidc",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -112955,7 +112935,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/sso/oidc/{id}/toggle`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -112981,15 +112961,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "toggle_oidc",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113005,7 +112985,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/providers`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::SsoProviderInfo>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SsoProviderInfo>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/sso/providers", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -113026,14 +113006,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_sso_providers_admin",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113049,7 +113029,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/saml`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::SamlConfigResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SamlConfigResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/sso/saml", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -113070,14 +113050,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_saml",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113117,7 +113097,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/sso/saml`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SamlConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SamlConfigResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -113144,14 +113124,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_saml",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113178,7 +113158,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/sso/saml/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SamlConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SamlConfigResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -113204,15 +113184,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_saml",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113263,7 +113243,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/admin/sso/saml/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SamlConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SamlConfigResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -113295,15 +113275,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_saml",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113330,7 +113310,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/sso/saml/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -113348,15 +113328,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_saml",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113403,7 +113383,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/admin/sso/saml/{id}/toggle`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -113429,15 +113409,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "toggle_saml",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113451,7 +113431,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/stats`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SystemStats>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SystemStats>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/stats", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -113472,15 +113452,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_system_stats",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113496,7 +113476,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/storage-backends`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<::std::string::String>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<::std::string::String>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/storage-backends", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -113517,14 +113497,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_storage_backends",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113562,7 +113542,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/storage-gc`"]
-        pub async fn send(self) -> Result<ResponseValue<types::StorageGcResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::StorageGcResult>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::StorageGcRequest::try_from(v).map_err(|e| e.to_string()))
@@ -113587,13 +113567,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "run_storage_gc",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113621,7 +113601,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/storage-gc/oci-blob-report`"]
-        pub async fn send(self) -> Result<ResponseValue<types::OciBlobFootprintReport>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::OciBlobFootprintReport>, Error> {
             let Self {
                 client,
                 grace_hours,
@@ -113650,13 +113630,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "oci_blob_report",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113694,7 +113674,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/storage-scrub`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ScrubResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ScrubResult>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::StorageScrubRequest::try_from(v).map_err(|e| e.to_string()))
@@ -113719,15 +113699,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "run_storage_scrub",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113768,7 +113748,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/storage-scrub/findings`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::ScrubFinding>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ScrubFinding>>, Error> {
             let Self {
                 client,
                 limit,
@@ -113797,13 +113777,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_storage_scrub_findings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113817,7 +113797,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/storage/ledger/backfill`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LedgerBackfillResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LedgerBackfillResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/storage/ledger/backfill", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -113838,15 +113818,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "backfill_storage_ledger",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113886,7 +113866,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/telemetry/crashes`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CrashListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CrashListResponse>, Error> {
             let Self {
                 client,
                 page,
@@ -113915,13 +113895,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_crashes",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -113937,7 +113917,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/admin/telemetry/crashes/pending`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::CrashReport>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CrashReport>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/telemetry/crashes/pending", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -113958,13 +113938,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_pending_crashes",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114004,7 +113984,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/telemetry/crashes/submit`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SubmitResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SubmitResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::SubmitCrashesRequest::try_from(v).map_err(|e| e.to_string()))
@@ -114029,13 +114009,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "submit_crashes",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114062,7 +114042,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/telemetry/crashes/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CrashReport>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CrashReport>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -114088,13 +114068,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_crash",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114121,7 +114101,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/admin/telemetry/crashes/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -114139,13 +114119,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_crash",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114159,7 +114139,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/telemetry/settings`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TelemetrySettings>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TelemetrySettings>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/admin/telemetry/settings", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -114180,13 +114160,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_telemetry_settings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114224,7 +114204,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/telemetry/settings`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TelemetrySettings>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TelemetrySettings>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TelemetrySettings::try_from(v).map_err(|e| e.to_string()))
@@ -114249,13 +114229,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_telemetry_settings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114306,7 +114286,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/admin/trash`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TrashPage>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TrashPage>, Error> {
             let Self {
                 client,
                 page,
@@ -114341,14 +114321,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_trash",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114375,7 +114355,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/admin/trash/{id}/restore`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TrashedArtifact>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TrashedArtifact>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -114401,16 +114381,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "restore_trashed_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114473,7 +114453,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/approval/history`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ApprovalListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalListResponse>, Error> {
             let Self {
                 client,
                 page,
@@ -114511,13 +114491,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_approval_history",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114569,7 +114549,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/approval/pending`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ApprovalListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalListResponse>, Error> {
             let Self {
                 client,
                 page,
@@ -114604,13 +114584,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_pending_approvals",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114646,7 +114626,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/approval/request`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::ApprovalRequest::try_from(v).map_err(|e| e.to_string()))
@@ -114671,16 +114651,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "request_approval",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114707,7 +114687,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/approval/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -114733,14 +114713,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_approval",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114787,7 +114767,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/approval/{id}/approve`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -114817,16 +114797,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "approve_promotion",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114873,7 +114853,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/approval/{id}/reject`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApprovalResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -114903,16 +114883,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "reject_promotion",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114939,7 +114919,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/artifacts/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ArtifactResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -114965,14 +114945,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -114999,9 +114979,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/artifacts/{id}/labels`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ArtifactLabelsListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactLabelsListResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -115027,14 +115005,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_artifact_labels",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115085,9 +115063,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/artifacts/{id}/labels`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ArtifactLabelsListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactLabelsListResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -115119,14 +115095,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_artifact_labels",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115188,7 +115164,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/artifacts/{id}/labels/{label_key}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ArtifactLabelResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactLabelResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -115227,14 +115203,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "add_artifact_label",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115272,7 +115248,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/artifacts/{id}/labels/{label_key}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -115296,14 +115272,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_artifact_label",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115330,9 +115306,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/artifacts/{id}/metadata`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ArtifactMetadataResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactMetadataResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -115358,14 +115332,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_artifact_metadata",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115392,9 +115366,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/artifacts/{id}/package-analysis`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PackageAnalysisResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PackageAnalysisResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -115420,16 +115392,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_package_analysis",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115456,7 +115428,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/artifacts/{id}/stats`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ArtifactStatsResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactStatsResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -115482,14 +115454,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_artifact_stats",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115503,9 +115475,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/attestations/policy`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::AttestationPolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AttestationPolicyResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/attestations/policy", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -115526,14 +115496,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_attestation_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115569,7 +115539,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/ci/token`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CiTokenResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CiTokenResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CiTokenRequest::try_from(v).map_err(|e| e.to_string()))
@@ -115594,16 +115564,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "exchange_ci_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115639,7 +115609,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/login`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LoginResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LoginResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::LoginRequest::try_from(v).map_err(|e| e.to_string()))
@@ -115664,14 +115634,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "login",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115709,7 +115679,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/logout`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::RefreshTokenRequest::try_from(v).map_err(|e| e.to_string()))
@@ -115730,13 +115700,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "logout",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115750,7 +115720,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/auth/me`"]
-        pub async fn send(self) -> Result<ResponseValue<types::UserResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::UserResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/auth/me", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -115771,15 +115741,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_current_user",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115817,7 +115787,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/refresh`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LoginResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LoginResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::RefreshTokenRequest::try_from(v).map_err(|e| e.to_string()))
@@ -115842,14 +115812,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "refresh_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115887,7 +115857,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/sso/exchange`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ExchangeCodeResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ExchangeCodeResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::ExchangeCodeRequest::try_from(v).map_err(|e| e.to_string()))
@@ -115912,14 +115882,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "exchange_code",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -115968,7 +115938,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/sso/ldap/{id}/login`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -115994,15 +115964,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ldap_login",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116085,7 +116055,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/auth/sso/oidc/{id}/callback`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self {
                 client,
                 id,
@@ -116128,16 +116098,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "oidc_callback",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                502u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                502u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116175,7 +116145,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/auth/sso/oidc/{id}/login`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, id, prompt } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let prompt = prompt.map_err(Error::InvalidRequest)?;
@@ -116199,15 +116169,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "oidc_login",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116223,7 +116193,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/auth/sso/providers`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::SsoProviderInfo>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SsoProviderInfo>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/auth/sso/providers", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -116244,13 +116214,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_providers",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116297,7 +116267,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/sso/saml/{id}/acs`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -116317,20 +116287,21 @@ pub mod builder {
             let mut request = client
                 .client
                 .post(url)
-                .form_urlencoded(&body)?
+                .form_urlencoded(&body)
+                .map_err(Error::from_progenitor)?
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
                 operation_id: "saml_acs",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116357,7 +116328,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/auth/sso/saml/{id}/login`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -116375,14 +116346,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "saml_login",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116420,7 +116391,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/ticket`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TicketResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TicketResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateTicketRequest::try_from(v).map_err(|e| e.to_string()))
@@ -116445,16 +116416,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_download_ticket",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116494,7 +116465,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/tokens`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CreateApiTokenResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CreateApiTokenResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateApiTokenRequest::try_from(v).map_err(|e| e.to_string()))
@@ -116519,16 +116490,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_api_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116555,7 +116526,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/auth/tokens/{token_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, token_id } = self;
             let token_id = token_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -116573,15 +116544,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "revoke_api_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116619,7 +116590,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/disable`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TotpDisableRequest::try_from(v).map_err(|e| e.to_string()))
@@ -116640,15 +116611,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disable_totp",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116684,7 +116655,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/enable`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TotpEnableResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TotpEnableResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TotpCodeRequest::try_from(v).map_err(|e| e.to_string()))
@@ -116709,14 +116680,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "enable_totp",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116757,9 +116728,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/enroll/complete`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::TotpEnrollCompleteResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TotpEnrollCompleteResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -116786,15 +116755,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "enroll_complete",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116834,7 +116803,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/enroll/setup`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TotpSetupResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TotpSetupResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TotpEnrollSetupRequest::try_from(v).map_err(|e| e.to_string()))
@@ -116859,15 +116828,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "enroll_setup",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116881,7 +116850,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/setup`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TotpSetupResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TotpSetupResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/auth/totp/setup", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -116902,14 +116871,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "setup_totp",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -116947,7 +116916,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/auth/totp/verify`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LoginResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LoginResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TotpVerifyRequest::try_from(v).map_err(|e| e.to_string()))
@@ -116972,14 +116941,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "verify_totp",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117007,7 +116976,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/banners`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ActiveBannersResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ActiveBannersResponse>, Error> {
             let Self { client, target } = self;
             let target = target.map_err(Error::InvalidRequest)?;
             let url = format!("{}/api/v1/banners", client.baseurl,);
@@ -117030,13 +116999,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_active_banners",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117120,7 +117089,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/builds`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BuildListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BuildListResponse>, Error> {
             let Self {
                 client,
                 page,
@@ -117164,14 +117133,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_builds",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117209,7 +117178,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/builds`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BuildResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BuildResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateBuildRequest::try_from(v).map_err(|e| e.to_string()))
@@ -117234,15 +117203,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_build",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117280,7 +117249,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/builds/diff`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BuildDiffResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BuildDiffResponse>, Error> {
             let Self {
                 client,
                 build_a,
@@ -117309,14 +117278,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_build_diff",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117343,7 +117312,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/builds/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BuildResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BuildResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -117369,15 +117338,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_build",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117426,7 +117395,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/builds/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BuildResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BuildResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -117456,16 +117425,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_build",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117516,9 +117485,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/builds/{id}/artifacts`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::AddBuildArtifactsResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AddBuildArtifactsResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -117550,16 +117517,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "add_build_artifacts",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117600,7 +117567,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/bundles/exports`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -117623,16 +117590,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_bundle_export",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                501u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                501u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117646,7 +117613,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/bundles/format`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BundleFormatResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BundleFormatResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/bundles/format", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -117667,14 +117634,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_bundle_format",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117688,7 +117655,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `POST` request to `/api/v1/bundles/imports`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/bundles/imports", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -117701,15 +117668,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_bundle_import",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                501u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                403u16 => Err(Error::from_response(response).await),
+                501u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117771,7 +117738,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/bundles/jobs`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BundleJobListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BundleJobListResponse>, Error> {
             let Self {
                 client,
                 direction,
@@ -117806,15 +117773,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_bundle_jobs",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117841,7 +117808,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/bundles/jobs/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BundleJob>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BundleJob>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -117867,15 +117834,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_bundle_job",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -117937,9 +117904,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/bundles/jobs/{id}/items`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::BundleJobItemListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BundleJobItemListResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -117977,16 +117942,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_bundle_job_items",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118022,9 +117987,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/bundles/manifest/validate`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ManifestValidationReport>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ManifestValidationReport>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::BundleManifest::try_from(v).map_err(|e| e.to_string()))
@@ -118049,14 +118012,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "validate_bundle_manifest",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118120,8 +118083,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/curation/packages`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::CurationPackageResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CurationPackageResponse>>, Error> {
             let Self {
                 client,
                 limit,
@@ -118159,13 +118121,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_curation_packages",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118203,7 +118165,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/curation/packages/bulk-approve`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::BulkStatusRequest::try_from(v).map_err(|e| e.to_string()))
@@ -118224,13 +118186,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "bulk_approve",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118268,7 +118230,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/curation/packages/bulk-block`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::BulkStatusRequest::try_from(v).map_err(|e| e.to_string()))
@@ -118289,13 +118251,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "bulk_block",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118333,7 +118295,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/curation/packages/re-evaluate`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::ReEvaluateRequest::try_from(v).map_err(|e| e.to_string()))
@@ -118354,13 +118316,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "re_evaluate",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118387,9 +118349,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/curation/packages/{id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::CurationPackageResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CurationPackageResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -118415,13 +118375,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_curation_package",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118448,9 +118408,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/curation/packages/{id}/approve`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::CurationPackageResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CurationPackageResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -118476,13 +118434,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "approve_package",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118509,9 +118467,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/curation/packages/{id}/block`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::CurationPackageResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CurationPackageResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -118537,13 +118493,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "block_package",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118630,8 +118586,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/curation/repos/{repo_key}/packages/search`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::CurationPackageResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CurationPackageResponse>>, Error> {
             let Self {
                 client,
                 repo_key,
@@ -118675,14 +118630,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "search_curation_packages",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118709,7 +118664,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/curation/repos/{repo_key}/sync`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SyncTriggerResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SyncTriggerResponse>, Error> {
             let Self { client, repo_key } = self;
             let repo_key = repo_key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -118735,15 +118690,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "trigger_curation_sync",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118770,7 +118725,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/curation/repos/{repo_key}/versions`"]
-        pub async fn send(self) -> Result<ResponseValue<types::VersionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::VersionResponse>, Error> {
             let Self { client, repo_key } = self;
             let repo_key = repo_key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -118796,16 +118751,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_curation_version",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118843,7 +118798,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/curation/repos/{repo_key}/versions/{n}/publish`"]
-        pub async fn send(self) -> Result<ResponseValue<types::VersionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::VersionResponse>, Error> {
             let Self {
                 client,
                 repo_key,
@@ -118875,17 +118830,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "publish_curation_version",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -118925,7 +118880,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/curation/rules`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::RuleResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::RuleResponse>>, Error> {
             let Self {
                 client,
                 scope,
@@ -118957,13 +118912,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_curation_rules",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119004,7 +118959,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/curation/rules`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RuleResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RuleResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -119031,14 +118986,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_curation_rule",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119065,7 +119020,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/curation/rules/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RuleResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RuleResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -119091,14 +119046,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_curation_rule",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119150,7 +119105,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/curation/rules/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RuleResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RuleResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -119182,14 +119137,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_curation_rule",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119216,7 +119171,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/curation/rules/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -119234,13 +119189,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_curation_rule",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119267,7 +119222,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/curation/stats`"]
-        pub async fn send(self) -> Result<ResponseValue<types::StatsResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::StatsResponse>, Error> {
             let Self {
                 client,
                 staging_repo_id,
@@ -119296,13 +119251,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "stats",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119340,7 +119295,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/dependency-track/analysis`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DtAnalysisResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DtAnalysisResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::UpdateAnalysisBody::try_from(v).map_err(|e| e.to_string()))
@@ -119365,13 +119320,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_analysis",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119385,7 +119340,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/metrics/portfolio`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DtPortfolioMetrics>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DtPortfolioMetrics>, Error> {
             let Self { client } = self;
             let url = format!(
                 "{}/api/v1/dependency-track/metrics/portfolio",
@@ -119409,13 +119364,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_portfolio_metrics",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119431,7 +119386,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/policies`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::DtPolicyFull>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::DtPolicyFull>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/dependency-track/policies", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -119452,13 +119407,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_dependency_track_policies",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119472,9 +119427,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/projects`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::DtProject>>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<::std::vec::Vec<types::DtProject>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/dependency-track/projects", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -119495,13 +119448,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_projects",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119528,9 +119481,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/projects/{project_uuid}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::DtFinding>>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<::std::vec::Vec<types::DtFinding>>, Error> {
             let Self {
                 client,
                 project_uuid,
@@ -119559,13 +119510,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_project",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119594,7 +119545,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/projects/{project_uuid}/components`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::DtComponentFull>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::DtComponentFull>>, Error> {
             let Self {
                 client,
                 project_uuid,
@@ -119623,13 +119574,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_project_components",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119656,9 +119607,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/projects/{project_uuid}/findings`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::DtFinding>>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<::std::vec::Vec<types::DtFinding>>, Error> {
             let Self {
                 client,
                 project_uuid,
@@ -119687,13 +119636,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_project_findings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119720,7 +119669,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/projects/{project_uuid}/metrics`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DtProjectMetrics>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DtProjectMetrics>, Error> {
             let Self {
                 client,
                 project_uuid,
@@ -119749,13 +119698,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_project_metrics",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119796,7 +119745,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/projects/{project_uuid}/metrics/history`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::DtProjectMetrics>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::DtProjectMetrics>>, Error> {
             let Self {
                 client,
                 project_uuid,
@@ -119828,13 +119777,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_project_metrics_history",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119863,7 +119812,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/projects/{project_uuid}/violations`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::DtPolicyViolation>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::DtPolicyViolation>>, Error> {
             let Self {
                 client,
                 project_uuid,
@@ -119892,13 +119841,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_project_violations",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -119912,7 +119861,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/dependency-track/status`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DtStatusResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DtStatusResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/dependency-track/status", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -119933,13 +119882,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "dt_status",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120011,7 +119960,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self {
                 client,
@@ -120053,15 +120002,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_advisory_transitions",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120104,7 +120053,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self {
                 client,
@@ -120134,15 +120083,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "lookup_environments",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120183,8 +120132,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/formats`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::FormatHandlerResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::FormatHandlerResponse>>, Error> {
             let Self {
                 client,
                 enabled,
@@ -120213,13 +120161,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_format_handlers",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120246,7 +120194,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/formats/{format_key}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::FormatHandlerResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::FormatHandlerResponse>, Error> {
             let Self { client, format_key } = self;
             let format_key = format_key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -120272,14 +120220,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_format_handler",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120306,7 +120254,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/formats/{format_key}/disable`"]
-        pub async fn send(self) -> Result<ResponseValue<types::FormatHandlerResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::FormatHandlerResponse>, Error> {
             let Self { client, format_key } = self;
             let format_key = format_key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -120332,13 +120280,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disable_format_handler",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120365,7 +120313,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/formats/{format_key}/enable`"]
-        pub async fn send(self) -> Result<ResponseValue<types::FormatHandlerResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::FormatHandlerResponse>, Error> {
             let Self { client, format_key } = self;
             let format_key = format_key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -120391,13 +120339,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "enable_format_handler",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120446,7 +120394,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/formats/{format_key}/test`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TestFormatResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TestFormatResponse>, Error> {
             let Self {
                 client,
                 format_key,
@@ -120480,13 +120428,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "test_format_handler",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120537,7 +120485,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/groups`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GroupListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::GroupListResponse>, Error> {
             let Self {
                 client,
                 page,
@@ -120569,15 +120517,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_groups",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120615,7 +120563,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/groups`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GroupResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::GroupResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateGroupRequest::try_from(v).map_err(|e| e.to_string()))
@@ -120640,17 +120588,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_group",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120701,7 +120649,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/groups/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GroupDetailResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::GroupDetailResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -120742,16 +120690,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_group",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120800,7 +120748,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/groups/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GroupResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::GroupResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -120830,17 +120778,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_group",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120867,7 +120815,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/groups/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -120885,17 +120833,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_group",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -120942,7 +120890,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/groups/{id}/members`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -120968,17 +120916,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "add_members",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121025,7 +120973,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/groups/{id}/members`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -121051,17 +120999,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "remove_members",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121077,8 +121025,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/instances`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::RemoteInstanceResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::RemoteInstanceResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/instances", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -121099,13 +121046,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_instances",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121145,7 +121092,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/instances`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RemoteInstanceResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RemoteInstanceResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateInstanceRequest::try_from(v).map_err(|e| e.to_string()))
@@ -121170,13 +121117,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_instance",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121203,7 +121150,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/instances/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -121221,13 +121168,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_instance",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121265,7 +121212,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/instances/{id}/proxy/{path}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, path } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let path = path.map_err(Error::InvalidRequest)?;
@@ -121285,13 +121232,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "proxy_get",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121340,7 +121287,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/instances/{id}/proxy/{path}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -121375,13 +121322,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "proxy_put",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121430,7 +121377,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/instances/{id}/proxy/{path}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -121465,13 +121412,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "proxy_post",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121509,7 +121456,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/instances/{id}/proxy/{path}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, path } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let path = path.map_err(Error::InvalidRequest)?;
@@ -121529,13 +121476,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "proxy_delete",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121588,8 +121535,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/migrations`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::MigrationJobResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::MigrationJobResponse>>, Error> {
             let Self {
                 client,
                 page,
@@ -121621,14 +121567,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_migrations",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121668,7 +121614,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/migrations`"]
-        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateMigrationRequest::try_from(v).map_err(|e| e.to_string()))
@@ -121693,16 +121639,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_migration",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121718,7 +121664,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/migrations/connections`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::ConnectionResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ConnectionResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/migrations/connections", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -121739,14 +121685,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_connections",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121786,7 +121732,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/migrations/connections`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ConnectionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ConnectionResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -121813,14 +121759,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_connection",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121847,7 +121793,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/migrations/connections/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ConnectionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ConnectionResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -121873,15 +121819,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_connection",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121908,7 +121854,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/migrations/connections/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -121926,15 +121872,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_connection",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -121963,7 +121909,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/migrations/connections/{id}/repositories`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::SourceRepository>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SourceRepository>>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -121989,15 +121935,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_source_repositories",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122024,7 +121970,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/migrations/connections/{id}/test`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ConnectionTestResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ConnectionTestResult>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122050,15 +121996,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "test_connection",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122085,7 +122031,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/migrations/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122111,15 +122057,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_migration",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122146,7 +122092,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/migrations/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122164,15 +122110,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_migration",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122199,7 +122145,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/migrations/{id}/assess`"]
-        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122225,15 +122171,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "run_assessment",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                202u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122260,7 +122206,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/migrations/{id}/assessment`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AssessmentResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AssessmentResult>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122286,15 +122232,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_assessment",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122321,7 +122267,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/migrations/{id}/cancel`"]
-        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122347,15 +122293,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "cancel_migration",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122430,8 +122376,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/migrations/{id}/items`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::MigrationItemResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::MigrationItemResponse>>, Error> {
             let Self {
                 client,
                 id,
@@ -122472,14 +122417,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_migration_items",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122506,7 +122451,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/migrations/{id}/pause`"]
-        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122532,15 +122477,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "pause_migration",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122578,9 +122523,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/migrations/{id}/report`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::MigrationReportResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::MigrationReportResponse>, Error> {
             let Self { client, id, format } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let format = format.map_err(Error::InvalidRequest)?;
@@ -122608,15 +122551,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_migration_report",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122643,7 +122586,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/migrations/{id}/resume`"]
-        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122669,15 +122612,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "resume_migration",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122704,7 +122647,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/migrations/{id}/start`"]
-        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::MigrationJobResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122730,16 +122673,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "start_migration",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122766,7 +122709,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/migrations/{id}/stream`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -122784,15 +122727,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "stream_migration_progress",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122865,7 +122808,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/packages`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PackageListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PackageListResponse>, Error> {
             let Self {
                 client,
                 format,
@@ -122906,14 +122849,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_packages",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -122951,7 +122894,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/packages/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PackageResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PackageResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -122986,15 +122929,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_package",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123021,9 +122964,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/packages/{id}/versions`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PackageVersionsResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PackageVersionsResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -123049,15 +122990,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_package_versions",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123119,9 +123060,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/peers`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PeerInstanceListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PeerInstanceListResponse>, Error> {
             let Self {
                 client,
                 page,
@@ -123156,14 +123095,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_peers",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123201,7 +123140,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PeerInstanceResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PeerInstanceResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::RegisterPeerRequest::try_from(v).map_err(|e| e.to_string()))
@@ -123226,14 +123165,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "register_peer",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123275,7 +123214,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, body } = self;
             let body = body
@@ -123301,14 +123240,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "announce_peer",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123322,7 +123261,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/peers/identity`"]
-        pub async fn send(self) -> Result<ResponseValue<types::IdentityResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::IdentityResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/peers/identity", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -123343,14 +123282,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_identity",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123377,7 +123316,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PeerInstanceResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PeerInstanceResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -123403,15 +123342,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_peer",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123438,7 +123377,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/peers/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -123456,15 +123395,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "unregister_peer",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123502,9 +123441,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/chunks/{artifact_id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ChunkAvailabilityResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ChunkAvailabilityResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -123536,14 +123473,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_chunk_availability",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123606,7 +123543,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/peers/{id}/chunks/{artifact_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -123641,13 +123578,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_chunk_availability",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123687,7 +123624,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/chunks/{artifact_id}/peers`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::ChunkAvailabilityResponse>>, Error<()>>
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ChunkAvailabilityResponse>>, Error>
         {
             let Self {
                 client,
@@ -123720,13 +123657,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_peers_with_chunks",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123766,7 +123703,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/chunks/{artifact_id}/scored-peers`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::ScoredPeerResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ScoredPeerResponse>>, Error> {
             let Self {
                 client,
                 id,
@@ -123798,13 +123735,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_scored_peers",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123844,7 +123781,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/connections`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::PeerResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::PeerResponse>>, Error> {
             let Self { client, id, status } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let status = status.map_err(Error::InvalidRequest)?;
@@ -123872,14 +123809,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_peer_connections",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123908,7 +123845,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/connections/discover`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::DiscoverablePeerResponse>>, Error<()>>
+        ) -> Result<ResponseValue<::std::vec::Vec<types::DiscoverablePeerResponse>>, Error>
         {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -123935,13 +123872,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "discover_peers",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -123988,7 +123925,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/connections/probe`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PeerResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PeerResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -124018,16 +123955,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "probe_peer",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124065,7 +124002,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/connections/{target_id}/unreachable`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -124089,13 +124026,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "mark_unreachable",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124144,7 +124081,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/heartbeat`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -124170,15 +124107,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "heartbeat",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124205,7 +124142,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/labels`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PeerLabelsListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PeerLabelsListResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -124231,14 +124168,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_labels",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124289,7 +124226,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/peers/{id}/labels`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PeerLabelsListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PeerLabelsListResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -124319,15 +124256,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_labels",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124387,7 +124324,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/labels/{label_key}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PeerLabelResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PeerLabelResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -124424,15 +124361,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "add_label",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124470,7 +124407,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/peers/{id}/labels/{label_key}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -124494,15 +124431,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_label",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124551,7 +124488,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/peers/{id}/network-profile`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -124577,15 +124514,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_network_profile",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124614,8 +124551,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/repositories`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::SubscriptionResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SubscriptionResponse>>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -124641,15 +124577,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_assigned_repos",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124698,7 +124634,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/repositories`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -124724,16 +124660,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "assign_repo",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124771,7 +124707,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/repositories/{repo_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SubscriptionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SubscriptionResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -124803,15 +124739,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_subscription",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124849,7 +124785,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/peers/{id}/repositories/{repo_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -124873,15 +124809,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "unassign_repo",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124919,7 +124855,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/repositories/{repo_id}/sync`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RunNowResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RunNowResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -124951,15 +124887,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "run_subscription_now",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                202u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -124986,7 +124922,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/sync`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -125004,15 +124940,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "trigger_sync",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125087,7 +125023,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/sync/tasks`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::SyncTaskResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SyncTaskResponse>>, Error> {
             let Self {
                 client,
                 id,
@@ -125128,15 +125064,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_sync_tasks",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125185,9 +125121,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/transfer/init`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::TransferSessionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TransferSessionResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -125217,13 +125151,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "init_transfer",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125261,9 +125195,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/transfer/{session_id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::TransferSessionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TransferSessionResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -125295,13 +125227,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_session",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125372,7 +125304,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/transfer/{session_id}/chunk/{chunk_index}/complete`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -125408,13 +125340,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "complete_chunk",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125483,7 +125415,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/transfer/{session_id}/chunk/{chunk_index}/fail`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -125519,13 +125451,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "fail_chunk",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125574,7 +125506,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/transfer/{session_id}/chunk/{chunk_index}/retry`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -125601,13 +125533,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "retry_chunk",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125645,7 +125577,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/peers/{id}/transfer/{session_id}/chunks`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ChunkManifestResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ChunkManifestResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -125677,13 +125609,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_chunk_manifest",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125721,7 +125653,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/transfer/{session_id}/complete`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -125745,13 +125677,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "complete_session",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125809,7 +125741,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/peers/{id}/transfer/{session_id}/fail`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -125842,13 +125774,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "fail_session",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -125934,7 +125866,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/permissions`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PermissionListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PermissionListResponse>, Error> {
             let Self {
                 client,
                 page,
@@ -125984,14 +125916,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_permissions",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126031,7 +125963,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/permissions`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PermissionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PermissionResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -126058,15 +125990,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_permission",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126093,7 +126025,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/permissions/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PermissionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PermissionResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -126119,15 +126051,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_permission",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126178,7 +126110,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/permissions/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PermissionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PermissionResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -126210,15 +126142,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_permission",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126245,7 +126177,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/permissions/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -126263,15 +126195,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_permission",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126309,7 +126241,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/plugins`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PluginListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PluginListResponse>, Error> {
             let Self {
                 client,
                 status,
@@ -126338,13 +126270,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_plugins",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126384,7 +126316,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/plugins/install/git`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PluginInstallResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PluginInstallResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::InstallFromGitRequest::try_from(v).map_err(|e| e.to_string()))
@@ -126409,13 +126341,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "install_from_git",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126455,7 +126387,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/plugins/install/local`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -126478,16 +126410,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "install_from_local",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200..=299 => Ok(ResponseValue::stream(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                501u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                501u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126514,7 +126446,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/plugins/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PluginResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PluginResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -126540,14 +126472,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_plugin",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126574,7 +126506,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/plugins/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -126592,14 +126524,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "uninstall_plugin",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126626,7 +126558,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/plugins/{id}/config`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PluginConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PluginConfigResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -126652,15 +126584,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_plugin_config",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126712,7 +126644,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/plugins/{id}/config`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PluginConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PluginConfigResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -126744,15 +126676,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_plugin_config",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126779,7 +126711,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/plugins/{id}/disable`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -126797,14 +126729,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disable_plugin",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126831,7 +126763,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/plugins/{id}/enable`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -126849,14 +126781,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "enable_plugin",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126897,7 +126829,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/plugins/{id}/events`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<::serde_json::Value>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<::serde_json::Value>>, Error> {
             let Self { client, id, limit } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let limit = limit.map_err(Error::InvalidRequest)?;
@@ -126925,13 +126857,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_plugin_events",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -126958,7 +126890,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/plugins/{id}/reload`"]
-        pub async fn send(self) -> Result<ResponseValue<types::WasmPluginResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::WasmPluginResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -126984,13 +126916,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "reload_plugin",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127004,7 +126936,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/projects`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ProjectListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ProjectListResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/projects", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -127025,15 +126957,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "projects_list",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127073,7 +127005,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/projects`"]
-        pub async fn send(self) -> Result<ResponseValue<types::Project>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::Project>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateProjectRequest::try_from(v).map_err(|e| e.to_string()))
@@ -127098,16 +127030,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "projects_create",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127134,7 +127066,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/projects/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::Project>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::Project>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -127160,16 +127092,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "projects_get",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127220,7 +127152,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/projects/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::Project>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::Project>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -127250,16 +127182,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "projects_update",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127286,7 +127218,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/projects/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -127304,16 +127236,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "projects_delete",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127340,9 +127272,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/projects/{id}/members`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ProjectMemberListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ProjectMemberListResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -127368,16 +127298,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "projects_list_members",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127428,7 +127358,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/projects/{id}/members`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ProjectMemberRow>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ProjectMemberRow>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -127460,16 +127390,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "projects_add_member",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127521,7 +127451,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/projects/{id}/members`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -127549,16 +127479,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "projects_remove_member",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127585,9 +127515,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/promotion-rules`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PromotionRuleListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleListResponse>, Error> {
             let Self {
                 client,
                 source_repo_id,
@@ -127616,14 +127544,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_rules",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127661,7 +127589,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/promotion-rules`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateRuleRequest::try_from(v).map_err(|e| e.to_string()))
@@ -127686,15 +127614,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_rule",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127721,7 +127649,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/promotion-rules/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -127747,14 +127675,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_rule",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127803,7 +127731,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/promotion-rules/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionRuleResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -127833,14 +127761,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_rule",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127867,7 +127795,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/promotion-rules/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -127885,14 +127813,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_rule",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -127919,7 +127847,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/promotion-rules/{id}/evaluate`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BulkEvaluationResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BulkEvaluationResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -127945,14 +127873,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "evaluate_rule",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128014,7 +127942,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/promotion/repositories/{key}/artifacts/{artifact_id}/promote`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PromotionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -128051,16 +127979,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "promote_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128122,7 +128050,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/promotion/repositories/{key}/artifacts/{artifact_id}/reject`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RejectionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RejectionResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -128159,16 +128087,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "reject_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128217,7 +128145,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/promotion/repositories/{key}/promote`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BulkPromotionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BulkPromotionResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -128247,15 +128175,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "promote_artifacts_bulk",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128329,9 +128257,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/promotion/repositories/{key}/promotion-history`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::PromotionHistoryResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PromotionHistoryResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -128375,14 +128301,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "promotion_history",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128409,7 +128335,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/promotion/repositories/{key}/release-target`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ReleaseTargetResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ReleaseTargetResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -128435,15 +128361,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_release_target",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128494,7 +128420,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/promotion/repositories/{key}/release-target`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ReleaseTargetResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ReleaseTargetResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -128526,16 +128452,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_release_target",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128564,7 +128490,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/quality/checks`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::CheckResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CheckResponse>>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -128593,14 +128519,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_checks",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128640,7 +128566,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/quality/checks/trigger`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TriggerChecksResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TriggerChecksResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TriggerChecksRequest::try_from(v).map_err(|e| e.to_string()))
@@ -128665,14 +128591,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "trigger_checks",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128699,7 +128625,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/quality/checks/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CheckResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CheckResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -128725,14 +128651,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_check",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128761,7 +128687,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/quality/checks/{id}/issues`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::IssueResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::IssueResponse>>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -128787,14 +128713,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_check_issues",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128810,7 +128736,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/quality/gates`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::GateResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::GateResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/quality/gates", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -128831,13 +128757,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_gates",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128875,7 +128801,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/quality/gates`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GateResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::GateResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateGateRequest::try_from(v).map_err(|e| e.to_string()))
@@ -128900,14 +128826,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_gate",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -128945,7 +128871,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/quality/gates/evaluate/{artifact_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GateEvaluationResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::GateEvaluationResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -128980,14 +128906,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "evaluate_gate",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129014,7 +128940,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/quality/gates/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GateResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::GateResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -129040,14 +128966,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_gate",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129096,7 +129022,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/quality/gates/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::GateResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::GateResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -129126,14 +129052,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_gate",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129164,7 +129090,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -129191,14 +129117,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_gate",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129225,7 +129151,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/quality/health/artifacts/{artifact_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ArtifactHealthResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactHealthResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -129254,14 +129180,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_artifact_health",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129275,9 +129201,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/quality/health/dashboard`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::HealthDashboardResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::HealthDashboardResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/quality/health/dashboard", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -129298,14 +129222,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_health_dashboard",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129332,7 +129256,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/quality/health/repositories/{key}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RepoHealthResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepoHealthResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -129358,14 +129282,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repo_health",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129416,7 +129340,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/quality/issues/{id}/suppress`"]
-        pub async fn send(self) -> Result<ResponseValue<types::IssueResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::IssueResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -129446,14 +129370,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "suppress_issue",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129480,7 +129404,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/quality/issues/{id}/suppress`"]
-        pub async fn send(self) -> Result<ResponseValue<types::IssueResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::IssueResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -129506,14 +129430,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "unsuppress_issue",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129564,9 +129488,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/quarantine/proxy-cache/{repo_key}/release`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ProxyCacheReleaseResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ProxyCacheReleaseResponse>, Error> {
             let Self {
                 client,
                 repo_key,
@@ -129602,18 +129524,18 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "release_proxy_cache_entry",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129640,9 +129562,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/quarantine/{artifact_id}`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::QuarantineStatusResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::QuarantineStatusResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -129671,15 +129591,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_quarantine_status",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129730,9 +129650,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/quarantine/{artifact_id}/quarantine`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::QuarantineActionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::QuarantineActionResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -129766,18 +129684,18 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "quarantine_artifact_now",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129824,9 +129742,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/quarantine/{artifact_id}/reject`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::QuarantineActionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::QuarantineActionResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -129860,17 +129776,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "reject_quarantined_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -129897,9 +129813,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/quarantine/{artifact_id}/release`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::QuarantineActionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::QuarantineActionResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -129928,17 +129842,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "release_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130024,7 +129938,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RepositoryListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepositoryListResponse>, Error> {
             let Self {
                 client,
                 format,
@@ -130065,13 +129979,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_repositories",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130111,7 +130025,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RepositoryResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepositoryResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -130138,18 +130052,18 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_repository",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130163,7 +130077,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/_/capabilities`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RepositoryCapabilities>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepositoryCapabilities>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/repositories/_/capabilities", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -130184,13 +130098,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "repository_capabilities",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130217,7 +130131,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RepositoryResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepositoryResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -130243,14 +130157,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repository",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130277,7 +130191,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -130295,16 +130209,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_repository",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130355,7 +130269,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/repositories/{key}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RepositoryResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepositoryResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -130387,19 +130301,19 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_repository",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130426,7 +130340,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/age-gate`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AgeGateConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateConfigResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -130452,13 +130366,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repo_age_gate",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130510,7 +130424,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/age-gate`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AgeGateConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AgeGateConfigResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -130542,13 +130456,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_repo_age_gate",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130575,7 +130489,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/allowlist`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CondaAllowlistResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CondaAllowlistResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -130601,17 +130515,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_conda_allowlist",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130658,7 +130572,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/allowlist`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CondaAllowlistResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CondaAllowlistResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -130688,17 +130602,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_conda_allowlist",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130725,7 +130639,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/allowlist`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CondaAllowlistResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CondaAllowlistResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -130751,17 +130665,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_conda_allowlist",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130868,7 +130782,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/artifacts`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ArtifactListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactListResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -130921,14 +130835,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_artifacts",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -130979,9 +130893,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/artifacts-missing`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::MissingArtifactsResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::MissingArtifactsResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -131013,16 +130925,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "missing_artifacts",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                413u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                413u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131071,7 +130983,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/artifacts/{path}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ArtifactResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -131106,14 +131018,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repository_artifact_metadata",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131162,7 +131074,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/artifacts/{path}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ArtifactResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ArtifactResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -131201,19 +131113,19 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "upload_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                405u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                405u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131251,7 +131163,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/artifacts/{path}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, key, path } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let path = path.map_err(Error::InvalidRequest)?;
@@ -131271,16 +131183,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131307,7 +131219,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/cache-ttl`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CacheTtlResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CacheTtlResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -131333,14 +131245,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_cache_ttl",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131389,7 +131301,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/cache-ttl`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CacheTtlResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CacheTtlResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -131419,16 +131331,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_cache_ttl",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131466,9 +131378,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/cache/invalidate`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::InvalidateCacheResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::InvalidateCacheResponse>, Error> {
             let Self { client, key, path } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let path = path.map_err(Error::InvalidRequest)?;
@@ -131496,17 +131406,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "invalidate_cache",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131555,7 +131465,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/download/{path}`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self {
                 client,
                 key,
@@ -131586,16 +131496,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "download_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131622,7 +131532,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/egress-proxy`"]
-        pub async fn send(self) -> Result<ResponseValue<types::EgressProxyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::EgressProxyResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -131648,16 +131558,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_egress_proxy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131706,7 +131616,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/egress-proxy`"]
-        pub async fn send(self) -> Result<ResponseValue<types::EgressProxyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::EgressProxyResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -131736,17 +131646,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_egress_proxy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131775,7 +131685,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/email-subscriptions`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::EmailSubscriptionListResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::EmailSubscriptionListResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -131801,16 +131711,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_subscriptions",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131862,9 +131772,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/email-subscriptions`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::EmailSubscriptionResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::EmailSubscriptionResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -131896,17 +131804,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_subscription",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -131944,7 +131852,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/email-subscriptions/{subscription_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 key,
@@ -131968,16 +131876,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_subscription",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132008,7 +131916,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
@@ -132035,15 +131943,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_environments",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132107,7 +132015,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self {
                 client,
@@ -132150,18 +132058,18 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ingest_environment",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                201u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132203,7 +132111,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, key, id } = self;
             let key = key.map_err(Error::InvalidRequest)?;
@@ -132232,15 +132140,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_environment",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132278,7 +132186,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/environments/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, key, id } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -132298,16 +132206,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_environment",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132349,7 +132257,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, key, id } = self;
             let key = key.map_err(Error::InvalidRequest)?;
@@ -132378,15 +132286,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_environment_advisories",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132413,7 +132321,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/image-builds`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ImageBuildListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ImageBuildListResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -132439,13 +132347,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_image_builds",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132496,7 +132404,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/image-builds`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ImageBuildResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ImageBuildResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -132528,16 +132436,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_image_build",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                202u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                202u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132575,7 +132483,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/image-builds/base-info`"]
-        pub async fn send(self) -> Result<ResponseValue<types::BaseImageInfo>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::BaseImageInfo>, Error> {
             let Self { client, key, image } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let image = image.map_err(Error::InvalidRequest)?;
@@ -132603,13 +132511,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "image_build_base_info",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132660,9 +132568,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/image-builds/render`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::RenderImageBuildResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RenderImageBuildResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -132694,15 +132600,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "render_image_build",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132729,9 +132635,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/image-builds/settings`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ImageBuildSettingsResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ImageBuildSettingsResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -132757,13 +132661,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "image_build_settings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132801,7 +132705,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/image-builds/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ImageBuildResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ImageBuildResponse>, Error> {
             let Self { client, key, id } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -132829,14 +132733,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_image_build",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132874,7 +132778,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/image-builds/{id}/log`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, key, id } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -132894,14 +132798,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_image_build_log",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -132950,7 +132854,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/image-inspect`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ImageInspect>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ImageInspect>, Error> {
             let Self {
                 client,
                 key,
@@ -132985,14 +132889,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "inspect_image",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133019,7 +132923,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/labels`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LabelsListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LabelsListResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -133045,14 +132949,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_repo_labels",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133101,7 +133005,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/labels`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LabelsListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LabelsListResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -133131,15 +133035,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_repo_labels",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133197,7 +133101,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/labels/{label_key}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LabelResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LabelResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -133234,15 +133138,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "add_repo_label",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133280,7 +133184,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/labels/{label_key}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 key,
@@ -133304,15 +133208,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_repo_label",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133339,9 +133243,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/members`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::VirtualMembersListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::VirtualMembersListResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -133367,16 +133269,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_virtual_members",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133428,9 +133330,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/members`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::VirtualMembersListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::VirtualMembersListResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -133462,17 +133362,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_virtual_members",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133523,7 +133423,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/members`"]
-        pub async fn send(self) -> Result<ResponseValue<types::VirtualMemberResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::VirtualMemberResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -133555,16 +133455,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "add_virtual_member",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133602,7 +133502,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/members/{member_key}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 key,
@@ -133626,16 +133526,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "remove_virtual_member",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133662,7 +133562,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/npm-scope-policy`"]
-        pub async fn send(self) -> Result<ResponseValue<types::NpmScopePolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::NpmScopePolicyResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -133688,15 +133588,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_npm_scope_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133747,7 +133647,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/npm-scope-policy`"]
-        pub async fn send(self) -> Result<ResponseValue<types::NpmScopePolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::NpmScopePolicyResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -133779,16 +133679,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_npm_scope_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133815,7 +133715,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/pypi-tracks`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PypiTracksListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PypiTracksListResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -133841,14 +133741,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_pypi_tracks",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133908,7 +133808,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/pypi-tracks/{project}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PypiTrackResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PypiTrackResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -133945,16 +133845,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "put_pypi_track",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -133992,7 +133892,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/pypi-tracks/{project}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 key,
@@ -134016,15 +133916,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_pypi_track",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134051,7 +133951,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/routing-rules`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RoutingRulesResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RoutingRulesResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -134077,14 +133977,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_routing_rules",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134135,7 +134035,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/routing-rules`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RoutingRulesResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RoutingRulesResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -134165,16 +134065,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_routing_rules",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134201,7 +134101,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/routing-rules`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -134219,15 +134119,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_routing_rules",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134254,7 +134154,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/security`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RepoSecurityResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepoSecurityResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -134280,14 +134180,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repo_security",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134338,7 +134238,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/security`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ScanConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ScanConfigResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -134370,14 +134270,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_repo_security",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134426,7 +134326,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/security/proxy-sbom`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 key,
@@ -134457,15 +134357,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_proxy_sbom",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134527,7 +134427,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/security/proxy-scans`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ProxyScansResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ProxyScansResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -134565,15 +134465,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repo_proxy_scans",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134622,7 +134522,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/security/proxy-scans/rescan`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ProxyRescanResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ProxyRescanResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -134652,18 +134552,18 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "rescan_proxy_cached_path",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                429u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                429u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134759,7 +134659,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/security/scans`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ScanListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ScanListResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -134812,14 +134712,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_repo_scans",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134848,7 +134748,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/storage`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::RepositoryStorageStatsResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::RepositoryStorageStatsResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -134874,14 +134774,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repository_storage",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -134930,7 +134830,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/storage-gc`"]
-        pub async fn send(self) -> Result<ResponseValue<types::StorageGcResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::StorageGcResult>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -134960,15 +134860,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "run_repository_storage_gc",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135032,7 +134932,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/storage/tree`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::RepositoryStorageTreeResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::RepositoryStorageTreeResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -135070,14 +134970,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repository_storage_tree",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135104,7 +135004,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/test-upstream`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -135122,17 +135022,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "test_upstream",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                502u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                502u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135159,7 +135059,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/tokens`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RepoTokenListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepoTokenListResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -135185,16 +135085,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_repo_tokens",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135245,9 +135145,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/repositories/{key}/tokens`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::CreateRepoTokenResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CreateRepoTokenResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -135277,17 +135175,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_repo_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135325,7 +135223,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/tokens/{token_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RepoTokenResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepoTokenResponse>, Error> {
             let Self {
                 client,
                 key,
@@ -135357,16 +135255,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repo_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135404,7 +135302,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/tokens/{token_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 key,
@@ -135428,16 +135326,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "revoke_repo_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135486,7 +135384,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/upstream-auth`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -135512,16 +135410,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_upstream_auth",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135548,7 +135446,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/upstream-filter`"]
-        pub async fn send(self) -> Result<ResponseValue<types::UpstreamFilterResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::UpstreamFilterResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -135574,17 +135472,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_upstream_filter",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135631,7 +135529,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/repositories/{key}/upstream-filter`"]
-        pub async fn send(self) -> Result<ResponseValue<types::UpstreamFilterResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::UpstreamFilterResponse>, Error> {
             let Self { client, key, body } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let body = body
@@ -135661,17 +135559,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "set_upstream_filter",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135698,7 +135596,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/repositories/{key}/upstream-filter`"]
-        pub async fn send(self) -> Result<ResponseValue<types::UpstreamFilterResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::UpstreamFilterResponse>, Error> {
             let Self { client, key } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -135724,17 +135622,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_upstream_filter",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135774,7 +135672,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/repositories/{key}/versions/{path}`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::ArtifactVersionListResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::ArtifactVersionListResponse>, Error> {
             let Self { client, key, path } = self;
             let key = key.map_err(Error::InvalidRequest)?;
             let path = path.map_err(Error::InvalidRequest)?;
@@ -135802,14 +135700,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_artifact_versions",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135861,7 +135759,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/sbom`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::SbomResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SbomResponse>>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -135899,13 +135797,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_sboms",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -135943,7 +135841,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SbomResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SbomResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::GenerateSbomRequest::try_from(v).map_err(|e| e.to_string()))
@@ -135968,15 +135866,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "generate_sbom",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136003,7 +135901,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/sbom/by-artifact/{artifact_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SbomContentResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SbomContentResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -136032,14 +135930,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_sbom_by_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136080,7 +135978,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/check-compliance`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LicenseCheckResult>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LicenseCheckResult>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -136107,14 +136005,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "check_license_compliance",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136143,7 +136041,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/sbom/cve/history/by-artifact/{artifact_id}`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::CveHistoryEntry>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CveHistoryEntry>>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -136172,15 +136070,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_cve_history_by_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136209,7 +136107,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/sbom/cve/history/by-cve/{cve_id}`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::CveHistoryEntry>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CveHistoryEntry>>, Error> {
             let Self { client, cve_id } = self;
             let cve_id = cve_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -136235,14 +136133,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_cve_history_by_cve",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136271,7 +136169,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/sbom/cve/history/{id}`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::CveHistoryEntry>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::CveHistoryEntry>>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -136297,14 +136195,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_cve_history",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136366,7 +136264,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/cve/status/by-artifact/{artifact_id}/by-cve/{cve_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CveHistoryEntry>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CveHistoryEntry>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -136403,16 +136301,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_cve_status_by_artifact_cve",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136463,7 +136361,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/cve/status/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CveHistoryEntry>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CveHistoryEntry>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -136493,15 +136391,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_cve_status",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136540,7 +136438,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/sbom/cve/trends`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CveTrends>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CveTrends>, Error> {
             let Self {
                 client,
                 days,
@@ -136572,13 +136470,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_cve_trends",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136653,7 +136551,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self {
                 client,
@@ -136699,17 +136597,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "generate_environment_sbom",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                413u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                413u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136725,8 +136623,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/sbom/license-policies`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::LicensePolicyResponse>>, Error<()>>
-        {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::LicensePolicyResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/sbom/license-policies", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -136747,13 +136644,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_license_policies",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136794,7 +136691,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/license-policies`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LicensePolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LicensePolicyResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -136821,14 +136718,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "upsert_license_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136855,7 +136752,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/sbom/license-policies/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LicensePolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LicensePolicyResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -136881,14 +136778,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_license_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136919,7 +136816,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -136946,14 +136843,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_license_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -136980,7 +136877,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/sbom/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SbomContentResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SbomContentResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -137006,14 +136903,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_sbom",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137044,7 +136941,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -137071,14 +136968,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_sbom",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137107,7 +137004,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/sbom/{id}/components`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::ComponentResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ComponentResponse>>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -137133,14 +137030,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_sbom_components",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137189,7 +137086,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sbom/{id}/convert`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SbomContentResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SbomContentResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -137219,15 +137116,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "convert_sbom",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137401,7 +137298,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/search/advanced`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AdvancedSearchResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AdvancedSearchResponse>, Error> {
             let Self {
                 client,
                 created_after,
@@ -137478,13 +137375,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "advanced_search",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137522,7 +137419,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/search/checksum`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ChecksumSearchResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ChecksumSearchResponse>, Error> {
             let Self {
                 client,
                 algorithm,
@@ -137551,14 +137448,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "checksum_search",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137609,7 +137506,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/search/quick`"]
-        pub async fn send(self) -> Result<ResponseValue<types::QuickSearchResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::QuickSearchResponse>, Error> {
             let Self {
                 client,
                 limit,
@@ -137641,13 +137538,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "quick_search",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137677,7 +137574,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/search/recent`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::SearchResultItem>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SearchResultItem>>, Error> {
             let Self { client, limit } = self;
             let limit = limit.map_err(Error::InvalidRequest)?;
             let url = format!("{}/api/v1/search/recent", client.baseurl,);
@@ -137700,13 +137597,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "recent",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137745,7 +137642,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/search/suggest`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SuggestResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SuggestResponse>, Error> {
             let Self {
                 client,
                 limit,
@@ -137774,13 +137671,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "suggest",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137822,7 +137719,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/search/trending`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::SearchResultItem>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::SearchResultItem>>, Error> {
             let Self {
                 client,
                 days,
@@ -137851,13 +137748,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "trending",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137919,7 +137816,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/security/artifacts/{artifact_id}/scans`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ScanListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ScanListResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -137957,13 +137854,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_artifact_scans",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -137979,7 +137876,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/security/configs`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::ScanConfigResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ScanConfigResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/security/configs", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -138000,13 +137897,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_scan_configs",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138020,7 +137917,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/security/dashboard`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DashboardResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DashboardResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/security/dashboard", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -138041,14 +137938,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_dashboard",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138091,7 +137988,7 @@ pub mod builder {
         #[doc = "Sends a `POST` request to `/api/v1/security/findings/external`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::IngestExternalFindingsResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::IngestExternalFindingsResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -138118,16 +138015,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "ingest_external_findings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138176,7 +138073,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/security/findings/{id}/acknowledge`"]
-        pub async fn send(self) -> Result<ResponseValue<types::FindingResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::FindingResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -138206,15 +138103,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "acknowledge_finding",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138241,7 +138138,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/security/findings/{id}/acknowledge`"]
-        pub async fn send(self) -> Result<ResponseValue<types::FindingResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::FindingResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -138267,15 +138164,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "revoke_acknowledgment",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138291,7 +138188,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/security/policies`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::PolicyResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::PolicyResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/security/policies", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -138312,13 +138209,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_policies",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138356,7 +138253,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/security/policies`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PolicyResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreatePolicyRequest::try_from(v).map_err(|e| e.to_string()))
@@ -138381,16 +138278,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138417,7 +138314,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/security/policies/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PolicyResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -138443,14 +138340,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138499,7 +138396,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/security/policies/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PolicyResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -138529,14 +138426,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138567,7 +138464,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
@@ -138594,14 +138491,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138639,7 +138536,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/security/scan`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TriggerScanResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TriggerScanResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::TriggerScanRequest::try_from(v).map_err(|e| e.to_string()))
@@ -138664,16 +138561,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "trigger_scan",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138758,7 +138655,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/security/scans`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ScanListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ScanListResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -138805,13 +138702,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_scans",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138838,7 +138735,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/security/scans/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ScanResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ScanResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -138864,14 +138761,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_scan",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -138966,7 +138863,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/security/scans/{id}/findings`"]
-        pub async fn send(self) -> Result<ResponseValue<types::FindingListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::FindingListResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -139016,14 +138913,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_findings",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139039,7 +138936,7 @@ pub mod builder {
         #[doc = "Sends a `GET` request to `/api/v1/security/scores`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<::std::vec::Vec<types::ScoreResponse>>, Error<()>> {
+        ) -> Result<ResponseValue<::std::vec::Vec<types::ScoreResponse>>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/security/scores", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -139060,14 +138957,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_all_scores",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139081,9 +138978,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/service-accounts`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ServiceAccountListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ServiceAccountListResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/service-accounts", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -139104,14 +138999,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_service_accounts",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139152,7 +139047,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/service-accounts`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ServiceAccountResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ServiceAccountResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -139179,15 +139074,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_service_account",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                201u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139230,7 +139125,7 @@ pub mod builder {
         #[doc = "Sends a `POST` request to `/api/v1/service-accounts/repo-selector/preview`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::PreviewRepoSelectorResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::PreviewRepoSelectorResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -139260,15 +139155,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "preview_repo_selector",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139295,7 +139190,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/service-accounts/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ServiceAccountResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ServiceAccountResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -139321,14 +139216,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_service_account",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139355,7 +139250,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/service-accounts/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -139373,14 +139268,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_service_account",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139432,7 +139327,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/service-accounts/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ServiceAccountResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ServiceAccountResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -139464,14 +139359,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_service_account",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139498,7 +139393,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/service-accounts/{id}/tokens`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TokenListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TokenListResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -139524,14 +139419,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_tokens",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139580,7 +139475,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/service-accounts/{id}/tokens`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CreateTokenResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CreateTokenResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -139610,16 +139505,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139657,7 +139552,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/service-accounts/{id}/tokens/{token_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -139681,14 +139576,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "revoke_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139702,7 +139597,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/setup/status`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SetupStatusResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SetupStatusResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/setup/status", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -139723,13 +139618,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "setup_status",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139756,7 +139651,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/signing/artifacts/{artifact_id}/sign`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SignArtifactResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SignArtifactResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
@@ -139785,16 +139680,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "sign_artifact",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139821,7 +139716,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/keys`"]
-        pub async fn send(self) -> Result<ResponseValue<types::KeyListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::KeyListResponse>, Error> {
             let Self {
                 client,
                 repository_id,
@@ -139850,14 +139745,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_keys",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139895,7 +139790,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/signing/keys`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SigningKeyPublic>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SigningKeyPublic>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateKeyPayload::try_from(v).map_err(|e| e.to_string()))
@@ -139920,15 +139815,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_key",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -139955,7 +139850,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/keys/{key_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SigningKeyPublic>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SigningKeyPublic>, Error> {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -139981,15 +139876,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_key",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140020,7 +139915,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
@@ -140047,15 +139942,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_key",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140082,7 +139977,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/keys/{key_id}/public`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -140100,14 +139995,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_public_key",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140138,7 +140033,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
@@ -140165,15 +140060,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "revoke_key",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140200,7 +140095,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/signing/keys/{key_id}/rotate`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SigningKeyPublic>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SigningKeyPublic>, Error> {
             let Self { client, key_id } = self;
             let key_id = key_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -140226,15 +140121,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "rotate_key",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140261,7 +140156,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/repositories/{repo_id}/config`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SigningConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SigningConfigResponse>, Error> {
             let Self { client, repo_id } = self;
             let repo_id = repo_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -140287,15 +140182,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repo_signing_config",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140347,9 +140242,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/signing/repositories/{repo_id}/config`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::RepositorySigningConfig>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RepositorySigningConfig>, Error> {
             let Self {
                 client,
                 repo_id,
@@ -140385,15 +140278,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_repo_signing_config",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140420,7 +140313,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/signing/repositories/{repo_id}/public-key`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self { client, repo_id } = self;
             let repo_id = repo_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -140438,14 +140331,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_repo_public_key",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140459,7 +140352,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/sync-policies`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyListResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/sync-policies", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -140480,14 +140373,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_sync_policies",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140527,7 +140420,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sync-policies`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -140554,16 +140447,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_sync_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140577,9 +140470,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `POST` request to `/api/v1/sync-policies/evaluate`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::EvaluationResultResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::EvaluationResultResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/sync-policies/evaluate", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -140600,14 +140491,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "evaluate_policies",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140647,7 +140538,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sync-policies/preview`"]
-        pub async fn send(self) -> Result<ResponseValue<types::PreviewResultResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::PreviewResultResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::PreviewPolicyPayload::try_from(v).map_err(|e| e.to_string()))
@@ -140672,14 +140563,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "preview_sync_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140706,7 +140597,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/sync-policies/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -140732,15 +140623,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_sync_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140791,7 +140682,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/sync-policies/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -140823,16 +140714,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_sync_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140859,7 +140750,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/sync-policies/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -140877,15 +140768,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_sync_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140934,7 +140825,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/sync-policies/{id}/toggle`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SyncPolicyResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -140964,15 +140855,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "toggle_policy",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -140986,7 +140877,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/system/config`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SystemConfigResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SystemConfigResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/system/config", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -141007,13 +140898,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_system_config",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141063,7 +140954,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/tree`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TreeResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TreeResponse>, Error> {
             let Self {
                 client,
                 include_metadata,
@@ -141101,15 +140992,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_tree",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141159,7 +141050,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/tree/content`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self {
                 client,
                 max_bytes,
@@ -141190,15 +141081,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_content",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141238,7 +141129,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/uploads`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CreateSessionOutcome>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CreateSessionOutcome>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateSessionRequest::try_from(v).map_err(|e| e.to_string()))
@@ -141263,19 +141154,19 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_session",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                201u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                405u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                201u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                405u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141302,7 +141193,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/uploads/{session_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::SessionStatusResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::SessionStatusResponse>, Error> {
             let Self { client, session_id } = self;
             let session_id = session_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -141328,15 +141219,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_session_status",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                410u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                410u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141363,7 +141254,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/uploads/{session_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, session_id } = self;
             let session_id = session_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -141381,14 +141272,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "cancel",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 204u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141415,7 +141306,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/uploads/{session_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ChunkResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ChunkResponse>, Error> {
             let Self { client, session_id } = self;
             let session_id = session_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -141441,19 +141332,19 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "upload_chunk",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                410u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                410u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141480,7 +141371,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PUT` request to `/api/v1/uploads/{session_id}/complete`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CompleteResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CompleteResponse>, Error> {
             let Self { client, session_id } = self;
             let session_id = session_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -141506,19 +141397,19 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "complete",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                405u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                410u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                405u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                410u16 => Err(Error::from_response(response).await),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141605,7 +141496,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/users`"]
-        pub async fn send(self) -> Result<ResponseValue<types::UserListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::UserListResponse>, Error> {
             let Self {
                 client,
                 is_active,
@@ -141649,13 +141540,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_users",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141693,7 +141584,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/users`"]
-        pub async fn send(self) -> Result<ResponseValue<types::CreateUserResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::CreateUserResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateUserRequest::try_from(v).map_err(|e| e.to_string()))
@@ -141718,15 +141609,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_user",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                409u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141740,7 +141631,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/users/me`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AdminUserResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AdminUserResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/users/me", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -141761,14 +141652,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_current_user_record",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141808,7 +141699,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/users/me/password`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::ChangePasswordRequest::try_from(v).map_err(|e| e.to_string()))
@@ -141829,16 +141720,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "change_current_user_password",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141852,7 +141743,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/users/me/tokens`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ApiTokenListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApiTokenListResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/users/me/tokens", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -141873,13 +141764,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_current_user_tokens",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141920,9 +141811,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/users/me/tokens`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ApiTokenCreatedResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApiTokenCreatedResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| {
@@ -141949,14 +141838,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_current_user_api_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -141983,7 +141872,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/users/me/tokens/{token_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, token_id } = self;
             let token_id = token_id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -142001,13 +141890,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "revoke_current_user_api_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142034,7 +141923,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/users/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AdminUserResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AdminUserResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -142060,14 +141949,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_user",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142094,7 +141983,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/users/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -142112,15 +142001,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_user",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142169,7 +142058,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `PATCH` request to `/api/v1/users/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::AdminUserResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::AdminUserResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -142199,14 +142088,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "update_user",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142235,7 +142124,7 @@ pub mod builder {
         #[doc = "Sends a `POST` request to `/api/v1/users/{id}/force-password-change`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::ForcePasswordChangeResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::ForcePasswordChangeResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -142261,16 +142150,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "force_password_change",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142321,7 +142210,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/users/{id}/password`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -142347,17 +142236,17 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "change_password",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                401u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                401u16 => Err(Error::from_response(response).await),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142384,7 +142273,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/users/{id}/password/reset`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ResetPasswordResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ResetPasswordResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -142410,16 +142299,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "reset_password",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142446,7 +142335,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/users/{id}/roles`"]
-        pub async fn send(self) -> Result<ResponseValue<types::RoleListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::RoleListResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -142472,13 +142361,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_user_roles",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142527,7 +142416,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/users/{id}/roles`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -142553,13 +142442,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "assign_role",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                _ => Err(Error::UnexpectedResponse(response)),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142597,7 +142486,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/users/{id}/roles/{role_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -142621,14 +142510,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "revoke_role",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142655,7 +142544,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/users/{id}/tokens`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ApiTokenListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApiTokenListResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -142681,14 +142570,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_user_tokens",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142740,9 +142629,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/users/{id}/tokens`"]
-        pub async fn send(
-            self,
-        ) -> Result<ResponseValue<types::ApiTokenCreatedResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ApiTokenCreatedResponse>, Error> {
             let Self { client, id, body } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let body = body
@@ -142774,14 +142661,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_user_api_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142819,7 +142706,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/users/{id}/tokens/{token_id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self {
                 client,
                 id,
@@ -142843,14 +142730,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "revoke_user_api_token",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                403u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -142913,7 +142800,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/webhooks`"]
-        pub async fn send(self) -> Result<ResponseValue<types::WebhookListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::WebhookListResponse>, Error> {
             let Self {
                 client,
                 enabled,
@@ -142951,14 +142838,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_webhooks",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143000,7 +142887,7 @@ pub mod builder {
         #[doc = "Sends a `POST` request to `/api/v1/webhooks`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::WebhookSecretCreatedResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::WebhookSecretCreatedResponse>, Error> {
             let Self { client, body } = self;
             let body = body
                 .and_then(|v| types::CreateWebhookRequest::try_from(v).map_err(|e| e.to_string()))
@@ -143025,16 +142912,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "create_webhook",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                400u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                422u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                400u16 => Err(Error::from_response(response).await),
+                422u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143048,7 +142935,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/api/v1/webhooks/jwks`"]
-        pub async fn send(self) -> Result<ResponseValue<types::JwksDocument>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::JwksDocument>, Error> {
             let Self { client } = self;
             let url = format!("{}/api/v1/webhooks/jwks", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -143069,14 +142956,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_webhook_jwks",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143103,7 +142990,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/webhooks/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<types::WebhookResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::WebhookResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -143129,14 +143016,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "get_webhook",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143163,7 +143050,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `DELETE` request to `/api/v1/webhooks/{id}`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -143181,14 +143068,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "delete_webhook",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143250,7 +143137,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `GET` request to `/api/v1/webhooks/{id}/deliveries`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DeliveryListResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DeliveryListResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -143288,14 +143175,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "list_deliveries",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143333,7 +143220,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/webhooks/{id}/deliveries/{delivery_id}/redeliver`"]
-        pub async fn send(self) -> Result<ResponseValue<types::DeliveryResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::DeliveryResponse>, Error> {
             let Self {
                 client,
                 id,
@@ -143365,14 +143252,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "redeliver",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143399,7 +143286,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/webhooks/{id}/disable`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -143417,14 +143304,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "disable_webhook",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143451,7 +143338,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/webhooks/{id}/enable`"]
-        pub async fn send(self) -> Result<ResponseValue<()>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<()>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -143469,14 +143356,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "enable_webhook",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::empty(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143505,7 +143392,7 @@ pub mod builder {
         #[doc = "Sends a `POST` request to `/api/v1/webhooks/{id}/rotate-secret`"]
         pub async fn send(
             self,
-        ) -> Result<ResponseValue<types::RotateWebhookSecretResponse>, Error<()>> {
+        ) -> Result<ResponseValue<types::RotateWebhookSecretResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -143531,16 +143418,16 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "rotate_webhook_secret",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                409u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                500u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                409u16 => Err(Error::from_response(response).await),
+                500u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143567,7 +143454,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/api/v1/webhooks/{id}/test`"]
-        pub async fn send(self) -> Result<ResponseValue<types::TestWebhookResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::TestWebhookResponse>, Error> {
             let Self { client, id } = self;
             let id = id.map_err(Error::InvalidRequest)?;
             let url = format!(
@@ -143593,14 +143480,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "test_webhook",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143614,7 +143501,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/health`"]
-        pub async fn send(self) -> Result<ResponseValue<types::HealthResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::HealthResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/health", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -143635,14 +143522,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "health_check",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143656,7 +143543,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/livez`"]
-        pub async fn send(self) -> Result<ResponseValue<types::LivezResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::LivezResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/livez", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -143677,13 +143564,13 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "liveness_check",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143722,7 +143609,7 @@ pub mod builder {
             self
         }
         #[doc = "Sends a `POST` request to `/pypi/{repo_key}/pypi`"]
-        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<ByteStream>, Error> {
             let Self {
                 client,
                 repo_key,
@@ -143754,15 +143641,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "xmlrpc",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
                 200u16 => Ok(ResponseValue::stream(response)),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                413u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                404u16 => Err(Error::from_response(response).await),
+                413u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143804,7 +143691,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self {
                 client,
@@ -143837,15 +143724,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "legacy_project_json",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143898,7 +143785,7 @@ pub mod builder {
             self,
         ) -> Result<
             ResponseValue<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
-            Error<()>,
+            Error,
         > {
             let Self {
                 client,
@@ -143934,15 +143821,15 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "legacy_release_json",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                403u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                404u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                403u16 => Err(Error::from_response(response).await),
+                404u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
@@ -143956,7 +143843,7 @@ pub mod builder {
             Self { client: client }
         }
         #[doc = "Sends a `GET` request to `/readyz`"]
-        pub async fn send(self) -> Result<ResponseValue<types::ReadyzResponse>, Error<()>> {
+        pub async fn send(self) -> Result<ResponseValue<types::ReadyzResponse>, Error> {
             let Self { client } = self;
             let url = format!("{}/readyz", client.baseurl,);
             let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
@@ -143977,14 +143864,14 @@ pub mod builder {
             let info = OperationInfo {
                 operation_id: "readiness_check",
             };
-            client.pre(&mut request, &info).await?;
+            client.pre::<()>(&mut request, &info).await?;
             let result = client.exec(request, &info).await;
-            client.post(&result, &info).await?;
+            client.post::<()>(&result, &info).await?;
             let response = result?;
             match response.status().as_u16() {
-                200u16 => ResponseValue::from_response(response).await,
-                503u16 => Err(Error::ErrorResponse(ResponseValue::empty(response))),
-                _ => Err(Error::UnexpectedResponse(response)),
+                200u16 => Ok(ResponseValue::from_response::<()>(response).await?),
+                503u16 => Err(Error::from_response(response).await),
+                _ => Err(Error::from_response(response).await),
             }
         }
     }
