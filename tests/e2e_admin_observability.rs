@@ -4,6 +4,8 @@
 
 mod common;
 
+use std::time::{Duration, Instant};
+
 use serde_json::Value;
 
 fn json_of(output: std::process::Output) -> Value {
@@ -13,6 +15,20 @@ fn json_of(output: std::process::Output) -> Value {
         String::from_utf8_lossy(&output.stderr)
     );
     serde_json::from_slice(&output.stdout).expect("JSON output")
+}
+
+/// Run a list command until `ready` accepts its answer, for what the server writes
+/// in the background, and return the answer. A test that needs more asserts on it,
+/// so running out of time fails there with the last answer.
+fn poll_until(env: &common::TestEnv, args: &[&str], ready: impl Fn(&Value) -> bool) -> Value {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let body = json_of(env.ak_cmd().args(args).output().unwrap());
+        if ready(&body) || Instant::now() >= deadline {
+            return body;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
 
 /// Run a command that must fail, and return its stderr on one line.
@@ -54,12 +70,20 @@ fn repo_with_artifact(env: &common::TestEnv, name: &str) -> (String, String) {
 #[ignore = "requires E2E backend"]
 fn audit_list_finds_the_login() {
     let env = common::TestEnv::setup();
-    let body = json_of(
-        env.ak_cmd()
-            .args(["admin", "audit", "list", "--action", "LOGIN"])
-            .args(["--from", "2020-01-01T00:00:00Z", "--per-page", "5"])
-            .output()
-            .unwrap(),
+    let body = poll_until(
+        &env,
+        &[
+            "admin",
+            "audit",
+            "list",
+            "--action",
+            "LOGIN",
+            "--from",
+            "2020-01-01T00:00:00Z",
+            "--per-page",
+            "5",
+        ],
+        |body| !body["items"].as_array().unwrap().is_empty(),
     );
     assert_eq!(body["per_page"], 5);
     let items = body["items"].as_array().unwrap();
@@ -79,7 +103,17 @@ fn a_pull_shows_in_downloads_and_filters_work() {
         .assert()
         .success();
 
+    // The server records a download in the background, after serving it. Once this
+    // finds the record, the listings below read the same row.
+    let artifact = format!("{key}/a.bin");
+    let recorded = |body: &Value| body["total"] != 0;
     if common::server_older_than(1, 11, "--repo and --source on downloads") {
+        let body = poll_until(
+            &env,
+            &["admin", "downloads", "list", "--artifact", &artifact],
+            recorded,
+        );
+        assert_eq!(body["total"], 1, "{body}");
         // It ignores them, so ak must not pass off its answer as filtered.
         for flags in [["--repo", key.as_str()], ["--source", "proxy"]] {
             let mut command = env.ak_cmd();
@@ -87,23 +121,23 @@ fn a_pull_shows_in_downloads_and_filters_work() {
             let stderr = failure_of(command);
             assert!(stderr.contains("1.11 or newer"), "{stderr}");
         }
-        let body = json_of(
-            env.ak_cmd()
-                .args(["admin", "downloads", "list"])
-                .args(["--artifact", &format!("{key}/a.bin")])
-                .output()
-                .unwrap(),
-        );
-        assert_eq!(body["total"], 1, "{body}");
         return;
     }
 
-    let body = json_of(
-        env.ak_cmd()
-            .args(["admin", "downloads", "list", "--repo", &key])
-            .args(["--artifact", &format!("{key}/a.bin"), "--source", "hosted"])
-            .output()
-            .unwrap(),
+    let body = poll_until(
+        &env,
+        &[
+            "admin",
+            "downloads",
+            "list",
+            "--repo",
+            &key,
+            "--artifact",
+            &artifact,
+            "--source",
+            "hosted",
+        ],
+        recorded,
     );
     assert_eq!(body["total"], 1, "{body}");
     let download = &body["downloads"][0];
