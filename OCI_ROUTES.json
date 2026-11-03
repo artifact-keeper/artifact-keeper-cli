@@ -1,20 +1,25 @@
-[
-  {"method": "GET", "path": "/v2"},
-  {"method": "GET", "path": "/v2/token"},
-  {"method": "POST", "path": "/v2/token"},
-  {"method": "GET", "path": "/v2/_catalog"},
-  {"method": "GET", "path": "/v2/{name}/tags/list"},
-  {"method": "GET", "path": "/v2/{name}/manifests/{reference}"},
-  {"method": "HEAD", "path": "/v2/{name}/manifests/{reference}"},
-  {"method": "PUT", "path": "/v2/{name}/manifests/{reference}"},
-  {"method": "DELETE", "path": "/v2/{name}/manifests/{reference}"},
-  {"method": "GET", "path": "/v2/{name}/blobs/{digest}"},
-  {"method": "HEAD", "path": "/v2/{name}/blobs/{digest}"},
-  {"method": "DELETE", "path": "/v2/{name}/blobs/{digest}"},
-  {"method": "POST", "path": "/v2/{name}/blobs/uploads"},
-  {"method": "PATCH", "path": "/v2/{name}/blobs/uploads/{uuid}"},
-  {"method": "PUT", "path": "/v2/{name}/blobs/uploads/{uuid}"},
-  {"method": "GET", "path": "/v2/{name}/blobs/uploads/{uuid}"},
-  {"method": "DELETE", "path": "/v2/{name}/blobs/uploads/{uuid}"},
-  {"method": "GET", "path": "/v2/{name}/referrers/{digest}"}
-]
+{
+  "comment": "The OCI surface the backend routes in a fallback handler, which xtask routes can't read. Kept by hand. not_routes are ones the OCI spec has and this server doesn't: the gate fails if one shows up in the route table, the spec or the registry, and tests/e2e_pkg_oci.rs fails if the server starts answering one.",
+  "routes": [
+    {"method": "GET", "path": "/v2"},
+    {"method": "GET", "path": "/v2/token"},
+    {"method": "POST", "path": "/v2/token"},
+    {"method": "GET", "path": "/v2/_catalog"},
+    {"method": "GET", "path": "/v2/{name}/tags/list"},
+    {"method": "GET", "path": "/v2/{name}/manifests/{reference}"},
+    {"method": "HEAD", "path": "/v2/{name}/manifests/{reference}"},
+    {"method": "PUT", "path": "/v2/{name}/manifests/{reference}"},
+    {"method": "DELETE", "path": "/v2/{name}/manifests/{reference}"},
+    {"method": "GET", "path": "/v2/{name}/blobs/{digest}"},
+    {"method": "HEAD", "path": "/v2/{name}/blobs/{digest}"},
+    {"method": "POST", "path": "/v2/{name}/blobs/uploads"},
+    {"method": "PATCH", "path": "/v2/{name}/blobs/uploads/{uuid}"},
+    {"method": "PUT", "path": "/v2/{name}/blobs/uploads/{uuid}"},
+    {"method": "GET", "path": "/v2/{name}/blobs/uploads/{uuid}"},
+    {"method": "DELETE", "path": "/v2/{name}/blobs/uploads/{uuid}"},
+    {"method": "GET", "path": "/v2/{name}/referrers/{digest}"}
+  ],
+  "not_routes": [
+    {"method": "DELETE", "path": "/v2/{name}/blobs/{digest}", "answers": 405, "reason": "The server's OCI dispatcher has no blob delete: it answers 405 UNSUPPORTED. Blob GC removes unreferenced blobs."}
+  ]
+}
