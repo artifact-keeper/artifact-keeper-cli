@@ -271,7 +271,7 @@ fn promote_moves_the_artifact_and_history_records_it() {
     assert_eq!(items[0]["target_repo_key"], target.as_str());
     assert_eq!(items[0]["notes"], "from the E2E tests");
 
-    // No other artifact has this history. Servers up to at least 1.11.10 ignore the
+    // No other artifact has this history. Servers up to at least 1.11.11 ignore the
     // parameter (artifact-keeper#5209), and `ak` filters what it gets.
     let other = json_of(env.ak_cmd().args([
         "promotion",

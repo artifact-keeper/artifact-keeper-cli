@@ -330,7 +330,7 @@ async fn create_account(name: &str, description: Option<&str>, global: &GlobalAr
         description: description.map(|s| s.to_string()),
     };
 
-    // Raw request instead of the generated SDK method: backend 1.11.10 still
+    // Raw request instead of the generated SDK method: backend 1.11.11 still
     // responds `200 OK` here while its spec declares `201`, so the generated
     // client (`create_service_account`) reports every successful create as an
     // error. Accept any 2xx success status.

@@ -31,7 +31,7 @@ pub enum BundleCommand {
         manifest: String,
     },
 
-    /// Export repositories into a bundle. Servers up to 1.11.10 answer 501 Not Implemented
+    /// Export repositories into a bundle. Servers up to 1.11.11 answer 501 Not Implemented
     Export {
         /// Repository key to export (repeat, or comma-separated)
         #[arg(long = "repo", required = true, value_delimiter = ',')]
@@ -46,7 +46,7 @@ pub enum BundleCommand {
         media_control_number: Option<String>,
     },
 
-    /// Import a bundle. Servers up to 1.11.10 answer 501 Not Implemented
+    /// Import a bundle. Servers up to 1.11.11 answer 501 Not Implemented
     Import,
 
     /// Inspect export and import jobs

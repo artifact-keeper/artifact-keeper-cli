@@ -2,7 +2,7 @@
 //!
 //! Requires the E2E backend: ./tests/start-backend.sh
 //!
-//! `export` and `import` aren't here: the 1.11.10 server answers both with 501.
+//! `export` and `import` aren't here: the 1.11.11 server answers both with 501.
 //! See tests/bundle_contract.rs.
 
 mod common;

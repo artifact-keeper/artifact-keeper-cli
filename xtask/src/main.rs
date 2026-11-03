@@ -34,7 +34,7 @@ const NULL_DESPITE_THE_SPEC: &[(&str, &[&str])] = &[
 /// every command touching one of these types fails on the previous minor. They
 /// are generated as `Option`. Update this list when the pin moves to a new minor:
 /// each schema's `required` in the pinned spec, minus the same in the previous
-/// minor's specs (here 1.11.10 against 1.10.0 and 1.10.1).
+/// minor's specs (here 1.11.11 against 1.10.0, 1.10.1 and 1.10.2).
 const NOT_REQUIRED_ON_PREVIOUS_MINOR: &[(&str, &[&str])] = &[
     ("AssessmentResult", &["total_artifacts_exact"]),
     ("CiOidcProviderResponse", &["key_source"]),
