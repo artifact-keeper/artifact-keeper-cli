@@ -7,6 +7,33 @@ use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_e
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
 
+mod audit;
+mod blast_radius;
+mod downloads;
+mod holds;
+mod npm_feed;
+mod proxy_scan_verdict;
+
+/// Paging for a list command. Sent to the server as given.
+#[derive(clap::Args)]
+pub struct PageArgs {
+    /// Page number
+    #[arg(long, default_value = "1")]
+    page: i32,
+
+    /// Results per page
+    #[arg(long, default_value = "20")]
+    per_page: i32,
+}
+
+/// Pages needed for `total` results, for a response that doesn't say.
+fn total_pages(total: i64, per_page: i32) -> i32 {
+    if per_page <= 0 {
+        return 1;
+    }
+    i32::try_from((total + i64::from(per_page) - 1) / i64::from(per_page)).unwrap_or(i32::MAX)
+}
+
 #[derive(Subcommand)]
 pub enum AdminCommand {
     /// Manage backups
@@ -104,6 +131,42 @@ pub enum AdminCommand {
     Instance {
         #[command(subcommand)]
         command: RemoteInstanceCommand,
+    },
+
+    /// Read the audit log
+    Audit {
+        #[command(subcommand)]
+        command: audit::AuditCommand,
+    },
+
+    /// See who downloaded what
+    Downloads {
+        #[command(subcommand)]
+        command: downloads::DownloadsCommand,
+    },
+
+    /// See who an artifact or CVE reached
+    BlastRadius {
+        #[command(subcommand)]
+        command: blast_radius::BlastRadiusCommand,
+    },
+
+    /// Show or delete stored scan verdicts for proxied content
+    ProxyScanVerdict {
+        #[command(subcommand)]
+        command: proxy_scan_verdict::ProxyScanVerdictCommand,
+    },
+
+    /// Check the npm upstream feed consumer. Needs a 1.11 server
+    NpmFeed {
+        #[command(subcommand)]
+        command: npm_feed::NpmFeedCommand,
+    },
+
+    /// See what is held back from download. Needs a 1.11 server
+    Holds {
+        #[command(subcommand)]
+        command: holds::HoldsCommand,
     },
 }
 
@@ -1071,6 +1134,12 @@ impl AdminCommand {
             },
             Self::StorageBackends => list_storage_backends(global).await,
             Self::SearchReindex => trigger_search_reindex(global).await,
+            Self::Audit { command } => command.execute(global).await,
+            Self::Downloads { command } => command.execute(global).await,
+            Self::BlastRadius { command } => command.execute(global).await,
+            Self::ProxyScanVerdict { command } => command.execute(global).await,
+            Self::NpmFeed { command } => command.execute(global).await,
+            Self::Holds { command } => command.execute(global).await,
             Self::Rescan { limit } => rescan_for_inventory(limit, global).await,
             Self::SmtpTest { to } => send_test_email(&to, global).await,
             Self::Instance { command } => match command {

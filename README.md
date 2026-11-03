@@ -167,7 +167,7 @@ Federation & Integration
   ak analytics     Usage analytics and storage insights
 
 Administration
-  ak admin         Backup, cleanup, metrics, user management, plugins
+  ak admin         Backup, cleanup, metrics, users, plugins, audit log, downloads, blast radius, holds
   ak project       Projects: grouped repositories, members and a storage quota
   ak banner        System-wide maintenance and downtime banners
   ak tui           Launch interactive TUI dashboard

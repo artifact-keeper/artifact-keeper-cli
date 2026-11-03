@@ -3,7 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -68,6 +68,16 @@ pub enum AgeGateCommand {
         reason: Option<String>,
     },
 
+    /// Put a decided age-gate review back to pending
+    Reopen {
+        /// Review ID
+        id: String,
+
+        /// Why it's being reopened
+        #[arg(long)]
+        reason: Option<String>,
+    },
+
     /// Reject a pending age-gate review request
     Reject {
         /// Review ID
@@ -97,10 +107,13 @@ impl AgeGateCommand {
             } => list_reviews(repo.as_deref(), status.as_deref(), page, per_page, global).await,
             Self::Review { id } => show_review(&id, global).await,
             Self::Approve { id, reason } => {
-                review_decision(&id, reason.as_deref(), true, global).await
+                review_decision(&id, reason.as_deref(), Decision::Approve, global).await
             }
             Self::Reject { id, reason } => {
-                review_decision(&id, reason.as_deref(), false, global).await
+                review_decision(&id, reason.as_deref(), Decision::Reject, global).await
+            }
+            Self::Reopen { id, reason } => {
+                review_decision(&id, reason.as_deref(), Decision::Reopen, global).await
             }
         }
     }
@@ -317,45 +330,67 @@ async fn show_review(id: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+#[derive(Clone, Copy)]
+enum Decision {
+    Approve,
+    Reject,
+    Reopen,
+}
+
 async fn review_decision(
     id: &str,
     reason: Option<&str>,
-    approve: bool,
+    decision: Decision,
     global: &GlobalArgs,
 ) -> Result<()> {
     let review_id = parse_uuid(id, "review")?;
 
     let client = client_for(global)?;
-    let action = if approve { "Approving" } else { "Rejecting" };
-    let spinner = output::spinner(&format!("{action} age-gate review..."));
+    let (doing, verb, done) = match decision {
+        Decision::Approve => ("Approving", "approve", "approved"),
+        Decision::Reject => ("Rejecting", "reject", "rejected"),
+        Decision::Reopen => ("Reopening", "reopen", "reopened"),
+    };
+    let spinner = output::spinner(&format!("{doing} age-gate review..."));
 
     let body = artifact_keeper_sdk::types::ReviewActionRequest {
         reason: reason.map(|s| s.to_string()),
     };
 
-    let review = if approve {
-        client
-            .approve_review()
-            .id(review_id)
-            .body(body)
-            .send()
+    let (review, raw) = match decision {
+        Decision::Approve => {
+            artifact_keeper_sdk::raw::capture(
+                client.approve_review().id(review_id).body(body).send(),
+            )
             .await
-            .map_err(|e| sdk_err("approve age-gate review", e))?
-    } else {
-        client
-            .reject_review()
-            .id(review_id)
-            .body(body)
-            .send()
+        }
+        Decision::Reject => {
+            artifact_keeper_sdk::raw::capture(
+                client.reject_review().id(review_id).body(body).send(),
+            )
             .await
-            .map_err(|e| sdk_err("reject age-gate review", e))?
+        }
+        Decision::Reopen => {
+            artifact_keeper_sdk::raw::capture(
+                client.reopen_review().id(review_id).body(body).send(),
+            )
+            .await
+        }
     };
+    let review = review
+        .map_err(|e| sdk_err(&format!("{verb} age-gate review"), e))?
+        .into_inner();
 
     spinner.finish_and_clear();
-    let verb = if approve { "approved" } else { "rejected" };
-    eprintln!(
-        "Review {} {verb} ({} {} in {}).",
-        review.id, review.package_name, review.package_version, review.repository_key
+    emit_mutation_raw(
+        raw.as_deref(),
+        &review,
+        &review.id.to_string(),
+        &format!(
+            "Review {} {done} ({} {} in {}).",
+            review.id, review.package_name, review.package_version, review.repository_key
+        ),
+        global,
     );
 
     Ok(())
@@ -841,7 +876,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = review_decision(NIL_UUID, Some("Vetted"), true, &global).await;
+        let result = review_decision(NIL_UUID, Some("Vetted"), Decision::Approve, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -863,7 +898,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = review_decision(NIL_UUID, Some("Too new"), false, &global).await;
+        let result = review_decision(NIL_UUID, Some("Too new"), Decision::Reject, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
