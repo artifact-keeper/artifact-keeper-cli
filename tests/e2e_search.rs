@@ -28,7 +28,7 @@ fn pushed(env: &common::TestEnv, repo: &str, name: &str, content: &str) -> Strin
         .args(["--path", name])
         .assert()
         .success();
-    let info = json_of(env.ak_cmd().args(["artifact", "info", repo, name]));
+    let info = json_of(env.ak_cmd().args(["artifact", "show", repo, name]));
     info["checksum_sha256"].as_str().unwrap().to_string()
 }
 

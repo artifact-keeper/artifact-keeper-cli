@@ -448,7 +448,7 @@ async fn packages_backfill_sends_the_repository() {
             "message": "m", "artifacts_scanned": 0, "packages_registered": 0,
             "artifacts_skipped": 0, "artifacts_failed": 0
         }),
-        &["packages", "backfill", "--repo", "r"],
+        &["catalog", "backfill", "--repo", "r"],
     )
     .await;
 }

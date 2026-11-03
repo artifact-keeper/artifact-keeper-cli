@@ -88,7 +88,7 @@ fn staged(env: &common::TestEnv) -> (String, String, String, String) {
             .args(["--path", path])
             .assert()
             .success();
-        let info = json_of(env.ak_cmd().args(["artifact", "info", &staging, path]));
+        let info = json_of(env.ak_cmd().args(["artifact", "show", &staging, path]));
         ids.push(info["id"].as_str().unwrap().to_string());
     }
     let rejected = ids.pop().unwrap();
@@ -156,7 +156,7 @@ fn a_request_is_approved_or_rejected_by_someone_else() {
     assert_eq!(done["review_notes"], "fine");
     let there = json_of(
         env.ak_cmd()
-            .args(["artifact", "info", &target, "approved.bin"]),
+            .args(["artifact", "show", &target, "approved.bin"]),
     );
     assert_eq!(there["path"], "approved.bin");
 
@@ -167,7 +167,7 @@ fn a_request_is_approved_or_rejected_by_someone_else() {
     );
     assert_eq!(no["status"], "rejected", "{no}");
     env.ak_cmd()
-        .args(["artifact", "info", &target, "rejected.bin"])
+        .args(["artifact", "show", &target, "rejected.bin"])
         .assert()
         .failure();
 

@@ -210,7 +210,7 @@ fn cases() -> Vec<Case> {
             smtp(true),
         ),
         case(
-            &["packages", "backfill"],
+            &["catalog", "backfill"],
             "POST",
             "/api/v1/admin/packages/backfill".to_string(),
             backfill(2),

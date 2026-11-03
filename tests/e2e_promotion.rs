@@ -227,7 +227,7 @@ fn staged(env: &common::TestEnv, tag: &str, path: &str) -> (String, String, Stri
         .args(["--path", path])
         .assert()
         .success();
-    let info = json_of(env.ak_cmd().args(["artifact", "info", &staging, path]));
+    let info = json_of(env.ak_cmd().args(["artifact", "show", &staging, path]));
     (staging, target, info["id"].as_str().unwrap().to_string())
 }
 
@@ -254,7 +254,7 @@ fn promote_moves_the_artifact_and_history_records_it() {
     // Really in the target now.
     let there = json_of(
         env.ak_cmd()
-            .args(["artifact", "info", &target, "moved.bin"]),
+            .args(["artifact", "show", &target, "moved.bin"]),
     );
     assert_eq!(there["path"], "moved.bin");
 

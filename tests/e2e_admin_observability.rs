@@ -59,7 +59,7 @@ fn repo_with_artifact(env: &common::TestEnv, name: &str) -> (String, String) {
         .success();
     let info = json_of(
         env.ak_cmd()
-            .args(["artifact", "info", &key, "a.bin"])
+            .args(["artifact", "show", &key, "a.bin"])
             .output()
             .unwrap(),
     );

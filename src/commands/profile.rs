@@ -2,7 +2,7 @@ use artifact_keeper_sdk::ClientAuthExt;
 use artifact_keeper_sdk::ClientUsersExt;
 use artifact_keeper_sdk::types::{
     AdminUserResponse, ApiTokenCreatedResponse, ApiTokenResponse, ChangePasswordRequest,
-    CreateUserApiTokenRequest, UpdateUserRequest, UserResponse,
+    CreateUserApiTokenRequest, UpdateUserRequest,
 };
 use clap::Subcommand;
 use miette::Result;
@@ -20,7 +20,8 @@ use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
 pub enum ProfileCommand {
-    /// Show your user profile
+    /// Show your user profile. Use `ak auth whoami`
+    #[command(hide = true)]
     Show,
 
     /// Show your full account record (self-service `/users/me`)
@@ -43,15 +44,17 @@ pub enum ProfileCommand {
         passwords: PasswordArgs,
     },
 
-    /// Manage API tokens
+    /// Manage API tokens through /users/me/tokens. Use `ak auth token`. A token made
+    /// here has no scopes unless you give some
+    #[command(hide = true)]
     Tokens {
         #[command(subcommand)]
         command: TokenCommand,
     },
 
     /// Manage API tokens through /profile/access-tokens, the route the web UI uses.
-    /// A token made here defaults to the read scope, and one made with `tokens` to
-    /// none
+    /// A token made here defaults to the read scope, and one made with `ak auth token`
+    /// to all of your access
     AccessTokens {
         #[command(subcommand)]
         command: AccessTokenCommand,
@@ -175,7 +178,7 @@ pub enum TokenCommand {
 impl ProfileCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
-            Self::Show => show_profile(global).await,
+            Self::Show => super::auth::whoami(global).await,
             Self::Whoami => whoami(global).await,
             Self::Update {
                 display_name,
@@ -207,30 +210,6 @@ impl ProfileCommand {
 // ---------------------------------------------------------------------------
 // Handler functions
 // ---------------------------------------------------------------------------
-
-async fn show_profile(global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
-    let spinner = output::spinner("Fetching profile...");
-
-    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.get_current_user().send()).await;
-    let user = resp
-        .map_err(|e| sdk_err("get current user", e))?
-        .into_inner();
-    spinner.finish_and_clear();
-
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", user.id);
-        return Ok(());
-    }
-
-    let (info, table_str) = format_profile_detail(&user);
-    println!(
-        "{}",
-        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
-    );
-
-    Ok(())
-}
 
 async fn whoami(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
@@ -540,36 +519,6 @@ async fn access_token_revoke(id: &str, global: &GlobalArgs) -> Result<()> {
 // Formatting helpers (pure functions, testable without HTTP)
 // ---------------------------------------------------------------------------
 
-fn format_profile_detail(user: &UserResponse) -> (Value, String) {
-    let display = user.display_name.as_deref().unwrap_or("-");
-
-    let info = serde_json::json!({
-        "id": user.id.to_string(),
-        "username": user.username,
-        "email": user.email,
-        "display_name": display,
-        "is_admin": user.is_admin,
-        "totp_enabled": user.totp_enabled,
-    });
-
-    let table_str = format!(
-        "ID:            {}\n\
-         Username:      {}\n\
-         Email:         {}\n\
-         Display Name:  {}\n\
-         Admin:         {}\n\
-         TOTP Enabled:  {}",
-        user.id,
-        user.username,
-        user.email,
-        display,
-        if user.is_admin { "yes" } else { "no" },
-        if user.totp_enabled { "yes" } else { "no" },
-    );
-
-    (info, table_str)
-}
-
 fn format_whoami_detail(user: &AdminUserResponse) -> (Value, String) {
     let display = user.display_name.as_deref().unwrap_or("-");
     let last_login = user
@@ -860,17 +809,6 @@ mod tests {
 
     // ---- Format function tests ----
 
-    fn make_user() -> UserResponse {
-        UserResponse {
-            id: Uuid::nil(),
-            username: "alice".to_string(),
-            email: "alice@example.com".to_string(),
-            display_name: Some("Alice Smith".to_string()),
-            is_admin: false,
-            totp_enabled: true,
-        }
-    }
-
     fn make_admin_user() -> AdminUserResponse {
         AdminUserResponse {
             is_service_account: false,
@@ -885,34 +823,6 @@ mod tests {
             created_at: Utc::now(),
             last_login_at: None,
         }
-    }
-
-    #[test]
-    fn format_profile_detail_populated() {
-        let user = make_user();
-        let (info, table_str) = format_profile_detail(&user);
-
-        assert_eq!(info["username"], "alice");
-        assert_eq!(info["email"], "alice@example.com");
-        assert_eq!(info["display_name"], "Alice Smith");
-        assert_eq!(info["is_admin"], false);
-        assert_eq!(info["totp_enabled"], true);
-
-        assert!(table_str.contains("alice"));
-        assert!(table_str.contains("alice@example.com"));
-        assert!(table_str.contains("Alice Smith"));
-        assert!(table_str.contains("no")); // is_admin
-        assert!(table_str.contains("yes")); // totp_enabled
-    }
-
-    #[test]
-    fn format_profile_detail_no_display_name() {
-        let mut user = make_user();
-        user.display_name = None;
-        let (info, table_str) = format_profile_detail(&user);
-
-        assert_eq!(info["display_name"], "-");
-        assert!(table_str.contains("Display Name:  -"));
     }
 
     #[test]
@@ -1041,7 +951,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = show_profile(&global).await;
+        let result = crate::commands::auth::whoami(&global).await;
         assert!(result.is_ok());
 
         crate::test_utils::teardown_env();
@@ -1182,7 +1092,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = show_profile(&global).await;
+        let result = crate::commands::auth::whoami(&global).await;
         assert!(result.is_ok());
 
         crate::test_utils::teardown_env();

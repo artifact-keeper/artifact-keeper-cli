@@ -586,6 +586,11 @@ async fn a_quarantined_pull_shows_the_message_and_leaves_no_file() {
 async fn pull_asks_for_a_revision() {
     let f = Fixture::new().await;
     Mock::given(method("GET"))
+        .and(path("/api/v1/repositories/r"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"versioning_enabled": true})))
+        .mount(&f.server)
+        .await;
+    Mock::given(method("GET"))
         .and(path("/api/v1/repositories/r/download/a.txt"))
         .and(wiremock::matchers::query_param("version", "2"))
         .respond_with(ResponseTemplate::new(200).set_body_bytes("two".as_bytes()))
@@ -601,11 +606,46 @@ async fn pull_asks_for_a_revision() {
         "a.txt",
         "-o",
         &out_str,
-        "--version",
+        "--revision",
         "2",
     ]);
     assert!(output.status.success(), "{output:?}");
     assert_eq!(std::fs::read(&out).unwrap(), b"two");
+}
+
+/// It would answer with its one artifact, whatever revision was asked for.
+#[tokio::test]
+async fn a_revision_from_a_repository_that_isnt_versioned_is_refused() {
+    let f = Fixture::new().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/repositories/r"))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(json!({"versioning_enabled": false})),
+        )
+        .mount(&f.server)
+        .await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/repositories/r/download/a.txt"))
+        .respond_with(ResponseTemplate::new(200).set_body_bytes("latest".as_bytes()))
+        .expect(0)
+        .mount(&f.server)
+        .await;
+    let output = f.ak(&[
+        "artifact",
+        "pull",
+        "r",
+        "a.txt",
+        "-o",
+        "-",
+        "--revision",
+        "2",
+    ]);
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(output.stdout.is_empty());
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("versioned"),
+        "{output:?}"
+    );
 }
 
 // ---- list and search ----

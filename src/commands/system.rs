@@ -1,4 +1,4 @@
-use artifact_keeper_sdk::{ClientHealthExt, ClientSystemExt};
+use artifact_keeper_sdk::ClientSystemExt;
 use clap::Subcommand;
 use miette::Result;
 
@@ -8,7 +8,7 @@ use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
 use crate::config::credentials::get_credential;
 use crate::error::AkError;
-use crate::output::{self, OutputFormat, format_bytes};
+use crate::output::{self, format_bytes};
 
 #[derive(Subcommand)]
 pub enum SystemCommand {
@@ -19,8 +19,8 @@ pub enum SystemCommand {
     /// authenticated admins; for other callers they are omitted.
     Config,
 
-    /// Show instance health, version, and dependency status
-    #[command(visible_alias = "info")]
+    /// Show instance health. Use `ak monitoring health`
+    #[command(hide = true, alias = "info")]
     Health,
 
     /// Print the server's OpenAPI document. The server has to run with ENABLE_SWAGGER=true
@@ -46,7 +46,7 @@ impl SystemCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Config => show_config(global).await,
-            Self::Health => show_health(global).await,
+            Self::Health => super::monitoring::health(global).await,
             Self::Openapi => print_raw("/api/v1/openapi.json", global).await,
             Self::SwaggerUi { path: Some(path) } => {
                 print_raw(&format!("/swagger-ui/{path}"), global).await
@@ -105,39 +105,6 @@ async fn show_config(global: &GlobalArgs) -> Result<()> {
     );
 
     Ok(())
-}
-
-async fn show_health(global: &GlobalArgs) -> Result<()> {
-    let client = client_for_optional_auth(global)?;
-    let spinner = output::spinner("Fetching system health...");
-
-    let (health, raw) = artifact_keeper_sdk::raw::capture(client.health_check().send()).await;
-    let health = health
-        .map_err(|e| sdk_err("get system health", e))?
-        .into_inner();
-
-    spinner.finish_and_clear();
-
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", health.status);
-        return Ok(());
-    }
-
-    let table_str = format_health_detail(&health);
-    println!(
-        "{}",
-        output::render_raw(raw.as_deref(), &health, &global.format, Some(table_str))
-    );
-
-    Ok(())
-}
-
-fn opt_bool(value: Option<bool>) -> &'static str {
-    match value {
-        Some(true) => "yes",
-        Some(false) => "no",
-        None => "-",
-    }
 }
 
 fn yes_no(value: bool) -> &'static str {
@@ -216,54 +183,6 @@ fn format_config_detail(config: &artifact_keeper_sdk::types::SystemConfigRespons
     )
 }
 
-fn format_health_detail(health: &artifact_keeper_sdk::types::HealthResponse) -> String {
-    let check = |c: &artifact_keeper_sdk::types::CheckStatus| -> String {
-        match &c.message {
-            Some(m) => format!("{} ({m})", c.status),
-            None => c.status.clone(),
-        }
-    };
-    let opt_check = |c: &Option<artifact_keeper_sdk::types::CheckStatus>| -> String {
-        c.as_ref().map(check).unwrap_or_else(|| "-".to_string())
-    };
-
-    let db_pool = health
-        .db_pool
-        .as_ref()
-        .map(|p| {
-            format!(
-                "active={} idle={} size={} max={}",
-                p.active_connections, p.idle_connections, p.size, p.max_connections
-            )
-        })
-        .unwrap_or_else(|| "-".to_string());
-
-    format!(
-        "Status:            {}\n\
-         Version:           {}\n\
-         Commit:            {}\n\
-         Dirty:             {}\n\
-         Demo Mode:         {}\n\
-         DB:                {}\n\
-         Storage:           {}\n\
-         LDAP:              {}\n\
-         OpenSearch:        {}\n\
-         Security Scanner:  {}\n\
-         DB Pool:           {}",
-        health.status,
-        health.version,
-        health.commit.as_deref().unwrap_or("-"),
-        opt_bool(health.dirty),
-        yes_no(health.demo_mode),
-        check(&health.checks.database),
-        check(&health.checks.storage),
-        opt_check(&health.checks.ldap),
-        opt_check(&health.checks.opensearch),
-        opt_check(&health.checks.security_scanner),
-        db_pool,
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -311,13 +230,6 @@ mod tests {
     fn yes_no_renders() {
         assert_eq!(yes_no(true), "yes");
         assert_eq!(yes_no(false), "no");
-    }
-
-    #[test]
-    fn opt_bool_renders() {
-        assert_eq!(opt_bool(Some(true)), "yes");
-        assert_eq!(opt_bool(Some(false)), "no");
-        assert_eq!(opt_bool(None), "-");
     }
 
     // ---- format functions ----
@@ -398,17 +310,6 @@ mod tests {
         assert!(detail.contains("Scanners:          -"));
     }
 
-    #[test]
-    fn format_health_detail_renders() {
-        let health: artifact_keeper_sdk::types::HealthResponse =
-            serde_json::from_value(health_json()).unwrap();
-        let detail = format_health_detail(&health);
-        assert!(detail.contains("healthy"));
-        assert!(detail.contains("1.4.0"));
-        assert!(detail.contains("degraded (slow)"));
-        assert!(detail.contains("active=1"));
-    }
-
     // ---- wiremock handler tests ----
 
     use wiremock::matchers::{method, path};
@@ -460,7 +361,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = show_health(&global).await;
+        let result = crate::commands::monitoring::health(&global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -477,7 +378,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = show_health(&global).await;
+        let result = crate::commands::monitoring::health(&global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -487,7 +388,7 @@ mod tests {
     #[test]
     fn snapshot_system_config_json() {
         let config: serde_json::Value = config_json();
-        let output = crate::output::render(&config, &OutputFormat::Json, None);
+        let output = crate::output::render(&config, &crate::output::OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("system_config_json", parsed);
     }
