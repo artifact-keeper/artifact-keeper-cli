@@ -70,6 +70,18 @@ pub enum AkError {
     )]
     NoTerminal,
 
+    #[error("Couldn't create an API token for this configuration, so nothing was written: {0}")]
+    #[diagnostic(
+        code(ak::setup_token),
+        help(
+            "If --token-days is outside what the server allows, pick another value. Or create \
+             a token with `ak auth token create` and run setup with it in AK_TOKEN. \
+             --session-token writes your login token instead, which stops working when it \
+             expires, usually within 30 minutes."
+        )
+    )]
+    SetupToken(String),
+
     #[error(transparent)]
     #[diagnostic(code(ak::io_error))]
     Io(#[from] std::io::Error),

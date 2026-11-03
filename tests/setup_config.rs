@@ -322,22 +322,54 @@ async fn session_token_flag_keeps_the_login_token_and_warns() {
 }
 
 #[tokio::test]
-async fn a_refused_mint_falls_back_to_the_login_token_and_warns() {
+async fn a_refused_mint_fails_and_writes_nothing() {
     let sandbox = Sandbox::new(None).await;
     Mock::given(method("POST"))
         .and(path("/api/v1/auth/tokens"))
-        .respond_with(ResponseTemplate::new(403).set_body_json(json!({"message": "policy"})))
+        .respond_with(
+            ResponseTemplate::new(403).set_body_json(json!({"message": "policy says no"})),
+        )
         .mount(&sandbox.server)
         .await;
     let session = jwt_expiring_in(1800);
 
-    let output = sandbox.run(&session, &["pip", "--repo", "r"]);
-    assert_eq!(output.status.code(), Some(0));
-    assert!(sandbox.read("home/.config/pip/pip.conf").contains(&session));
-    let err = stderr(&output);
-    assert!(err.contains("couldn't create an API token"));
-    assert!(err.contains("expires in about"));
-    assert!(!err.contains(&session), "the login token was printed");
+    for (tool, file) in [
+        ("pip", "home/.config/pip/pip.conf"),
+        ("npm", "home/.npmrc"),
+        ("maven", "home/.m2/settings.xml"),
+    ] {
+        let output = sandbox.run(&session, &[tool, "--repo", "r"]);
+        assert_eq!(output.status.code(), Some(1), "setup {tool}");
+        assert!(!sandbox.path(file).exists(), "setup {tool} wrote {file}");
+        let err = stderr(&output);
+        assert!(
+            err.contains("policy says no"),
+            "the server's reason is missing"
+        );
+        assert!(err.contains("--session-token"), "the way out is missing");
+        assert!(!err.contains(&session), "the login token was printed");
+    }
+}
+
+/// Cargo's setup writes two files. The first must not be replaced when there's
+/// no token for the second: that would lose what was in it, for nothing.
+#[tokio::test]
+async fn a_refused_mint_leaves_existing_cargo_files_alone() {
+    let sandbox = Sandbox::new(None).await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/auth/tokens"))
+        .respond_with(ResponseTemplate::new(403))
+        .mount(&sandbox.server)
+        .await;
+    let existing = "[registries.other]\nindex = \"sparse+https://other.test/\"\n";
+    std::fs::create_dir_all(sandbox.path("home/.cargo")).unwrap();
+    std::fs::write(sandbox.path("home/.cargo/config.toml"), existing).unwrap();
+
+    let output = sandbox.run(&jwt_expiring_in(1800), &["cargo", "--repo", "r"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(sandbox.read("home/.cargo/config.toml"), existing);
+    assert!(!sandbox.path("home/.cargo/config.bak").exists());
+    assert!(!sandbox.path("home/.cargo/credentials.toml").exists());
 }
 
 #[tokio::test]
