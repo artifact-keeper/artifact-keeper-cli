@@ -384,3 +384,53 @@ fn users_list_filters_reach_the_server() {
     assert!(!items.is_empty());
     assert!(items.iter().all(|u| u["is_admin"] == true), "{list}");
 }
+
+/// The README's CI recipe: environment variables, and no config file at all.
+#[test]
+#[ignore = "requires E2E backend"]
+fn env_vars_alone_reach_the_server() {
+    let env = common::TestEnv::setup();
+    let empty = tempfile::TempDir::new().unwrap();
+    let output = assert_cmd::Command::cargo_bin("ak")
+        .unwrap()
+        .env("AK_CONFIG_DIR", empty.path())
+        .env("AK_CREDENTIAL_STORE", "file")
+        .env("AK_INSTANCE", &env.url)
+        .env("AK_TOKEN", &env.token)
+        .env("AK_NO_INPUT", "1")
+        .args(["--format", "json", "auth", "whoami"])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let me: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(me["username"], "admin");
+    assert!(!empty.path().join("config.toml").exists());
+}
+
+/// `ak auth login <url>` as the first thing anyone runs.
+#[test]
+#[ignore = "requires E2E backend"]
+fn the_first_login_adds_the_instance() {
+    let env = common::TestEnv::setup();
+    let empty = tempfile::TempDir::new().unwrap();
+    let run = |args: &[&str], stdin: &str| {
+        assert_cmd::Command::cargo_bin("ak")
+            .unwrap()
+            .env("AK_CONFIG_DIR", empty.path())
+            .env("AK_CREDENTIAL_STORE", "file")
+            .env_remove("AK_TOKEN")
+            .args(args)
+            .write_stdin(stdin)
+            .output()
+            .unwrap()
+    };
+    let output = run(
+        &["--no-input", "auth", "login", &env.url, "--token-stdin"],
+        &env.token,
+    );
+    assert!(output.status.success(), "{output:?}");
+    let output = run(&["--format", "json", "auth", "whoami"], "");
+    assert!(output.status.success(), "{output:?}");
+    let config = std::fs::read_to_string(empty.path().join("config.toml")).unwrap();
+    assert!(config.contains(&env.url), "{config}");
+}

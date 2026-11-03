@@ -78,7 +78,8 @@ impl AppConfig {
         write_private_atomic(&path, &content)
     }
 
-    /// Get the active instance config, resolving from flag → env → default.
+    /// Get the active instance config, resolving from flag → env → default. The flag
+    /// and the env var can hold a URL instead of a name.
     pub fn resolve_instance<'a>(
         &'a self,
         override_name: Option<&'a str>,
@@ -87,6 +88,10 @@ impl AppConfig {
             .or(self.default_instance.as_deref())
             .ok_or(AkError::NoInstance)?;
 
+        if is_instance_url(name) {
+            return self.resolve_instance_url(name);
+        }
+
         let instance = self
             .instances
             .get(name)
@@ -94,6 +99,124 @@ impl AppConfig {
 
         Ok((name, instance))
     }
+
+    /// `--instance` or `AK_INSTANCE` given as a URL. A configured instance at exactly
+    /// that URL is used with its login. Any other URL has no login of its own, so the
+    /// only token it can get is `AK_TOKEN`, sent to the URL the user just named.
+    ///
+    /// The process is short-lived and resolves this a handful of times, so the
+    /// instance it makes up is leaked to give it the same lifetime as the others.
+    fn resolve_instance_url<'a>(&'a self, url: &str) -> Result<(&'a str, &'a InstanceConfig)> {
+        let url = normalize_instance_url(url)?;
+        if let Some((name, instance)) = self.instance_at(&url) {
+            return Ok((name, instance));
+        }
+        let instance: &'static InstanceConfig = Box::leak(Box::new(InstanceConfig {
+            url: url.clone(),
+            api_version: default_api_version(),
+            allow_insecure_http: false,
+        }));
+        Ok((Box::leak(url.into_boxed_str()), instance))
+    }
+
+    /// The configured instance at exactly this URL, scheme included: a login made
+    /// over https doesn't go to the same host over http.
+    pub fn instance_at(&self, url: &str) -> Option<(&str, &InstanceConfig)> {
+        self.instances
+            .iter()
+            .find(|(_, instance)| instance.url.trim_end_matches('/') == url)
+            .map(|(name, instance)| (name.as_str(), instance))
+    }
+
+    /// A name for a new instance at this URL: its host, or with its port or a number
+    /// if that's taken.
+    pub fn name_for_url(&self, url: &str) -> String {
+        let parsed = reqwest::Url::parse(url).ok();
+        let host = parsed
+            .as_ref()
+            .and_then(|u| u.host_str())
+            .unwrap_or("instance")
+            .to_string();
+        if !self.instances.contains_key(&host) {
+            return host;
+        }
+        if let Some(port) = parsed.and_then(|u| u.port()) {
+            let with_port = format!("{host}-{port}");
+            if !self.instances.contains_key(&with_port) {
+                return with_port;
+            }
+        }
+        (2..)
+            .map(|n| format!("{host}-{n}"))
+            .find(|name| !self.instances.contains_key(name))
+            .expect("some number is free")
+    }
+}
+
+/// Whether `--instance` or `AK_INSTANCE` holds a URL rather than a name.
+pub fn is_instance_url(value: &str) -> bool {
+    value.contains("://")
+}
+
+/// Check an instance URL and put it in the form the rest of ak expects: an http or
+/// https URL with nothing after the path, no trailing slash and no `/api/v1`, which ak
+/// adds itself. Credentials don't go in it, because it's printed and kept in plain text.
+pub fn normalize_instance_url(url: &str) -> Result<String> {
+    let trimmed = url.trim();
+    if !is_instance_url(trimmed) {
+        return Err(AkError::Usage(format!(
+            "'{trimmed}' has no scheme. Give the whole URL, such as https://{trimmed}"
+        ))
+        .into());
+    }
+    let parsed = reqwest::Url::parse(trimmed)
+        .map_err(|e| AkError::Usage(format!("'{}' isn't a valid URL: {e}", shown_url(trimmed))))?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return Err(AkError::Usage(format!(
+            "An instance URL starts with https:// or http://, not {}://",
+            parsed.scheme()
+        ))
+        .into());
+    }
+    if parsed.host_str().is_none() {
+        return Err(AkError::Usage("The instance URL has no host".to_string()).into());
+    }
+    if !parsed.username().is_empty() || parsed.password().is_some() {
+        return Err(AkError::Usage(
+            "An instance URL can't hold a username or password. Use `ak auth login`.".to_string(),
+        )
+        .into());
+    }
+    if parsed.query().is_some() || parsed.fragment().is_some() {
+        return Err(
+            AkError::Usage("An instance URL can't have a query or a fragment".to_string()).into(),
+        );
+    }
+
+    let whole = parsed.as_str().trim_end_matches('/');
+    match whole.strip_suffix("/api/v1") {
+        Some(base) => {
+            warn_api_path_once(base);
+            Ok(base.trim_end_matches('/').to_string())
+        }
+        None => Ok(whole.to_string()),
+    }
+}
+
+/// A URL that couldn't be parsed may still hold a password, so only its start is shown.
+fn shown_url(url: &str) -> String {
+    match url.split_once('@') {
+        Some((_, host)) => format!("...@{host}"),
+        None => url.to_string(),
+    }
+}
+
+/// This URL is resolved several times in one command, and once is enough to say so.
+fn warn_api_path_once(base: &str) {
+    static WARNED: std::sync::Once = std::sync::Once::new();
+    WARNED.call_once(|| {
+        eprintln!("Warning: ak adds /api/v1 itself, so it's using {base}");
+    });
 }
 
 /// Write `content` to `path` without the file ever being readable by other

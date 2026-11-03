@@ -18,7 +18,8 @@ use crate::transport;
 
 #[derive(clap::Args)]
 pub struct LoginArgs {
-    /// Instance URL (uses default instance if omitted)
+    /// Instance URL. Adds the instance if it's new, named from its host (uses the
+    /// default instance if omitted)
     url: Option<String>,
 
     /// Skip interactive prompt and go straight to token authentication
@@ -209,13 +210,7 @@ pub enum TokenCommand {
 impl AuthCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
-            Self::Login(args) => {
-                if args.oidc_device {
-                    login_with_device(args.url.as_deref(), &args.scope, global).await
-                } else {
-                    login(&args, global).await
-                }
-            }
+            Self::Login(args) => login(&args, global).await,
             Self::Logout { instance } => logout(instance.as_deref(), global).await,
             Self::Token { command } => match command {
                 TokenCommand::Create {
@@ -309,40 +304,96 @@ impl AuthCommand {
     }
 }
 
-/// Resolve the instance named by `--url` (if given) or the configured
-/// default/`--instance`. Shared by the password, token and device login paths.
-fn resolve_login_instance(
-    url: Option<&str>,
-    global: &GlobalArgs,
-) -> Result<(String, InstanceConfig)> {
+/// The instance a login is for, and whether it's new and has to be saved.
+struct LoginTarget {
+    name: String,
+    instance: InstanceConfig,
+    is_new: bool,
+}
+
+/// The instance named by the URL argument or a URL in `--instance`, or else the
+/// configured one. A URL no instance has makes a new instance, named from its host.
+/// Shared by the password, token and device login paths.
+fn resolve_login_target(url: Option<&str>, global: &GlobalArgs) -> Result<LoginTarget> {
     let config = AppConfig::load()?;
-    if let Some(url) = url {
-        let (name, instance) = config
-            .instances
-            .iter()
-            .find(|(_, instance)| instance.url == url)
-            .ok_or_else(|| {
-                AkError::Usage(format!(
-                    "No instance configured with URL '{url}'. Run `ak instance add <name> {url}` first."
-                ))
-            })?;
-        return Ok((name.to_string(), instance.clone()));
+    let url = url.or(global
+        .instance
+        .as_deref()
+        .filter(|value| crate::config::is_instance_url(value)));
+    let Some(url) = url else {
+        let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+        return Ok(LoginTarget {
+            name: name.to_string(),
+            instance: instance.clone(),
+            is_new: false,
+        });
+    };
+    let url = crate::config::normalize_instance_url(url)?;
+    if let Some((name, instance)) = config.instance_at(&url) {
+        return Ok(LoginTarget {
+            name: name.to_string(),
+            instance: instance.clone(),
+            is_new: false,
+        });
     }
-    let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
-    Ok((name.to_string(), instance.clone()))
+    Ok(LoginTarget {
+        name: config.name_for_url(&url),
+        instance: InstanceConfig {
+            url,
+            api_version: "v1".to_string(),
+            allow_insecure_http: false,
+        },
+        is_new: true,
+    })
+}
+
+/// Keep the instance a login just succeeded on. Only now, so a mistyped URL doesn't
+/// stay behind and become the default.
+fn save_new_instance(target: &LoginTarget) -> Result<()> {
+    let mut config = AppConfig::load()?;
+    let is_first = config.instances.is_empty();
+    config
+        .instances
+        .insert(target.name.clone(), target.instance.clone());
+    if is_first || config.default_instance.is_none() {
+        config.default_instance = Some(target.name.clone());
+        eprintln!(
+            "Added instance '{}' at {} (set as default)",
+            target.name, target.instance.url
+        );
+    } else {
+        eprintln!(
+            "Added instance '{}' at {}. Run `ak instance use {}` to make it the default.",
+            target.name, target.instance.url, target.name
+        );
+    }
+    config.save()
 }
 
 async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
-    let (instance_name, instance) = resolve_login_instance(args.url.as_deref(), global)?;
+    let target = resolve_login_target(args.url.as_deref(), global)?;
+    if args.oidc_device {
+        crate::commands::device_flow::login(&target.name, &target.instance, &args.scope, global)
+            .await?;
+    } else {
+        login_to(&target.name, &target.instance, args, global).await?;
+    }
+    if target.is_new {
+        save_new_instance(&target)?;
+    }
+    Ok(())
+}
 
+async fn login_to(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    args: &LoginArgs,
+    global: &GlobalArgs,
+) -> Result<()> {
     if let Some(sso) = &args.sso {
         return match parse_sso(sso)? {
-            (SsoKind::Ldap, id) => {
-                login_with_ldap(&instance_name, &instance, id, args, global).await
-            }
-            (kind, id) => {
-                login_with_browser(&instance_name, &instance, kind, id, args, global).await
-            }
+            (SsoKind::Ldap, id) => login_with_ldap(instance_name, instance, id, args, global).await,
+            (kind, id) => login_with_browser(instance_name, instance, kind, id, args, global).await,
         };
     }
     if args.token_stdin {
@@ -351,10 +402,10 @@ async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
             "The token",
             "--token-stdin",
         )?;
-        return store_token(&instance_name, &instance, token).await;
+        return store_token(instance_name, instance, token).await;
     }
     if args.username.is_some() {
-        return login_with_password(&instance_name, &instance, args, global).await;
+        return login_with_password(instance_name, instance, args, global).await;
     }
 
     if global.no_input {
@@ -369,14 +420,14 @@ async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
 
     // If --token flag was explicitly passed, go straight to token flow
     if args.token {
-        return login_with_token(&instance_name, &instance).await;
+        return login_with_token(instance_name, instance).await;
     }
 
     // Interactive: let user choose how to authenticate
     eprintln!("Logging in to '{}' ({})\n", instance_name, instance.url);
 
     // Surface the cleartext risk before the user types anything.
-    transport::warn_if_insecure(&instance_name, &instance);
+    transport::warn_if_insecure(instance_name, instance);
 
     let methods = &[
         "Login with username and password",
@@ -390,8 +441,8 @@ async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
         .into_diagnostic()?;
 
     match selection {
-        0 => login_with_password(&instance_name, &instance, args, global).await,
-        1 => login_with_token(&instance_name, &instance).await,
+        0 => login_with_password(instance_name, instance, args, global).await,
+        1 => login_with_token(instance_name, instance).await,
         _ => unreachable!(),
     }
 }
@@ -400,15 +451,6 @@ async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
 ///
 /// `--no-input` is not an error here: the flow never prompts. It prints the
 /// verification URL and user code, and the user approves on a second device.
-async fn login_with_device(
-    url: Option<&str>,
-    scopes: &[String],
-    global: &GlobalArgs,
-) -> Result<()> {
-    let (instance_name, instance) = resolve_login_instance(url, global)?;
-    crate::commands::device_flow::login(&instance_name, &instance, scopes, global).await
-}
-
 async fn login_with_token(instance_name: &str, instance: &InstanceConfig) -> Result<()> {
     eprintln!(
         "Paste your API token for '{instance_name}' ({}):",

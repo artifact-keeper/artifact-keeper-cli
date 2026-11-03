@@ -77,7 +77,7 @@ fn add_instance(name: &str, url: &str, api_version: &str, insecure_http: bool) -
         .into());
     }
 
-    let url = url.trim_end_matches('/').to_string();
+    let url = crate::config::normalize_instance_url(url)?;
     let is_first = config.instances.is_empty();
 
     let instance = InstanceConfig {

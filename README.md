@@ -87,19 +87,16 @@ A 1.11.x CLI supports servers on 1.10 and 1.11. Each `ak` minor supports the ser
 ## Quick Start
 
 ```bash
-# 1. Add your registry
-ak instance add myserver https://registry.company.com
+# 1. Log in. This adds your registry, named from its host
+ak auth login https://registry.company.com
 
-# 2. Log in
-ak auth login
-
-# 3. Browse repositories
+# 2. Browse repositories
 ak repo list
 
-# 4. Upload an artifact
+# 3. Upload an artifact
 ak artifact push my-repo ./package-1.0.tar.gz
 
-# 5. Download an artifact
+# 4. Download an artifact
 ak artifact pull my-repo org/pkg/1.0/pkg-1.0.jar
 
 # 6. Configure your package managers automatically
@@ -258,7 +255,7 @@ ak completion powershell > ak.ps1
 ## CI/CD Usage
 
 ```bash
-export AK_INSTANCE=prod
+export AK_INSTANCE=https://registry.company.com   # a URL, or the name of a configured instance
 export AK_TOKEN=your-api-token
 export AK_NO_INPUT=1
 
@@ -290,7 +287,7 @@ See the [CI/CD Integration Guide](https://artifactkeeper.com/docs/guides/ci-cd/)
 | Variable | Description |
 |----------|-------------|
 | `AK_FORMAT` | Default output format (`table`, `json`, `yaml`, `quiet`) |
-| `AK_INSTANCE` | Override default instance |
+| `AK_INSTANCE` | Override default instance: a name, or a URL such as `https://registry.company.com` |
 | `AK_TOKEN` | API token (alternative to keychain) |
 | `AK_NO_INPUT` | Never prompt, as `--no-input` does: `1`, `true` or `yes`. `0`, `false`, `no` or empty leave it off. Destructive and security-decision commands then need `--yes` |
 | `AK_CA_CERT` | Path to a PEM file with additional root CA certificate(s) to trust (same as `--ca-cert`) |

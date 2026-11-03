@@ -114,7 +114,7 @@ The first two numbers of the CLI version are the server version it's built for. 
 
 - **GlobalArgs**: Shared options (format, instance, no_input) extracted from `Cli` before command dispatch to avoid borrow checker issues with partial moves
 - **OutputFormat**: All commands use the `--format` flag (table/json/yaml/quiet) for output
-- **Instance resolution**: flag `--instance` > config `default_instance` > error
+- **Instance resolution**: flag `--instance` or `AK_INSTANCE` (a name or a URL) > config `default_instance` > error. A URL no instance has can only be sent `AK_TOKEN`
 - **Config path**: `$AK_CONFIG_DIR` or `~/.config/artifact-keeper/config.toml`
 - **Error handling**: `miette::Result` throughout, `AkError` with diagnostic codes and help text. `AkError::exit_code` maps each variant to the exit code in `ak --help`, and `main` applies it. `ak api` keeps its own table. `Usage` is what the user typed, `Local` a failure on this machine, `ConfigError` ak's own configuration
 - **Async**: All commands are async via tokio
@@ -131,7 +131,7 @@ The first two numbers of the CLI version are the server version it's built for. 
 | Variable | Purpose |
 |----------|---------|
 | `AK_FORMAT` | Default output format |
-| `AK_INSTANCE` | Override default instance |
+| `AK_INSTANCE` | Override default instance: a name or a URL |
 | `AK_NO_INPUT` | Never prompt, as `--no-input` does: `1`, `true` or `yes`. `0`, `false`, `no` or empty leave it off. Destructive and security-decision commands then need `--yes` |
 | `AK_COLOR` | Color mode (auto/always/never) |
 | `AK_CONFIG_DIR` | Override config directory |
