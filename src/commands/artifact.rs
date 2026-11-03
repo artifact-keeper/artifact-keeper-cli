@@ -702,11 +702,17 @@ async fn push(
             let body = reqwest::Body::wrap_stream(stream);
 
             let uploaded = if options.mode == UploadMode::Multipart {
+                // A directory goes as is, and the server adds the file's name. Any
+                // other path is this file's own, or several would land on one path.
+                let target = options
+                    .target_path
+                    .as_deref()
+                    .map(|p| if p.ends_with('/') { p } else { &artifact_path });
                 multipart_upload(
                     &base_url,
                     &auth_header,
                     repo,
-                    options.target_path.as_deref(),
+                    target,
                     file_name,
                     file_size,
                     body,

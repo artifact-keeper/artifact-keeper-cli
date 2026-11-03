@@ -236,6 +236,50 @@ async fn multipart_without_a_path_lets_the_server_name_it() {
     assert!(!body.contains("name=\"path\""), "{body}");
 }
 
+/// Every file was sent to `d`, so only the first could land.
+#[tokio::test]
+async fn multipart_with_several_files_and_a_path_keeps_them_apart() {
+    let f = Fixture::new().await;
+    for name in ["one.txt", "two.txt"] {
+        f.answer(
+            "POST",
+            &format!("/api/v1/repositories/r/artifacts/d/{name}"),
+            ResponseTemplate::new(201).set_body_json(artifact(name)),
+        )
+        .await;
+    }
+    let dir = TempDir::new().unwrap();
+    let (one, two) = (dir.path().join("one.txt"), dir.path().join("two.txt"));
+    std::fs::write(&one, "1").unwrap();
+    std::fs::write(&two, "2").unwrap();
+
+    let output = f.ak(&[
+        "artifact",
+        "push",
+        "r",
+        one.to_str().unwrap(),
+        two.to_str().unwrap(),
+        "--multipart",
+        "--path",
+        "d",
+    ]);
+
+    assert!(output.status.success(), "{output:?}");
+    let paths: Vec<String> = f
+        .requests()
+        .await
+        .iter()
+        .map(|r| r.url.path().to_string())
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            "/api/v1/repositories/r/artifacts/d/one.txt",
+            "/api/v1/repositories/r/artifacts/d/two.txt"
+        ]
+    );
+}
+
 #[tokio::test]
 async fn multipart_with_a_directory_sends_the_path_field() {
     let body = multipart_case(&["--path", "d/"], "/api/v1/repositories/r/artifacts").await;
