@@ -27,6 +27,9 @@ use serde_json::{Value, json};
 use tempfile::TempDir;
 use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate, matchers::any};
 
+#[path = "common/pkg_fixtures.rs"]
+mod pkg_fixtures;
+
 const UUID: &str = "00000000-0000-4000-8000-000000000001";
 const OTHER_UUID: &str = "00000000-0000-4000-8000-000000000002";
 const STDIN: &str = "from-stdin";
@@ -173,7 +176,9 @@ fn route_matches(template: &str, path: &str) -> bool {
     }
     for (i, segment) in want.iter().enumerate() {
         let is_param = segment.starts_with('{') && segment.ends_with('}');
-        if !is_param && *segment != got[i] {
+        // npm's `@{scope}`: a parameter after a literal character.
+        let is_scope = segment.starts_with("@{") && got[i].starts_with('@');
+        if !is_param && !is_scope && *segment != got[i] {
             return false;
         }
     }
@@ -194,6 +199,18 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
             "/health",
             200,
             json!({"status": "healthy", "version": "1.11.11", "checks": {}}),
+        ),
+        (
+            "GET",
+            "/npm/{repo}/{package}",
+            200,
+            json!({"name": "demo", "versions": {"1.0.0": {}, "2.0.0": {}}}),
+        ),
+        (
+            "GET",
+            "/npm/{repo}/@{scope}/{package}",
+            200,
+            json!({"name": "@a/demo", "versions": {"1.0.0": {}, "2.0.0": {}}}),
         ),
         (
             "GET",
@@ -662,8 +679,58 @@ fn hints(
                 vec![],
             )
         }
+        (command, _, _) if command.starts_with("pkg ") => (pkg_hints(home, line), Vec::new()),
         _ => (Vec::new(), Vec::new()),
     }
+}
+
+/// `ak pkg` reads the package it's given, so it needs a real one. A format's other URL
+/// for the same handler is chosen with `--endpoint`.
+fn pkg_hints(home: &std::path::Path, line: &Line) -> Vec<(&'static str, String)> {
+    use pkg_fixtures as fx;
+    let path = line.path.as_str();
+    let mut args: Vec<(&'static str, String)> = Vec::new();
+    let mut file = |p: std::path::PathBuf| args.push(("file", p.to_string_lossy().to_string()));
+    match line.command.as_str() {
+        "pkg cargo publish" => file(fx::crate_file(home, "demo", "1.0.0", "")),
+        "pkg pypi publish" => file(fx::sdist(home, "demo", "1.0.0")),
+        "pkg npm publish" if path.contains("@{scope}") => {
+            file(fx::npm_tarball(home, "@a/demo", "1.0.0"));
+        }
+        "pkg npm publish" => file(fx::npm_tarball(home, "demo", "1.0.0")),
+        "pkg npm unpublish" => {
+            let scoped = path.contains("@{scope}");
+            args.push((
+                "package",
+                if scoped { "@a/demo" } else { "demo" }.to_string(),
+            ));
+            if path.contains("/-/{filename}") {
+                args.push(("tarball", "demo-1.0.0.tgz".to_string()));
+            } else if line.method == "PUT" {
+                args.push(("package_version", "1.0.0".to_string()));
+            }
+            if path.ends_with("/{version}") {
+                args.push(("encoded_name", String::new()));
+            }
+        }
+        "pkg npm audit" => {
+            let kind = if path.ends_with("quick") {
+                "quick"
+            } else {
+                "bulk"
+            };
+            args.push(("kind", kind.to_string()));
+            args.push(("body", "{}".to_string()));
+        }
+        _ => {}
+    }
+    if path.starts_with("/api/cargo") {
+        args.push(("endpoint", "api-cargo".to_string()));
+    }
+    if path.starts_with("/api/helm") {
+        args.push(("endpoint", "api-helm".to_string()));
+    }
+    args
 }
 
 async fn find_base(

@@ -33,6 +33,7 @@ pub mod monitoring;
 pub mod packages;
 pub mod peer;
 pub mod permission;
+pub mod pkg;
 pub mod profile;
 pub mod project;
 pub mod promotion;

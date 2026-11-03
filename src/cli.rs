@@ -322,6 +322,9 @@ pub enum Command {
     /// Send any HTTP request to the instance, with its auth and TLS settings
     Api(commands::api::ApiArgs),
 
+    /// Publish packages and use format APIs without the format's own client
+    Pkg(commands::pkg::PkgArgs),
+
     /// Manage CLI configuration
     #[command(
         after_help = "Examples:\n  ak config list\n  ak config get default_instance\n  ak config set default_instance prod"
@@ -565,6 +568,7 @@ impl Cli {
             Command::Repo { command } => command.execute(&global).await,
             Command::Artifact { command } => command.execute(&global).await,
             Command::Api(args) => commands::api::execute(args, &global).await,
+            Command::Pkg(args) => commands::pkg::execute(args, &global).await,
             Command::Registry => {
                 crate::registry::print_dump();
                 Ok(())

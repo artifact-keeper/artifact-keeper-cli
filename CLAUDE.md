@@ -43,6 +43,9 @@ cargo run -p xtask -- coverage --check
 
 # Does each registry line tell the truth? Runs the real binary against a mock server
 cargo test --test registry_contract -- --include-ignored
+
+# `ak pkg` against each format's real client, in containers. Not in CI: it pulls one image per client
+tests/pkg-clients.sh
 ```
 
 ## Architecture
@@ -65,6 +68,7 @@ src/                   # CLI binary (artifact-keeper-cli, bin: ak)
     mod.rs             # Module declarations: the full list of command modules
     <group>.rs         # One module per command group (auth, repo, artifact, scan, ...)
     setup/mod.rs       # auto-detect + per-ecosystem config (npm, pip, cargo, etc.)
+    pkg/               # `ak pkg <format>`: one file per format
     tui.rs             # TUI dashboard (ratatui)
     client.rs          # SDK and raw HTTP client construction
     helpers.rs         # Shared table, prompt and parsing helpers
@@ -114,6 +118,7 @@ The first two numbers of the CLI version are the server version it's built for. 
 - **Error handling**: `miette::Result` throughout, `AkError` with diagnostic codes and help text
 - **Async**: All commands are async via tokio
 - **`ak api`**: `src/commands/api.rs` sends any request. The instance's token goes only to the instance's own origin. A new route is reachable through it from day one, before it has a command
+- **`ak pkg`**: `src/commands/pkg/`, one file per format. A format's wire protocol isn't in the spec, so these use `pkg::wire::Wire` over raw HTTP and build what that format's client sends. Plain GETs have no helper: they're `ak api`
 - **SDK errors**: `sdk/src/error.rs`, swapped into generated code by xtask. `{e}` gives `<status>: <server message>` and can't print a header. Use `sdk_err` for SDK calls and `helpers::raw_err` for raw HTTP
 - **Raw JSON**: `--format json` and `yaml` must print the response as received. Wrap the SDK call in `artifact_keeper_sdk::raw::capture` and print with `output::render_raw`, or `helpers::emit_mutation_raw` for a mutation. New commands use these rather than `output::render`
 - **Repository and artifact arguments**: `helpers::resolve_repo_id` and `resolve_artifact_id` take a key or a UUID. Use them rather than `parse_uuid` for any repository parameter
