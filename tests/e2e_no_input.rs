@@ -63,3 +63,27 @@ fn a_delete_needs_yes_with_no_input() {
         .success();
     assert!(!exists(&env, &key), "-y didn't delete the repository");
 }
+
+/// Exit code 2 is the refusal. The ID is one no server has, so anything sent would come
+/// back as not found, with another exit code.
+#[test]
+#[ignore = "requires E2E backend"]
+fn the_biggest_deletes_need_yes_with_no_input() {
+    let env = TestEnv::setup();
+    let no_such = "00000000-0000-4000-8000-00000000dead";
+    for args in [
+        vec!["lifecycle", "execute", no_such],
+        vec!["lifecycle", "execute-all"],
+        vec!["lifecycle", "update", no_such, "--all-repos", "true"],
+        vec!["admin", "backup", "restore", no_such],
+        vec!["admin", "storage-gc", "run"],
+        vec!["admin", "cleanup", "--stale-uploads"],
+    ] {
+        let refused = env.ak_cmd().args(&args).output().unwrap();
+        assert_eq!(refused.status.code(), Some(2), "{args:?}");
+    }
+    env.ak_cmd()
+        .args(["admin", "storage-gc", "run", "--dry-run"])
+        .assert()
+        .success();
+}

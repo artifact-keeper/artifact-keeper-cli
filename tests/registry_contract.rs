@@ -1239,6 +1239,9 @@ async fn a_registry_line_that_lies_is_caught() {
     assert!(no_command.is_err());
 }
 
+/// These ask only with a particular flag, so `tests/non_interactive.rs` checks them.
+const ASK_ONLY_SOMETIMES: &[&str] = &["lifecycle create", "lifecycle update"];
+
 /// `--no-input` turns prompts off and isn't a yes. Every command with `--yes`, run the
 /// way that reaches its route but without the flag, has to fail, say so, and send
 /// nothing at all. What's checked comes from the command tree, so a new command with
@@ -1252,9 +1255,10 @@ async fn no_input_without_yes_refuses_and_sends_nothing() {
     let lines: Vec<Line> = lines
         .into_iter()
         .filter(|l| {
-            leaves
-                .get(&l.command)
-                .is_some_and(|leaf| leaf.args.iter().any(|a| a.id == "yes"))
+            !ASK_ONLY_SOMETIMES.contains(&l.command.as_str())
+                && leaves
+                    .get(&l.command)
+                    .is_some_and(|leaf| leaf.args.iter().any(|a| a.id == "yes"))
         })
         .collect();
     assert!(lines.len() > 50, "only {} lines have --yes", lines.len());

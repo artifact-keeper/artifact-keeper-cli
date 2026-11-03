@@ -175,7 +175,7 @@ check_helm() {
     helm package other --version 1.0.$RUN_ID >/dev/null' || return 1
   ak pkg helm publish "$REPO" "$d/demoak-1.0.$RUN_ID.tgz" || return 1
   ak pkg helm publish "$REPO" "$d/other-1.0.$RUN_ID.tgz" --endpoint api-helm || return 1
-  ak pkg helm delete "$REPO" other "1.0.$RUN_ID" --endpoint api-helm >/dev/null || return 1
+  ak pkg helm delete "$REPO" other "1.0.$RUN_ID" --endpoint api-helm --yes >/dev/null || return 1
   box docker.io/alpine/helm:3.15.4 "$d" '
     export HOME=/tmp/h; mkdir -p $HOME
     helm repo add ak "$BASE/helm/$REPO" --username admin --password "$ADMIN_PASSWORD" >/dev/null

@@ -342,7 +342,7 @@ fn helm_publish_and_delete() {
     assert!(index.contains("demo") && index.contains("other"), "{index}");
 
     env.ak_cmd()
-        .args(["pkg", "helm", "delete", key, "other", "1.0.0"])
+        .args(["pkg", "helm", "delete", key, "other", "1.0.0", "--yes"])
         .assert()
         .success();
     env.ak_cmd()
@@ -355,6 +355,7 @@ fn helm_publish_and_delete() {
             "1.0.0",
             "--endpoint",
             "api-helm",
+            "--yes",
         ])
         .assert()
         .success();
