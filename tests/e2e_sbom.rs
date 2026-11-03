@@ -302,15 +302,17 @@ fn a_cached_path_with_no_inventory_is_an_error_not_an_empty_sbom() {
         .assert()
         .success();
 
-    // The server records a proxied download after the client has the last byte.
+    // The client gets the last byte before the server has finished. Until then the path
+    // has a placeholder row, which `--path` lists as `pending_ingest` and the SBOM route
+    // doesn't count, so a row alone isn't enough to wait for.
     common::wait_until("the download to be recorded", || {
-        env.ak_cmd()
+        let output = env
+            .ak_cmd()
             .args(["scan", "proxy", "list", &remote, "--path", "f.bin"])
             .output()
-            .unwrap()
-            .status
-            .success()
-            .then_some(())
+            .unwrap();
+        let listed: Value = serde_json::from_slice(&output.stdout).ok()?;
+        (listed["items"][0]["state"] != "pending_ingest").then_some(())
     });
 
     let unknown = stderr_of(&env, &["sbom", "proxy", &remote, "--path", "missing"]);

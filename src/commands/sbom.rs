@@ -7,7 +7,8 @@ use serde_json::Value;
 
 use super::client::{client_for, raw_http_client, resolve_base_url_and_auth};
 use super::helpers::{
-    confirm_action, emit_mutation_raw, new_table, parse_uuid, raw_err, resolve_artifact_id,
+    PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, confirm_action, emit_mutation_raw,
+    is_proxy_path_not_recorded, new_table, parse_uuid, raw_err, resolve_artifact_id,
     resolve_optional_repo_id, sdk_err, server_before_1_11, short_id,
 };
 use crate::cli::GlobalArgs;
@@ -728,25 +729,44 @@ async fn proxy_sbom(
         query.push(("format", format));
     }
 
-    let resp = raw_http_client()?
-        .get(url)
-        .header(reqwest::header::AUTHORIZATION, auth_header)
-        .query(&query)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get proxy SBOM", e))?;
-    let status = resp.status();
-    let bytes = resp
-        .bytes()
-        .await
-        .map_err(|e| sdk_err("get proxy SBOM", e))?;
+    let http = raw_http_client()?;
+    let mut waits = PROXY_RECORD_WAITS.iter();
+    let bytes = loop {
+        let resp = http
+            .get(url.clone())
+            .header(reqwest::header::AUTHORIZATION, auth_header.clone())
+            .query(&query)
+            .send()
+            .await
+            .map_err(|e| sdk_err("get proxy SBOM", e))?;
+        let status = resp.status();
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| sdk_err("get proxy SBOM", e))?;
+        if status.is_success() {
+            break bytes;
+        }
+        let message = artifact_keeper_sdk::error::server_message(&bytes);
+        let text = String::from_utf8_lossy(&bytes);
+        if !is_proxy_path_not_recorded(status, message.as_deref()) {
+            spinner.finish_and_clear();
+            return Err(raw_err("Failed to get proxy SBOM", status, &text).into());
+        }
+        match waits.next() {
+            Some(wait) => tokio::time::sleep(*wait).await,
+            None => {
+                spinner.finish_and_clear();
+                let message = message.unwrap_or_default();
+                return Err(AkError::NotFound(format!(
+                    "Failed to get proxy SBOM: {status}: {message} {PROXY_NOT_RECORDED_HINT}"
+                ))
+                .into());
+            }
+        }
+    };
 
     spinner.finish_and_clear();
-
-    if !status.is_success() {
-        let text = String::from_utf8_lossy(&bytes);
-        return Err(raw_err("Failed to get proxy SBOM", status, &text).into());
-    }
 
     deliver_document(&bytes, output_path, "SBOM", global)
 }

@@ -11,9 +11,9 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation_raw, new_table, parse_json_arg, parse_uuid,
-    refuse_flags_before_1_11, resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id,
-    sdk_err, short_id,
+    PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, confirm_action, emit_mutation_raw,
+    is_proxy_path_not_recorded, new_table, parse_json_arg, parse_uuid, refuse_flags_before_1_11,
+    resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -1317,20 +1317,25 @@ async fn list_proxy_scans(
 
     let spinner = crate::output::spinner("Fetching proxy scans...");
 
-    let mut req = client.get_repo_proxy_scans().key(repo);
-    if let Some(path) = path {
-        req = req.path(path);
-    }
-    if let Some(page) = page {
-        req = req.page(page);
-    }
-    if let Some(per_page) = per_page {
-        req = req.per_page(per_page);
-    }
-    let (resp, raw) = capture(req.send()).await;
-    let resp = resp
-        .map_err(|e| sdk_err("list proxy scans", e))?
-        .into_inner();
+    // Only a named path can be "not recorded yet": an unnamed list is just shorter.
+    let mut waits = PROXY_RECORD_WAITS.iter();
+    let (resp, raw) = loop {
+        let mut req = client.get_repo_proxy_scans().key(repo);
+        if let Some(path) = path {
+            req = req.path(path);
+        }
+        if let Some(page) = page {
+            req = req.page(page);
+        }
+        if let Some(per_page) = per_page {
+            req = req.per_page(per_page);
+        }
+        let (resp, raw) = capture(req.send()).await;
+        match resp {
+            Ok(resp) => break (resp.into_inner(), raw),
+            Err(error) => wait_for_proxy_record(error, "list proxy scans", &mut waits).await?,
+        }
+    };
 
     spinner.finish_and_clear();
 
@@ -1397,6 +1402,31 @@ fn format_proxy_scans_table(items: &[ProxyScanEntry]) -> String {
     table.to_string()
 }
 
+/// After a failed call on a proxied path: wait if the server just hasn't recorded the
+/// path yet and there's a wait left, or give the error to report.
+async fn wait_for_proxy_record(
+    error: artifact_keeper_sdk::Error,
+    action: &str,
+    waits: &mut std::slice::Iter<'_, std::time::Duration>,
+) -> Result<()> {
+    let not_recorded = error.status().is_some_and(|status| {
+        is_proxy_path_not_recorded(status, error.server_message().as_deref())
+    });
+    if !not_recorded {
+        return Err(sdk_err(action, error).into());
+    }
+    match waits.next() {
+        Some(wait) => {
+            tokio::time::sleep(*wait).await;
+            Ok(())
+        }
+        None => Err(AkError::NotFound(format!(
+            "Failed to {action}: {error}. {PROXY_NOT_RECORDED_HINT}"
+        ))
+        .into()),
+    }
+}
+
 async fn rescan_proxy_path(repo: &str, path: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
@@ -1405,17 +1435,21 @@ async fn rescan_proxy_path(repo: &str, path: &str, global: &GlobalArgs) -> Resul
     let body = artifact_keeper_sdk::types::ProxyRescanRequest {
         path: path.to_string(),
     };
-    let (resp, raw) = capture(
-        client
-            .rescan_proxy_cached_path()
-            .key(repo)
-            .body(body)
-            .send(),
-    )
-    .await;
-    let verdict = resp
-        .map_err(|e| sdk_err("rescan cached path", e))?
-        .into_inner();
+    let mut waits = PROXY_RECORD_WAITS.iter();
+    let (verdict, raw) = loop {
+        let (resp, raw) = capture(
+            client
+                .rescan_proxy_cached_path()
+                .key(repo)
+                .body(body.clone())
+                .send(),
+        )
+        .await;
+        match resp {
+            Ok(resp) => break (resp.into_inner(), raw),
+            Err(error) => wait_for_proxy_record(error, "rescan cached path", &mut waits).await?,
+        }
+    };
 
     spinner.finish_and_clear();
 
