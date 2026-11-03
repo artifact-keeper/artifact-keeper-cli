@@ -9,8 +9,10 @@ use crate::cli::Cli;
 
 pub fn execute(shell: Shell) -> Result<()> {
     let mut cmd = Cli::command();
-    clap_complete::generate(shell, &mut cmd, "ak", &mut std::io::stdout());
-    Ok(())
+    // clap_complete panics if its writer fails, as stdout does with `| head -1`.
+    let mut script = Vec::new();
+    clap_complete::generate(shell, &mut cmd, "ak", &mut script);
+    super::helpers::write_stdout(&script)
 }
 
 pub fn generate_man_pages(dir: &str) -> Result<()> {

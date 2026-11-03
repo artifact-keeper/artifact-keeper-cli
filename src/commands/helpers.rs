@@ -110,6 +110,17 @@ pub fn reported_failure(what: &str) -> miette::Report {
     AkError::ReportedFailure(crate::output::sanitize_terminal(what)).into()
 }
 
+/// Write bytes to stdout, as `-o -` does, right away. A reader that has gone away,
+/// as `head` does, comes back as `AkError::Io` and `main` treats that as done.
+pub fn write_stdout(bytes: &[u8]) -> Result<()> {
+    use std::io::Write;
+    let mut stdout = std::io::stdout().lock();
+    stdout
+        .write_all(bytes)
+        .and_then(|()| stdout.flush())
+        .map_err(|e| AkError::Io(e).into())
+}
+
 /// Fail if the `errors` in a 2xx response aren't empty.
 pub fn fail_on_errors(what: &str, errors: &[String]) -> Result<()> {
     const SHOWN: usize = 5;

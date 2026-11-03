@@ -836,3 +836,68 @@ fn artifact_commands_take_a_repo_and_path() {
     );
     assert_eq!(filtered["items"][0]["path"], "d/p.txt");
 }
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn pull_to_stdout_works_in_a_pipeline() {
+    let env = common::TestEnv::setup();
+    let repo = format!("e2e-stdout-{}", uuid::Uuid::new_v4().simple());
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &repo,
+            "--pkg-format",
+            "generic",
+            "--repo-type",
+            "local",
+        ])
+        .assert()
+        .success();
+
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("inside.txt"), b"hello").unwrap();
+    let tarball = dir.path().join("a.tgz");
+    let made = std::process::Command::new("tar")
+        .args(["czf"])
+        .arg(&tarball)
+        .args(["-C"])
+        .arg(dir.path())
+        .arg("inside.txt")
+        .status()
+        .unwrap();
+    assert!(made.success());
+    env.ak_cmd()
+        .args(["artifact", "push", &repo])
+        .arg(&tarball)
+        .assert()
+        .success();
+
+    let output = env
+        .ak_cmd()
+        .current_dir(dir.path())
+        .args(["artifact", "pull", &repo, "a.tgz", "-o", "-"])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(output.stdout, std::fs::read(&tarball).unwrap());
+    assert!(!dir.path().join("-").exists());
+
+    let mut tar = std::process::Command::new("tar")
+        .args(["tzf", "-"])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    {
+        use std::io::Write;
+        tar.stdin.take().unwrap().write_all(&output.stdout).unwrap();
+    }
+    let listed = tar.wait_with_output().unwrap();
+    assert_eq!(String::from_utf8_lossy(&listed.stdout).trim(), "inside.txt");
+
+    env.ak_cmd()
+        .args(["repo", "delete", &repo, "--yes", "--wait"])
+        .assert()
+        .success();
+}

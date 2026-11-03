@@ -78,7 +78,7 @@ pub enum SbomCommand {
         /// SBOM ID
         sbom_id: String,
 
-        /// Output file path
+        /// Output file path. `-` writes to stdout
         #[arg(long, short)]
         output: String,
 
@@ -103,7 +103,7 @@ pub enum SbomCommand {
         #[arg(long = "sbom-format")]
         sbom_format: Option<String>,
 
-        /// Write the SBOM to this file rather than stdout
+        /// Write the SBOM to this file rather than stdout, which `-` also means
         #[arg(long, short)]
         output: Option<String>,
     },
@@ -132,7 +132,7 @@ pub enum SbomCommand {
         #[arg(long)]
         platform: Option<String>,
 
-        /// Write the SBOMs to this file rather than stdout
+        /// Write the SBOMs to this file rather than stdout, which `-` also means
         #[arg(long, short)]
         output: Option<String>,
     },
@@ -664,11 +664,14 @@ async fn export_sbom(
     // The document, in both cases. A wrapper around it isn't an SBOM any tool can read.
     let json = serde_json::to_string_pretty(&sbom.content)
         .map_err(|e| AkError::Local(format!("Failed to serialize SBOM content: {e}")))?;
+    spinner.finish_and_clear();
+    if output_path == "-" {
+        return crate::commands::helpers::write_stdout(format!("{json}\n").as_bytes());
+    }
     tokio::fs::write(output_path, json)
         .await
         .map_err(|e| AkError::Local(format!("Can't write {output_path}: {e}")))?;
 
-    spinner.finish_and_clear();
     eprintln!("SBOM exported to {output_path} (format: {})", sbom.format);
 
     Ok(())
@@ -681,6 +684,9 @@ fn deliver_document(
     what: &str,
     global: &GlobalArgs,
 ) -> Result<()> {
+    if output_path == Some("-") {
+        return crate::commands::helpers::write_stdout(raw);
+    }
     if let Some(path) = output_path {
         std::fs::write(path, raw)
             .map_err(|e| AkError::Local(format!("Can't write {path}: {e}")))?;

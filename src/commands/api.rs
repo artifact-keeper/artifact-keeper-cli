@@ -1030,12 +1030,12 @@ async fn write_body(response: reqwest::Response, output: Option<&Path>) -> Resul
 /// through a UTF-8 character. Only used when stdout is a terminal. A pipe or a
 /// file gets the bytes as received.
 #[derive(Default)]
-struct TerminalFilter {
+pub(crate) struct TerminalFilter {
     pending: Vec<u8>,
 }
 
 impl TerminalFilter {
-    fn push(&mut self, chunk: &[u8]) -> String {
+    pub(crate) fn push(&mut self, chunk: &[u8]) -> String {
         self.pending.extend_from_slice(chunk);
         let keep_from = match std::str::from_utf8(&self.pending) {
             Ok(_) => self.pending.len(),
@@ -1048,7 +1048,7 @@ impl TerminalFilter {
         crate::output::sanitize_terminal(&String::from_utf8_lossy(&ready))
     }
 
-    fn finish(&mut self) -> String {
+    pub(crate) fn finish(&mut self) -> String {
         let rest = std::mem::take(&mut self.pending);
         crate::output::sanitize_terminal(&String::from_utf8_lossy(&rest))
     }
