@@ -3,7 +3,7 @@ use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
-use super::client::build_client;
+use super::client::{build_client, build_reading_client};
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
 use crate::error::AkError;
@@ -24,7 +24,7 @@ pub async fn execute(
     let (dst_name, dst_instance) =
         config.resolve_instance(to_instance.or(global.instance.as_deref()))?;
 
-    let src_client = build_client(src_name, src_instance, None)?;
+    let src_client = build_reading_client(src_name, src_instance, None)?;
     let dst_client = build_client(dst_name, dst_instance, None)?;
 
     let spinner = output::spinner(&format!("Listing artifacts in {src_name}:{from_repo}..."));

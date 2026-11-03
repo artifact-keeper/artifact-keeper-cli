@@ -3,7 +3,7 @@ use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 
-use super::client::{anon_client, authenticated_client, build_client, client_for, login_client};
+use super::client::{anon_client, authenticated_client, build_client, client_for};
 use super::helpers::{
     parse_json_arg, parse_uuid, raw_err, refuse_flags_before_1_11, require_secret, resolve_secret,
     sdk_err,
@@ -481,7 +481,7 @@ async fn login_with_password(
     refuse_cleartext_password(instance)?;
     let (username, password) = login_credentials(args, global)?;
 
-    let anon_client = login_client(&instance.url)?;
+    let anon_client = anon_client(&instance.url)?;
 
     let body = artifact_keeper_sdk::types::LoginRequest {
         username: username.clone(),
@@ -605,7 +605,7 @@ async fn enroll_during_login(
         )
         .into());
     }
-    let client = login_client(&instance.url)?;
+    let client = anon_client(&instance.url)?;
     eprintln!("This server requires two-factor login, so set it up now.");
     let setup = super::totp::enroll_setup_request(&client, ticket).await?;
     eprintln!(
@@ -834,7 +834,7 @@ async fn exchange_and_store(
     instance: &InstanceConfig,
     code: &str,
 ) -> Result<()> {
-    let client = login_client(&instance.url)?;
+    let client = anon_client(&instance.url)?;
     let body = artifact_keeper_sdk::types::ExchangeCodeRequest {
         code: exchange_code_from(code),
     };
@@ -967,7 +967,7 @@ async fn complete_totp(
     code: &str,
     totp_token: &str,
 ) -> Result<()> {
-    let anon_client = login_client(&instance.url)?;
+    let anon_client = anon_client(&instance.url)?;
     let body = artifact_keeper_sdk::types::TotpVerifyRequest {
         code: code.to_string(),
         totp_token: totp_token.to_string(),

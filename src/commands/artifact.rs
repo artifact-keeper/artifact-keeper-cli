@@ -903,7 +903,7 @@ async fn fetch_artifact(
     version: Option<&str>,
 ) -> Result<reqwest::Response> {
     let url = artifact_url(base_url, repo, "download", Some(artifact_path))?;
-    let mut request = super::client::raw_http_client()?
+    let mut request = super::client::raw_download_client()?
         .get(url)
         .header(reqwest::header::AUTHORIZATION, auth_header);
     if let Some(version) = version {

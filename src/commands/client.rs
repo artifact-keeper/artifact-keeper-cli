@@ -10,16 +10,29 @@ use crate::config::{AppConfig, InstanceConfig};
 use crate::error::AkError;
 use crate::transport;
 
-/// The redirect policy for every client that can send a credential.
+/// The redirect policy for every client except a download's.
 ///
-/// reqwest decides whether to keep `Authorization` one hop at a time, looking only
-/// at that hop's host and port, and a policy can't change what it sends: only
-/// follow or refuse. So refuse the hops where the header would come back, or stay,
-/// somewhere it shouldn't. Everything else, including a redirect to storage on
-/// another host, which gets no token, goes by reqwest's default policy.
+/// An API request stays on its server, over TLS if it started that way. A policy
+/// can follow or refuse, but it can't see the method, and a redirect can resend the
+/// body: tower-http only turns a POST into a GET on a 301 or 302, so a PUT or PATCH
+/// keeps its body, and that body can be a password or a client secret. reqwest
+/// dropping the token doesn't protect a body. There's no loss in refusing, because
+/// without the token another server has nothing to answer an API request with.
 pub fn redirect_policy() -> reqwest::redirect::Policy {
     reqwest::redirect::Policy::custom(|attempt| {
-        match unsafe_redirect(attempt.previous(), attempt.url(), attempt.status()) {
+        match api_redirect_refusal(attempt.previous(), attempt.url()) {
+            Some(reason) => refuse(attempt, reason),
+            None => reqwest::redirect::Policy::default().redirect(attempt),
+        }
+    })
+}
+
+/// The redirect policy for a client that only makes GET requests for content. With
+/// no body to protect, it can go on to storage on another host, which can be plain
+/// HTTP, such as a presigned URL for MinIO in a cluster.
+fn download_redirect_policy() -> reqwest::redirect::Policy {
+    reqwest::redirect::Policy::custom(|attempt| {
+        match download_redirect_refusal(attempt.previous(), attempt.url()) {
             Some(reason) => refuse(attempt, reason),
             None => reqwest::redirect::Policy::default().redirect(attempt),
         }
@@ -36,63 +49,41 @@ fn refuse(
     attempt.error(reason)
 }
 
-/// `redirect_policy` for login, which has no reason to follow any redirect from
-/// https to plain http, whatever its status.
-fn credential_body_redirect_policy() -> reqwest::redirect::Policy {
-    reqwest::redirect::Policy::custom(|attempt| {
-        let downgrade = attempt.url().scheme() == "http"
-            && attempt.previous().iter().any(|url| url.scheme() == "https");
-        let refusal = if downgrade {
-            Some(REFUSED_DOWNGRADE)
-        } else {
-            unsafe_redirect(attempt.previous(), attempt.url(), attempt.status())
-        };
-        match refusal {
-            Some(reason) => refuse(attempt, reason),
-            None => reqwest::redirect::Policy::default().redirect(attempt),
-        }
-    })
+const REFUSED_DOWNGRADE: &str = "refusing a redirect from https to plain http, which would send \
+     your credentials or the request body unencrypted";
+const REFUSED_OTHER_SERVER: &str = "refusing a redirect that leaves the instance, which would \
+     send your credentials or the request body to another server";
+
+fn is_downgrade(chain: &[Url], to: &Url) -> bool {
+    to.scheme() == "http" && chain.iter().any(|url| url.scheme() == "https")
 }
 
-const REFUSED_DOWNGRADE: &str =
-    "refusing a redirect from https to plain http, which would send your credentials unencrypted";
-
-/// Why following a redirect to `to` would expose a credential, if it would.
-/// `chain` is every URL requested so far, the one that redirected last.
-fn unsafe_redirect(chain: &[Url], to: &Url, status: reqwest::StatusCode) -> Option<&'static str> {
-    let (origin, from) = (chain.first()?, chain.last()?);
-    // A 307 or 308 repeats the method and body wherever it goes, and the body can
-    // be a password or a webhook secret. A 301, 302 or 303 from a POST goes on as a
-    // GET with no body, and a presigned download uses a 302, so those carry on below.
-    let resends_body = matches!(
-        status,
-        reqwest::StatusCode::TEMPORARY_REDIRECT | reqwest::StatusCode::PERMANENT_REDIRECT
-    );
-    if resends_body && from.scheme() == "https" && to.scheme() == "http" {
-        return Some(
-            "refusing a 307 or 308 redirect from https to plain http, which would resend the \
-             request body unencrypted",
-        );
+/// Why an API request shouldn't follow a redirect to `to`, if so. `chain` is every
+/// URL requested so far, the one that redirected last.
+fn api_redirect_refusal(chain: &[Url], to: &Url) -> Option<&'static str> {
+    if is_downgrade(chain, to) {
+        return Some(REFUSED_DOWNGRADE);
     }
-    // reqwest drops the header on a hop to another host or port, so nothing to
-    // protect there. On this kind of hop it sends the header, even if the hop before
-    // dropped it. Since 0.13.4 it also drops it on a change of scheme. This doesn't
-    // rely on that: a downgrade is refused either way.
+    (!same_server(chain.first()?, to)).then_some(REFUSED_OTHER_SERVER)
+}
+
+/// Why a download shouldn't follow a redirect to `to`, if so. Its only secret is the
+/// token. reqwest decides about `Authorization` one hop at a time, from that hop's
+/// host and port, so these are the hops where it would send it somewhere it shouldn't.
+fn download_redirect_refusal(chain: &[Url], to: &Url) -> Option<&'static str> {
+    let (origin, from) = (chain.first()?, chain.last()?);
     let header_sent = from.host_str() == to.host_str()
         && from.port_or_known_default() == to.port_or_known_default();
     if !header_sent {
         return None;
     }
-    if to.scheme() == "http" && chain.iter().any(|url| url.scheme() == "https") {
+    if is_downgrade(chain, to) {
         return Some(REFUSED_DOWNGRADE);
     }
-    if chain.iter().any(|url| !same_server(url, origin)) {
-        return Some(
-            "refusing a redirect that has left the instance, which would send your \
-             credentials to another server",
-        );
-    }
-    None
+    chain
+        .iter()
+        .any(|url| !same_server(url, origin))
+        .then_some(REFUSED_OTHER_SERVER)
 }
 
 /// The same host and port, where `http://host` and `https://host` count as the
@@ -112,7 +103,32 @@ pub fn build_client(
     instance: &InstanceConfig,
     cred: Option<&StoredCredential>,
 ) -> Result<artifact_keeper_sdk::Client> {
-    build_client_with_timeout(instance_name, instance, cred, Duration::from_secs(30))
+    sdk_client(instance_name, instance, cred, redirect_policy())
+}
+
+/// [`build_client`] for a client used only to read and download, as `migrate` reads
+/// its source. Its redirects can reach presigned storage.
+pub fn build_reading_client(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    cred: Option<&StoredCredential>,
+) -> Result<artifact_keeper_sdk::Client> {
+    sdk_client(instance_name, instance, cred, download_redirect_policy())
+}
+
+fn sdk_client(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    cred: Option<&StoredCredential>,
+    redirects: reqwest::redirect::Policy,
+) -> Result<artifact_keeper_sdk::Client> {
+    build_client_with_timeout(
+        instance_name,
+        instance,
+        cred,
+        Duration::from_secs(30),
+        redirects,
+    )
 }
 
 fn build_client_with_timeout(
@@ -120,6 +136,7 @@ fn build_client_with_timeout(
     instance: &InstanceConfig,
     cred: Option<&StoredCredential>,
     timeout: Duration,
+    redirects: reqwest::redirect::Policy,
 ) -> Result<artifact_keeper_sdk::Client> {
     let owned_cred;
     let cred = match cred {
@@ -144,7 +161,7 @@ fn build_client_with_timeout(
 
     let builder = reqwest::ClientBuilder::new()
         .default_headers(headers)
-        .redirect(redirect_policy())
+        .redirect(redirects)
         .connect_timeout(Duration::from_secs(15))
         .timeout(timeout);
     let http_client = transport::apply_custom_ca(builder)?
@@ -163,21 +180,8 @@ fn build_client_with_timeout(
 /// Used by pre-auth flows (login, TOTP verify, setup status) that must work
 /// against instances behind a private CA before any credentials exist.
 pub fn anon_client(url: &str) -> Result<artifact_keeper_sdk::Client> {
-    unauthenticated_client(url, redirect_policy())
-}
-
-/// [`anon_client`] for sending a password or similar in the request body, as
-/// login does.
-pub fn login_client(url: &str) -> Result<artifact_keeper_sdk::Client> {
-    unauthenticated_client(url, credential_body_redirect_policy())
-}
-
-fn unauthenticated_client(
-    url: &str,
-    redirects: reqwest::redirect::Policy,
-) -> Result<artifact_keeper_sdk::Client> {
     let builder = reqwest::ClientBuilder::new()
-        .redirect(redirects)
+        .redirect(redirect_policy())
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(30));
     let http_client = transport::apply_custom_ca(builder)?
@@ -197,6 +201,15 @@ fn unauthenticated_client(
 /// bodies (uploads/downloads) where a fixed deadline would be wrong.
 pub fn raw_http_client() -> Result<reqwest::Client> {
     let builder = raw_http_client_builder(redirect_policy());
+    transport::apply_custom_ca(builder)?
+        .build()
+        .into_diagnostic()
+}
+
+/// [`raw_http_client`] for GET requests that fetch content. Its redirects can reach
+/// presigned storage.
+pub fn raw_download_client() -> Result<reqwest::Client> {
+    let builder = raw_http_client_builder(download_redirect_policy());
     transport::apply_custom_ca(builder)?
         .build()
         .into_diagnostic()
@@ -239,7 +252,13 @@ pub fn client_for(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
 pub fn client_for_slow(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
     let config = AppConfig::load()?;
     let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
-    build_client_with_timeout(name, instance, None, Duration::from_secs(150))
+    build_client_with_timeout(
+        name,
+        instance,
+        None,
+        Duration::from_secs(150),
+        redirect_policy(),
+    )
 }
 
 /// Resolve instance and return the base URL and Bearer auth header value.
@@ -274,53 +293,52 @@ pub fn client_for_optional_auth(global: &GlobalArgs) -> Result<artifact_keeper_s
 mod tests {
     use super::*;
 
-    fn is_refused(chain: &[&str], to: &str) -> bool {
-        is_refused_with(chain, to, reqwest::StatusCode::FOUND)
+    fn urls(chain: &[&str]) -> Vec<Url> {
+        chain.iter().map(|u| Url::parse(u).unwrap()).collect()
     }
 
-    fn is_refused_with(chain: &[&str], to: &str, status: reqwest::StatusCode) -> bool {
-        let chain: Vec<Url> = chain.iter().map(|u| Url::parse(u).unwrap()).collect();
-        unsafe_redirect(&chain, &Url::parse(to).unwrap(), status).is_some()
+    fn api_refuses(chain: &[&str], to: &str) -> bool {
+        api_redirect_refusal(&urls(chain), &Url::parse(to).unwrap()).is_some()
+    }
+
+    fn download_refuses(chain: &[&str], to: &str) -> bool {
+        download_redirect_refusal(&urls(chain), &Url::parse(to).unwrap()).is_some()
     }
 
     #[test]
-    fn only_a_redirect_that_keeps_the_body_is_refused_on_a_downgrade_elsewhere() {
-        use reqwest::StatusCode as S;
-        for to in ["http://h/a", "http://storage:9000/a"] {
-            for status in [S::TEMPORARY_REDIRECT, S::PERMANENT_REDIRECT] {
-                assert!(
-                    is_refused_with(&["https://h/a"], to, status),
-                    "{to} {status}"
-                );
-            }
-            for status in [S::MOVED_PERMANENTLY, S::FOUND, S::SEE_OTHER] {
-                assert!(
-                    !is_refused_with(&["https://h/a"], to, status),
-                    "{to} {status}"
-                );
-            }
+    fn an_api_request_stays_on_its_server_and_over_tls() {
+        for (chain, to) in [
+            // Plain HTTP, on any host or port: a PUT keeps its body on a 302.
+            (vec!["https://h/a"], "http://h/a"),
+            (vec!["https://h:8443/a"], "http://h:8443/a"),
+            (vec!["https://h/a"], "http://storage:9000/a"),
+            (vec!["https://h/a", "https://h/b"], "http://h/c"),
+            // Another server.
+            (vec!["https://h/a"], "https://other/a"),
+            (vec!["https://h/a"], "https://h:8443/a"),
+            (vec!["http://h:8080/a"], "http://other:8080/a"),
+            (vec!["https://h/a", "https://h/b"], "https://other/c"),
+        ] {
+            assert!(api_refuses(&chain, to), "{chain:?} -> {to}");
         }
-        // A 307 anywhere that isn't a downgrade is an ordinary redirect.
-        assert!(!is_refused_with(
-            &["https://h/a"],
-            "https://other/a",
-            S::TEMPORARY_REDIRECT
-        ));
-        assert!(!is_refused_with(
-            &["http://h:8080/a"],
-            "http://h:8080/b",
-            S::TEMPORARY_REDIRECT
-        ));
-        // Storage over plain http moving a download on.
-        assert!(!is_refused_with(
-            &["https://h/a", "http://storage:9000/a"],
-            "http://storage:9001/a",
-            S::TEMPORARY_REDIRECT
-        ));
+        for (chain, to) in [
+            (vec!["https://h/a"], "https://h/b"),
+            (
+                vec!["https://h:8443/a", "https://h:8443/b"],
+                "https://h:8443/c",
+            ),
+            (vec!["http://h:8080/a"], "http://h:8080/b"),
+            // An upgrade to TLS, then a redirect there.
+            (vec!["http://h/a"], "https://h/a"),
+            (vec!["http://h/a", "https://h/a"], "https://h/b"),
+            (vec!["http://h:8080/a"], "https://h:8080/a"),
+        ] {
+            assert!(!api_refuses(&chain, to), "{chain:?} -> {to}");
+        }
     }
 
     #[test]
-    fn redirects_that_would_expose_the_token_are_refused() {
+    fn a_download_can_reach_storage_but_not_expose_the_token() {
         for (chain, to) in [
             // Same host and port, so reqwest keeps the header.
             (vec!["https://h:8443/a"], "http://h:8443/a"),
@@ -335,30 +353,21 @@ mod tests {
                 "https://h/c",
             ),
         ] {
-            assert!(is_refused(&chain, to), "{chain:?} -> {to}");
+            assert!(download_refuses(&chain, to), "{chain:?} -> {to}");
         }
-    }
-
-    #[test]
-    fn normal_redirects_are_followed() {
         for (chain, to) in [
-            // Within the origin.
             (vec!["https://h/a"], "https://h/b"),
-            (
-                vec!["https://h:8443/a", "https://h:8443/b"],
-                "https://h:8443/c",
-            ),
-            (vec!["http://h:8080/a"], "http://h:8080/b"),
-            // An upgrade to TLS, then a redirect there.
-            (vec!["http://h/a"], "https://h/a"),
             (vec!["http://h/a", "https://h/a"], "https://h/b"),
-            (vec!["http://h:8080/a"], "https://h:8080/a"),
             // Elsewhere, where reqwest drops the header: presigned storage URLs.
             (vec!["https://h/a"], "https://storage/a"),
             (vec!["https://h/a"], "http://storage:9000/a"),
             (vec!["https://h/a"], "http://h/a"),
+            (
+                vec!["https://h/a", "http://storage:9000/a"],
+                "http://storage:9001/a",
+            ),
         ] {
-            assert!(!is_refused(&chain, to), "{chain:?} -> {to}");
+            assert!(!download_refuses(&chain, to), "{chain:?} -> {to}");
         }
     }
 
