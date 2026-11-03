@@ -171,7 +171,14 @@ fn build_diag_client_with_auth(
 }
 
 async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagResult) {
-    let client = match build_diag_client(instance) {
+    // With credentials the count means something: without them, the server only
+    // counts public repositories, which read as "0 repos" on a private instance.
+    let cred = get_credential(name).ok();
+    let built = match &cred {
+        Some(cred) => build_diag_client_with_auth(instance, cred),
+        None => build_diag_client(instance),
+    };
+    let client = match built {
         Ok(c) => c,
         Err(e) => {
             diag.fail(&format!(
@@ -186,8 +193,9 @@ async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagRe
     // and validates connectivity, API routing, and database access in one call.
     match client.list_repositories().page(1).per_page(1).send().await {
         Ok(resp) => {
+            let scope = if cred.is_some() { "" } else { "public " };
             diag.pass(&format!(
-                "{name} ({}) -- reachable, {} repos",
+                "{name} ({}) -- reachable, {} {scope}repos",
                 instance.url, resp.pagination.total
             ));
         }
@@ -352,24 +360,54 @@ async fn check_auth(name: &str, instance: &InstanceConfig, diag: &mut DiagResult
     }
 
     if let Some(exp) = decode_jwt_expiry(&cred.access_token) {
-        let now = chrono::Utc::now().timestamp();
-        let days_left = (exp - now) / 86400;
-        if days_left < 0 {
-            diag.fail(&format!(
-                "{name} -- token expired (run: ak auth login --instance {name})"
-            ));
-            return;
-        } else if days_left <= 7 {
-            diag.warn(&format!(
-                "{name} -- {details}, token expires in {days_left} days (run: ak auth login --instance {name})"
-            ));
-            return;
-        } else {
-            details.push_str(&format!(", token expires in {days_left} days"));
+        let seconds_left = exp - chrono::Utc::now().timestamp();
+        match token_expiry_status(seconds_left) {
+            TokenExpiry::Expired => {
+                diag.fail(&format!(
+                    "{name} -- token expired (run: ak auth login --instance {name})"
+                ));
+                return;
+            }
+            TokenExpiry::Session(minutes) => {
+                details.push_str(&format!(", login session expires in {minutes} minutes"));
+            }
+            TokenExpiry::Soon(days) => {
+                diag.warn(&format!(
+                    "{name} -- {details}, token expires in {days} days (run: ak auth login --instance {name})"
+                ));
+                return;
+            }
+            TokenExpiry::Later(days) => {
+                details.push_str(&format!(", token expires in {days} days"));
+            }
         }
     }
 
     diag.pass(&format!("{name} -- {details}"));
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum TokenExpiry {
+    Expired,
+    /// A login token, under a day: minutes left. These are short-lived by design,
+    /// so this isn't a warning.
+    Session(i64),
+    /// A longer-lived token within a week of expiring: days left.
+    Soon(i64),
+    Later(i64),
+}
+
+fn token_expiry_status(seconds_left: i64) -> TokenExpiry {
+    const DAY: i64 = 86_400;
+    if seconds_left < 0 {
+        TokenExpiry::Expired
+    } else if seconds_left < DAY {
+        TokenExpiry::Session(seconds_left / 60)
+    } else if seconds_left <= 7 * DAY {
+        TokenExpiry::Soon(seconds_left / DAY)
+    } else {
+        TokenExpiry::Later(seconds_left / DAY)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -383,42 +421,52 @@ fn check_package_configs(config: &AppConfig, diag: &mut DiagResult) {
 
     let pip_filename = if cfg!(windows) { "pip.ini" } else { "pip.conf" };
 
-    let configs: &[(&str, &str, Vec<std::path::PathBuf>)] = &[
+    // The last field is the route that tool's endpoints are mounted at.
+    let configs: &[(&str, &str, Vec<std::path::PathBuf>, &str)] = &[
         (
             "npm",
             ".npmrc",
             vec![cwd.join(".npmrc"), home.join(".npmrc")],
+            "npm",
         ),
         (
             "pip",
             pip_filename,
             vec![config_base.join("pip").join(pip_filename)],
+            "pypi",
         ),
         (
             "cargo",
             "config.toml",
             vec![home.join(".cargo/config.toml")],
+            "cargo",
         ),
-        ("maven", "settings.xml", vec![home.join(".m2/settings.xml")]),
+        (
+            "maven",
+            "settings.xml",
+            vec![home.join(".m2/settings.xml")],
+            "maven",
+        ),
     ];
 
     let instance_urls: Vec<&str> = config.instances.values().map(|i| i.url.as_str()).collect();
 
-    for (name, desc, paths) in configs {
+    for (name, desc, paths, route) in configs {
         match paths.iter().find(|p| p.exists()) {
             Some(path) => {
                 let content = std::fs::read_to_string(path).unwrap_or_default();
-                let points_to_ak = instance_urls.iter().any(|url| content.contains(url));
-
-                if points_to_ak {
-                    diag.pass(&format!(
+                match config_reference(&content, &instance_urls, route) {
+                    ConfigReference::Working => diag.pass(&format!(
                         "{name} ({desc}) -- configured, points to Artifact Keeper"
-                    ));
-                } else {
-                    diag.warn(&format!(
+                    )),
+                    ConfigReference::WrongRoute => diag.warn(&format!(
+                        "{name} ({desc}) -- points at an instance, but not at its /{route}/ route, \
+                         so it won't work (run: ak setup {name})"
+                    )),
+                    ConfigReference::None => diag.warn(&format!(
                         "{name} ({desc}) -- found at {} but doesn't reference any configured instance",
                         path.display()
-                    ));
+                    )),
                 }
             }
             None => {
@@ -428,6 +476,39 @@ fn check_package_configs(config: &AppConfig, diag: &mut DiagResult) {
     }
 
     check_docker_config(&home, &instance_urls, diag);
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ConfigReference {
+    Working,
+    /// Mentions the instance at some other path, such as the `/api/v1/<format>/`
+    /// URLs that older versions of `ak setup` wrote.
+    WrongRoute,
+    None,
+}
+
+/// How a package manager's config relates to the configured instances. Compares
+/// host and port rather than the URL, because a config can have credentials
+/// between the scheme and the host.
+fn config_reference(content: &str, instance_urls: &[&str], route: &str) -> ConfigReference {
+    let mut mentioned = false;
+    for url in instance_urls {
+        let Some(authority) = url::Url::parse(url).ok().and_then(|u| {
+            u.host_str()
+                .map(|h| u.port().map_or(h.to_string(), |p| format!("{h}:{p}")))
+        }) else {
+            continue;
+        };
+        if content.contains(&format!("{authority}/{route}/")) {
+            return ConfigReference::Working;
+        }
+        mentioned |= content.contains(&authority);
+    }
+    if mentioned {
+        ConfigReference::WrongRoute
+    } else {
+        ConfigReference::None
+    }
 }
 
 fn check_docker_config(home: &std::path::Path, instance_urls: &[&str], diag: &mut DiagResult) {
@@ -750,6 +831,62 @@ mod tests {
         assert_eq!(
             classify_connection_error("something else happened"),
             "something else happened"
+        );
+    }
+
+    // ---- token_expiry_status ----
+
+    #[test]
+    fn a_login_token_is_not_a_warning_about_zero_days() {
+        assert_eq!(token_expiry_status(1800), TokenExpiry::Session(30));
+        assert_eq!(token_expiry_status(86_399), TokenExpiry::Session(1439));
+    }
+
+    #[test]
+    fn longer_tokens_warn_within_a_week() {
+        assert_eq!(token_expiry_status(-1), TokenExpiry::Expired);
+        assert_eq!(token_expiry_status(3 * 86_400), TokenExpiry::Soon(3));
+        assert_eq!(token_expiry_status(30 * 86_400), TokenExpiry::Later(30));
+    }
+
+    // ---- config_reference ----
+
+    #[test]
+    fn a_config_with_the_real_route_is_working() {
+        let urls = ["http://ak.test:8080"];
+        assert_eq!(
+            config_reference("registry=http://ak.test:8080/npm/r/\n", &urls, "npm"),
+            ConfigReference::Working
+        );
+        // Credentials between the scheme and the host.
+        assert_eq!(
+            config_reference(
+                "index-url = http://__token__:x@ak.test:8080/pypi/r/simple/\n",
+                &urls,
+                "pypi"
+            ),
+            ConfigReference::Working
+        );
+    }
+
+    #[test]
+    fn a_config_from_the_old_setup_is_not_reported_as_working() {
+        let urls = ["https://ak.test"];
+        assert_eq!(
+            config_reference("registry=https://ak.test/api/v1/npm/r/\n", &urls, "npm"),
+            ConfigReference::WrongRoute
+        );
+    }
+
+    #[test]
+    fn a_config_for_another_registry_is_no_reference() {
+        assert_eq!(
+            config_reference(
+                "registry=https://registry.npmjs.org/\n",
+                &["https://ak.test"],
+                "npm"
+            ),
+            ConfigReference::None
         );
     }
 

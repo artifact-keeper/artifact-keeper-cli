@@ -14,7 +14,17 @@ mod transport;
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = cli::Cli::parse();
-    cli.execute().await
+    cli.execute().await.map_err(explain_no_terminal)
+}
+
+/// A prompt with no terminal fails deep inside dialoguer, in 20-odd places, with
+/// "not a terminal" and no way forward. Say what to do instead.
+fn explain_no_terminal(e: miette::Report) -> miette::Report {
+    if e.to_string().contains("not a terminal") {
+        error::AkError::NoTerminal.into()
+    } else {
+        e
+    }
 }
 
 /// Shared test utilities — single ENV_LOCK for all modules that touch AK_CONFIG_DIR.

@@ -202,11 +202,12 @@ fn read_secret<R: std::io::Read>(reader: &mut R) -> Result<String> {
 ///    When the value was visibly passed on argv, a soft warning is printed to
 ///    stderr since command-line values leak into shell history and process
 ///    listings.
-/// 3. If `prompt` is `Some` and stdin is not a TTY (piped/redirected input),
+/// 3. With `--no-input`, resolve to `None`. Stdin is read only if asked for by (1).
+/// 4. If `prompt` is `Some` and stdin is not a TTY (piped/redirected input),
 ///    read the secret from stdin.
-/// 4. If `prompt` is `Some`, stdin is a TTY, and `--no-input` was not given,
-///    prompt interactively with no echo. Empty input means "no secret".
-/// 5. Otherwise resolve to `None`.
+/// 5. If `prompt` is `Some` and stdin is a TTY, prompt interactively with no echo.
+///    Empty input means "no secret".
+/// 6. Otherwise resolve to `None`.
 ///
 /// Pass `prompt: None` for inputs that must never fall back to prompting or
 /// implicit stdin reads (e.g. update commands where an omitted secret means
@@ -253,13 +254,15 @@ fn resolve_secret_from<R: std::io::Read>(
     let Some(prompt) = prompt else {
         return Ok(None);
     };
+    // --no-input comes first: it promises not to wait for input, and a stdin that's
+    // open but silent would hang here. `--<flag>-stdin` is the explicit way in.
+    if no_input {
+        return Ok(None);
+    }
     if !stdin_is_tty {
         // Piped/redirected input: take the secret from stdin so it never has
         // to appear on the command line.
         return read_secret(&mut reader()).map(non_empty);
-    }
-    if no_input {
-        return Ok(None);
     }
     let entered = dialoguer::Password::new()
         .with_prompt(prompt)

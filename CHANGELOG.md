@@ -48,6 +48,9 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - Failed commands now show the status and the server's own message, such as `409 Conflict: Artifact is quarantined and pending security review`, instead of response headers or a debug dump of the response. The SDK has its own error type for this, and it holds no headers.
 - `ak lifecycle create --repo` no longer creates a policy for every repository on a 1.10 server. It sent only `repository_ids`, which 1.10 ignores. If you created policies with `--repo` against 1.10 using a build of this release, check their scope with `ak lifecycle list`.
 - `ak artifact info` fetches the exact path. It used to search and take the first match, so `a.bin` could show `dir/a.bin.old`.
+- `ak doctor` no longer reports false problems: the repo count uses your credentials when it has them (it read "0 repos" on a private instance) and says "public" when it does not, a login token shows the minutes left rather than warning "expires in 0 days", and a package manager config that points at the instance but not at its real route (like one from an older `ak setup`) is a warning rather than "configured". It also recognises a pip config with credentials in its URL.
+- A prompt with no terminal now says to pass `--yes` or `--no-input`, rather than failing with `IO error: not a terminal`.
+- With `--no-input` or `AK_NO_INPUT`, a secret that was not given (such as `ak webhook create` without `--secret`) no longer waits on an open stdin. To pipe a secret with `--no-input`, use the command's `--<flag>-stdin`.
 
 ### Removed
 

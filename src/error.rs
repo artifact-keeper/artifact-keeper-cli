@@ -60,6 +60,16 @@ pub enum AkError {
     )]
     InsecureTransport(String),
 
+    #[error("This needs an answer at a prompt, and there's no terminal to ask on")]
+    #[diagnostic(
+        code(ak::no_terminal),
+        help(
+            "Pass --yes where the command has it, or --no-input to run without prompts. \
+             --no-input accepts confirmations."
+        )
+    )]
+    NoTerminal,
+
     #[error(transparent)]
     #[diagnostic(code(ak::io_error))]
     Io(#[from] std::io::Error),
