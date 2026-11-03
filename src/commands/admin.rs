@@ -1595,8 +1595,11 @@ async fn restore_backup(
 
     let body = artifact_keeper_sdk::types::RestoreRequest {
         allow_unverified_archive: allow_unverified_archive.then_some(true),
-        restore_database: database.then_some(true),
-        restore_artifacts: artifacts.then_some(true),
+        // The server defaults a field it isn't sent to true, so --artifacts alone
+        // would restore the database over what's there too. Neither flag means the
+        // server's default, which is both.
+        restore_database: (database || artifacts).then_some(database),
+        restore_artifacts: (database || artifacts).then_some(artifacts),
         target_repository_id,
     };
 
@@ -6189,6 +6192,51 @@ mod tests {
 
     use wiremock::matchers::{method, path, path_regex};
     use wiremock::{Mock, ResponseTemplate};
+
+    #[tokio::test]
+    async fn restore_with_one_flag_says_no_to_the_other() {
+        const NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+        for (database, artifacts, body) in [
+            (
+                false,
+                true,
+                json!({"restore_database": false, "restore_artifacts": true}),
+            ),
+            (
+                true,
+                false,
+                json!({"restore_database": true, "restore_artifacts": false}),
+            ),
+            (
+                true,
+                true,
+                json!({"restore_database": true, "restore_artifacts": true}),
+            ),
+            (false, false, json!({})),
+        ] {
+            let (server, tmp) = crate::test_utils::mock_setup().await;
+            let _guard = crate::test_utils::setup_env(&tmp);
+            Mock::given(method("POST"))
+                .and(path(format!("/api/v1/admin/backups/{NIL_UUID}/restore")))
+                .and(wiremock::matchers::body_json(body))
+                .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                    "tables_restored": [],
+                    "artifacts_restored": 0,
+                    "errors": [],
+                    "integrity_anchor": "not_verified"
+                })))
+                .expect(1)
+                .mount(&server)
+                .await;
+
+            let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+            restore_backup(NIL_UUID, database, artifacts, None, false, &global)
+                .await
+                .unwrap();
+            server.verify().await;
+            crate::test_utils::teardown_env();
+        }
+    }
 
     #[tokio::test]
     async fn handler_list_backups_empty() {
