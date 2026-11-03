@@ -3,7 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::{client_for, resolve_base_url_and_auth};
-use super::helpers::{emit_mutation, parse_uuid, sdk_err};
+use super::helpers::{emit_mutation, resolve_artifact_id, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::output;
 
@@ -11,13 +11,13 @@ use crate::output;
 pub enum QuarantineCommand {
     /// Show the quarantine status for an artifact
     Status {
-        /// Artifact ID (UUID)
+        /// Artifact ID, or <repo-key>/<path>
         artifact: String,
     },
 
     /// Quarantine an artifact immediately, blocking downloads (admin only)
     Hold {
-        /// Artifact ID (UUID)
+        /// Artifact ID, or <repo-key>/<path>
         artifact: String,
 
         /// Reason shown to developers whose downloads are blocked
@@ -28,14 +28,14 @@ pub enum QuarantineCommand {
 
     /// Release a quarantined artifact so it can be served (admin only)
     Release {
-        /// Artifact ID (UUID)
+        /// Artifact ID, or <repo-key>/<path>
         artifact: String,
     },
 
     /// Reject (purge) a quarantined artifact, blocking it permanently (admin only)
     #[command(visible_alias = "purge")]
     Reject {
-        /// Artifact ID (UUID)
+        /// Artifact ID, or <repo-key>/<path>
         artifact: String,
 
         /// Reason for the rejection
@@ -56,9 +56,8 @@ impl QuarantineCommand {
 }
 
 async fn status(artifact: &str, global: &GlobalArgs) -> Result<()> {
-    let artifact_id = parse_uuid(artifact, "artifact")?;
-
     let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, artifact).await?;
     let spinner = output::spinner("Fetching quarantine status...");
 
     let status = client
@@ -84,7 +83,8 @@ async fn status(artifact: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 async fn hold(artifact: &str, reason: Option<&str>, global: &GlobalArgs) -> Result<()> {
-    let artifact_id = parse_uuid(artifact, "artifact")?;
+    let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, artifact).await?;
 
     // The vendored SDK's `ClientQuarantineExt` predates this route and exposes
     // no quarantine-now operation, so call it over raw HTTP the way other
@@ -133,9 +133,8 @@ async fn hold(artifact: &str, reason: Option<&str>, global: &GlobalArgs) -> Resu
 }
 
 async fn release(artifact: &str, global: &GlobalArgs) -> Result<()> {
-    let artifact_id = parse_uuid(artifact, "artifact")?;
-
     let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, artifact).await?;
     let spinner = output::spinner("Releasing artifact from quarantine...");
 
     let action = client
@@ -163,9 +162,8 @@ async fn release(artifact: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 async fn reject(artifact: &str, reason: Option<&str>, global: &GlobalArgs) -> Result<()> {
-    let artifact_id = parse_uuid(artifact, "artifact")?;
-
     let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, artifact).await?;
     let spinner = output::spinner("Rejecting quarantined artifact...");
 
     let body = artifact_keeper_sdk::types::RejectRequest {

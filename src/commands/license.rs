@@ -5,9 +5,8 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
-};
+use super::helpers::resolve_optional_repo_id;
+use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -69,7 +68,7 @@ pub enum PolicyCommand {
         #[arg(long)]
         enabled: Option<bool>,
 
-        /// Bind to a specific repository ID
+        /// Bind to a specific repository key or ID
         #[arg(long)]
         repo: Option<String>,
     },
@@ -198,9 +197,9 @@ async fn create_policy(
     repo_id: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repository_id = parse_optional_uuid(repo_id, "repository")?;
-
     let client = client_for(global)?;
+    let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
+
     let spinner = output::spinner("Creating license policy...");
 
     let body = artifact_keeper_sdk::types::UpsertLicensePolicyRequest {
@@ -273,9 +272,9 @@ async fn check_compliance(
     repo_id: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repository_id = parse_optional_uuid(repo_id, "repository")?;
-
     let client = client_for(global)?;
+    let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
+
     let spinner = output::spinner("Checking license compliance...");
 
     let body = artifact_keeper_sdk::types::CheckLicenseComplianceRequest {

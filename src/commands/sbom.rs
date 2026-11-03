@@ -5,6 +5,7 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
+use super::helpers::resolve_optional_repo_id;
 use super::helpers::{
     confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
@@ -35,7 +36,7 @@ pub enum SbomCommand {
 
     /// List SBOMs with optional filters
     List {
-        /// Filter by repository ID
+        /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
 
@@ -103,7 +104,7 @@ pub enum SbomCveCommand {
         #[arg(long, default_value = "30")]
         days: i32,
 
-        /// Filter by repository ID
+        /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
     },
@@ -365,7 +366,7 @@ async fn list_sboms(
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching SBOMs...");
 
-    let repo_id = parse_optional_uuid(repo, "repository")?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
     let artifact_id = parse_optional_uuid(artifact, "artifact")?;
 
     let mut req = client.list_sboms();
@@ -679,7 +680,7 @@ fn render_cve_history(entries: &[CveHistoryEntry], global: &GlobalArgs) {
 
 async fn cve_trends(days: i32, repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let repo_id = parse_optional_uuid(repo, "repository")?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
 
     let spinner = output::spinner("Fetching CVE trends...");
 

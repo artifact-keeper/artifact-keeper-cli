@@ -635,7 +635,7 @@ pub enum CiOidcMappingCommand {
         #[arg(long)]
         priority: Option<i32>,
 
-        /// Comma-separated repository UUIDs the mapping grants access to
+        /// Comma-separated repository keys or IDs the mapping grants access to
         #[arg(long)]
         allowed_repo_ids: Option<String>,
 
@@ -671,7 +671,7 @@ pub enum CiOidcMappingCommand {
         #[arg(long)]
         priority: Option<i32>,
 
-        /// New comma-separated repository UUIDs
+        /// New comma-separated repository keys or IDs
         #[arg(long)]
         allowed_repo_ids: Option<String>,
 
@@ -3680,7 +3680,10 @@ async fn toggle_ci_oidc_provider(
 
 // ---- CI OIDC identity mappings ----
 
-fn parse_repo_ids(csv: Option<&str>) -> Result<Option<Vec<uuid::Uuid>>> {
+async fn parse_repo_ids(
+    client: &artifact_keeper_sdk::Client,
+    csv: Option<&str>,
+) -> Result<Option<Vec<uuid::Uuid>>> {
     match csv {
         None => Ok(None),
         Some(s) => {
@@ -3690,7 +3693,7 @@ fn parse_repo_ids(csv: Option<&str>) -> Result<Option<Vec<uuid::Uuid>>> {
                 if trimmed.is_empty() {
                     continue;
                 }
-                ids.push(parse_uuid(trimmed, "repository")?);
+                ids.push(super::helpers::resolve_repo_id(client, trimmed).await?);
             }
             Ok(Some(ids))
         }
@@ -3829,7 +3832,7 @@ async fn create_ci_oidc_mapping(
     let filters: serde_json::Value = serde_json::from_str(claim_filters).map_err(|e| {
         crate::error::AkError::ConfigError(format!("Invalid claim-filters JSON: {e}"))
     })?;
-    let allowed = parse_repo_ids(allowed_repo_ids)?;
+    let allowed = parse_repo_ids(&client, allowed_repo_ids).await?;
 
     let spinner = output::spinner("Creating identity mapping...");
 
@@ -3881,7 +3884,7 @@ async fn update_ci_oidc_mapping(
             crate::error::AkError::ConfigError(format!("Invalid claim-filters JSON: {e}"))
         })?),
     };
-    let allowed = parse_repo_ids(allowed_repo_ids)?;
+    let allowed = parse_repo_ids(&client, allowed_repo_ids).await?;
 
     let spinner = output::spinner("Updating identity mapping...");
 
@@ -7193,32 +7196,51 @@ mod tests {
 
     // ---- parse_repo_ids helper ----
 
-    #[test]
-    fn parse_repo_ids_none() {
-        assert!(parse_repo_ids(None).unwrap().is_none());
+    fn offline_client() -> artifact_keeper_sdk::Client {
+        artifact_keeper_sdk::Client::new("http://127.0.0.1:1")
     }
 
-    #[test]
-    fn parse_repo_ids_valid_csv() {
-        let out = parse_repo_ids(Some(
-            "00000000-0000-0000-0000-000000000001, 00000000-0000-0000-0000-000000000002",
-        ))
+    #[tokio::test]
+    async fn parse_repo_ids_none() {
+        assert!(
+            parse_repo_ids(&offline_client(), None)
+                .await
+                .unwrap()
+                .is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn parse_repo_ids_valid_csv() {
+        let out = parse_repo_ids(
+            &offline_client(),
+            Some("00000000-0000-0000-0000-000000000001, 00000000-0000-0000-0000-000000000002"),
+        )
+        .await
         .unwrap()
         .unwrap();
         assert_eq!(out.len(), 2);
     }
 
-    #[test]
-    fn parse_repo_ids_skips_empty() {
-        let out = parse_repo_ids(Some("00000000-0000-0000-0000-000000000001,,"))
-            .unwrap()
-            .unwrap();
+    #[tokio::test]
+    async fn parse_repo_ids_skips_empty() {
+        let out = parse_repo_ids(
+            &offline_client(),
+            Some("00000000-0000-0000-0000-000000000001,,"),
+        )
+        .await
+        .unwrap()
+        .unwrap();
         assert_eq!(out.len(), 1);
     }
 
-    #[test]
-    fn parse_repo_ids_invalid_fails() {
-        assert!(parse_repo_ids(Some("not-a-uuid")).is_err());
+    #[tokio::test]
+    async fn parse_repo_ids_unreachable_key_fails() {
+        assert!(
+            parse_repo_ids(&offline_client(), Some("a-key"))
+                .await
+                .is_err()
+        );
     }
 
     // ---- Storage GC / backends parsing ----

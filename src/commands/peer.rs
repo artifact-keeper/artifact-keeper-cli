@@ -9,6 +9,7 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
+use super::helpers::resolve_repo_id;
 use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -215,7 +216,7 @@ pub enum PeerSubscriptionCommand {
         /// Peer ID
         id: String,
 
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
     },
 
@@ -224,7 +225,7 @@ pub enum PeerSubscriptionCommand {
         /// Peer ID
         id: String,
 
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
 
         /// Replication mode (e.g. pull, push)
@@ -245,7 +246,7 @@ pub enum PeerSubscriptionCommand {
         /// Peer ID
         id: String,
 
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
 
         /// Skip confirmation prompt
@@ -258,7 +259,7 @@ pub enum PeerSubscriptionCommand {
         /// Peer ID
         id: String,
 
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
     },
 }
@@ -1173,10 +1174,10 @@ async fn list_subscriptions(id: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 async fn show_subscription(id: &str, repo_id: &str, global: &GlobalArgs) -> Result<()> {
-    let peer_id = parse_uuid(id, "peer")?;
-    let repository_id = parse_uuid(repo_id, "repository")?;
-
     let client = client_for(global)?;
+    let peer_id = parse_uuid(id, "peer")?;
+    let repository_id = resolve_repo_id(&client, repo_id).await?;
+
     let spinner = output::spinner("Fetching subscription...");
 
     let sub = client
@@ -1203,10 +1204,10 @@ async fn assign_repo(
     sync_enabled: Option<bool>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let peer_id = parse_uuid(id, "peer")?;
-    let repository_id = parse_uuid(repo_id, "repository")?;
-
     let client = client_for(global)?;
+    let peer_id = parse_uuid(id, "peer")?;
+    let repository_id = resolve_repo_id(&client, repo_id).await?;
+
     let spinner = output::spinner("Assigning repository...");
 
     let body = artifact_keeper_sdk::types::AssignRepoRequest {
@@ -1242,8 +1243,9 @@ async fn unassign_repo(
     skip_confirm: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let client = client_for(global)?;
     let peer_id = parse_uuid(id, "peer")?;
-    let repository_id = parse_uuid(repo_id, "repository")?;
+    let repository_id = resolve_repo_id(&client, repo_id).await?;
 
     if !confirm_action(
         &format!("Unassign repository {repo_id} from peer {id}?"),
@@ -1253,7 +1255,6 @@ async fn unassign_repo(
         return Ok(());
     }
 
-    let client = client_for(global)?;
     let spinner = output::spinner("Unassigning repository...");
 
     client
@@ -1276,10 +1277,10 @@ async fn unassign_repo(
 }
 
 async fn run_subscription(id: &str, repo_id: &str, global: &GlobalArgs) -> Result<()> {
-    let peer_id = parse_uuid(id, "peer")?;
-    let repository_id = parse_uuid(repo_id, "repository")?;
-
     let client = client_for(global)?;
+    let peer_id = parse_uuid(id, "peer")?;
+    let repository_id = resolve_repo_id(&client, repo_id).await?;
+
     let spinner = output::spinner("Running subscription sync...");
 
     let result = client

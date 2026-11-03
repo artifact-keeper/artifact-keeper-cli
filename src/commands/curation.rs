@@ -4,7 +4,8 @@ use futures::StreamExt;
 use miette::Result;
 
 use super::client::{client_for, client_for_optional_auth};
-use super::helpers::{confirm_action, new_table, parse_optional_uuid, parse_uuid, sdk_err};
+use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err};
+use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -12,7 +13,7 @@ use crate::output::{self, OutputFormat};
 pub enum CurationCommand {
     /// List packages awaiting curation in a staging repository
     Packages {
-        /// Staging repository ID (UUID)
+        /// Staging repository key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: String,
 
@@ -71,7 +72,7 @@ pub enum CurationCommand {
 
     /// Re-evaluate all pending packages in a staging repo against the rules
     ReEvaluate {
-        /// Staging repository ID (UUID)
+        /// Staging repository key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: String,
 
@@ -82,7 +83,7 @@ pub enum CurationCommand {
 
     /// List curation rules
     Rules {
-        /// Filter by staging repository ID (UUID)
+        /// Filter by staging repository key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: Option<String>,
     },
@@ -106,7 +107,7 @@ pub enum CurationCommand {
         #[arg(long)]
         reason: String,
 
-        /// Restrict the rule to a staging repository ID (UUID)
+        /// Restrict the rule to a staging repository, by key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: Option<String>,
 
@@ -173,7 +174,7 @@ pub enum CurationCommand {
 
     /// Show curation statistics for a staging repository
     Stats {
-        /// Staging repository ID (UUID)
+        /// Staging repository key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: String,
     },
@@ -262,7 +263,8 @@ async fn list_packages(
     offset: Option<i64>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let staging_id = parse_uuid(staging_repo, "staging repository")?;
+    let client = client_for(global)?;
+    let staging_id = resolve_repo_id(&client, staging_repo).await?;
 
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching curation packages...");
@@ -420,9 +422,9 @@ async fn bulk_decision(
 }
 
 async fn re_evaluate(staging_repo: &str, default_action: &str, global: &GlobalArgs) -> Result<()> {
-    let staging_id = parse_uuid(staging_repo, "staging repository")?;
-
     let client = client_for(global)?;
+    let staging_id = resolve_repo_id(&client, staging_repo).await?;
+
     let spinner = output::spinner("Re-evaluating packages against curation rules...");
 
     let body = artifact_keeper_sdk::types::ReEvaluateRequest {
@@ -457,7 +459,8 @@ async fn re_evaluate(staging_repo: &str, default_action: &str, global: &GlobalAr
 // ---------------------------------------------------------------------------
 
 async fn list_rules(staging_repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
-    let staging_id = parse_optional_uuid(staging_repo, "staging repository")?;
+    let client = client_for(global)?;
+    let staging_id = resolve_optional_repo_id(&client, staging_repo).await?;
 
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching curation rules...");
@@ -532,9 +535,9 @@ async fn create_rule(
     version_constraint: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let staging_id = parse_optional_uuid(staging_repo, "staging repository")?;
-
     let client = client_for(global)?;
+    let staging_id = resolve_optional_repo_id(&client, staging_repo).await?;
+
     let spinner = output::spinner("Creating curation rule...");
 
     let body = artifact_keeper_sdk::types::CurationCreateRuleRequest {
@@ -690,7 +693,8 @@ async fn delete_rule(id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 async fn show_stats(staging_repo: &str, global: &GlobalArgs) -> Result<()> {
-    let staging_id = parse_uuid(staging_repo, "staging repository")?;
+    let client = client_for(global)?;
+    let staging_id = resolve_repo_id(&client, staging_repo).await?;
 
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching curation statistics...");

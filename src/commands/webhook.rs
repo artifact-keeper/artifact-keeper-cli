@@ -7,9 +7,9 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
+use super::helpers::resolve_optional_repo_id;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, resolve_secret,
-    sdk_err, short_id,
+    confirm_action, emit_mutation, new_table, parse_uuid, resolve_secret, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -18,7 +18,7 @@ use crate::output::{self, OutputFormat};
 pub enum WebhookCommand {
     /// List webhooks
     List {
-        /// Filter by repository ID
+        /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
 
@@ -174,9 +174,9 @@ async fn list_webhooks(
     enabled: Option<bool>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repo_id = parse_optional_uuid(repo, "repository")?;
-
     let client = client_for(global)?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
+
     let spinner = output::spinner("Fetching webhooks...");
 
     let mut req = client.list_webhooks();
@@ -241,9 +241,9 @@ async fn create_webhook(
     repo: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repo_id = parse_optional_uuid(repo, "repository")?;
-
     let client = client_for(global)?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
+
     let spinner = output::spinner("Creating webhook...");
 
     let body = CreateWebhookRequest {

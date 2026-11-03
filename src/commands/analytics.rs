@@ -8,7 +8,8 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::resolve_repo_id;
+use super::helpers::{new_table, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -63,7 +64,7 @@ pub enum AnalyticsCommand {
 
     /// Show download trend for a specific repository
     RepoTrend {
-        /// Repository ID
+        /// Repository key or ID
         id: String,
 
         /// Start date (YYYY-MM-DD)
@@ -290,9 +291,9 @@ async fn repo_trend(
     to: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let repo_id = parse_uuid(id, "repository")?;
-
     let client = client_for(global)?;
+    let repo_id = resolve_repo_id(&client, id).await?;
+
     let spinner = output::spinner("Fetching repository trend...");
 
     let mut req = client.get_repository_trend().id(repo_id);

@@ -6,9 +6,8 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::client_for;
-use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
-};
+use super::helpers::resolve_optional_repo_id;
+use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -157,7 +156,7 @@ pub enum ScanPolicyCommand {
         #[arg(long)]
         block_unscanned: bool,
 
-        /// Bind to a specific repository ID
+        /// Bind to a specific repository key or ID
         #[arg(long)]
         repo: Option<String>,
     },
@@ -1058,7 +1057,7 @@ async fn create_policy(
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let repo_id = parse_optional_uuid(repo, "repository")?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
 
     let spinner = crate::output::spinner("Creating security policy...");
 

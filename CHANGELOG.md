@@ -19,6 +19,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
   Requires backend 1.7.0 or newer.
 - `ak auth login --oidc-device` (`--device` alias) signs in with Artifact Keeper's RFC 8628 device authorization grant, for headless hosts and SSO-backed instances. Requires backend 1.12.0 or newer. The CLI prints the verification URL and user code, polls at the server's interval, honours `authorization_pending` and `slow_down`, reports `expired_token`, `access_denied` and `invalid_grant` clearly, and stores the returned access and refresh tokens through the existing credential store. `--scope` selects AK scopes (default `read:artifacts`); `--no-input` keeps the flow non-interactive and never opens a browser. Tokens are never printed (artifact-keeper#3462)
 - `AK_CREDENTIAL_STORE=file` skips the OS keychain and keeps credentials in the 0600 credentials file.
+- Every command that takes a repository ID also takes its key (#180): `sign`, `lifecycle`, `license`, `curation`, `quality-gate`, `promotion`, `sbom`, `scan policy`, `webhook`, `analytics repo-trend`, `peer subscription`, `service-account`, `admin ci-oidc`, and `permission` with a repository target. `quarantine` commands take `<repo-key>/<path>` as well as an artifact ID. `repo show`, `repo list`, `artifact info`, `artifact list` and `artifact search` now include `id` in JSON, and `repo show` shows it in the table.
 
 ### Changed
 
@@ -43,6 +44,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak admin storage-gc run` now always sends `dry_run` explicitly, so a live run posts `{"dry_run": false}` instead of an empty body. Companion to artifact-keeper#3619, which makes `dry_run` required on the storage-GC endpoint and rejects unknown fields (422)
 - `ak setup` writes working URLs (#155). Package-manager endpoints are mounted at the server root, not under `/api/v1`. NuGet uses `/nuget/<repo>/v3/index.json`, apt uses `/debian/<repo>/`, and Cargo uses the sparse protocol. It no longer forces https on http instances, and `setup docker` keeps the port. For http instances it adds the setting each client needs (`allowInsecureProtocol`, `allowInsecureConnections`, `trusted-host`, a protocol on the apt `machine` line). `setup go` now says the go command will not send credentials over plain HTTP. `setup go` no longer suggests the nonexistent `GONOSUMCHECK`.
 - Failed commands now show the status and the server's own message, such as `409 Conflict: Artifact is quarantined and pending security review`, instead of response headers or a debug dump of the response. The SDK has its own error type for this, and it holds no headers.
+- `ak lifecycle create --repo` no longer creates a policy for every repository on a 1.10 server. It sent only `repository_ids`, which 1.10 ignores. If you created policies with `--repo` against 1.10 using a build of this release, check their scope with `ak lifecycle list`.
 
 ### Removed
 

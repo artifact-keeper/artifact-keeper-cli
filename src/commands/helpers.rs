@@ -1,3 +1,4 @@
+use artifact_keeper_sdk::ClientRepositoriesExt;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
 use serde::Serialize;
@@ -75,6 +76,74 @@ pub fn parse_uuid(id: &str, label: &str) -> Result<uuid::Uuid> {
 /// Parse an optional string as a UUID.
 pub fn parse_optional_uuid(id: Option<&str>, label: &str) -> Result<Option<uuid::Uuid>> {
     id.map(|v| parse_uuid(v, label)).transpose()
+}
+
+/// Turn what a user typed for a repository into its ID: a UUID is used as it is,
+/// and anything else is looked up as a repository key. Use this for every
+/// UUID-typed repository parameter, so users can always pass the key they know.
+pub async fn resolve_repo_id(
+    client: &artifact_keeper_sdk::Client,
+    key_or_id: &str,
+) -> Result<uuid::Uuid> {
+    if let Ok(id) = key_or_id.parse() {
+        return Ok(id);
+    }
+    match client.get_repository().key(key_or_id).send().await {
+        Ok(repo) => Ok(repo.id),
+        Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => {
+            Err(AkError::ConfigError(format!(
+                "No repository with key '{key_or_id}'. Run `ak repo list` to see repositories."
+            ))
+            .into())
+        }
+        Err(e) => Err(sdk_err(&format!("look up repository '{key_or_id}'"), e).into()),
+    }
+}
+
+/// [`resolve_repo_id`] for an optional parameter.
+pub async fn resolve_optional_repo_id(
+    client: &artifact_keeper_sdk::Client,
+    key_or_id: Option<&str>,
+) -> Result<Option<uuid::Uuid>> {
+    match key_or_id {
+        Some(value) => resolve_repo_id(client, value).await.map(Some),
+        None => Ok(None),
+    }
+}
+
+/// Turn what a user typed for an artifact into its ID: a UUID is used as it is,
+/// and `<repo-key>/<path>` is looked up.
+pub async fn resolve_artifact_id(
+    client: &artifact_keeper_sdk::Client,
+    id_or_path: &str,
+) -> Result<uuid::Uuid> {
+    if let Ok(id) = id_or_path.parse() {
+        return Ok(id);
+    }
+    let Some((repo, path)) = id_or_path
+        .split_once('/')
+        .filter(|(r, p)| !r.is_empty() && !p.is_empty())
+    else {
+        return Err(AkError::ConfigError(format!(
+            "'{id_or_path}' isn't an artifact ID or a <repo-key>/<path>"
+        ))
+        .into());
+    };
+    match client
+        .get_repository_artifact_metadata()
+        .key(repo)
+        .path(path)
+        .send()
+        .await {
+        Ok(artifact) => Ok(artifact.id),
+        Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => {
+            Err(AkError::ConfigError(format!(
+                "No artifact '{path}' in repository '{repo}'. Run `ak artifact list {repo}` to see artifacts."
+            ))
+            .into())
+        }
+        Err(e) => Err(sdk_err(&format!("look up artifact '{id_or_path}'"), e).into()),
+    }
 }
 
 /// True when the given long option (e.g. `--password`) appears on the

@@ -40,7 +40,7 @@ pub enum PermissionCommand {
         #[arg(long)]
         principal_type: String,
 
-        /// Target ID (repository or group UUID)
+        /// Target: a repository key or ID, or a group ID
         #[arg(long)]
         target: String,
 
@@ -72,7 +72,7 @@ pub enum PermissionCommand {
         #[arg(long)]
         principal_type: String,
 
-        /// Target ID (repository or group UUID)
+        /// Target: a repository key or ID, or a group ID
         #[arg(long)]
         target: String,
 
@@ -215,6 +215,19 @@ async fn show_permission(id: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 #[allow(clippy::too_many_arguments)]
+/// A repository target may be given by key. Other targets are IDs.
+async fn resolve_target(
+    client: &artifact_keeper_sdk::Client,
+    target: &str,
+    target_type: &str,
+) -> Result<uuid::Uuid> {
+    if target_type == "repository" {
+        super::helpers::resolve_repo_id(client, target).await
+    } else {
+        parse_uuid(target, "target")
+    }
+}
+
 async fn update_permission(
     id: &str,
     principal: &str,
@@ -226,9 +239,9 @@ async fn update_permission(
 ) -> Result<()> {
     let perm_id = parse_uuid(id, "permission")?;
     let principal_id = parse_uuid(principal, "principal")?;
-    let target_id = parse_uuid(target, "target")?;
 
     let client = client_for(global)?;
+    let target_id = resolve_target(&client, target, target_type).await?;
     let spinner = output::spinner("Updating permission...");
 
     let body = artifact_keeper_sdk::types::CreatePermissionRequest {
@@ -368,9 +381,9 @@ async fn create_permission(
     global: &GlobalArgs,
 ) -> Result<()> {
     let principal_id = parse_uuid(principal, "principal")?;
-    let target_id = parse_uuid(target, "target")?;
 
     let client = client_for(global)?;
+    let target_id = resolve_target(&client, target, target_type).await?;
     let spinner = output::spinner("Creating permission...");
 
     let body = artifact_keeper_sdk::types::CreatePermissionRequest {

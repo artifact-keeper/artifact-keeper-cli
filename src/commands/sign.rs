@@ -9,6 +9,7 @@ use super::client::client_for;
 use super::helpers::{
     confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
 };
+use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -27,7 +28,7 @@ pub enum SignCommand {
 pub enum SignKeyCommand {
     /// List all signing keys
     List {
-        /// Filter by repository ID
+        /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
     },
@@ -47,11 +48,11 @@ pub enum SignKeyCommand {
         #[arg(long, default_value = "rsa4096")]
         algorithm: String,
 
-        /// Key type (e.g. signing, encryption)
+        /// Key type: gpg, rsa or ed25519
         #[arg(long = "type")]
         key_type: String,
 
-        /// Repository ID to associate with this key
+        /// Repository key or ID to associate with this key
         #[arg(long)]
         repo: String,
 
@@ -97,13 +98,13 @@ pub enum SignKeyCommand {
 pub enum SignConfigCommand {
     /// Show signing configuration for a repository
     Show {
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
     },
 
     /// Update signing configuration for a repository
     Update {
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
 
         /// Require signatures on all uploads
@@ -125,7 +126,7 @@ pub enum SignConfigCommand {
 
     /// Export the repository's public key in PEM format
     ExportKey {
-        /// Repository ID
+        /// Repository key or ID
         repo_id: String,
     },
 }
@@ -205,7 +206,7 @@ async fn list_keys(repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching signing keys...");
 
-    let repo_id = parse_optional_uuid(repo, "repository")?;
+    let repo_id = resolve_optional_repo_id(&client, repo).await?;
 
     let mut req = client.list_keys();
     if let Some(rid) = repo_id {
@@ -274,7 +275,7 @@ async fn create_key(
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let repo_id = parse_uuid(repo, "repository")?;
+    let repo_id = resolve_repo_id(&client, repo).await?;
 
     let spinner = output::spinner("Creating signing key...");
 
@@ -425,7 +426,7 @@ async fn export_key(id: &str, global: &GlobalArgs) -> Result<()> {
 
 async fn show_config(repo_id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let rid = parse_uuid(repo_id, "repository")?;
+    let rid = resolve_repo_id(&client, repo_id).await?;
 
     let spinner = output::spinner("Fetching signing config...");
 
@@ -455,7 +456,7 @@ async fn update_config(
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let rid = parse_uuid(repo_id, "repository")?;
+    let rid = resolve_repo_id(&client, repo_id).await?;
     let key_id = parse_optional_uuid(signing_key_id, "signing key")?;
 
     let spinner = output::spinner("Updating signing config...");
@@ -485,7 +486,7 @@ async fn update_config(
 
 async fn export_repo_key(repo_id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
-    let rid = parse_uuid(repo_id, "repository")?;
+    let rid = resolve_repo_id(&client, repo_id).await?;
 
     let spinner = output::spinner("Exporting repository public key...");
 
