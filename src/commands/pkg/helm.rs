@@ -10,6 +10,7 @@ use reqwest::multipart::Form;
 
 use super::wire::{Upload, Wire, emit};
 use crate::cli::GlobalArgs;
+use crate::commands::helpers::confirm_action;
 
 #[derive(Clone, Copy, ValueEnum)]
 pub enum Endpoint {
@@ -60,6 +61,9 @@ Examples:
         /// Which of the server's two equivalent URLs to send to
         #[arg(long, value_enum, default_value = "helm")]
         endpoint: Endpoint,
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 }
 
@@ -97,7 +101,12 @@ pub async fn execute(command: HelmCommand, global: &GlobalArgs) -> Result<()> {
             name,
             version,
             endpoint,
+            yes,
         } => {
+            let prompt = format!("Delete chart {name} {version} from {repo}?");
+            if !confirm_action(&prompt, yes, global.no_input)? {
+                return Ok(());
+            }
             let mut segments = endpoint.charts(&repo);
             segments.extend([name.as_str(), version.as_str()]);
             let reply = wire

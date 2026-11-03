@@ -125,7 +125,7 @@ fn cases() -> Vec<Case> {
             restore(json!([])),
         ),
         case(
-            &["lifecycle", "execute", ID],
+            &["lifecycle", "execute", ID, "--yes"],
             "POST",
             format!("/api/v1/admin/lifecycle/{ID}/execute"),
             execution(json!(["bad-pattern"])),
@@ -141,7 +141,7 @@ fn cases() -> Vec<Case> {
             execution(json!([])),
         ),
         case(
-            &["lifecycle", "execute-all"],
+            &["lifecycle", "execute-all", "--yes"],
             "POST",
             "/api/v1/admin/lifecycle/execute-all".to_string(),
             json!([execution(json!([])), execution(json!(["bad-pattern"]))]),
@@ -149,7 +149,7 @@ fn cases() -> Vec<Case> {
             json!([execution(json!([]))]),
         ),
         case(
-            &["admin", "storage-gc", "run"],
+            &["admin", "storage-gc", "run", "--yes"],
             "POST",
             "/api/v1/admin/storage-gc".to_string(),
             gc(json!(["key-stuck"])),

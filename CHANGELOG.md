@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Before you upgrade
+
+- **The biggest deletes ask first.** `ak lifecycle execute` and `execute-all`, `ak admin storage-gc run` unless it's `--dry-run`, and `ak admin cleanup` ask for confirmation, and say what they would delete. So do `ak lifecycle update --all-repos true`, `ak lifecycle create --all-repos` unless it's `--disabled`, `ak pkg helm delete` and `ak instance remove`. With `--no-input` and no `--yes` they fail with exit code 2 and send nothing, so scripts that run these have to add `--yes` or `-y` (#282).
+
 ### Added
 
 - Every request `ak` sends carries `User-Agent: ak/<version> (<os>; <arch>)`, such as `ak/1.12.0 (linux; x86_64)`, so a server's download records and access logs can tell `ak` apart from other clients. It sent none before (#293).
