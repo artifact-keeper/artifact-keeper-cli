@@ -103,7 +103,7 @@ pub enum Command {
     )]
     Setup {
         #[command(flatten)]
-        options: commands::setup::TokenOptions,
+        options: commands::setup::SetupOptions,
 
         #[command(subcommand)]
         command: commands::setup::SetupCommand,

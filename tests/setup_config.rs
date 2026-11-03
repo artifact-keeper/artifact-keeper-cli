@@ -377,21 +377,33 @@ async fn a_refused_mint_leaves_existing_cargo_files_alone() {
 #[tokio::test]
 async fn running_setup_twice_keeps_the_original_in_a_backup() {
     let sandbox = Sandbox::new(None).await;
-    for (tool, file) in [
-        ("npm", "home/.npmrc"),
-        ("pip", "home/.config/pip/pip.conf"),
-        ("cargo", "home/.cargo/config.toml"),
-        ("cargo", "home/.cargo/credentials.toml"),
-        ("maven", "home/.m2/settings.xml"),
-        ("gradle", "home/.gradle/init.d/artifact-keeper.gradle"),
+    for (tool, file, original) in [
+        ("npm", "home/.npmrc", "save-exact=true\n"),
+        (
+            "pip",
+            "home/.config/pip/pip.conf",
+            "[global]\ntimeout = 3\n",
+        ),
+        ("cargo", "home/.cargo/config.toml", "# config\n"),
+        ("cargo", "home/.cargo/credentials.toml", "# credentials\n"),
+        ("maven", "home/.m2/settings.xml", "<settings/>\n"),
+        (
+            "nuget",
+            "home/.nuget/NuGet/NuGet.Config",
+            "<configuration/>\n",
+        ),
+        (
+            "gradle",
+            "home/.gradle/init.d/artifact-keeper.gradle",
+            "// mine\n",
+        ),
     ] {
-        let original = format!("original of {file}\n");
         std::fs::create_dir_all(sandbox.path(file).parent().unwrap()).unwrap();
-        std::fs::write(sandbox.path(file), &original).unwrap();
+        std::fs::write(sandbox.path(file), original).unwrap();
 
         // Two tokens, so the second run also replaces something different.
         for token in ["lasting-token-one", "lasting-token-two"] {
-            let output = sandbox.run(token, &[tool, "--repo", "r"]);
+            let output = sandbox.run(token, &[tool, "--repo", "r", "--replace"]);
             assert_eq!(output.status.code(), Some(0), "setup {tool}");
         }
 
@@ -402,6 +414,164 @@ async fn running_setup_twice_keeps_the_original_in_a_backup() {
                 && std::fs::read_to_string(&path).is_ok_and(|text| text == original)
         });
         assert!(survived, "the original of {file} is gone");
+    }
+}
+
+/// The live files keep what was in them, over two runs, and nothing else that
+/// `setup` doesn't own moves. `merge.rs` has the detail of each format.
+#[tokio::test]
+async fn npm_pip_and_cargo_keep_other_registries_and_tokens() {
+    let sandbox = Sandbox::new(None).await;
+    for (file, original) in [
+        (
+            "home/.npmrc",
+            "@corp:registry=https://corp.test/\n//corp.test/:_authToken=corp-npm\n",
+        ),
+        (
+            "home/.config/pip/pip.conf",
+            "[global]\nextra-index-url = https://u:corp-pip@corp.test/simple/\n\n[install]\nno-deps = true\n",
+        ),
+        (
+            "home/.cargo/config.toml",
+            "# mine\n[registries.corp]\nindex = \"sparse+https://corp.test/\"\n[net]\nretry = 5\n",
+        ),
+        (
+            "home/.cargo/credentials.toml",
+            "[registry]\ntoken = \"crates-io-token\"\n[registries.corp]\ntoken = \"corp-cargo\"\n",
+        ),
+    ] {
+        std::fs::create_dir_all(sandbox.path(file).parent().unwrap()).unwrap();
+        std::fs::write(sandbox.path(file), original).unwrap();
+    }
+
+    for token in ["lasting-token-one", "lasting-token-two"] {
+        for tool in ["npm", "pip", "cargo"] {
+            let output = sandbox.run(token, &[tool, "--repo", "r"]);
+            assert_eq!(
+                output.status.code(),
+                Some(0),
+                "setup {tool}: {}",
+                stderr(&output)
+            );
+        }
+    }
+
+    for (file, kept) in [
+        ("home/.npmrc", "@corp:registry=https://corp.test/"),
+        ("home/.npmrc", "//corp.test/:_authToken=corp-npm"),
+        (
+            "home/.config/pip/pip.conf",
+            "extra-index-url = https://u:corp-pip@corp.test/simple/",
+        ),
+        ("home/.config/pip/pip.conf", "[install]\nno-deps = true"),
+        ("home/.cargo/config.toml", "# mine"),
+        ("home/.cargo/config.toml", "[registries.corp]"),
+        ("home/.cargo/config.toml", "retry = 5"),
+        ("home/.cargo/credentials.toml", "crates-io-token"),
+        ("home/.cargo/credentials.toml", "corp-cargo"),
+    ] {
+        let text = sandbox.read(file);
+        assert!(text.contains(kept), "{file} lost {kept}");
+        // Cargo's config.toml holds no token at all.
+        assert!(
+            file.ends_with("config.toml") || text.contains("lasting-token-two"),
+            "{file} has no current token"
+        );
+        assert!(
+            !text.contains("lasting-token-one"),
+            "{file} kept the old token"
+        );
+    }
+}
+
+#[tokio::test]
+async fn cargo_leaves_both_files_alone_if_either_cannot_be_merged() {
+    let sandbox = Sandbox::new(None).await;
+    let config = "[registries.corp]\nindex = \"sparse+https://corp.test/\"\n";
+    let bad = "token = \"secret-in-a-broken-file\n";
+    std::fs::create_dir_all(sandbox.path("home/.cargo")).unwrap();
+    std::fs::write(sandbox.path("home/.cargo/config.toml"), config).unwrap();
+    std::fs::write(sandbox.path("home/.cargo/credentials.toml"), bad).unwrap();
+
+    let output = sandbox.run("lasting-token", &["cargo", "--repo", "r"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(sandbox.read("home/.cargo/config.toml"), config);
+    assert_eq!(sandbox.read("home/.cargo/credentials.toml"), bad);
+    assert!(!stderr(&output).contains("secret-in-a-broken-file"));
+}
+
+/// Files that are XML: untouched unless `setup` wrote them or `--replace` says to,
+/// and no token is minted for a file that won't be written.
+#[tokio::test]
+async fn maven_and_nuget_leave_a_file_they_did_not_write() {
+    let sandbox = Sandbox::new(None).await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/auth/tokens"))
+        .respond_with(ResponseTemplate::new(500))
+        .expect(0)
+        .mount(&sandbox.server)
+        .await;
+    let session = jwt_expiring_in(1800);
+
+    for (tool, file, original, wanted) in [
+        (
+            "maven",
+            "home/.m2/settings.xml",
+            "<settings><mirrors><mirror><id>corp</id></mirror></mirrors></settings>\n",
+            "<activeProfile>artifact-keeper</activeProfile>",
+        ),
+        (
+            "nuget",
+            "home/.nuget/NuGet/NuGet.Config",
+            "<configuration><packageSources><add key=\"corp\" value=\"https://corp.test/\" /></packageSources></configuration>\n",
+            "<add key=\"ArtifactKeeper\"",
+        ),
+    ] {
+        std::fs::create_dir_all(sandbox.path(file).parent().unwrap()).unwrap();
+        std::fs::write(sandbox.path(file), original).unwrap();
+
+        let output = sandbox.run(&session, &[tool, "--repo", "r"]);
+        assert_eq!(output.status.code(), Some(1), "setup {tool}");
+        assert_eq!(sandbox.read(file), original);
+        let err = stderr(&output);
+        assert!(err.contains(wanted), "{tool}: no snippet in {err}");
+        assert!(err.contains("--replace"), "{tool}: no way forward in {err}");
+        assert!(!err.contains(&session), "the token was printed");
+    }
+}
+
+#[tokio::test]
+async fn maven_and_nuget_replace_their_own_file_or_when_told() {
+    let sandbox = Sandbox::new(None).await;
+    for (tool, file) in [
+        ("maven", "home/.m2/settings.xml"),
+        ("nuget", "home/.nuget/NuGet/NuGet.Config"),
+    ] {
+        // No file, then its own file with an old token: a renewal needs no flag.
+        for token in ["lasting-token-one", "lasting-token-two"] {
+            let output = sandbox.run(token, &[tool, "--repo", "r"]);
+            assert_eq!(
+                output.status.code(),
+                Some(0),
+                "setup {tool}: {}",
+                stderr(&output)
+            );
+            assert!(sandbox.read(file).contains(token));
+        }
+
+        // The same file with a line of someone else's isn't its own any more.
+        let edited = sandbox
+            .read(file)
+            .replace("lasting-token-two", "edited-token");
+        let edited = format!("<!-- mine -->\n{edited}");
+        std::fs::write(sandbox.path(file), &edited).unwrap();
+        let output = sandbox.run("lasting-token-three", &[tool, "--repo", "r"]);
+        assert_eq!(output.status.code(), Some(1), "setup {tool}");
+        assert_eq!(sandbox.read(file), edited);
+
+        let output = sandbox.run("lasting-token-three", &[tool, "--repo", "r", "--replace"]);
+        assert_eq!(output.status.code(), Some(0), "setup {tool}");
+        assert!(sandbox.read(file).contains("lasting-token-three"));
     }
 }
 
