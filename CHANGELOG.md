@@ -105,6 +105,7 @@ These can change what you see, or break a script, coming from 1.2:
 
 ### Fixed
 
+- `ak admin backup restore --artifacts` no longer restores the database too, and `--database` no longer restores artifacts too. The server defaults a field it isn't sent to true. With either flag, both are now sent. With neither, the server's default still restores both.
 - `ak promotion promote` and `bulk-promote` exit 1 with the policy's reason when a promotion is blocked. The server answers 200 for these, so they exited 0 and a CI script saw success, including `--format quiet`, which printed nothing. For `--format json` and `yaml` both print the server's response on stdout, as received, so `bulk-promote` JSON is now `{"total", "promoted", "failed", "results"}` rather than a bare list, with each result's `policy_violations`.
 - `ak admin plugins list` and `show` no longer fail on a server with a plugin that has no config schema. The server sends null there although the API spec doesn't allow it.
 - `ak auth login` no longer stores an empty token and reports success when the server requires TOTP enrollment.
