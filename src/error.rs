@@ -6,14 +6,20 @@ pub enum AkError {
     #[error("No instance configured")]
     #[diagnostic(
         code(ak::no_instance),
-        help("Run `ak instance add <name> <url>` to add an Artifact Keeper server")
+        help(
+            "Run `ak auth login <url>` to add an Artifact Keeper server and log in to it, or \
+             set AK_INSTANCE to its URL"
+        )
     )]
     NoInstance,
 
     #[error("Instance '{0}' not found")]
     #[diagnostic(
         code(ak::instance_not_found),
-        help("Run `ak instance list` to see configured instances")
+        help(
+            "Run `ak instance list` to see configured instances, or give a whole URL, such as \
+             https://registry.example.com"
+        )
     )]
     InstanceNotFound(String),
 
@@ -229,7 +235,7 @@ mod tests {
     fn no_instance_help() {
         let err = AkError::NoInstance;
         let help = err.help().unwrap().to_string();
-        assert!(help.contains("ak instance add"));
+        assert!(help.contains("ak auth login"));
     }
 
     #[test]

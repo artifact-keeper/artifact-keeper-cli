@@ -39,7 +39,8 @@ pub struct Cli {
     #[arg(short, long, global = true)]
     pub quiet: bool,
 
-    /// Target instance (overrides default)
+    /// Target instance: a name, or a URL such as https://registry.example.com (overrides
+    /// the default)
     #[arg(long, global = true, env = "AK_INSTANCE")]
     pub instance: Option<String>,
 
@@ -588,7 +589,8 @@ impl Cli {
 
         let global = GlobalArgs {
             format,
-            instance: self.instance,
+            // An empty AK_INSTANCE, as CI can set, is the same as none.
+            instance: self.instance.filter(|instance| !instance.is_empty()),
             no_input: self.no_input,
         };
 
