@@ -288,6 +288,93 @@ pub(super) fn pip_conf(existing: &str, index_url: &str, trusted_host: Option<&st
     }
 }
 
+/// One token of a `.netrc` and where it starts. Comments and `macdef` bodies, which
+/// can hold anything, aren't tokens.
+fn netrc_tokens(text: &str) -> Vec<(usize, &str)> {
+    let mut tokens = Vec::new();
+    let mut at = 0;
+    while at < text.len() {
+        let rest = &text[at..];
+        let trimmed = rest.trim_start();
+        at += rest.len() - trimmed.len();
+        if trimmed.is_empty() {
+            break;
+        }
+        if trimmed.starts_with('#') {
+            at += trimmed.find('\n').unwrap_or(trimmed.len());
+            continue;
+        }
+        let len = if let Some(quoted) = trimmed.strip_prefix('"') {
+            quoted.find('"').map_or(trimmed.len(), |end| end + 2)
+        } else {
+            trimmed.find(char::is_whitespace).unwrap_or(trimmed.len())
+        };
+        let token = &trimmed[..len];
+        tokens.push((at, token));
+        at += len;
+        if token == "macdef" {
+            // The macro's name, then its body up to a blank line.
+            let body = &text[at..];
+            at += body.find("\n\n").map_or(body.len(), |end| end + 2);
+            // Marks where the entry's text ends; the body is never read as tokens.
+        }
+    }
+    tokens
+}
+
+/// `.netrc`: one entry for this host, in place of any there were. go and curl use
+/// the first entry for a host, so adding a line after an old one would change
+/// nothing. Every other host's entry stays, as do comments.
+pub(super) fn netrc(existing: &str, host: &str, line: &str) -> String {
+    let tokens = netrc_tokens(existing);
+    let starts_entry = |token: &str| matches!(token, "machine" | "default" | "macdef");
+
+    // The spans of this host's entries: from `machine host` to the next entry.
+    let mut spans = Vec::new();
+    for (i, (start, token)) in tokens.iter().enumerate() {
+        if *token != "machine" || tokens.get(i + 1).map(|(_, name)| *name) != Some(host) {
+            continue;
+        }
+        // To the end of its last field, so a comment after it stays.
+        let fields = tokens[i + 2..]
+            .iter()
+            .take_while(|(_, token)| !starts_entry(token));
+        let last = fields.last().map_or(&tokens[i + 1], |field| field);
+        let mut end = last.0 + last.1.len();
+        if existing[end..].starts_with("\r\n") {
+            end += 2;
+        } else if existing[end..].starts_with('\n') {
+            end += 1;
+        }
+        spans.push((*start, end));
+    }
+
+    let mut text = String::with_capacity(existing.len() + line.len() + 1);
+    let mut copied = 0;
+    for (i, (start, end)) in spans.iter().enumerate() {
+        text.push_str(&existing[copied..*start]);
+        if i == 0 {
+            text.push_str(line);
+            text.push('\n');
+        }
+        copied = *end;
+    }
+    text.push_str(&existing[copied..]);
+    if spans.is_empty() {
+        // `default` matches every host, and whatever follows it is never read.
+        let at = tokens
+            .iter()
+            .find(|(_, token)| *token == "default")
+            .map_or(text.len(), |(start, _)| *start);
+        let mut new = format!("{line}\n");
+        if at > 0 && !text[..at].ends_with('\n') {
+            new.insert(0, '\n');
+        }
+        text.insert_str(at, &new);
+    }
+    text
+}
+
 /// Whether a file is one `setup` wrote: its template, line for line, apart from
 /// the URL and the token, which change between runs. Anything else has someone
 /// else's work in it, even if `setup` wrote it first.
@@ -550,6 +637,96 @@ mod tests {
         );
         let twice = pip_conf(&once, "http://ak.test/", Some("ak.test")).text;
         assert_eq!(once, twice);
+    }
+
+    const NETRC_LINE: &str = "machine ak.test login __token__ password new";
+
+    #[test]
+    fn netrc_from_nothing() {
+        assert_eq!(netrc("", "ak.test", NETRC_LINE), format!("{NETRC_LINE}\n"));
+    }
+
+    #[test]
+    fn netrc_replaces_only_this_hosts_entry() {
+        let existing = "# mine\nmachine a.test login u password p1\n\
+                        machine ak.test login __token__ password old\n\
+                        machine b.test login v password p2\n";
+        assert_eq!(
+            netrc(existing, "ak.test", NETRC_LINE),
+            format!(
+                "# mine\nmachine a.test login u password p1\n{NETRC_LINE}\n\
+                 machine b.test login v password p2\n"
+            )
+        );
+    }
+
+    #[test]
+    fn netrc_replaces_an_entry_on_several_lines_and_every_repeat() {
+        let existing = "machine ak.test\n  login u\n  password old\nmachine b.test login v password p\n\
+                        machine ak.test login w password older\n";
+        assert_eq!(
+            netrc(existing, "ak.test", NETRC_LINE),
+            format!("{NETRC_LINE}\nmachine b.test login v password p\n")
+        );
+    }
+
+    #[test]
+    fn netrc_handles_entries_sharing_a_line() {
+        let existing = "machine a.test login u password p machine ak.test login x password old machine b.test login v password q\n";
+        let text = netrc(existing, "ak.test", NETRC_LINE);
+        assert!(text.contains("machine a.test login u password p"), "{text}");
+        assert!(text.contains("machine b.test login v password q"), "{text}");
+        assert!(text.contains(NETRC_LINE), "{text}");
+        assert!(!text.contains("old"), "{text}");
+    }
+
+    #[test]
+    fn netrc_keeps_a_comment_after_the_entry_it_replaces() {
+        let existing =
+            "machine ak.test login u password old\n# about b\nmachine b.test login v password p\n";
+        assert_eq!(
+            netrc(existing, "ak.test", NETRC_LINE),
+            format!("{NETRC_LINE}\n# about b\nmachine b.test login v password p\n")
+        );
+    }
+
+    #[test]
+    fn netrc_goes_before_a_default_entry_which_ends_the_search() {
+        let existing = "machine a.test login u password p\ndefault login d password dd\n";
+        assert_eq!(
+            netrc(existing, "ak.test", NETRC_LINE),
+            format!(
+                "machine a.test login u password p\n{NETRC_LINE}\ndefault login d password dd\n"
+            )
+        );
+    }
+
+    #[test]
+    fn netrc_does_not_read_a_macro_body_or_a_comment_as_an_entry() {
+        let existing = "# machine ak.test login c password comment\n\
+                        macdef init\nmachine ak.test login m password macro\n\n\
+                        machine b.test login v password p\n";
+        let text = netrc(existing, "ak.test", NETRC_LINE);
+        assert!(text.contains("password comment"), "{text}");
+        assert!(text.contains("password macro"), "{text}");
+        assert!(text.ends_with(&format!("{NETRC_LINE}\n")), "{text}");
+    }
+
+    #[test]
+    fn netrc_only_matches_the_whole_host() {
+        let existing =
+            "machine ak.test:8443 login u password p\nmachine xak.test login v password q\n";
+        let text = netrc(existing, "ak.test", NETRC_LINE);
+        assert!(text.starts_with(existing), "{text}");
+        assert!(text.contains(NETRC_LINE), "{text}");
+    }
+
+    #[test]
+    fn netrc_a_last_line_with_no_ending() {
+        assert_eq!(
+            netrc("machine a.test login u password p", "ak.test", NETRC_LINE),
+            format!("machine a.test login u password p\n{NETRC_LINE}\n")
+        );
     }
 
     #[test]
