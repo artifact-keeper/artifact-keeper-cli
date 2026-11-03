@@ -1765,9 +1765,18 @@ async fn update_repo_security(
         )
         .into());
     }
-    if settings.proxy_scan_action.is_some() {
-        refuse_flags_before_1_11(&["--proxy-scan-action"], global).await?;
+    // A 1.10 server stores fail_closed and fail_open, and turns record_only into
+    // fail_open, which is the reverse of keeping a record of what it let through.
+    if settings.proxy_scan_action.as_deref() == Some("record_only")
+        && let Some(version) = crate::commands::helpers::server_before_1_11(global).await
+    {
+        return Err(AkError::ServerError(format!(
+            "--proxy-scan-action record_only needs a server on 1.11 or newer. This one is \
+             {version}, which would store fail_open instead. Nothing was changed."
+        ))
+        .into());
     }
+    let wanted_action = settings.proxy_scan_action.clone();
 
     let client = client_for(global)?;
 
@@ -1795,6 +1804,18 @@ async fn update_repo_security(
         .into_inner();
 
     spinner.finish_and_clear();
+
+    // The version check can't tell if the server's version couldn't be read.
+    if let Some(wanted) = &wanted_action
+        && wanted != &config.proxy_scan_action
+    {
+        return Err(AkError::ServerError(format!(
+            "The server stored proxy_scan_action {}, not {wanted}. Check this repository's \
+             security config.",
+            config.proxy_scan_action
+        ))
+        .into());
+    }
 
     emit_mutation_raw(
         raw.as_deref(),

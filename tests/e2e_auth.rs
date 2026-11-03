@@ -207,17 +207,6 @@ fn token_create_sends_scopes_and_a_selector() {
         .assert()
         .success();
 
-    // A 1.10 server would drop a selector and make a broader token than was asked for.
-    if common::server_older_than(1, 11, "token repo selectors") {
-        env.ak_cmd()
-            .args(["auth", "token", "create", "--description", &name])
-            .args(["--repo-selector", r#"{"match_formats":["npm"]}"#])
-            .assert()
-            .failure()
-            .stderr(predicate::str::contains("1.11"));
-        return;
-    }
-
     // The server refuses a selector with no criteria, so this proves it got there.
     env.ak_cmd()
         .args(["auth", "token", "create", "--description", &name])

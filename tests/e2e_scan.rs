@@ -428,23 +428,9 @@ fn security_update_changes_only_what_it_is_given() {
 
     assert!(stderr_of(&env, &["scan", "security", "update", &repo]).contains("Nothing to update"));
 
-    if common::server_older_than(1, 11, "proxy_scan_action") {
-        assert!(
-            stderr_of(
-                &env,
-                &[
-                    "scan",
-                    "security",
-                    "update",
-                    &repo,
-                    "--proxy-scan-action",
-                    "record_only"
-                ]
-            )
-            .contains("1.11")
-        );
-    } else {
-        let action = json_of(
+    // Every supported server stores these two.
+    for action in ["fail_closed", "fail_open"] {
+        let stored = json_of(
             &env,
             &[
                 "scan",
@@ -452,9 +438,27 @@ fn security_update_changes_only_what_it_is_given() {
                 "update",
                 &repo,
                 "--proxy-scan-action",
-                "record_only",
+                action,
             ],
         );
+        assert_eq!(stored["proxy_scan_action"], action);
+    }
+
+    // A 1.10 server would store fail_open in place of this.
+    let record_only = [
+        "scan",
+        "security",
+        "update",
+        &repo,
+        "--proxy-scan-action",
+        "record_only",
+    ];
+    if common::server_older_than(1, 11, "proxy_scan_action record_only") {
+        assert!(stderr_of(&env, &record_only).contains("1.11"));
+        let shown = json_of(&env, &["scan", "security", "show", &repo]);
+        assert_eq!(shown["config"]["proxy_scan_action"], "fail_open");
+    } else {
+        let action = json_of(&env, &record_only);
         assert_eq!(action["proxy_scan_action"], "record_only");
     }
 }
