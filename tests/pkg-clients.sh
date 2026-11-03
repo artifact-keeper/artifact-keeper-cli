@@ -12,6 +12,10 @@
 #   AK_BIN           ak binary, default target/debug/ak
 #   CONTAINER        docker or podman, default docker
 #   AK_PASSWORD      admin password, default the E2E stack's
+#   BOX_ARGS         `run` arguments for each client, default --network host. Set it to use
+#                    a network of your own, and limit CPUs
+#   BOX_PREFIX       name prefix for each client container, default ak-pkg
+#   CLIENT_BASE      backend URL as clients see it, default E2E_BACKEND_URL
 set -uo pipefail
 
 BASE="${E2E_BACKEND_URL:-http://localhost:8081}"
@@ -43,12 +47,16 @@ major, minor = json.load(sys.stdin)["version"].split(".")[:2]
 sys.exit(0 if (int(major), int(minor)) >= (1, 11) else 1)'
 }
 
-# box <image> <dir> <script>: run a shell script in a container, on the host's network,
-# with <dir> at /w and the credentials in its environment.
+# box <image> <dir> <script>: run a shell script in a container, with <dir> at /w and the
+# credentials in its environment.
+BOX_N=0
 box() {
   local image="$1" dir="$2" script="$3"
-  "$CONTAINER" run --rm --network host -v "$dir:/w:Z" -w /w \
-    -e AK_TOKEN -e ADMIN_PASSWORD -e BASE="$BASE" -e REPO="${REPO:-}" -e RUN_ID="$RUN_ID" \
+  BOX_N=$((BOX_N + 1))
+  # shellcheck disable=SC2086 # BOX_ARGS is several words on purpose
+  "$CONTAINER" run --rm --name "${BOX_PREFIX:-ak-pkg}-$RUN_ID-$BOX_N" ${BOX_ARGS:---network host} \
+    -v "$dir:/w:Z" -w /w \
+    -e AK_TOKEN -e ADMIN_PASSWORD -e BASE="${CLIENT_BASE:-$BASE}" -e REPO="${REPO:-}" -e RUN_ID="$RUN_ID" \
     --entrypoint /bin/sh "$image" -ec "$script"
 }
 
@@ -85,6 +93,9 @@ P
   for f in "$d"/dist/*; do ak pkg pypi publish "$REPO" "$f" || return 1; done
   box docker.io/library/python:3.12-slim "$d" '
     url="${BASE%%://*}://admin:$ADMIN_PASSWORD@${BASE#*://}/pypi/$REPO/simple/"
+    # pip trusts plain http only on localhost.
+    host="${BASE#*://}"; host="${host%%:*}"
+    export PIP_TRUSTED_HOST="$host"
     python -m venv /tmp/v
     /tmp/v/bin/pip -q --disable-pip-version-check install --no-cache-dir --index-url "$url" "demo-ak==1.0.$RUN_ID"
     /tmp/v/bin/python -c "import demo_ak; assert demo_ak.VALUE == 41"
