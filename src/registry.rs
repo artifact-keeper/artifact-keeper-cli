@@ -73,6 +73,17 @@ const SSO_REDIRECT: &str = "A 302 to the identity provider, which the planned \
 const WASM_PASSTHROUGH: &str = "A WASM plugin defines what this does, so `ak api` is the \
                                 right interface";
 
+const BANNER_FIELDS: &[&str] = &[
+    "title",
+    "message",
+    "severity",
+    "target",
+    "link_url",
+    "starts_at",
+    "ends_at",
+    "enabled",
+];
+
 /// Every route with a known place in the CLI. Workstreams add to this. It isn't
 /// complete until the coverage gate says so.
 pub static COMMANDS: &[Op] = &[
@@ -229,6 +240,57 @@ pub static COMMANDS: &[Op] = &[
         "quarantine reject",
         &["reason"],
     ),
+    // ---- projects ----
+    covered("GET", "/api/v1/projects", "project list", &[]),
+    covered(
+        "POST",
+        "/api/v1/projects",
+        "project create",
+        &["key", "name", "description", "quota_bytes"],
+    ),
+    covered("GET", "/api/v1/projects/{id}", "project show", &[]),
+    covered(
+        "PUT",
+        "/api/v1/projects/{id}",
+        "project update",
+        &["name", "description", "quota_bytes"],
+    ),
+    covered("DELETE", "/api/v1/projects/{id}", "project delete", &[]),
+    covered(
+        "GET",
+        "/api/v1/projects/{id}/members",
+        "project members list",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/projects/{id}/members",
+        "project members add",
+        &["principal_type", "principal_id", "actions"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/projects/{id}/members",
+        "project members remove",
+        &["principal_type", "principal_id"],
+    ),
+    // ---- banners ----
+    covered("GET", "/api/v1/banners", "banner active", &["target"]),
+    covered("GET", "/api/v1/admin/banners", "banner list", &[]),
+    covered(
+        "POST",
+        "/api/v1/admin/banners",
+        "banner create",
+        BANNER_FIELDS,
+    ),
+    covered("GET", "/api/v1/admin/banners/{id}", "banner show", &[]),
+    covered(
+        "PUT",
+        "/api/v1/admin/banners/{id}",
+        "banner update",
+        BANNER_FIELDS,
+    ),
+    covered("DELETE", "/api/v1/admin/banners/{id}", "banner delete", &[]),
     // ---- excluded: reachable with `ak api` ----
     excluded("GET", "/api/v1/auth/sso/oidc/{id}/callback", IDP_CALLBACK),
     excluded("GET", "/api/v1/auth/sso/oidc/callback", IDP_CALLBACK),
