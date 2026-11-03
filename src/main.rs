@@ -1,7 +1,5 @@
 use std::process::ExitCode;
 
-use clap::Parser;
-
 mod cli;
 mod commands;
 mod config;
@@ -13,7 +11,7 @@ mod transport;
 #[tokio::main]
 async fn main() -> ExitCode {
     quiet_exit_on_closed_pipe();
-    let cli = cli::Cli::parse();
+    let cli = cli::Cli::parse_args();
     match cli.execute().await.map_err(explain_no_terminal) {
         Ok(()) => ExitCode::SUCCESS,
         // The reader has what it wanted, as with `ak repo list | head -1`.

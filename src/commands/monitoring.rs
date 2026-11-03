@@ -3,7 +3,7 @@ use clap::Subcommand;
 use futures::StreamExt;
 use miette::Result;
 
-use super::client::{client_for, client_for_optional_auth};
+use super::client::{client_for, client_for_public};
 use super::helpers::{new_table, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -77,7 +77,7 @@ fn check_status_str(status: &str, message: Option<&str>) -> String {
 }
 
 pub(crate) async fn health(global: &GlobalArgs) -> Result<()> {
-    let client = client_for_optional_auth(global)?;
+    let client = client_for_public(global)?;
     let spinner = output::spinner("Fetching health status...");
 
     let (resp, raw) = artifact_keeper_sdk::raw::capture(client.health_check().send()).await;

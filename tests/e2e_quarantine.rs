@@ -238,3 +238,82 @@ fn the_attestation_policy_is_shown_on_1_11_and_says_so_on_1_10() {
     assert!(policy["issuers"].is_array(), "{policy}");
     assert!(policy["keys"].is_array(), "{policy}");
 }
+
+/// The server replaces the stored reason on a second hold, so `ak` has to stop it.
+#[test]
+#[ignore = "requires E2E backend"]
+fn holding_twice_keeps_the_first_reason() {
+    let env = TestEnv::setup();
+    let repo = unique("e2e-rehold");
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &repo,
+            "--pkg-format",
+            "generic",
+            "--repo-type",
+            "local",
+        ])
+        .assert()
+        .success();
+    let dir = TempDir::new().unwrap();
+    let file = dir.path().join("q.txt");
+    std::fs::write(&file, "held").unwrap();
+    env.ak_cmd()
+        .args(["artifact", "push", &repo])
+        .arg(&file)
+        .assert()
+        .success();
+    let artifact = format!("{repo}/q.txt");
+
+    env.ak_cmd()
+        .args([
+            "quarantine",
+            "hold",
+            &artifact,
+            "--reason",
+            "first",
+            "--yes",
+        ])
+        .assert()
+        .success();
+    let again = env
+        .ak_cmd()
+        .args(["quarantine", "hold", &artifact, "--yes"])
+        .output()
+        .unwrap();
+    assert_eq!(again.status.code(), Some(2), "{again:?}");
+    assert_eq!(
+        json_of(&env, &["quarantine", "status", &artifact])["quarantine_reason"],
+        "first"
+    );
+
+    let replaced = env
+        .ak_cmd()
+        .args([
+            "quarantine",
+            "hold",
+            &artifact,
+            "--reason",
+            "second",
+            "--yes",
+        ])
+        .output()
+        .unwrap();
+    assert!(replaced.status.success(), "{replaced:?}");
+    assert!(String::from_utf8_lossy(&replaced.stderr).contains("first"));
+    assert_eq!(
+        json_of(&env, &["quarantine", "status", &artifact])["quarantine_reason"],
+        "second"
+    );
+
+    env.ak_cmd()
+        .args(["quarantine", "release", &artifact, "--yes"])
+        .output()
+        .unwrap();
+    env.ak_cmd()
+        .args(["repo", "delete", &repo, "--yes", "--wait"])
+        .assert()
+        .success();
+}

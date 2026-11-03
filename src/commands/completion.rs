@@ -7,8 +7,40 @@ use miette::{IntoDiagnostic, Result};
 
 use crate::cli::Cli;
 
+/// The command tree a user should be told about: without hidden commands, such as
+/// `__registry` and the old names of renamed commands. clap wants
+/// `'static` strings, and this runs once, just before the process exits.
+fn visible_only(cmd: &clap::Command) -> clap::Command {
+    let mut visible = clap::Command::new(cmd.get_name().to_string().leak() as &str)
+        .args(cmd.get_arguments().cloned())
+        .groups(cmd.get_groups().cloned())
+        .subcommands(
+            cmd.get_subcommands()
+                .filter(|sub| !sub.is_hide_set())
+                .map(visible_only),
+        )
+        .visible_aliases(
+            cmd.get_visible_aliases()
+                .map(|alias| &*alias.to_string().leak())
+                .collect::<Vec<&'static str>>(),
+        );
+    if let Some(about) = cmd.get_about() {
+        visible = visible.about(about.clone());
+    }
+    if let Some(long_about) = cmd.get_long_about() {
+        visible = visible.long_about(long_about.clone());
+    }
+    if let Some(after_help) = cmd.get_after_help() {
+        visible = visible.after_help(after_help.clone());
+    }
+    if let Some(version) = cmd.get_version() {
+        visible = visible.version(&*version.to_string().leak());
+    }
+    visible
+}
+
 pub fn execute(shell: Shell) -> Result<()> {
-    let mut cmd = Cli::command();
+    let mut cmd = visible_only(&Cli::command());
     // clap_complete panics if its writer fails, as stdout does with `| head -1`.
     let mut script = Vec::new();
     clap_complete::generate(shell, &mut cmd, "ak", &mut script);
@@ -19,7 +51,7 @@ pub fn generate_man_pages(dir: &str) -> Result<()> {
     let out = Path::new(dir);
     fs::create_dir_all(out).into_diagnostic()?;
 
-    let cmd = Cli::command();
+    let cmd = visible_only(&Cli::command());
 
     write_man_page(&cmd, out, "ak.1")?;
 
