@@ -215,7 +215,9 @@ async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagRe
 /// This reads the one field it needs instead of using the generated client, so
 /// it still works on an old server whose response no longer fits the SDK types,
 /// which is exactly when the answer matters.
-async fn fetch_server_version(instance: &InstanceConfig) -> std::result::Result<String, String> {
+pub(super) async fn fetch_server_version(
+    instance: &InstanceConfig,
+) -> std::result::Result<String, String> {
     let builder = reqwest::ClientBuilder::new()
         .connect_timeout(DIAG_CONNECT_TIMEOUT)
         .timeout(DIAG_REQUEST_TIMEOUT);
@@ -289,7 +291,7 @@ fn server_support(server: &str, api: &str) -> ServerSupport {
     }
 }
 
-fn major_minor(version: &str) -> Option<(u64, u64)> {
+pub(super) fn major_minor(version: &str) -> Option<(u64, u64)> {
     let mut parts = version.trim().trim_start_matches('v').split('.');
     let major = parts.next()?.parse().ok()?;
     let minor = parts.next()?.parse().ok()?;

@@ -15,6 +15,17 @@ fn json_of(output: std::process::Output) -> Value {
     serde_json::from_slice(&output.stdout).expect("JSON output")
 }
 
+/// Run a command that must fail, and return its stderr on one line.
+fn failure_of(mut command: assert_cmd::Command) -> String {
+    let output = command.output().unwrap();
+    assert!(!output.status.success());
+    String::from_utf8_lossy(&output.stderr)
+        .replace('│', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// A generic repository holding one artifact, for a test that needs one.
 fn repo_with_artifact(env: &common::TestEnv, name: &str) -> (String, String) {
     let key = format!("e2e-{name}-{}", std::process::id());
@@ -67,6 +78,25 @@ fn a_pull_shows_in_downloads_and_filters_work() {
         .arg(dir.path().join("out"))
         .assert()
         .success();
+
+    if common::server_older_than(1, 11, "--repo and --source on downloads") {
+        // It ignores them, so ak must not pass off its answer as filtered.
+        for flags in [["--repo", key.as_str()], ["--source", "proxy"]] {
+            let mut command = env.ak_cmd();
+            command.args(["admin", "downloads", "list"]).args(flags);
+            let stderr = failure_of(command);
+            assert!(stderr.contains("1.11 or newer"), "{stderr}");
+        }
+        let body = json_of(
+            env.ak_cmd()
+                .args(["admin", "downloads", "list"])
+                .args(["--artifact", &format!("{key}/a.bin")])
+                .output()
+                .unwrap(),
+        );
+        assert_eq!(body["total"], 1, "{body}");
+        return;
+    }
 
     let body = json_of(
         env.ak_cmd()
@@ -155,6 +185,18 @@ fn blast_radius_of_an_artifact_and_a_cve() {
 #[ignore = "requires E2E backend"]
 fn a_quarantine_hold_shows_in_holds() {
     let env = common::TestEnv::setup();
+    if common::server_older_than(1, 11, "admin holds") {
+        for args in [
+            ["admin", "holds", "summary"],
+            ["admin", "holds", "quarantine"],
+        ] {
+            let mut command = env.ak_cmd();
+            command.args(args);
+            let stderr = failure_of(command);
+            assert!(stderr.contains("1.11 or newer"), "{stderr}");
+        }
+        return;
+    }
     let (key, id) = repo_with_artifact(&env, "holds");
     env.ak_cmd()
         .args(["quarantine", "hold", &id, "--reason", "e2e"])
@@ -198,6 +240,13 @@ fn a_quarantine_hold_shows_in_holds() {
 #[ignore = "requires E2E backend"]
 fn npm_feed_status_reads() {
     let env = common::TestEnv::setup();
+    if common::server_older_than(1, 11, "admin npm-feed") {
+        let mut command = env.ak_cmd();
+        command.args(["admin", "npm-feed", "status"]);
+        let stderr = failure_of(command);
+        assert!(stderr.contains("1.11 or newer"), "{stderr}");
+        return;
+    }
     let body = json_of(
         env.ak_cmd()
             .args(["admin", "npm-feed", "status"])

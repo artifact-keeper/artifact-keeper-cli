@@ -40,7 +40,7 @@ These can change what you see, or break a script, coming from 1.2:
 - `ak repo allowlist get|set|delete` for the package allowlist of a virtual conda repository, `ak repo upstream-filter get|set|delete`, `ak repo egress-proxy get|set` and `ak repo npm-scope-policy get|set` for remote repositories, `ak repo capabilities`, `ak repo storage [--tree]` and `ak repo storage-gc`.
 - `ak repo upstream-auth` takes `aws_ecr` and `aws_codeartifact` with `--aws` (JSON), `--allow-public-with-upstream-credentials` and `--password-stdin`. `ak repo list` takes `--project`.
 - `ak repo delete --wait` follows a background deletion to its end, and `--wait-timeout` limits how long it waits (default 30 minutes).
-- Admin observability commands, with every filter the API has: `ak admin audit list`, `ak admin downloads list|by-ip|by-user`, `ak admin blast-radius artifact|cve [--accessible-users]`, `ak admin proxy-scan-verdict show|delete`, `ak admin npm-feed status`, `ak admin holds quarantine|summary`, `ak age-gate reopen` and `ak quality-gate checks --all`.
+- Admin observability commands, with every filter the API has: `ak admin audit list`, `ak admin downloads list|by-ip|by-user`, `ak admin blast-radius artifact|cve [--accessible-users]`, `ak admin proxy-scan-verdict show|delete`, `ak admin npm-feed status`, `ak admin holds quarantine|summary`, `ak age-gate reopen` and `ak quality-gate checks --all`. On a 1.10 server, `admin holds` and `admin npm-feed` say they need 1.11, and `admin downloads --repo` or `--source` fail rather than print an unfiltered list, because 1.10 ignores those filters.
 
 ### Changed
 
