@@ -868,6 +868,55 @@ pub static COMMANDS: &[Op] = &[
         "environment advisory-transitions",
         &["advisory", "kind", "since", "until", "limit"],
     ),
+    // ---- image builds ----
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/image-builds",
+        "image-build list",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/image-builds",
+        "image-build create",
+        &["image", "tag", "spec"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/image-builds/{id}",
+        "image-build show",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/image-builds/{id}/log",
+        "image-build log",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/image-builds/render",
+        "image-build render",
+        &["spec"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/image-builds/settings",
+        "image-build settings",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/image-builds/base-info",
+        "image-build base-info",
+        &["image"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/image-inspect",
+        "image-build inspect",
+        &["image", "reference"],
+    ),
     // ---- excluded: reachable with `ak api` ----
     excluded("GET", "/api/v1/auth/sso/oidc/{id}/callback", IDP_CALLBACK),
     excluded("GET", "/api/v1/auth/sso/oidc/callback", IDP_CALLBACK),

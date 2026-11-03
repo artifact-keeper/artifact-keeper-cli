@@ -20,6 +20,7 @@ pub mod email_subscriptions;
 pub mod environment;
 pub mod group;
 pub mod helpers;
+pub mod image_build;
 pub mod import;
 pub mod instance;
 pub mod label;

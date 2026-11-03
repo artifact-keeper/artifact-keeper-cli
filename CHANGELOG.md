@@ -47,6 +47,7 @@ These can change what you see, or break a script, coming from 1.2:
 - Admin observability commands, with every filter the API has: `ak admin audit list`, `ak admin downloads list|by-ip|by-user`, `ak admin blast-radius artifact|cve [--accessible-users]`, `ak admin proxy-scan-verdict show|delete`, `ak admin npm-feed status`, `ak admin holds quarantine|summary`, `ak age-gate reopen` and `ak quality-gate checks --all`.
 - `ak bundle` covers offline bundles: `format`, `validate-manifest`, `jobs list|show|items`, `export` and `import`. `validate-manifest` exits 1 for an invalid manifest. The 1.11.10 server answers 501 to `export` and `import`, and the command shows that message. Needs a 1.11 server.
 - `ak environment` stores lockfiles and searches them: `ingest`, `list`, `show`, `delete`, `advisories`, `lookup <purl>` and `advisory-transitions`. Commands take an environment's name or its ID. Needs a 1.11 server.
+- `ak image-build` builds container images on the server and inspects pushed ones: `list`, `show`, `log`, `create`, `render`, `settings`, `base-info` and `inspect`. A spec comes from flags (`--base-image`, `--apt`, `--pip`, `--conda`, `--env`, `--label`, `--user` and more), from `--spec` as JSON, or both. `render` checks a spec and prints the Containerfile without building. `create` needs a server with a builder configured. Needs a 1.11 server.
 
 ### Changed
 
