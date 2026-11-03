@@ -140,6 +140,7 @@ async fn a_server_message_saying_not_a_terminal_is_shown_as_it_is() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("ak::server_error"), "{stderr}");
-    assert!(stderr.contains("not a"), "{stderr}");
+    // One word, because the message wraps at the width of the output.
+    assert!(stderr.contains("terminal"), "{stderr}");
     assert!(!stderr.contains("--no-input"), "{stderr}");
 }
