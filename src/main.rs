@@ -6,6 +6,9 @@ mod commands;
 mod config;
 mod error;
 mod output;
+// Read by its own tests now, and by `ak __registry` when the coverage gate lands.
+#[allow(dead_code)]
+mod registry;
 mod transport;
 
 #[tokio::main]
