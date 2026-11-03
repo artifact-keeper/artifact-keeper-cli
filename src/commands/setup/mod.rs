@@ -419,22 +419,57 @@ fn write_config_file(path: &Path, content: &str, description: &str) -> Result<()
     let target = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
 
     if target.exists() {
-        let backup = target.with_extension("bak");
-        eprintln!(
-            "Backing up existing {} to {}",
-            description,
-            backup.display()
-        );
-        // The file being replaced may hold an older token, so the backup is
-        // owner-only from creation, whatever the original's mode was.
         let existing = std::fs::read(&target).into_diagnostic()?;
-        crate::config::write_private_atomic(&backup, &existing)?;
+        // Nothing is being replaced, so there's nothing to keep.
+        if existing != content.as_bytes() {
+            let backup = write_backup(&target, &existing)?;
+            eprintln!("Backed up existing {} to {}", description, backup.display());
+        }
     }
 
     // Owner-only from the moment the file exists: this content has a token in it.
     crate::config::write_private_atomic(&target, content.as_bytes())?;
     eprintln!("Wrote {}: {}", description, path.display());
     Ok(())
+}
+
+/// Keep a copy of a file about to be replaced, in a new file: `name.bak`, then
+/// `name.bak.1` and so on. An earlier backup may be the only copy of what the user
+/// had, so it's never overwritten, whichever process got there first.
+///
+/// The file may hold a token, so its backup is owner-only from creation, or
+/// stricter if the original is.
+fn write_backup(target: &Path, content: &[u8]) -> Result<PathBuf> {
+    use std::io::Write;
+
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+        let original = std::fs::metadata(target).into_diagnostic()?;
+        options.mode(original.permissions().mode() & 0o600);
+    }
+
+    for attempt in 0u32.. {
+        let backup = match attempt {
+            0 => target.with_extension("bak"),
+            n => target.with_extension(format!("bak.{n}")),
+        };
+        let mut file = match options.open(&backup) {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e).into_diagnostic(),
+        };
+        // A partial backup would look like a good one, and the caller is about to
+        // replace the original, so it stops here if this fails.
+        if let Err(e) = file.write_all(content).and_then(|()| file.sync_all()) {
+            let _ = std::fs::remove_file(&backup);
+            return Err(e).into_diagnostic();
+        }
+        return Ok(backup);
+    }
+    Err(AkError::ConfigError(format!("No free backup name for {}", target.display())).into())
 }
 
 /// Stands in for the token in every config template, and is what the user sees
@@ -1461,6 +1496,66 @@ mod tests {
         let backup = dir.path().join("pip.bak");
         assert_eq!(std::fs::read_to_string(&backup).unwrap(), "old-token");
         assert_eq!(mode(&backup), 0o600);
+    }
+
+    #[test]
+    fn write_config_file_never_overwrites_a_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pip.conf");
+        std::fs::write(&path, "original").unwrap();
+
+        write_config_file(&path, "second", "pip.conf").unwrap();
+        write_config_file(&path, "third", "pip.conf").unwrap();
+        write_config_file(&path, "fourth", "pip.conf").unwrap();
+
+        let read = |name: &str| std::fs::read_to_string(dir.path().join(name)).unwrap();
+        assert_eq!(read("pip.bak"), "original");
+        assert_eq!(read("pip.bak.1"), "second");
+        assert_eq!(read("pip.bak.2"), "third");
+        assert_eq!(read("pip.conf"), "fourth");
+    }
+
+    #[test]
+    fn write_config_file_leaves_a_backup_the_user_already_had() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pip.conf");
+        std::fs::write(&path, "original").unwrap();
+        std::fs::write(dir.path().join("pip.bak"), "the user's own").unwrap();
+
+        write_config_file(&path, "new", "pip.conf").unwrap();
+
+        let read = |name: &str| std::fs::read_to_string(dir.path().join(name)).unwrap();
+        assert_eq!(read("pip.bak"), "the user's own");
+        assert_eq!(read("pip.bak.1"), "original");
+    }
+
+    #[test]
+    fn write_config_file_with_the_same_content_makes_no_backup() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pip.conf");
+        std::fs::write(&path, "same").unwrap();
+
+        write_config_file(&path, "same", "pip.conf").unwrap();
+
+        assert!(!dir.path().join("pip.bak").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn write_config_file_backup_keeps_a_stricter_mode() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pip.conf");
+        std::fs::write(&path, "original").unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o400)).unwrap();
+
+        write_config_file(&path, "new", "pip.conf").unwrap();
+
+        let mode = std::fs::metadata(dir.path().join("pip.bak"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, 0o400);
     }
 
     #[cfg(unix)]
