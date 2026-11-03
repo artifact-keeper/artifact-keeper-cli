@@ -6,10 +6,14 @@
 //! route adds nothing over `ak api GET`, so those have no helper.
 
 mod alpine;
+mod ansible;
 mod archive;
 mod bazel;
 mod cargo;
+mod chef;
+mod cocoapods;
 mod composer;
+mod conan;
 mod conda;
 mod cran;
 mod debian;
@@ -17,16 +21,23 @@ mod gems;
 mod go;
 mod helm;
 mod hex;
+mod huggingface;
 mod incus;
 mod ivy;
+mod jetbrains;
+mod lfs;
 mod maven;
 mod npm;
 mod nuget;
 mod pacman;
+mod proto;
 mod pub_dart;
+mod puppet;
 mod pypi;
 mod rpm;
+mod swift;
 mod terraform;
+mod vscode;
 mod wire;
 
 use clap::{Args, Subcommand};
@@ -50,6 +61,39 @@ pub struct PkgArgs {
 
 #[derive(Subcommand)]
 enum PkgCommand {
+    /// Ansible collections
+    #[command(subcommand)]
+    Ansible(ansible::AnsibleCommand),
+    /// Chef cookbooks
+    #[command(subcommand)]
+    Chef(chef::ChefCommand),
+    /// CocoaPods pods
+    #[command(subcommand)]
+    Cocoapods(cocoapods::CocoapodsCommand),
+    /// Conan recipes and packages
+    #[command(subcommand)]
+    Conan(conan::ConanCommand),
+    /// Hugging Face model files
+    #[command(subcommand)]
+    Huggingface(huggingface::HuggingfaceCommand),
+    /// JetBrains plugins
+    #[command(subcommand)]
+    Jetbrains(jetbrains::JetbrainsCommand),
+    /// Git LFS objects and locks
+    #[command(subcommand)]
+    Lfs(lfs::LfsCommand),
+    /// Protobuf modules, over the Buf registry API
+    #[command(subcommand)]
+    Proto(proto::ProtoCommand),
+    /// Puppet modules
+    #[command(subcommand)]
+    Puppet(puppet::PuppetCommand),
+    /// Swift packages
+    #[command(subcommand)]
+    Swift(swift::SwiftCommand),
+    /// VS Code extensions
+    #[command(subcommand)]
+    Vscode(vscode::VscodeCommand),
     /// Bazel modules
     #[command(subcommand)]
     Bazel(bazel::BazelCommand),
@@ -120,6 +164,17 @@ enum PkgCommand {
 
 pub async fn execute(args: PkgArgs, global: &GlobalArgs) -> Result<()> {
     match args.format {
+        PkgCommand::Ansible(c) => ansible::execute(c, global).await,
+        PkgCommand::Chef(c) => chef::execute(c, global).await,
+        PkgCommand::Cocoapods(c) => cocoapods::execute(c, global).await,
+        PkgCommand::Conan(c) => conan::execute(c, global).await,
+        PkgCommand::Huggingface(c) => huggingface::execute(c, global).await,
+        PkgCommand::Jetbrains(c) => jetbrains::execute(c, global).await,
+        PkgCommand::Lfs(c) => lfs::execute(c, global).await,
+        PkgCommand::Proto(c) => proto::execute(c, global).await,
+        PkgCommand::Puppet(c) => puppet::execute(c, global).await,
+        PkgCommand::Swift(c) => swift::execute(c, global).await,
+        PkgCommand::Vscode(c) => vscode::execute(c, global).await,
         PkgCommand::Bazel(c) => bazel::execute(c, global).await,
         PkgCommand::Composer(c) => composer::execute(c, global).await,
         PkgCommand::Cran(c) => cran::execute(c, global).await,

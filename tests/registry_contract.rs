@@ -214,6 +214,12 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
         ),
         (
             "POST",
+            "/lfs/{repo}/objects/batch",
+            200,
+            json!({"objects": [{"actions": {"upload": {"href": "x"}}}]}),
+        ),
+        (
+            "POST",
             "/incus/{repo}/images/{product}/{version}/{file}/uploads",
             201,
             json!({"session_id": UUID}),
@@ -782,6 +788,38 @@ fn pkg_hints(home: &std::path::Path, line: &Line) -> Vec<(&'static str, String)>
             &home.join("m.zip"),
             &[("example.com/d@v1.0.0/go.mod", b"module example.com/d\n")],
         ))),
+        "pkg chef publish" => {
+            let meta = br#"{"name":"demo","version":"1.0.0"}"#;
+            args.push(as_file(fx::tar_gz(
+                &home.join("demo.tgz"),
+                &[("demo/metadata.json", meta)],
+            )));
+        }
+        "pkg puppet publish" => {
+            let meta = br#"{"name":"acme-demo","version":"1.0.0"}"#;
+            args.push(as_file(fx::tar_gz(
+                &home.join("acme-demo.tgz"),
+                &[("acme-demo/metadata.json", meta)],
+            )));
+        }
+        "pkg huggingface upload" if path.contains("{namespace}") => {
+            args.push(("model", "acme/demo".to_string()));
+        }
+        "pkg huggingface upload" => args.push(("model", "demo".to_string())),
+        "pkg conan upload" | "pkg conan remove" => {
+            args.push(("reference", "demo/1.0".to_string()));
+            if path.contains("/revisions/{revision}") {
+                args.push(("revision", "rev".to_string()));
+            }
+            if path.ends_with("/packages") {
+                args.push(("all_packages", String::new()));
+            }
+            if path.contains("{package_id}") {
+                args.push(("package_id", "pid".to_string()));
+                args.push(("package_revision", "prev".to_string()));
+            }
+        }
+        "pkg proto publish" => args.push(("module", "acme/demo".to_string())),
         "pkg npm audit" => {
             let kind = if path.ends_with("quick") {
                 "quick"
