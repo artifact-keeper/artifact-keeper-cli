@@ -166,6 +166,48 @@ pub enum AkError {
     Http(#[from] reqwest::Error),
 }
 
+/// Exit codes, as `ak --help` and the README list them. `ak api` has its own table,
+/// in `ak api --help`, because it reports an HTTP exchange rather than a command.
+pub const EXIT_GENERIC: u8 = 1;
+pub const EXIT_USAGE: u8 = 2;
+pub const EXIT_NETWORK: u8 = 3;
+pub const EXIT_AUTH: u8 = 4;
+pub const EXIT_NOT_FOUND: u8 = 5;
+pub const EXIT_SERVER: u8 = 6;
+pub const EXIT_REPORTED_FAILURE: u8 = 7;
+
+impl AkError {
+    pub fn exit_code(&self) -> u8 {
+        match self {
+            Self::NoInstance
+            | Self::InstanceNotFound(_)
+            | Self::Usage(_)
+            | Self::CaCert(_)
+            | Self::InsecureTransport(_)
+            | Self::NoTerminal
+            | Self::ConfirmationRefused(_) => EXIT_USAGE,
+            Self::NetworkError(_) => EXIT_NETWORK,
+            Self::NotAuthenticated(_) | Self::Forbidden(_) => EXIT_AUTH,
+            Self::NotFound(_) => EXIT_NOT_FOUND,
+            Self::ServerError(_) | Self::UnsupportedServer(_) => EXIT_SERVER,
+            Self::ReportedFailure(_) | Self::PromotionBlocked(_) => EXIT_REPORTED_FAILURE,
+            Self::Http(e) => match e.status().map(|status| status.as_u16()) {
+                Some(401 | 403) => EXIT_AUTH,
+                Some(404) => EXIT_NOT_FOUND,
+                Some(_) => EXIT_SERVER,
+                None if e.is_decode() => EXIT_SERVER,
+                None => EXIT_NETWORK,
+            },
+            Self::ConfigError(_)
+            | Self::Local(_)
+            | Self::SetupToken(_)
+            | Self::SetupFileNotOurs(_)
+            | Self::SetupFileNotMerged(_, _)
+            | Self::Io(_) => EXIT_GENERIC,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

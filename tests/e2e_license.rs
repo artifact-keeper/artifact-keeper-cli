@@ -79,7 +79,7 @@ fn a_policy_decides_the_check_and_is_gone_after_delete() {
         .args(["license", "check", "--licenses", "GPL-3.0", "--repo", &repo])
         .output()
         .unwrap();
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(7));
     let denied: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(denied["compliant"], false);
     assert!(

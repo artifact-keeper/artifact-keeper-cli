@@ -232,7 +232,7 @@ async fn validate_manifest(manifest: &str, global: &GlobalArgs) -> Result<()> {
         );
     }
     if !report.valid {
-        std::process::exit(1);
+        std::process::exit(crate::error::EXIT_REPORTED_FAILURE.into());
     }
     Ok(())
 }

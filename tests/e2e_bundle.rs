@@ -83,7 +83,7 @@ fn a_valid_manifest_passes() {
 
 #[test]
 #[ignore = "requires E2E backend"]
-fn an_invalid_manifest_is_reported_and_exits_1() {
+fn an_invalid_manifest_is_reported_and_exits_7() {
     if common::server_older_than(1, 11, "bundles") {
         return;
     }
@@ -96,7 +96,7 @@ fn an_invalid_manifest_is_reported_and_exits_1() {
         .ak_cmd()
         .args(["bundle", "validate-manifest", file.to_str().unwrap()])
         .assert()
-        .code(1)
+        .code(7)
         .get_output()
         .stdout
         .clone();
@@ -118,7 +118,7 @@ fn an_invalid_manifest_is_reported_and_exits_1() {
             file.to_str().unwrap(),
         ])
         .assert()
-        .code(1)
+        .code(7)
         .stdout(contains("Problems:"));
 }
 

@@ -83,7 +83,7 @@ async fn export_shows_the_servers_501() {
     )
     .await;
     let output = m.ak(&["bundle", "export", "--repo", "a"]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(6));
     let stderr = mock::unwrapped(&output.stderr);
     assert!(stderr.contains("501"), "{stderr}");
     assert!(stderr.contains("is not implemented"), "{stderr}");
@@ -100,7 +100,7 @@ async fn import_posts_and_shows_the_servers_501() {
     )
     .await;
     let output = m.ak(&["bundle", "import"]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(6));
     let stderr = mock::unwrapped(&output.stderr);
     assert!(stderr.contains("is not implemented"), "{stderr}");
     assert!(m.last_body("POST").await.is_empty());
@@ -133,7 +133,7 @@ async fn validate_sends_the_file_unchanged_and_exits_0_when_valid() {
 }
 
 #[tokio::test]
-async fn validate_prints_the_report_and_exits_1_when_invalid() {
+async fn validate_prints_the_report_and_exits_7_when_invalid() {
     let m = Mocked::start().await;
     m.respond(
         "POST",
@@ -152,7 +152,7 @@ async fn validate_prints_the_report_and_exits_1_when_invalid() {
         "validate-manifest",
         file.to_str().unwrap(),
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(7));
     let shown: Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(shown, report(false));
 }

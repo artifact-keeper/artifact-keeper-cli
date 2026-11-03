@@ -499,7 +499,7 @@ async fn copy_binds_the_promotion_fields_and_refuses_them_without_a_promotion() 
     );
 
     let output = f.ak(&["artifact", "copy", "s/a.txt", "t/b.txt", "--notes", "why"]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
 }
 
 #[tokio::test]
@@ -545,7 +545,7 @@ async fn a_promotion_a_policy_refused_is_a_failure() {
     )
     .await;
     let output = f.ak(&["artifact", "copy", "s/a.txt", "t"]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(7), "{output:?}");
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("blocked") && stderr.contains("licence"),
@@ -569,7 +569,7 @@ async fn a_quarantined_pull_shows_the_message_and_leaves_no_file() {
     let out = f.dir.path().join("out");
     let out_str = out.display().to_string();
     let output = f.ak(&["artifact", "pull", "r", "a.txt", "-o", &out_str]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("409") && stderr.contains("quarantined"),
@@ -723,7 +723,7 @@ async fn skip_if_present_is_refused_on_a_server_that_would_ignore_it() {
     .await;
     let file = f.file();
     let output = f.ak(&["artifact", "push", "r", &file, "--skip-if-present"]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
     let requests = f.requests().await;
     assert!(requests.iter().all(|r| r.url.path() == "/health"));
 }

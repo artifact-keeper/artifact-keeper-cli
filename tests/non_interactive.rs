@@ -270,7 +270,7 @@ async fn ak_no_input_takes_the_values_ci_systems_set() {
         let output = ak(&dir, Some(value), &["repo", "list"]);
         assert_eq!(
             output.status.code(),
-            Some(1),
+            Some(6),
             "{value:?}: reached the server"
         );
     }

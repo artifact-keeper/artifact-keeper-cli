@@ -114,7 +114,7 @@ fn promote_blocked_by_a_rule_fails_with_the_reason() {
         .failure()
         .get_output()
         .clone();
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(7));
     let body: Value = serde_json::from_slice(&output.stdout).expect("JSON on stdout");
     assert_eq!(body["promoted"], false);
     assert!(!body["policy_violations"].as_array().unwrap().is_empty());

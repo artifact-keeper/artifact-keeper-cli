@@ -244,7 +244,7 @@ async fn a_failure_in_a_2xx_response_exits_non_zero_with_the_reason() {
             .await;
         let output = mock.ak(case.args);
         let stderr = mock::unwrapped(&output.stderr);
-        assert_eq!(output.status.code(), Some(1), "{:?}: {stderr}", case.args);
+        assert_eq!(output.status.code(), Some(7), "{:?}: {stderr}", case.args);
         assert!(stderr.contains(case.reason), "{:?}: {stderr}", case.args);
     }
 }
@@ -274,7 +274,7 @@ async fn the_response_prints_before_the_failure() {
     let output = mock.ak(&[
         "admin", "backup", "restore", ID, "--yes", "--format", "json",
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(7));
     let printed: Value = serde_json::from_slice(&output.stdout).expect("JSON on stdout");
     assert_eq!(printed["errors"][0], "archive-incomplete");
 }

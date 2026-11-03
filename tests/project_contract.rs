@@ -72,7 +72,7 @@ async fn update_sends_only_what_was_passed_and_resolves_the_key() {
 async fn update_with_nothing_to_change_sends_nothing() {
     let m = Mocked::start().await;
     let output = m.ak(&["project", "update", UUID]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert!(m.server.received_requests().await.unwrap().is_empty());
 }
 
@@ -82,7 +82,7 @@ async fn an_unknown_key_says_so() {
     m.respond("GET", "/api/v1/projects", 200, json!({"items": []}))
         .await;
     let output = m.ak(&["project", "show", "nope"]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(5));
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("No project with key 'nope'"), "{stderr}");
 }
@@ -143,6 +143,6 @@ async fn a_bad_principal_is_refused_before_any_request() {
         "--actions",
         "read",
     ]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(2));
     assert!(m.server.received_requests().await.unwrap().is_empty());
 }

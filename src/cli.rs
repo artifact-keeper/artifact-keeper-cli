@@ -19,7 +19,17 @@ pub struct GlobalArgs {
     about = "Artifact Keeper CLI — manage artifacts, repositories, and registries",
     version,
     long_about = None,
-    propagate_version = true
+    propagate_version = true,
+    after_help = "Exit codes:
+  0   success
+  1   anything else that failed, such as a file that can't be written
+  2   bad arguments or a value that isn't valid
+  3   network or TLS: no answer from the server
+  4   not logged in, or not allowed (401, 403)
+  5   not found (404)
+  6   any other server error, or a server too old for the command
+  7   the server answered 2xx, and its response says it failed or a check didn't pass
+  22  `ak api --fail` on a failure status. `ak api` has its own table: `ak api --help`"
 )]
 pub struct Cli {
     /// Output format (auto-detects: table for TTY, json for pipes)

@@ -317,7 +317,7 @@ async fn check_compliance(
     }
 
     if !result.compliant {
-        std::process::exit(1);
+        std::process::exit(crate::error::EXIT_REPORTED_FAILURE.into());
     }
 
     Ok(())

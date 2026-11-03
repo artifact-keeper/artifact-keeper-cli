@@ -60,7 +60,7 @@ async fn a_proxy_sbom_shows_the_server_message_on_failure() {
         )
         .await;
     let output = mocked.ak(&["sbom", "proxy", "rem", "--path", "a"]);
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(5));
     assert!(
         unwrapped(&output.stderr).contains("404 Not Found: No SBOM recorded"),
         "{}",
@@ -227,7 +227,7 @@ async fn release_proxy_stops_waiting_and_says_nothing_was_released() {
         "json",
     ]);
     assert!(started.elapsed() < std::time::Duration::from_secs(15));
-    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.status.code(), Some(6));
     assert!(output.stdout.is_empty());
     let stderr = unwrapped(&output.stderr);
     assert!(
@@ -242,13 +242,14 @@ async fn release_proxy_stops_waiting_and_says_nothing_was_released() {
 /// Only that answer means "not recorded yet". Anything else is final at once.
 #[tokio::test]
 async fn release_proxy_does_not_wait_on_any_other_failure() {
-    for (status, message) in [
-        (404, "Repository not found"),
+    for (status, message, code) in [
+        (404, "Repository not found", 5),
         (
             409,
             "Cached artifact is not in quarantined state; release not allowed",
+            6,
         ),
-        (403, "Admin access required"),
+        (403, "Admin access required", 4),
     ] {
         let mocked = Mocked::start().await;
         mocked
@@ -260,7 +261,7 @@ async fn release_proxy_does_not_wait_on_any_other_failure() {
             )
             .await;
         let output = mocked.ak(&["quarantine", "release-proxy", "rem", "--path", "a", "--yes"]);
-        assert_eq!(output.status.code(), Some(1));
+        assert_eq!(output.status.code(), Some(code));
         assert!(
             unwrapped(&output.stderr).contains(message),
             "{}",

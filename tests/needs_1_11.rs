@@ -66,7 +66,7 @@ async fn every_command_says_so_on_an_older_server() {
     for args in every_command(&lockfile(&dir)) {
         let args: Vec<&str> = args.iter().map(String::as_str).collect();
         let output = m.ak(&args);
-        assert_eq!(output.status.code(), Some(1), "{args:?}");
+        assert_eq!(output.status.code(), Some(6), "{args:?}");
         let stderr = mock::unwrapped(&output.stderr);
         assert!(
             stderr.contains(&format!("`ak {}` needs a server on 1.11 or newer", args[0])),
@@ -87,7 +87,7 @@ async fn a_404_from_a_current_server_stays_a_404() {
     for args in every_command(&lockfile(&dir)) {
         let args: Vec<&str> = args.iter().map(String::as_str).collect();
         let output = m.ak(&args);
-        assert_eq!(output.status.code(), Some(1), "{args:?}");
+        assert_eq!(output.status.code(), Some(5), "{args:?}");
         let stderr = mock::unwrapped(&output.stderr);
         assert!(stderr.contains("404"), "{args:?}: {stderr}");
         assert!(!stderr.contains("1.11 or newer"), "{args:?}: {stderr}");

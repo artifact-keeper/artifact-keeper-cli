@@ -269,6 +269,22 @@ ak artifact push my-repo ./build/output.tar.gz
 
 See the [CI/CD Integration Guide](https://artifactkeeper.com/docs/guides/ci-cd/) for GitHub Actions, GitLab CI, and Jenkins examples.
 
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Anything else that failed, such as a file that can't be written |
+| 2 | Bad arguments or a value that isn't valid |
+| 3 | Network or TLS: no answer from the server |
+| 4 | Not logged in, or not allowed (401, 403) |
+| 5 | Not found (404) |
+| 6 | Any other server error, or a server too old for the command |
+| 7 | The server answered 2xx, and its response says it failed or a check didn't pass |
+| 22 | `ak api --fail` on a failure status |
+
+`ak api` reports an HTTP exchange rather than a command, so it has its own table in `ak api --help`: 1 for a failure status, 2 for bad arguments, 3 for a request that didn't complete, and 22 with `--fail`.
+
 ## Environment Variables
 
 | Variable | Description |

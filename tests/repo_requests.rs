@@ -405,7 +405,7 @@ async fn a_clear_shows_the_servers_refusal() {
         .mount(&server)
         .await;
     let output = ak(&server, &["repo", "update", "k", "--clear-project"]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(4), "{output:?}");
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("403") && stderr.contains("admin"),
@@ -426,7 +426,7 @@ async fn a_debian_flag_with_an_unknown_field_is_refused_before_sending() {
             r#"{"componets":["main"]}"#,
         ],
     );
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
     assert!(String::from_utf8_lossy(&output.stderr).contains("componets"));
     assert!(
         server
@@ -511,7 +511,7 @@ async fn a_202_with_a_body_it_cant_read_is_still_accepted() {
 async fn wait_needs_a_job_id_to_follow() {
     let server = deleting(ResponseTemplate::new(202)).await;
     let output = ak(&server, &["repo", "delete", "r", "--yes", "--wait"]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
     assert!(String::from_utf8_lossy(&output.stderr).contains("no job ID"));
 }
 
@@ -547,7 +547,7 @@ async fn wait_reports_a_failed_job_with_its_reason() {
     job_answers(&server, ResponseTemplate::new(200).set_body_json(failed)).await;
 
     let output = ak(&server, &["repo", "delete", "r", "--yes", "--wait"]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(7), "{output:?}");
     // miette wraps long lines and draws a border in the wrap.
     let stderr = String::from_utf8_lossy(&output.stderr)
         .replace('│', " ")
@@ -581,7 +581,7 @@ async fn wait_gives_up_at_the_timeout_and_says_the_job_is_still_running() {
             "0",
         ],
     );
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
     assert!(String::from_utf8_lossy(&output.stderr).contains("still"));
 }
 
@@ -595,7 +595,7 @@ async fn wait_reports_a_job_it_isnt_allowed_to_see() {
     .await;
 
     let output = ak(&server, &["repo", "delete", "r", "--yes", "--wait"]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(5), "{output:?}");
     assert!(String::from_utf8_lossy(&output.stderr).contains("no such job"));
 }
 
@@ -604,7 +604,7 @@ async fn a_delete_the_server_refuses_is_still_an_error() {
     let server =
         deleting(ResponseTemplate::new(403).set_body_json(json!({"message": "not yours"}))).await;
     let output = ak(&server, &["repo", "delete", "r", "--yes"]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(4), "{output:?}");
     assert!(String::from_utf8_lossy(&output.stderr).contains("not yours"));
 }
 
@@ -715,7 +715,7 @@ async fn flags_an_older_server_would_drop_are_refused_before_anything_changes() 
     ] {
         let server = server_on("1.10.2").await;
         let output = ak(&server, &args);
-        assert_eq!(output.status.code(), Some(1), "{args:?}: {output:?}");
+        assert_eq!(output.status.code(), Some(6), "{args:?}: {output:?}");
         let stderr = one_line(&output);
         assert!(
             stderr.contains("needs a server on 1.11 or newer. This one is 1.10.2")
@@ -786,7 +786,7 @@ async fn a_route_new_in_1_11_says_so_on_an_older_server() {
             .mount(&server)
             .await;
         let output = ak(&server, &args);
-        assert_eq!(output.status.code(), Some(1), "{args:?}: {output:?}");
+        assert_eq!(output.status.code(), Some(6), "{args:?}: {output:?}");
         let stderr = one_line(&output);
         assert!(
             stderr.contains("needs a server on 1.11 or newer. This one is 1.10.2"),
@@ -804,6 +804,6 @@ async fn a_404_from_a_current_server_keeps_its_message() {
         .mount(&server)
         .await;
     let output = ak(&server, &["repo", "allowlist", "get", "k"]);
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(output.status.code(), Some(5), "{output:?}");
     assert!(one_line(&output).contains("no such repo"));
 }

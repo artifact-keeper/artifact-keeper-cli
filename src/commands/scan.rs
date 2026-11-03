@@ -1000,7 +1000,7 @@ async fn show_findings(
                 .red()
                 .bold()
         );
-        std::process::exit(1);
+        std::process::exit(crate::error::EXIT_REPORTED_FAILURE.into());
     }
 
     Ok(())
