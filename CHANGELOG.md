@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`ak pkg <format>` publishes packages without the format's own client.** `ak pkg npm publish`, `ak pkg pypi publish`, `ak pkg cargo publish`, `ak pkg helm publish` and `ak pkg nuget publish` build the request that format's client sends. `ak pkg npm` also has `dist-tag`, `unpublish` and `audit`, `ak pkg helm` has `delete`, and `ak pkg pypi` has `xmlrpc`.
+
 ## [1.11.0] - Unreleased
 
 The CLI minor version now tracks the server API minor it's generated from. This

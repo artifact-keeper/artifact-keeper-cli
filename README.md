@@ -145,6 +145,7 @@ Core
   ak repo          Manage repositories: members, upstream settings, storage, and more
   ak artifact      Push, pull, list, search, copy, and delete artifacts; revisions and upload sessions
   ak api           Send any HTTP request to the instance, with its auth and TLS settings
+  ak pkg           Publish packages and use format APIs without the format's own client
   ak setup         Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more
   ak doctor        Diagnose configuration and connectivity issues
   ak config        Get/set CLI configuration values

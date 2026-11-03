@@ -64,8 +64,13 @@ ratatui = "0.30"
 crossterm = { version = "0.29", features = ["event-stream"] }
 
 # Cryptography
+sha1 = "0.11"
 sha2 = "0.11"
 hex = "0.4"
+
+# Reading package archives
+flate2 = "1"
+tar = "0.4"
 
 # Utilities
 dirs = "6"
