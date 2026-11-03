@@ -18,6 +18,7 @@ const TLS_HANDSHAKE: u8 = 0x16;
 #[derive(Clone, Debug)]
 struct Seen {
     tls: bool,
+    method: String,
     host: String,
     path: String,
     has_token: bool,
@@ -134,6 +135,7 @@ async fn answer<S: AsyncRead + AsyncWrite + Unpin>(
     let request = String::from_utf8_lossy(&request);
     let seen = Seen {
         tls,
+        method: request.split(' ').next().unwrap_or("").to_string(),
         host: request
             .lines()
             .find_map(|line| {
@@ -173,6 +175,11 @@ async fn answer<S: AsyncRead + AsyncWrite + Unpin>(
 
 /// Run `ak` with the instance at `https://127.0.0.1:<port>`.
 async fn ak(pki: &Pki, port: u16, args: &[&str]) -> std::process::Output {
+    ak_with_stdin(pki, port, args, "").await
+}
+
+async fn ak_with_stdin(pki: &Pki, port: u16, args: &[&str], stdin: &str) -> std::process::Output {
+    let stdin = stdin.to_string();
     let dir = TempDir::new().unwrap();
     std::fs::write(
         dir.path().join("config.toml"),
@@ -194,6 +201,7 @@ async fn ak(pki: &Pki, port: u16, args: &[&str]) -> std::process::Output {
             .env("AK_CA_CERT", ca)
             .env("AK_NO_INPUT", "true")
             .args(args)
+            .write_stdin(stdin)
             .output()
             .unwrap()
     })
@@ -301,9 +309,9 @@ async fn a_redirect_within_the_origin_keeps_working() {
 }
 
 /// A presigned storage URL is on another host and can be plain HTTP, such as
-/// MinIO inside a cluster. It gets no token, and it has to keep working.
+/// MinIO inside a cluster. A download gets there with no token.
 #[tokio::test(flavor = "multi_thread")]
-async fn https_to_http_elsewhere_is_followed_without_the_token() {
+async fn a_download_is_followed_to_plain_http_storage_without_the_token() {
     let pki = Pki::new();
     let log = Log::default();
     let (origin, origin_port) = bind().await;
@@ -317,13 +325,131 @@ async fn https_to_http_elsewhere_is_followed_without_the_token() {
         }),
     );
     serve(storage, &pki, &log, Arc::new(|_: &Seen| Reply::Ok));
+    let out = TempDir::new().unwrap();
+    let file = out.path().join("f.bin");
 
-    let output = ak(&pki, origin_port, &["repo", "list", "--format", "json"]).await;
+    let output = ak(
+        &pki,
+        origin_port,
+        &[
+            "artifact",
+            "pull",
+            "r",
+            "f.bin",
+            "-o",
+            file.to_str().unwrap(),
+        ],
+    )
+    .await;
+
     assert!(output.status.success(), "{}", stderr(&output));
+    assert!(file.exists());
     let log = seen(&log);
     assert_eq!(log.len(), 2, "{log:?}");
     assert!(log[0].tls && log[0].has_token, "{log:?}");
     assert!(!log[1].tls && !log[1].has_token, "{log:?}");
+}
+
+/// tower-http only turns a POST into a GET on a 301 or 302. A PUT keeps its body, so
+/// a secret would reach plain HTTP on a 302 from `https://host` to `http://host`.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_secret_in_a_put_does_not_follow_a_302_to_plain_http() {
+    for (command, stdin) in [
+        (
+            &[
+                "repo",
+                "upstream-auth",
+                "r",
+                "--type",
+                "basic",
+                "--username",
+                "u",
+                "--password-stdin",
+            ][..],
+            "secret-password\n",
+        ),
+        (
+            &[
+                "sso",
+                "update",
+                "oidc",
+                "00000000-0000-0000-0000-000000000001",
+                "--client-secret-stdin",
+            ][..],
+            "secret-client\n",
+        ),
+        (
+            &[
+                "sso",
+                "update",
+                "ldap",
+                "00000000-0000-0000-0000-000000000001",
+                "--bind-password-stdin",
+            ][..],
+            "secret-bind\n",
+        ),
+    ] {
+        let pki = Pki::new();
+        let log = Log::default();
+        let (origin, origin_port) = bind().await;
+        let (plain, plain_port) = bind().await;
+        serve(
+            origin,
+            &pki,
+            &log,
+            Arc::new(move |s: &Seen| {
+                if s.method == "PUT" || s.method == "PATCH" {
+                    Reply::Found(format!("http://127.0.0.1:{plain_port}{}", s.path))
+                } else {
+                    Reply::Ok
+                }
+            }),
+        );
+        serve(plain, &pki, &log, Arc::new(|_: &Seen| Reply::Ok));
+
+        ak_with_stdin(&pki, origin_port, command, stdin).await;
+
+        let log = seen(&log);
+        assert!(
+            log.iter()
+                .any(|s| s.tls && (s.method == "PUT" || s.method == "PATCH")),
+            "{command:?} never sent its secret: {log:?}"
+        );
+        assert!(
+            !log.iter().any(|s| !s.tls),
+            "{command:?}: the secret went over plain HTTP: {log:?}"
+        );
+    }
+}
+
+/// A login's password would go to another HTTPS server on a 307: TLS doesn't help.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_password_does_not_follow_a_307_to_another_server() {
+    let pki = Pki::new();
+    let log = Log::default();
+    let (origin, origin_port) = bind().await;
+    let (other, other_port) = bind().await;
+    serve(
+        origin,
+        &pki,
+        &log,
+        Arc::new(move |s: &Seen| {
+            Reply::Redirect(format!("https://127.0.0.1:{other_port}{}", s.path))
+        }),
+    );
+    serve(other, &pki, &log, Arc::new(|_: &Seen| Reply::Ok));
+
+    let output = ak_with_stdin(
+        &pki,
+        origin_port,
+        &["auth", "login", "--username", "alice", "--password-stdin"],
+        "secret-password\n",
+    )
+    .await;
+
+    assert!(!output.status.success());
+    let log = seen(&log);
+    assert_eq!(log.len(), 1, "the password left the instance: {log:?}");
 }
 
 /// reqwest drops the header on the way to another host, then sends it there on
@@ -346,7 +472,22 @@ async fn another_host_redirecting_to_itself_does_not_get_the_token() {
         }),
     );
 
-    let output = ak(&pki, port, &["repo", "list", "--format", "json"]).await;
+    // A download, because an API request doesn't go to another host at all.
+    let out = TempDir::new().unwrap();
+    let file = out.path().join("f.bin");
+    let output = ak(
+        &pki,
+        port,
+        &[
+            "artifact",
+            "pull",
+            "r",
+            "f.bin",
+            "-o",
+            file.to_str().unwrap(),
+        ],
+    )
+    .await;
     assert!(!output.status.success());
     let log = seen(&log);
     assert!(
