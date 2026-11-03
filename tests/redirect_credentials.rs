@@ -23,9 +23,11 @@ struct Seen {
     has_token: bool,
 }
 
-/// What to answer: a redirect to this URL, or the list `repo list` expects.
+/// What to answer: a 307 to this URL, which keeps the method and body, a 302, or
+/// the list `repo list` expects.
 enum Reply {
     Redirect(String),
+    Found(String),
     Ok,
 }
 
@@ -149,6 +151,9 @@ async fn answer<S: AsyncRead + AsyncWrite + Unpin>(
         // A 307, because that's the one that resends a body.
         Reply::Redirect(to) => format!(
             "HTTP/1.1 307 Temporary Redirect\r\nLocation: {to}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+        ),
+        Reply::Found(to) => format!(
+            "HTTP/1.1 302 Found\r\nLocation: {to}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
         ),
         Reply::Ok => {
             let body = json!({
@@ -308,7 +313,7 @@ async fn https_to_http_elsewhere_is_followed_without_the_token() {
         &pki,
         &log,
         Arc::new(move |s: &Seen| {
-            Reply::Redirect(format!("http://127.0.0.1:{storage_port}{}", s.path))
+            Reply::Found(format!("http://127.0.0.1:{storage_port}{}", s.path))
         }),
     );
     serve(storage, &pki, &log, Arc::new(|_: &Seen| Reply::Ok));
@@ -398,6 +403,64 @@ async fn a_login_body_does_not_follow_a_downgrade() {
         "{}",
         stderr(&output)
     );
+}
+
+/// Commands that send a secret in the body through each kind of client. A 307 to
+/// plain http on another port drops the token, and would resend the body.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_secret_in_a_body_does_not_follow_a_downgrade() {
+    for command in [
+        &[
+            "totp",
+            "disable",
+            "--password",
+            "secret-password",
+            "--code",
+            "123456",
+        ][..],
+        &[
+            "webhook",
+            "create",
+            "w",
+            "--url",
+            "https://hook.test/",
+            "--events",
+            "artifact_uploaded",
+            "--secret",
+            "secret-hook",
+        ][..],
+        &["service-account", "create", "sa"][..],
+    ] {
+        let pki = Pki::new();
+        let log = Log::default();
+        let (origin, origin_port) = bind().await;
+        let (plain, plain_port) = bind().await;
+        serve(
+            origin,
+            &pki,
+            &log,
+            Arc::new(move |s: &Seen| {
+                Reply::Redirect(format!("http://127.0.0.1:{plain_port}{}", s.path))
+            }),
+        );
+        serve(plain, &pki, &log, Arc::new(|_: &Seen| Reply::Ok));
+
+        let output = ak(&pki, origin_port, command).await;
+
+        assert!(!output.status.success(), "{command:?}");
+        let log = seen(&log);
+        assert!(log.iter().any(|s| s.tls), "{command:?}: {log:?}");
+        assert!(
+            !log.iter().any(|s| !s.tls),
+            "{command:?}: the body went over plain HTTP: {log:?}"
+        );
+        // Every client says why, including the raw one.
+        let err = stderr(&output);
+        assert!(
+            err.contains("Not following the redirect"),
+            "{command:?}: {err}"
+        );
+    }
 }
 
 /// The limit on redirects has to survive a custom policy.

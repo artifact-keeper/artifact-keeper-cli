@@ -19,42 +19,61 @@ use crate::transport;
 /// another host, which gets no token, goes by reqwest's default policy.
 pub fn redirect_policy() -> reqwest::redirect::Policy {
     reqwest::redirect::Policy::custom(|attempt| {
-        match unsafe_redirect(attempt.previous(), attempt.url()) {
-            Some(reason) => attempt.error(reason),
+        match unsafe_redirect(attempt.previous(), attempt.url(), attempt.status()) {
+            Some(reason) => refuse(attempt, reason),
             None => reqwest::redirect::Policy::default().redirect(attempt),
         }
     })
 }
 
-/// `redirect_policy` for a request whose body holds a credential, such as a
-/// password. reqwest resends a body on a 307 or 308 wherever it's sent, so no
-/// redirect from https to plain http is followed, on any host or port.
-///
-/// This isn't for every client: a policy can't see the method or status it would
-/// need to tell these from a download, and a redirect to presigned storage over
-/// plain http has to keep working.
+/// Refuse a redirect, and say why here too: most raw HTTP callers print reqwest's
+/// error without its cause, which reads only "error following redirect".
+fn refuse(
+    attempt: reqwest::redirect::Attempt<'_>,
+    reason: &'static str,
+) -> reqwest::redirect::Action {
+    eprintln!("Not following the redirect: {reason}");
+    attempt.error(reason)
+}
+
+/// `redirect_policy` for login, which has no reason to follow any redirect from
+/// https to plain http, whatever its status.
 fn credential_body_redirect_policy() -> reqwest::redirect::Policy {
     reqwest::redirect::Policy::custom(|attempt| {
         let downgrade = attempt.url().scheme() == "http"
             && attempt.previous().iter().any(|url| url.scheme() == "https");
         let refusal = if downgrade {
-            Some(
-                "refusing a redirect from https to plain http, which would send your credentials unencrypted",
-            )
+            Some(REFUSED_DOWNGRADE)
         } else {
-            unsafe_redirect(attempt.previous(), attempt.url())
+            unsafe_redirect(attempt.previous(), attempt.url(), attempt.status())
         };
         match refusal {
-            Some(reason) => attempt.error(reason),
+            Some(reason) => refuse(attempt, reason),
             None => reqwest::redirect::Policy::default().redirect(attempt),
         }
     })
 }
 
+const REFUSED_DOWNGRADE: &str =
+    "refusing a redirect from https to plain http, which would send your credentials unencrypted";
+
 /// Why following a redirect to `to` would expose a credential, if it would.
 /// `chain` is every URL requested so far, the one that redirected last.
-fn unsafe_redirect(chain: &[Url], to: &Url) -> Option<&'static str> {
+fn unsafe_redirect(chain: &[Url], to: &Url, status: reqwest::StatusCode) -> Option<&'static str> {
     let (origin, from) = (chain.first()?, chain.last()?);
+    // A 307 or 308 repeats the method and body wherever it goes, and the body can
+    // be a password or a webhook secret. A 301, 302 or 303 from a POST goes on as a
+    // GET with no body, and a presigned download uses a 302, so those carry on below.
+    let resends_body = matches!(
+        status,
+        reqwest::StatusCode::TEMPORARY_REDIRECT | reqwest::StatusCode::PERMANENT_REDIRECT
+    );
+    if resends_body && from.scheme() == "https" && to.scheme() == "http" {
+        return Some(
+            "refusing a 307 or 308 redirect from https to plain http, which would resend the \
+             request body unencrypted",
+        );
+    }
     // reqwest drops the header on a hop to another host or port, so nothing to
     // protect there. On this kind of hop it sends the header, even if the hop before
     // dropped it. Since 0.13.4 it also drops it on a change of scheme. This doesn't
@@ -65,10 +84,7 @@ fn unsafe_redirect(chain: &[Url], to: &Url) -> Option<&'static str> {
         return None;
     }
     if to.scheme() == "http" && chain.iter().any(|url| url.scheme() == "https") {
-        return Some(
-            "refusing a redirect from https to plain http, which would send your \
-             credentials unencrypted",
-        );
+        return Some(REFUSED_DOWNGRADE);
     }
     if chain.iter().any(|url| !same_server(url, origin)) {
         return Some(
@@ -259,8 +275,48 @@ mod tests {
     use super::*;
 
     fn is_refused(chain: &[&str], to: &str) -> bool {
+        is_refused_with(chain, to, reqwest::StatusCode::FOUND)
+    }
+
+    fn is_refused_with(chain: &[&str], to: &str, status: reqwest::StatusCode) -> bool {
         let chain: Vec<Url> = chain.iter().map(|u| Url::parse(u).unwrap()).collect();
-        unsafe_redirect(&chain, &Url::parse(to).unwrap()).is_some()
+        unsafe_redirect(&chain, &Url::parse(to).unwrap(), status).is_some()
+    }
+
+    #[test]
+    fn only_a_redirect_that_keeps_the_body_is_refused_on_a_downgrade_elsewhere() {
+        use reqwest::StatusCode as S;
+        for to in ["http://h/a", "http://storage:9000/a"] {
+            for status in [S::TEMPORARY_REDIRECT, S::PERMANENT_REDIRECT] {
+                assert!(
+                    is_refused_with(&["https://h/a"], to, status),
+                    "{to} {status}"
+                );
+            }
+            for status in [S::MOVED_PERMANENTLY, S::FOUND, S::SEE_OTHER] {
+                assert!(
+                    !is_refused_with(&["https://h/a"], to, status),
+                    "{to} {status}"
+                );
+            }
+        }
+        // A 307 anywhere that isn't a downgrade is an ordinary redirect.
+        assert!(!is_refused_with(
+            &["https://h/a"],
+            "https://other/a",
+            S::TEMPORARY_REDIRECT
+        ));
+        assert!(!is_refused_with(
+            &["http://h:8080/a"],
+            "http://h:8080/b",
+            S::TEMPORARY_REDIRECT
+        ));
+        // Storage over plain http moving a download on.
+        assert!(!is_refused_with(
+            &["https://h/a", "http://storage:9000/a"],
+            "http://storage:9001/a",
+            S::TEMPORARY_REDIRECT
+        ));
     }
 
     #[test]
