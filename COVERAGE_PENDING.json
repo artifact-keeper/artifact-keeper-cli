@@ -1,10 +1,4 @@
 {
-  "comment": "Package-format routes waiting for the WS-F publish helpers. This list only shrinks: the coverage gate fails if a route is added here, and if a route here gets a command and stays. Delete a line in the PR that adds its helper.",
-  "routes": [
-    {"method": "GET", "path": "/v2"},
-    {"method": "GET", "path": "/v2/token"},
-    {"method": "POST", "path": "/v2/token"},
-    {"method": "DELETE", "path": "/v2/{name}/blobs/{digest}"},
-    {"method": "HEAD", "path": "/v2/{name}/blobs/{digest}"}
-  ]
+  "comment": "Routes waiting for a command. Empty since the WS-F helpers landed, and it stays that way: the coverage gate fails if a route is added here.",
+  "routes": []
 }

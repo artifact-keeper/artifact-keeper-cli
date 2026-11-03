@@ -141,6 +141,23 @@ pub static CLASS_EXCLUSIONS: &[ClassExclusion] = &[
         reason: "The OCI blob upload session is a chunk protocol docker and oras implement. \
                  `ak api` can send any single step",
     },
+    ClassExclusion {
+        name: "oci-handshake",
+        methods: &["GET", "POST"],
+        prefixes: &["/v2"],
+        except: &["/v2/_catalog", "/v2/{name}"],
+        reason: "The version check and the token exchange are the handshake docker and oras do \
+                 before any other call. `ak pkg oci` sends the instance's token on /v2 itself, so \
+                 it never needs them, and `ak api` sends either one as it is",
+    },
+    ClassExclusion {
+        name: "oci-blob-head",
+        methods: &["HEAD"],
+        prefixes: &["/v2/{name}/blobs/{digest}"],
+        except: &[],
+        reason: "A HEAD of a blob is a plain check that it exists, as for a package download. \
+                 `ak api HEAD` already sends it, and a command would be a wrapper that adds nothing",
+    },
 ];
 
 /// A request field in the schema that no flag should set, and why. The gate counts

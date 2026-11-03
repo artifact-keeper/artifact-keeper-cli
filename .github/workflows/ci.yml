@@ -70,9 +70,9 @@ jobs:
         working-directory: artifact-keeper-cli
         run: cargo run -p xtask -- generate --check
 
-  # Every route the server has either has a command, or a reason not to, or is on the
-  # shrinking list in COVERAGE_PENDING.json. Not a required check yet: that's the
-  # owner's call, once WS-F has landed.
+  # Every route the server has either has a command or a reason not to.
+  # COVERAGE_PENDING.json is empty and can't grow. Not a required check yet: that's
+  # the owner's call.
   coverage:
     name: Coverage
     runs-on: ubuntu-latest

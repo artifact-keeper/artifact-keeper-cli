@@ -164,3 +164,69 @@ fn oci_tags_manifests_and_blobs() {
 
     let _ = env.api_delete(&format!("/api/v1/repositories/{key}"));
 }
+
+/// The status `ak api` reports for this request, whatever it is.
+fn status(env: &TestEnv, args: &[&str]) -> u16 {
+    let output = env
+        .ak_cmd()
+        .arg("api")
+        .args(args)
+        .args(["--no-fail", "--head-only"])
+        .output()
+        .unwrap();
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.status.success(), "{args:?}: {text}");
+    text.lines()
+        .find(|l| l.starts_with("HTTP/"))
+        .and_then(|l| l.split_whitespace().nth(1))
+        .and_then(|s| s.parse().ok())
+        .unwrap_or_else(|| panic!("{args:?}: no status in {text}"))
+}
+
+fn oci_repo(env: &TestEnv) -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let key = format!("pkg-oci-{nanos}");
+    let created = env.api_post(
+        "/api/v1/repositories",
+        &json!({"key": key, "name": key, "format": "docker", "repo_type": "local",
+                "is_public": true}),
+    );
+    assert!(created.status().is_success());
+    key
+}
+
+/// The routes with no command, because `ak api` is enough. So it has to be.
+#[test]
+#[ignore = "requires E2E backend"]
+fn the_oci_handshake_and_a_blob_head_work_with_ak_api() {
+    let env = TestEnv::setup();
+    let name = format!("{}/handshake", oci_repo(&env));
+    let digest = push_blob(&env, &name, b"head me");
+
+    assert_eq!(status(&env, &["GET", "/v2"]), 200);
+    assert_eq!(status(&env, &["GET", "/v2/token"]), 200);
+    assert_eq!(status(&env, &["POST", "/v2/token"]), 200);
+    let blob = format!("/v2/{name}/blobs/{digest}");
+    assert_eq!(status(&env, &["HEAD", &blob]), 200);
+}
+
+/// OCI_ROUTES.json lists this under not_routes. When a server implements it this fails,
+/// which is the prompt to move it back and give it a command.
+#[test]
+#[ignore = "requires E2E backend"]
+fn the_server_has_no_oci_blob_delete() {
+    let env = TestEnv::setup();
+    let name = format!("{}/no-delete", oci_repo(&env));
+    let digest = push_blob(&env, &name, b"keep me");
+    let blob = format!("/v2/{name}/blobs/{digest}");
+
+    assert_eq!(status(&env, &["DELETE", &blob]), 405);
+    assert_eq!(status(&env, &["HEAD", &blob]), 200);
+}

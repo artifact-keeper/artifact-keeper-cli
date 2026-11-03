@@ -9,9 +9,8 @@
 //! - **covered**: a registry line names a command. `tests/registry_contract.rs` checks
 //!   the line is true.
 //! - **excluded**: a registry line, or a class exclusion, says why `ak api` is enough.
-//! - **pending**: listed in `COVERAGE_PENDING.json`, a package-format route waiting
-//!   for the WS-F publish helpers. That list only shrinks: a route on it that's now
-//!   covered has to come off, and nothing can be added.
+//! - **pending**: listed in `COVERAGE_PENDING.json`. That list is empty, and nothing
+//!   can be added to it.
 //! - **missing**: none of those, which fails the gate.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -232,6 +231,40 @@ fn group_of(path: &str, handler: &str, formats: &[String]) -> String {
         return "(other)".to_string();
     }
     format!("(unspecced) {handler}")
+}
+
+/// `OCI_ROUTES.json`: the OCI surface, and what the OCI spec has that this server
+/// doesn't.
+#[derive(Debug, Clone, Deserialize)]
+pub struct OciRoutes {
+    pub routes: Vec<PendingRoute>,
+    #[serde(default)]
+    pub not_routes: Vec<PendingRoute>,
+}
+
+/// A route listed as not existing that something else says exists. The fallback
+/// handler isn't in the route table, so `tests/e2e_pkg_oci.rs` asks the real server too.
+fn not_routes_problems(
+    oci: &OciRoutes,
+    spec_ops: &[SpecOp],
+    table: &RouteTable,
+    registry: &Registry,
+) -> Vec<String> {
+    let mut known: BTreeSet<Key> = oci.routes.iter().map(|r| key(&r.method, &r.path)).collect();
+    known.extend(spec_ops.iter().map(|o| key(&o.method, &o.path)));
+    known.extend(table.routes.iter().map(|r| key(&r.method, &r.path)));
+    known.extend(registry.commands.iter().map(|c| key(&c.method, &c.path)));
+    oci.not_routes
+        .iter()
+        .filter(|r| known.contains(&key(&r.method, &r.path)))
+        .map(|r| {
+            format!(
+                "{} {} is in not_routes in OCI_ROUTES.json, but the server has it now. \
+                 Move it to routes and give it a command or an exclusion",
+                r.method, r.path
+            )
+        })
+        .collect()
 }
 
 pub fn evaluate(
@@ -648,7 +681,7 @@ pub fn run(root: &Path, options: Options) -> Result<()> {
     });
     let spec: Value = read_json(&spec_path)?;
     let table: RouteTable = read_json(&root.join("ROUTES.json"))?;
-    let oci: Vec<PendingRoute> = read_json(&root.join("OCI_ROUTES.json"))?;
+    let oci: OciRoutes = read_json(&root.join("OCI_ROUTES.json"))?;
     let pending: Pending = read_json(&root.join("COVERAGE_PENDING.json"))?;
     let base = match &options.base_ref {
         Some(git_ref) => pending_at(root, git_ref)?,
@@ -664,14 +697,18 @@ pub fn run(root: &Path, options: Options) -> Result<()> {
         );
     }
     let registry = load_registry(root, options.ak)?;
-    let findings = evaluate(
-        &spec_operations(&spec),
+    let spec_ops = spec_operations(&spec);
+    let mut findings = evaluate(
+        &spec_ops,
         &table,
-        &oci,
+        &oci.routes,
         &registry,
         &pending,
         base.as_ref(),
     );
+    findings
+        .errors
+        .extend(not_routes_problems(&oci, &spec_ops, &table, &registry));
     println!("{}", report(&findings));
     let raw = crate::raw_layer::check(root)?;
     println!(
@@ -783,6 +820,29 @@ mod tests {
         base: Option<&Pending>,
     ) -> Vec<String> {
         evaluate(spec, table, &[], reg, pend, base).errors
+    }
+
+    #[test]
+    fn a_route_listed_as_not_existing_that_appears_fails() {
+        let route = PendingRoute {
+            method: "PUT".to_string(),
+            path: "/npm/{r}/{p}".to_string(),
+        };
+        let oci = OciRoutes {
+            routes: vec![],
+            not_routes: vec![route.clone()],
+        };
+        let reg = registry(vec![]);
+        let appeared = not_routes_problems(&oci, &[], &small(), &reg);
+        assert!(appeared[0].contains("has it now"), "{appeared:?}");
+
+        let oci_too = OciRoutes {
+            routes: vec![route],
+            not_routes: oci.not_routes.clone(),
+        };
+        let empty = table(&[]);
+        assert_eq!(not_routes_problems(&oci_too, &[], &empty, &reg).len(), 1);
+        assert!(not_routes_problems(&oci, &[], &empty, &reg).is_empty());
     }
 
     #[test]

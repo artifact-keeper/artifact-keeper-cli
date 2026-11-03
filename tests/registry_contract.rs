@@ -1238,7 +1238,7 @@ async fn every_route_can_be_sent_with_ak_api() {
         .as_array()
         .expect("routes")
         .iter()
-        .chain(oci.as_array().expect("OCI routes"))
+        .chain(oci["routes"].as_array().expect("OCI routes"))
         .map(|r| {
             (
                 r["method"].as_str().unwrap_or("").to_string(),
