@@ -4,9 +4,12 @@ use futures::StreamExt;
 use miette::Result;
 
 use super::client::{client_for, client_for_optional_auth};
-use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err};
-use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
+use super::helpers::{
+    confirm_action, emit_mutation_raw, new_table, parse_json_arg, parse_uuid,
+    resolve_optional_repo_id, resolve_repo_id, sdk_err,
+};
 use crate::cli::GlobalArgs;
+use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -30,6 +33,42 @@ pub enum CurationCommand {
         offset: Option<i64>,
     },
 
+    /// Search the packages of a staging repository by name
+    Search {
+        /// Staging repository key
+        repo: String,
+
+        /// Text to find in the package name
+        #[arg(long)]
+        q: Option<String>,
+
+        /// Filter by architecture
+        #[arg(long)]
+        arch: Option<String>,
+
+        /// Filter by curation status (e.g. pending, approved, blocked)
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Maximum number of packages to return
+        #[arg(long)]
+        limit: Option<i64>,
+
+        /// Number of packages to skip
+        #[arg(long)]
+        offset: Option<i64>,
+    },
+
+    /// Fetch a staging repository's upstream metadata now
+    Sync {
+        /// Staging repository key
+        repo: String,
+    },
+
+    /// Create and publish immutable versions of a staging repository
+    #[command(subcommand)]
+    Version(CurationVersionCommand),
+
     /// Show a single curation package
     Package {
         /// Package ID (UUID)
@@ -40,12 +79,20 @@ pub enum CurationCommand {
     Approve {
         /// Package ID (UUID)
         id: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Block a single package from release
     Block {
         /// Package ID (UUID)
         id: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Approve multiple packages in one request
@@ -57,6 +104,10 @@ pub enum CurationCommand {
         /// Reason for the bulk decision
         #[arg(long)]
         reason: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Block multiple packages in one request
@@ -68,6 +119,10 @@ pub enum CurationCommand {
         /// Reason for the bulk decision
         #[arg(long)]
         reason: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// Re-evaluate all pending packages in a staging repo against the rules
@@ -76,9 +131,13 @@ pub enum CurationCommand {
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: String,
 
-        /// Default action for packages that match no rule (e.g. approve, block)
+        /// Decision for packages that match no rule (allow or block)
         #[arg(long)]
         default_action: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 
     /// List curation rules
@@ -86,6 +145,10 @@ pub enum CurationCommand {
         /// Filter by staging repository key or ID
         #[arg(long, visible_alias = "staging-repo-id")]
         staging_repo: Option<String>,
+
+        /// Filter by scope. `global` lists only the instance-wide rules (admin only)
+        #[arg(long)]
+        scope: Option<String>,
     },
 
     /// Show a single curation rule
@@ -96,10 +159,11 @@ pub enum CurationCommand {
 
     /// Create a curation rule
     CreateRule {
-        /// Package name pattern the rule matches (glob)
-        package_pattern: String,
+        /// Package name pattern the rule matches, a glob (server default: *). Only the
+        /// pattern engine reads it
+        package_pattern: Option<String>,
 
-        /// Action to take on a match (e.g. approve, block)
+        /// Action to take on a match (allow or block)
         #[arg(long)]
         action: String,
 
@@ -115,31 +179,43 @@ pub enum CurationCommand {
         #[arg(long)]
         architecture: Option<String>,
 
-        /// Rule priority (higher wins)
+        /// Rule priority (server default: 100)
         #[arg(long)]
         priority: Option<i32>,
 
         /// Version constraint the rule applies to
         #[arg(long)]
         version_constraint: Option<String>,
+
+        /// Evaluation engine: pattern, publisher_trust or popularity (server default: pattern)
+        #[arg(long)]
+        rule_type: Option<String>,
+
+        /// The engine's settings: a JSON object as text, @file, or @- for stdin
+        #[arg(long, value_name = "JSON")]
+        config: Option<String>,
+
+        /// repository, which needs --staging-repo, or global, which forbids it
+        #[arg(long)]
+        scope: Option<String>,
     },
 
-    /// Update an existing curation rule
+    /// Update a curation rule. Only what you pass changes
     UpdateRule {
         /// Rule ID (UUID)
         id: String,
 
-        /// Action to take on a match (e.g. approve, block)
+        /// Action to take on a match (allow or block)
         #[arg(long)]
-        action: String,
+        action: Option<String>,
 
         /// Package name pattern the rule matches (glob)
         #[arg(long)]
-        package_pattern: String,
+        package_pattern: Option<String>,
 
         /// Human-readable reason for the rule
         #[arg(long)]
-        reason: String,
+        reason: Option<String>,
 
         /// Enable the rule
         #[arg(long, conflicts_with = "disabled")]
@@ -153,13 +229,22 @@ pub enum CurationCommand {
         #[arg(long)]
         architecture: Option<String>,
 
-        /// Rule priority (higher wins)
+        /// Rule priority
         #[arg(long)]
         priority: Option<i32>,
 
         /// Version constraint the rule applies to
         #[arg(long)]
         version_constraint: Option<String>,
+
+        /// Evaluation engine: pattern, publisher_trust or popularity
+        #[arg(long)]
+        rule_type: Option<String>,
+
+        /// The engine's settings, replacing the current ones: a JSON object as text, @file,
+        /// or @- for stdin
+        #[arg(long, value_name = "JSON")]
+        config: Option<String>,
     },
 
     /// Delete a curation rule
@@ -180,6 +265,47 @@ pub enum CurationCommand {
     },
 }
 
+#[derive(Subcommand)]
+pub enum CurationVersionCommand {
+    /// Snapshot the approved packages as a new unpublished version
+    Create {
+        /// Staging repository key
+        repo: String,
+    },
+
+    /// Publish a version. A published version can't be changed
+    Publish {
+        /// Staging repository key
+        repo: String,
+
+        /// Version number
+        number: i64,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
+}
+
+/// The fields of `curation create-rule` and `update-rule` that are the same on both.
+#[derive(Default)]
+struct RuleFields {
+    architecture: Option<String>,
+    priority: Option<i32>,
+    version_constraint: Option<String>,
+    rule_type: Option<String>,
+    config: Option<String>,
+}
+
+impl RuleFields {
+    fn parse_config(&self) -> Result<Option<serde_json::Map<String, serde_json::Value>>> {
+        self.config
+            .as_deref()
+            .map(|config| parse_json_arg(config, "--config"))
+            .transpose()
+    }
+}
+
 impl CurationCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
@@ -189,16 +315,50 @@ impl CurationCommand {
                 limit,
                 offset,
             } => list_packages(&staging_repo, status.as_deref(), limit, offset, global).await,
+            Self::Search {
+                repo,
+                q,
+                arch,
+                status,
+                limit,
+                offset,
+            } => {
+                search_packages(
+                    &repo,
+                    q.as_deref(),
+                    arch.as_deref(),
+                    status.as_deref(),
+                    limit,
+                    offset,
+                    global,
+                )
+                .await
+            }
+            Self::Sync { repo } => sync(&repo, global).await,
+            Self::Version(command) => match command {
+                CurationVersionCommand::Create { repo } => create_version(&repo, global).await,
+                CurationVersionCommand::Publish { repo, number, yes } => {
+                    publish_version(&repo, number, yes, global).await
+                }
+            },
             Self::Package { id } => show_package(&id, global).await,
-            Self::Approve { id } => package_decision(&id, true, global).await,
-            Self::Block { id } => package_decision(&id, false, global).await,
-            Self::BulkApprove { ids, reason } => bulk_decision(&ids, &reason, true, global).await,
-            Self::BulkBlock { ids, reason } => bulk_decision(&ids, &reason, false, global).await,
+            Self::Approve { id, yes } => package_decision(&id, true, yes, global).await,
+            Self::Block { id, yes } => package_decision(&id, false, yes, global).await,
+            Self::BulkApprove { ids, reason, yes } => {
+                bulk_decision(&ids, &reason, true, yes, global).await
+            }
+            Self::BulkBlock { ids, reason, yes } => {
+                bulk_decision(&ids, &reason, false, yes, global).await
+            }
             Self::ReEvaluate {
                 staging_repo,
                 default_action,
-            } => re_evaluate(&staging_repo, &default_action, global).await,
-            Self::Rules { staging_repo } => list_rules(staging_repo.as_deref(), global).await,
+                yes,
+            } => re_evaluate(&staging_repo, &default_action, yes, global).await,
+            Self::Rules {
+                staging_repo,
+                scope,
+            } => list_rules(staging_repo.as_deref(), scope.as_deref(), global).await,
             Self::Rule { id } => show_rule(&id, global).await,
             Self::CreateRule {
                 package_pattern,
@@ -208,15 +368,23 @@ impl CurationCommand {
                 architecture,
                 priority,
                 version_constraint,
+                rule_type,
+                config,
+                scope,
             } => {
                 create_rule(
-                    &package_pattern,
+                    package_pattern,
                     &action,
                     &reason,
                     staging_repo.as_deref(),
-                    architecture.as_deref(),
-                    priority,
-                    version_constraint.as_deref(),
+                    scope,
+                    RuleFields {
+                        architecture,
+                        priority,
+                        version_constraint,
+                        rule_type,
+                        config,
+                    },
                     global,
                 )
                 .await
@@ -231,17 +399,23 @@ impl CurationCommand {
                 architecture,
                 priority,
                 version_constraint,
+                rule_type,
+                config,
             } => {
                 update_rule(
                     &id,
-                    &action,
-                    &package_pattern,
-                    &reason,
-                    enabled,
-                    disabled,
-                    architecture.as_deref(),
-                    priority,
-                    version_constraint.as_deref(),
+                    action,
+                    package_pattern,
+                    reason,
+                    // Only set `enabled` when the user explicitly asked for it.
+                    (enabled || disabled).then_some(enabled),
+                    RuleFields {
+                        architecture,
+                        priority,
+                        version_constraint,
+                        rule_type,
+                        config,
+                    },
                     global,
                 )
                 .await
@@ -280,24 +454,34 @@ async fn list_packages(
         req = req.offset(o);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list curation packages", e))?;
-    let packages = resp.into_inner();
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let packages = resp
+        .map_err(|e| sdk_err("list curation packages", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    if packages.is_empty() {
+    print_packages(raw.as_deref(), &packages, global);
+
+    Ok(())
+}
+
+/// Print a list of packages: the server's body as JSON or YAML, otherwise a table.
+fn print_packages(
+    raw: Option<&[u8]>,
+    packages: &[artifact_keeper_sdk::types::CurationPackageResponse],
+    global: &GlobalArgs,
+) {
+    if packages.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No curation packages found.");
-        return Ok(());
+        return;
     }
 
     if matches!(global.format, OutputFormat::Quiet) {
-        for p in &packages {
+        for p in packages {
             println!("{}", p.id);
         }
-        return Ok(());
+        return;
     }
 
     let entries: Vec<_> = packages.iter().map(package_json).collect();
@@ -305,7 +489,147 @@ async fn list_packages(
     let table_str = format_packages_table(&entries);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw, &entries, &global.format, Some(table_str))
+    );
+}
+
+async fn search_packages(
+    repo: &str,
+    q: Option<&str>,
+    arch: Option<&str>,
+    status: Option<&str>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Searching curation packages...");
+
+    let mut req = client.search_curation_packages().repo_key(repo);
+    if let Some(q) = q {
+        req = req.q(q);
+    }
+    if let Some(arch) = arch {
+        req = req.arch(arch);
+    }
+    if let Some(status) = status {
+        req = req.status(status);
+    }
+    if let Some(limit) = limit {
+        req = req.limit(limit);
+    }
+    if let Some(offset) = offset {
+        req = req.offset(offset);
+    }
+
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let packages = resp
+        .map_err(|e| sdk_err("search curation packages", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    print_packages(raw.as_deref(), &packages, global);
+
+    Ok(())
+}
+
+async fn sync(repo: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Syncing staging repository...");
+
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.trigger_curation_sync().repo_key(repo).send())
+            .await;
+    let result = resp
+        .map_err(|e| sdk_err("sync staging repository", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &result,
+        &result.repository,
+        &format!("Synced '{}'.", result.repository),
+        global,
+    );
+
+    // The server answers 200 and keeps the reason in its log, so a sync that
+    // failed upstream is only visible in this field.
+    if !result.succeeded {
+        return Err(AkError::ServerError(format!(
+            "The sync of '{}' failed upstream. The server's log has the reason.",
+            result.repository
+        ))
+        .into());
+    }
+
+    Ok(())
+}
+
+async fn create_version(repo: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Creating version...");
+
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_curation_version().repo_key(repo).send())
+            .await;
+    let version = resp
+        .map_err(|e| sdk_err("create curation version", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &version,
+        &version.version_number.to_string(),
+        &format!(
+            "Created version {} of '{}' with {} package(s). It isn't published yet.",
+            version.version_number, version.repository, version.package_count
+        ),
+        global,
+    );
+
+    Ok(())
+}
+
+async fn publish_version(repo: &str, number: i64, yes: bool, global: &GlobalArgs) -> Result<()> {
+    if !confirm_action(
+        &format!("Publish version {number} of '{repo}'? A published version can't be changed."),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Publishing version...");
+
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .publish_curation_version()
+            .repo_key(repo)
+            .n(number)
+            .send(),
+    )
+    .await;
+    let version = resp
+        .map_err(|e| sdk_err("publish curation version", e))?
+        .into_inner();
+
+    spinner.finish_and_clear();
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &version,
+        &version.version_number.to_string(),
+        &format!(
+            "Published version {} of '{}' with {} package(s).",
+            version.version_number, version.repository, version.package_count
+        ),
+        global,
     );
 
     Ok(())
@@ -317,62 +641,65 @@ async fn show_package(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching curation package...");
 
-    let resp = client
-        .get_curation_package()
-        .id(package_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get curation package", e))?;
-    let package = resp.into_inner();
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_curation_package().id(package_id).send())
+            .await;
+    let package = resp
+        .map_err(|e| sdk_err("get curation package", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
     let info = package_json(&package);
     let table_str = format_package_detail(&info);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
 
-async fn package_decision(id: &str, approve: bool, global: &GlobalArgs) -> Result<()> {
+async fn package_decision(id: &str, approve: bool, yes: bool, global: &GlobalArgs) -> Result<()> {
     let package_id = parse_uuid(id, "package")?;
+
+    let prompt = if approve {
+        format!("Approve package {id}? It can then be released to clients.")
+    } else {
+        format!("Block package {id}? Clients can't get it while it's blocked.")
+    };
+    if !confirm_action(&prompt, yes, global.no_input)? {
+        return Ok(());
+    }
 
     let client = client_for(global)?;
     let action = if approve { "Approving" } else { "Blocking" };
     let spinner = output::spinner(&format!("{action} package..."));
 
-    let resp = if approve {
-        client
-            .approve_package()
-            .id(package_id)
-            .send()
-            .await
-            .map_err(|e| sdk_err("approve package", e))?
+    let (resp, raw) = if approve {
+        artifact_keeper_sdk::raw::capture(client.approve_package().id(package_id).send()).await
     } else {
-        client
-            .block_package()
-            .id(package_id)
-            .send()
-            .await
-            .map_err(|e| sdk_err("block package", e))?
+        artifact_keeper_sdk::raw::capture(client.block_package().id(package_id).send()).await
     };
-    let package = resp.into_inner();
+    let package = resp
+        .map_err(|e| {
+            let what = if approve { "approve" } else { "block" };
+            sdk_err(&format!("{what} package"), e)
+        })?
+        .into_inner();
 
     spinner.finish_and_clear();
 
     let verb = if approve { "approved" } else { "blocked" };
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", package.id);
-        return Ok(());
-    }
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        let info = package_json(&package);
-        println!("{}", output::render(&info, &global.format, None));
-        return Ok(());
-    }
-    eprintln!(
-        "Package {verb}: {} {} ({}).",
-        package.package_name, package.version, package.id
+    emit_mutation_raw(
+        raw.as_deref(),
+        &package_json(&package),
+        &package.id.to_string(),
+        &format!(
+            "Package {verb}: {} {} ({}).",
+            package.package_name, package.version, package.id
+        ),
+        global,
     );
 
     Ok(())
@@ -382,12 +709,22 @@ async fn bulk_decision(
     ids: &[String],
     reason: &str,
     approve: bool,
+    yes: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
     let parsed: Vec<uuid::Uuid> = ids
         .iter()
         .map(|s| parse_uuid(s, "package"))
         .collect::<Result<_>>()?;
+
+    let verb = if approve { "Approve" } else { "Block" };
+    if !confirm_action(
+        &format!("{verb} {} package(s)?", ids.len()),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
 
     let client = client_for(global)?;
     let action = if approve { "Approving" } else { "Blocking" };
@@ -421,9 +758,25 @@ async fn bulk_decision(
     Ok(())
 }
 
-async fn re_evaluate(staging_repo: &str, default_action: &str, global: &GlobalArgs) -> Result<()> {
+async fn re_evaluate(
+    staging_repo: &str,
+    default_action: &str,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
     let staging_id = resolve_repo_id(&client, staging_repo).await?;
+
+    if !confirm_action(
+        &format!(
+            "Re-evaluate every pending package in '{staging_repo}', and {default_action} those \
+             no rule matches?"
+        ),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
 
     let spinner = output::spinner("Re-evaluating packages against curation rules...");
 
@@ -458,7 +811,11 @@ async fn re_evaluate(staging_repo: &str, default_action: &str, global: &GlobalAr
 // Rules
 // ---------------------------------------------------------------------------
 
-async fn list_rules(staging_repo: Option<&str>, global: &GlobalArgs) -> Result<()> {
+async fn list_rules(
+    staging_repo: Option<&str>,
+    scope: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
     let staging_id = resolve_optional_repo_id(&client, staging_repo).await?;
 
@@ -469,16 +826,18 @@ async fn list_rules(staging_repo: Option<&str>, global: &GlobalArgs) -> Result<(
     if let Some(id) = staging_id {
         req = req.staging_repo_id(id);
     }
+    if let Some(scope) = scope {
+        req = req.scope(scope);
+    }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list curation rules", e))?;
-    let rules = resp.into_inner();
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let rules = resp
+        .map_err(|e| sdk_err("list curation rules", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    if rules.is_empty() {
+    if rules.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No curation rules found.");
         return Ok(());
     }
@@ -495,7 +854,7 @@ async fn list_rules(staging_repo: Option<&str>, global: &GlobalArgs) -> Result<(
     let table_str = format_rules_table(&entries);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -507,34 +866,35 @@ async fn show_rule(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching curation rule...");
 
-    let resp = client
-        .get_curation_rule()
-        .id(rule_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get curation rule", e))?;
-    let rule = resp.into_inner();
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_curation_rule().id(rule_id).send()).await;
+    let rule = resp
+        .map_err(|e| sdk_err("get curation rule", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
     let info = rule_json(&rule);
     let table_str = format_rule_detail(&info);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn create_rule(
-    package_pattern: &str,
+    package_pattern: Option<String>,
     action: &str,
     reason: &str,
     staging_repo: Option<&str>,
-    architecture: Option<&str>,
-    priority: Option<i32>,
-    version_constraint: Option<&str>,
+    scope: Option<String>,
+    fields: RuleFields,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let config = fields.parse_config()?;
+
     let client = client_for(global)?;
     let staging_id = resolve_optional_repo_id(&client, staging_repo).await?;
 
@@ -542,73 +902,57 @@ async fn create_rule(
 
     let body = artifact_keeper_sdk::types::CurationCreateRuleRequest {
         action: action.to_string(),
-        package_pattern: Some(package_pattern.to_string()),
+        package_pattern,
         reason: reason.to_string(),
         staging_repo_id: staging_id,
-        config: Default::default(),
-        rule_type: None,
-        scope: None,
-        architecture: architecture.map(|s| s.to_string()),
-        priority,
-        version_constraint: version_constraint.map(|s| s.to_string()),
+        config: config.unwrap_or_default(),
+        rule_type: fields.rule_type,
+        scope,
+        architecture: fields.architecture,
+        priority: fields.priority,
+        version_constraint: fields.version_constraint,
     };
 
-    let resp = client
-        .create_curation_rule()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create curation rule", e))?;
-    let rule = resp.into_inner();
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_curation_rule().body(body).send()).await;
+    let rule = resp
+        .map_err(|e| sdk_err("create curation rule", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", rule.id);
-        return Ok(());
-    }
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        let info = rule_json(&rule);
-        println!("{}", output::render(&info, &global.format, None));
-        return Ok(());
-    }
-    eprintln!(
-        "Created rule {} ({} -> {}).",
-        rule.id, rule.package_pattern, rule.action
+    emit_mutation_raw(
+        raw.as_deref(),
+        &rule_json(&rule),
+        &rule.id.to_string(),
+        &format!(
+            "Created rule {} ({} -> {}).",
+            rule.id, rule.package_pattern, rule.action
+        ),
+        global,
     );
 
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn update_rule(
     id: &str,
-    action: &str,
-    package_pattern: &str,
-    reason: &str,
-    enabled: bool,
-    disabled: bool,
-    architecture: Option<&str>,
-    priority: Option<i32>,
-    version_constraint: Option<&str>,
+    action: Option<String>,
+    package_pattern: Option<String>,
+    reason: Option<String>,
+    enabled: Option<bool>,
+    fields: RuleFields,
     global: &GlobalArgs,
 ) -> Result<()> {
     let rule_id = parse_uuid(id, "rule")?;
-
-    // Only set `enabled` when the user explicitly asked for it.
-    let enabled_flag = if enabled {
-        Some(true)
-    } else if disabled {
-        Some(false)
-    } else {
-        None
-    };
+    let config = fields.parse_config()?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Updating curation rule...");
 
-    // PUT replaces the rule, and an omitted `rule_type` means `pattern`. Carry
-    // the current engine and its config over so a typed rule keeps them.
+    // PUT replaces the rule: an omitted field goes back to the server's default, so
+    // a disabled rule would turn on and a priority would reset. Send the current
+    // value of whatever wasn't asked to change.
     let existing = client
         .get_curation_rule()
         .id(rule_id)
@@ -618,40 +962,40 @@ async fn update_rule(
         .into_inner();
 
     let body = artifact_keeper_sdk::types::CurationUpdateRuleRequest {
-        config: existing.config,
-        rule_type: Some(existing.rule_type),
-        action: action.to_string(),
-        package_pattern: package_pattern.to_string(),
-        reason: reason.to_string(),
-        enabled: enabled_flag,
-        architecture: architecture.map(|s| s.to_string()),
-        priority,
-        version_constraint: version_constraint.map(|s| s.to_string()),
+        config: config.unwrap_or(existing.config),
+        rule_type: Some(fields.rule_type.unwrap_or(existing.rule_type)),
+        action: action.unwrap_or(existing.action),
+        package_pattern: package_pattern.unwrap_or(existing.package_pattern),
+        reason: reason.unwrap_or(existing.reason),
+        enabled: Some(enabled.unwrap_or(existing.enabled)),
+        architecture: Some(fields.architecture.unwrap_or(existing.architecture)),
+        priority: Some(fields.priority.unwrap_or(existing.priority)),
+        version_constraint: Some(
+            fields
+                .version_constraint
+                .unwrap_or(existing.version_constraint),
+        ),
     };
 
-    let resp = client
-        .update_curation_rule()
-        .id(rule_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update curation rule", e))?;
-    let rule = resp.into_inner();
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client.update_curation_rule().id(rule_id).body(body).send(),
+    )
+    .await;
+    let rule = resp
+        .map_err(|e| sdk_err("update curation rule", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", rule.id);
-        return Ok(());
-    }
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        let info = rule_json(&rule);
-        println!("{}", output::render(&info, &global.format, None));
-        return Ok(());
-    }
-    eprintln!(
-        "Updated rule {} ({} -> {}, enabled: {}).",
-        rule.id, rule.package_pattern, rule.action, rule.enabled
+    emit_mutation_raw(
+        raw.as_deref(),
+        &rule_json(&rule),
+        &rule.id.to_string(),
+        &format!(
+            "Updated rule {} ({} -> {}, enabled: {}).",
+            rule.id, rule.package_pattern, rule.action, rule.enabled
+        ),
+        global,
     );
 
     Ok(())
@@ -699,13 +1043,11 @@ async fn show_stats(staging_repo: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching curation statistics...");
 
-    let resp = client
-        .stats()
-        .staging_repo_id(staging_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get curation stats", e))?;
-    let stats = resp.into_inner();
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.stats().staging_repo_id(staging_id).send()).await;
+    let stats = resp
+        .map_err(|e| sdk_err("get curation stats", e))?
+        .into_inner();
 
     spinner.finish_and_clear();
 
@@ -726,7 +1068,10 @@ async fn show_stats(staging_repo: &str, global: &GlobalArgs) -> Result<()> {
     });
 
     let table_str = format_stats_table(&stats.staging_repo_id.to_string(), &counts);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -798,6 +1143,8 @@ fn package_json(p: &artifact_keeper_sdk::types::CurationPackageResponse) -> serd
         "evaluation_reason": p.evaluation_reason,
         "first_seen_at": p.first_seen_at,
         "metadata": p.metadata,
+        "attestation_state": p.attestation_state,
+        "attestation_identity": p.attestation_identity,
     })
 }
 
@@ -811,6 +1158,9 @@ fn rule_json(r: &artifact_keeper_sdk::types::RuleResponse) -> serde_json::Value 
         "priority": r.priority,
         "reason": r.reason,
         "enabled": r.enabled,
+        "rule_type": r.rule_type,
+        "scope": r.scope,
+        "config": r.config,
         "staging_repo_id": r.staging_repo_id.map(|u| u.to_string()),
         "created_by": r.created_by.map(|u| u.to_string()),
         "created_at": r.created_at,
@@ -862,7 +1212,9 @@ fn format_package_detail(item: &serde_json::Value) -> String {
          Upstream Path:     {}\n\
          Evaluation Reason: {}\n\
          Evaluated At:      {}\n\
-         First Seen At:     {}",
+         First Seen At:     {}\n\
+         Attestation:       {}\n\
+         Attested By:       {}",
         item["id"].as_str().unwrap_or("-"),
         item["package_name"].as_str().unwrap_or("-"),
         item["version"].as_str().unwrap_or("-"),
@@ -876,16 +1228,20 @@ fn format_package_detail(item: &serde_json::Value) -> String {
         item["evaluation_reason"].as_str().unwrap_or("-"),
         item["evaluated_at"].as_str().unwrap_or("-"),
         item["first_seen_at"].as_str().unwrap_or("-"),
+        item["attestation_state"].as_str().unwrap_or("-"),
+        item["attestation_identity"].as_str().unwrap_or("-"),
     )
 }
 
 fn format_rules_table(items: &[serde_json::Value]) -> String {
     let mut table = new_table(vec![
-        "ID", "PATTERN", "VERSION", "ARCH", "ACTION", "PRIORITY", "ENABLED",
+        "ID", "TYPE", "SCOPE", "PATTERN", "VERSION", "ARCH", "ACTION", "PRIORITY", "ENABLED",
     ]);
     for r in items {
         table.add_row(vec![
             short8(r["id"].as_str().unwrap_or("-")),
+            r["rule_type"].as_str().unwrap_or("-"),
+            r["scope"].as_str().unwrap_or("-"),
             r["package_pattern"].as_str().unwrap_or("-"),
             r["version_constraint"].as_str().unwrap_or("-"),
             r["architecture"].as_str().unwrap_or("-"),
@@ -911,6 +1267,9 @@ fn format_rule_detail(item: &serde_json::Value) -> String {
          Priority:           {}\n\
          Reason:             {}\n\
          Enabled:            {}\n\
+         Rule Type:          {}\n\
+         Scope:              {}\n\
+         Config:             {}\n\
          Staging Repo:       {}\n\
          Created By:         {}\n\
          Created At:         {}\n\
@@ -927,6 +1286,9 @@ fn format_rule_detail(item: &serde_json::Value) -> String {
         } else {
             "no"
         },
+        item["rule_type"].as_str().unwrap_or("-"),
+        item["scope"].as_str().unwrap_or("-"),
+        item["config"],
         item["staging_repo_id"].as_str().unwrap_or("-"),
         item["created_by"].as_str().unwrap_or("-"),
         item["created_at"].as_str().unwrap_or("-"),
@@ -1051,7 +1413,7 @@ mod tests {
             "Vetted",
         ]);
         match cli.command {
-            CurationCommand::BulkApprove { ids, reason } => {
+            CurationCommand::BulkApprove { ids, reason, .. } => {
                 assert_eq!(ids.len(), 2);
                 assert_eq!(reason, "Vetted");
             }
@@ -1083,6 +1445,7 @@ mod tests {
             CurationCommand::ReEvaluate {
                 staging_repo,
                 default_action,
+                ..
             } => {
                 assert_eq!(staging_repo, NIL_UUID);
                 assert_eq!(default_action, "block");
@@ -1095,12 +1458,12 @@ mod tests {
     fn parse_rules_optional_filter() {
         let cli = parse(&["test", "rules"]);
         match cli.command {
-            CurationCommand::Rules { staging_repo } => assert!(staging_repo.is_none()),
+            CurationCommand::Rules { staging_repo, .. } => assert!(staging_repo.is_none()),
             _ => panic!("expected Rules"),
         }
         let cli = parse(&["test", "rules", "--staging-repo", NIL_UUID]);
         match cli.command {
-            CurationCommand::Rules { staging_repo } => {
+            CurationCommand::Rules { staging_repo, .. } => {
                 assert_eq!(staging_repo.as_deref(), Some(NIL_UUID))
             }
             _ => panic!("expected Rules"),
@@ -1128,7 +1491,7 @@ mod tests {
                 priority,
                 ..
             } => {
-                assert_eq!(package_pattern, "lodash*");
+                assert_eq!(package_pattern.as_deref(), Some("lodash*"));
                 assert_eq!(action, "block");
                 assert_eq!(reason, "banned");
                 assert_eq!(priority, Some(10));
@@ -1149,7 +1512,7 @@ mod tests {
             "update-rule",
             NIL_UUID,
             "--action",
-            "approve",
+            "allow",
             "--package-pattern",
             "left-pad*",
             "--reason",
@@ -1410,7 +1773,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = package_decision(NIL_UUID, true, &global).await;
+        let result = package_decision(NIL_UUID, true, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1427,7 +1790,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = package_decision(NIL_UUID, false, &global).await;
+        let result = package_decision(NIL_UUID, false, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1448,6 +1811,7 @@ mod tests {
             &[NIL_UUID.to_string(), NIL_UUID.to_string()],
             "Vetted",
             true,
+            true,
             &global,
         )
         .await;
@@ -1467,7 +1831,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = re_evaluate(NIL_UUID, "block", &global).await;
+        let result = re_evaluate(NIL_UUID, "block", true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1484,7 +1848,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_rules(None, &global).await;
+        let result = list_rules(None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1519,13 +1883,15 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let result = create_rule(
-            "lodash*",
+            Some("lodash*".to_string()),
             "block",
             "banned",
             None,
             None,
-            Some(10),
-            None,
+            RuleFields {
+                priority: Some(10),
+                ..RuleFields::default()
+            },
             &global,
         )
         .await;
@@ -1553,14 +1919,11 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = update_rule(
             NIL_UUID,
-            "approve",
-            "left-pad*",
-            "ok",
-            true,
-            false,
-            None,
-            None,
-            None,
+            Some("allow".to_string()),
+            Some("left-pad*".to_string()),
+            Some("ok".to_string()),
+            Some(true),
+            RuleFields::default(),
             &global,
         )
         .await;

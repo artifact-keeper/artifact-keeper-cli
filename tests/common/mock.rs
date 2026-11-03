@@ -75,6 +75,22 @@ impl Mocked {
             .expect("run ak")
     }
 
+    /// Run `ak <args>` with no terminal and without `--no-input`, so a confirmation
+    /// prompt really asks.
+    pub fn ak_prompting(&self, args: &[&str]) -> Output {
+        Command::cargo_bin("ak")
+            .expect("ak binary")
+            .env_remove("AK_FORMAT")
+            .env_remove("AK_NO_INPUT")
+            .env("AK_CONFIG_DIR", self.dir.path())
+            .env("AK_TOKEN", "t")
+            .env("AK_CREDENTIAL_STORE", "file")
+            .args(args)
+            .write_stdin("")
+            .output()
+            .expect("run ak")
+    }
+
     /// `ak --format json <args>`: it must succeed, and it must print the body as
     /// the server sent it.
     pub fn json(&self, args: &[&str]) -> Value {
