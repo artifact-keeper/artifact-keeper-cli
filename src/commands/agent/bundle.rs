@@ -477,10 +477,15 @@ pub fn extract<R: Read + Seek>(reader: R, target: &Path) -> Result<String, Strin
 #[cfg(unix)]
 fn set_mode(path: &Path, mode: Option<u32>) {
     use std::os::unix::fs::PermissionsExt;
+    // Only the owner's execute bit is added, to what the file was created with: an
+    // executable in the zip runs for this user, and the zip can't widen who can.
     if let Some(mode) = mode
         && mode & 0o111 != 0
+        && let Ok(meta) = std::fs::metadata(path)
     {
-        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755));
+        let mut permissions = meta.permissions();
+        permissions.set_mode(permissions.mode() | 0o100);
+        let _ = std::fs::set_permissions(path, permissions);
     }
 }
 
@@ -899,6 +904,35 @@ mod tests {
             ".DS_Store".to_string(),
         ];
         assert_eq!(detect_root(&names), "demo/");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_executable_entry_is_executable_for_its_owner() {
+        use std::os::unix::fs::PermissionsExt;
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let exec = zip::write::SimpleFileOptions::DEFAULT.unix_permissions(0o755);
+        writer
+            .start_file(
+                ".cursor-plugin/plugin.json",
+                zip::write::SimpleFileOptions::DEFAULT,
+            )
+            .unwrap();
+        writer.write_all(b"{}").unwrap();
+        writer.start_file("bin/tool", exec).unwrap();
+        writer.write_all(b"#!/bin/sh\n").unwrap();
+        let zip = writer.finish().unwrap().into_inner();
+        let dir = TempDir::new().unwrap();
+        let target = dir.path().join("out");
+        extract(Cursor::new(zip), &target).unwrap();
+        let mode = |p: &str| {
+            std::fs::metadata(target.join(p))
+                .unwrap()
+                .permissions()
+                .mode()
+        };
+        assert_ne!(mode("bin/tool") & 0o100, 0);
+        assert_eq!(mode(".cursor-plugin/plugin.json") & 0o100, 0);
     }
 
     #[test]
