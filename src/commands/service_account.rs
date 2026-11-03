@@ -95,7 +95,7 @@ pub enum TokenCommand {
         #[arg(long)]
         expires_in_days: Option<i64>,
 
-        /// Restrict to specific repository IDs (repeatable)
+        /// Restrict to specific repositories, by key or ID (repeatable)
         #[arg(long = "repository-id")]
         repository_ids: Vec<String>,
 
@@ -555,10 +555,10 @@ async fn create_token(
     let repo_ids = if repository_ids.is_empty() {
         None
     } else {
-        let ids = repository_ids
-            .iter()
-            .map(|r| parse_uuid(r, "repository"))
-            .collect::<Result<Vec<_>>>()?;
+        let mut ids = Vec::with_capacity(repository_ids.len());
+        for repo in repository_ids {
+            ids.push(super::helpers::resolve_repo_id(&client, repo).await?);
+        }
         Some(ids)
     };
 

@@ -533,6 +533,7 @@ async fn list_repos(
         .iter()
         .map(|r| {
             serde_json::json!({
+                "id": r.id,
                 "key": r.key,
                 "name": r.name,
                 "format": r.format,
@@ -616,6 +617,7 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         .map_err(|e| AkError::ServerError(format!("Failed to get repository: {e}")))?;
 
     let info = serde_json::json!({
+        "id": repo.id,
         "key": repo.key,
         "name": repo.name,
         "format": repo.format,
@@ -632,7 +634,8 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
     });
 
     let table_str = format!(
-        "Key:          {}\n\
+        "ID:           {}\n\
+         Key:          {}\n\
          Name:         {}\n\
          Format:       {}\n\
          Type:         {}\n\
@@ -643,6 +646,7 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
          Quota:        {}\n\
          Created:      {}\n\
          Updated:      {}",
+        repo.id,
         repo.key,
         repo.name,
         repo.format,

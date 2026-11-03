@@ -630,6 +630,7 @@ async fn list(
         .iter()
         .map(|a| {
             serde_json::json!({
+                "id": a.id,
                 "path": a.path,
                 "name": a.name,
                 "version": a.version,
@@ -697,6 +698,7 @@ async fn info(repo: &str, artifact_path: &str, global: &GlobalArgs) -> Result<()
     })?;
 
     let info = serde_json::json!({
+        "id": artifact.id,
         "path": artifact.path,
         "name": artifact.name,
         "version": artifact.version,
@@ -947,6 +949,7 @@ async fn search(
         .iter()
         .map(|item| {
             serde_json::json!({
+                "id": item.id,
                 "name": item.name,
                 "path": item.path,
                 "repository": item.repository_key,

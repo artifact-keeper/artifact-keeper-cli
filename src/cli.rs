@@ -207,7 +207,7 @@ pub enum Command {
 
     /// Signing & key management
     #[command(
-        after_help = "Examples:\n  ak sign key list\n  ak sign key create my-key --algorithm rsa4096 --type signing --repo <uuid>\n  ak sign config show <repo-id>"
+        after_help = "Examples:\n  ak sign key list\n  ak sign key create my-key --algorithm rsa4096 --type rsa --repo <repo>\n  ak sign config show <repo>"
     )]
     Sign {
         #[command(subcommand)]
@@ -216,7 +216,7 @@ pub enum Command {
 
     /// Software Bill of Materials operations
     #[command(
-        after_help = "Examples:\n  ak sbom generate <artifact-id>\n  ak sbom list --repo <uuid>\n  ak sbom components <sbom-id>\n  ak sbom cve history <artifact-id>"
+        after_help = "Examples:\n  ak sbom generate <artifact-id>\n  ak sbom list --repo <repo>\n  ak sbom components <sbom-id>\n  ak sbom cve history <artifact-id>"
     )]
     Sbom {
         #[command(subcommand)]
@@ -420,7 +420,7 @@ pub enum Command {
     },
     /// Curate proxied/staged packages: rules, approvals, and quarantine actions
     #[command(
-        after_help = "Examples:\n  ak curation packages --staging-repo <repo-id> --status pending\n  ak curation package <package-id>\n  ak curation approve <package-id>\n  ak curation block <package-id>\n  ak curation bulk-approve <id> <id> --reason \"Vetted\"\n  ak curation re-evaluate --staging-repo <repo-id> --default-action block\n  ak curation rules --staging-repo <repo-id>\n  ak curation create-rule 'lodash*' --action block --reason \"Banned\"\n  ak curation update-rule <rule-id> --action approve --package-pattern 'left-pad*' --reason \"OK\" --enabled\n  ak curation delete-rule <rule-id>\n  ak curation stats --staging-repo <repo-id>"
+        after_help = "Examples:\n  ak curation packages --staging-repo <repo> --status pending\n  ak curation package <package-id>\n  ak curation approve <package-id>\n  ak curation block <package-id>\n  ak curation bulk-approve <id> <id> --reason \"Vetted\"\n  ak curation re-evaluate --staging-repo <repo> --default-action block\n  ak curation rules --staging-repo <repo>\n  ak curation create-rule 'lodash*' --action block --reason \"Banned\"\n  ak curation update-rule <rule-id> --action approve --package-pattern 'left-pad*' --reason \"OK\" --enabled\n  ak curation delete-rule <rule-id>\n  ak curation stats --staging-repo <repo>"
     )]
     Curation {
         #[command(subcommand)]

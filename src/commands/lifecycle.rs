@@ -3,9 +3,8 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
-};
+use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -14,7 +13,7 @@ use crate::output::{self, OutputFormat, format_bytes};
 pub enum LifecycleCommand {
     /// List lifecycle policies
     List {
-        /// Filter by repository ID
+        /// Filter by repository key or ID
         #[arg(long)]
         repo: Option<String>,
     },
@@ -51,7 +50,7 @@ pub enum LifecycleCommand {
         #[arg(long)]
         priority: Option<i32>,
 
-        /// Apply to one repository ID (required for max_versions and
+        /// Apply to one repository key or ID (required for max_versions and
         /// size_quota_bytes). Without it, the policy applies to all repositories.
         #[arg(long)]
         repo: Option<String>,
@@ -184,7 +183,7 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
 
     let mut req = client.list_lifecycle_policies();
     if let Some(id) = repo_id {
-        let uid = parse_uuid(id, "repository")?;
+        let uid = resolve_repo_id(&client, id).await?;
         req = req.repository_id(uid);
     }
 
@@ -372,6 +371,7 @@ async fn create_policy(
     cron_schedule: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let client = client_for(global)?;
     if !VALID_POLICY_TYPES.contains(&policy_type) {
         return Err(AkError::ConfigError(format!(
             "Invalid policy type '{policy_type}'. Must be one of: {}",
@@ -381,7 +381,7 @@ async fn create_policy(
     }
 
     let config_map = parse_config(config)?;
-    let repository_id = parse_optional_uuid(repo_id, "repository")?;
+    let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
 
     let body = artifact_keeper_sdk::types::CreateLifecyclePolicyRequest {
         // Since backend 1.11, a policy with no repository and no `applies_to_all`
@@ -394,11 +394,13 @@ async fn create_policy(
         name: name.to_string(),
         policy_type: policy_type.to_string(),
         priority,
-        repository_id: None,
-        repository_ids: repository_id.map(|id| vec![id]),
+        // The legacy single field, because it works on both supported minors:
+        // 1.10 ignores `repository_ids` and would create a policy for every
+        // repository, and 1.11 stores this as a one-element `repository_ids`.
+        repository_id,
+        repository_ids: None,
     };
 
-    let client = client_for(global)?;
     let spinner = output::spinner("Creating lifecycle policy...");
 
     let resp = client
@@ -1064,7 +1066,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn handler_create_policy_with_repo_sends_repository_ids() {
+    async fn handler_create_policy_with_repo_sends_legacy_repository_id() {
         const ID: &str = "00000000-0000-0000-0000-000000000009";
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
@@ -1075,7 +1077,7 @@ mod tests {
                 "config": { "days": 30 },
                 "name": "p",
                 "policy_type": "max_age_days",
-                "repository_ids": [ID],
+                "repository_id": ID,
             })))
             .respond_with(ResponseTemplate::new(200).set_body_json(lifecycle_policy_json()))
             .expect(1)
