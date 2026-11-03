@@ -6,11 +6,11 @@ use clap::Subcommand;
 use miette::Result;
 use serde_json::Value;
 
-use super::client::client_for;
+use super::client::{client_for, client_for_optional_auth};
 use super::helpers::resolve_optional_repo_id;
 use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, resolve_secret,
-    sdk_err, short_id,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid,
+    refuse_flags_before_1_11, resolve_secret, sdk_err, short_id, since_1_11_any_status,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -26,6 +26,14 @@ pub enum WebhookCommand {
         /// Filter by enabled status
         #[arg(long)]
         enabled: Option<bool>,
+
+        /// Page number
+        #[arg(long)]
+        page: Option<i32>,
+
+        /// Results per page
+        #[arg(long)]
+        per_page: Option<i32>,
     },
 
     /// Show webhook details
@@ -59,6 +67,23 @@ pub enum WebhookCommand {
         /// Scope webhook to a specific repository
         #[arg(long)]
         repo: Option<String>,
+
+        /// Which signatures deliveries carry: hmac, asymmetric or both. Needs a 1.11
+        /// server
+        #[arg(long)]
+        signing_mode: Option<artifact_keeper_sdk::types::SigningMode>,
+
+        /// The event payload version to pin
+        #[arg(long)]
+        event_schema_version: Option<String>,
+
+        /// The shape of the payload: generic, slack, microsoft_teams or discord
+        #[arg(long)]
+        payload_template: Option<artifact_keeper_sdk::types::PayloadTemplate>,
+
+        /// A header to send with each delivery, as NAME=VALUE (repeatable)
+        #[arg(long = "header", value_name = "NAME=VALUE")]
+        headers: Vec<String>,
     },
 
     /// Delete a webhook
@@ -107,6 +132,14 @@ pub enum WebhookCommand {
         /// Filter by delivery status
         #[arg(long)]
         status: Option<String>,
+
+        /// Page number
+        #[arg(long)]
+        page: Option<i32>,
+
+        /// Results per page
+        #[arg(long)]
+        per_page: Option<i32>,
     },
 
     /// Redeliver a failed webhook delivery
@@ -117,12 +150,45 @@ pub enum WebhookCommand {
         /// Delivery ID to redeliver
         delivery_id: String,
     },
+
+    /// Show the public keys that verify asymmetric webhook signatures. Needs a 1.11
+    /// server, and no login
+    Jwks,
+}
+
+/// Everything optional about a new webhook.
+struct WebhookOptions {
+    repo: Option<String>,
+    signing_mode: Option<artifact_keeper_sdk::types::SigningMode>,
+    event_schema_version: Option<String>,
+    payload_template: Option<artifact_keeper_sdk::types::PayloadTemplate>,
+    headers: Vec<String>,
+}
+
+/// `NAME=VALUE` flags as the JSON object the API takes.
+fn parse_headers(headers: &[String]) -> Result<Option<serde_json::Map<String, Value>>> {
+    if headers.is_empty() {
+        return Ok(None);
+    }
+    let mut parsed = serde_json::Map::new();
+    for header in headers {
+        let (name, value) = header.split_once('=').ok_or_else(|| {
+            crate::error::AkError::ConfigError(format!("--header: '{header}' isn't NAME=VALUE"))
+        })?;
+        parsed.insert(name.to_string(), Value::String(value.to_string()));
+    }
+    Ok(Some(parsed))
 }
 
 impl WebhookCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
-            Self::List { repo, enabled } => list_webhooks(repo.as_deref(), enabled, global).await,
+            Self::List {
+                repo,
+                enabled,
+                page,
+                per_page,
+            } => list_webhooks(repo.as_deref(), enabled, page, per_page, global).await,
             Self::Show { id } => show_webhook(&id, global).await,
             Self::Create {
                 name,
@@ -131,6 +197,10 @@ impl WebhookCommand {
                 secret,
                 secret_stdin,
                 repo,
+                signing_mode,
+                event_schema_version,
+                payload_template,
+                headers,
             } => {
                 // Resolve the signing secret off the command line: prompt on
                 // a TTY, or read piped stdin. Empty input keeps it unset.
@@ -146,7 +216,13 @@ impl WebhookCommand {
                     &url,
                     &events,
                     secret.as_deref(),
-                    repo.as_deref(),
+                    WebhookOptions {
+                        repo,
+                        signing_mode,
+                        event_schema_version,
+                        payload_template,
+                        headers,
+                    },
                     global,
                 )
                 .await
@@ -156,12 +232,16 @@ impl WebhookCommand {
             Self::Enable { id } => enable_webhook(&id, global).await,
             Self::Disable { id } => disable_webhook(&id, global).await,
             Self::RotateSecret { id } => rotate_webhook_secret(&id, global).await,
-            Self::Deliveries { id, status } => {
-                list_deliveries(&id, status.as_deref(), global).await
-            }
+            Self::Deliveries {
+                id,
+                status,
+                page,
+                per_page,
+            } => list_deliveries(&id, status.as_deref(), page, per_page, global).await,
             Self::Redeliver { id, delivery_id } => {
                 redeliver_webhook(&id, &delivery_id, global).await
             }
+            Self::Jwks => show_jwks(global).await,
         }
     }
 }
@@ -173,6 +253,8 @@ impl WebhookCommand {
 async fn list_webhooks(
     repo: Option<&str>,
     enabled: Option<bool>,
+    page: Option<i32>,
+    per_page: Option<i32>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -186,6 +268,12 @@ async fn list_webhooks(
     }
     if let Some(e) = enabled {
         req = req.enabled(e);
+    }
+    if let Some(page) = page {
+        req = req.page(page);
+    }
+    if let Some(per_page) = per_page {
+        req = req.per_page(per_page);
     }
 
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
@@ -240,11 +328,16 @@ async fn create_webhook(
     url: &str,
     events: &[String],
     secret: Option<&str>,
-    repo: Option<&str>,
+    options: WebhookOptions,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let headers = parse_headers(&options.headers)?;
+    // A 1.10 server drops this and signs with HMAC, whatever was asked for.
+    if options.signing_mode.is_some() {
+        refuse_flags_before_1_11(&["--signing-mode"], global).await?;
+    }
     let client = client_for(global)?;
-    let repo_id = resolve_optional_repo_id(&client, repo).await?;
+    let repo_id = resolve_optional_repo_id(&client, options.repo.as_deref()).await?;
 
     let spinner = output::spinner("Creating webhook...");
 
@@ -254,10 +347,10 @@ async fn create_webhook(
         events: events.to_vec(),
         secret: secret.map(|s| s.to_string()),
         repository_id: repo_id,
-        headers: None,
-        event_schema_version: None,
-        payload_template: None,
-        signing_mode: None,
+        headers,
+        event_schema_version: options.event_schema_version,
+        payload_template: options.payload_template,
+        signing_mode: options.signing_mode,
     };
 
     let (webhook, raw) =
@@ -315,12 +408,9 @@ async fn test_webhook(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Sending test event...");
 
-    let result = client
-        .test_webhook()
-        .id(webhook_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("test webhook", e))?;
+    let (result, raw) =
+        artifact_keeper_sdk::raw::capture(client.test_webhook().id(webhook_id).send()).await;
+    let result = result.map_err(|e| sdk_err("test webhook", e))?;
 
     let result = result.into_inner();
     spinner.finish_and_clear();
@@ -331,7 +421,10 @@ async fn test_webhook(id: &str, global: &GlobalArgs) -> Result<()> {
     }
 
     let (info, table_str) = format_test_result(&result);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -390,12 +483,10 @@ async fn rotate_webhook_secret(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Rotating webhook secret...");
 
-    let resp = client
-        .rotate_webhook_secret()
-        .id(webhook_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("rotate webhook secret", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.rotate_webhook_secret().id(webhook_id).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("rotate webhook secret", e))?;
 
     let resp = resp.into_inner();
     spinner.finish_and_clear();
@@ -422,12 +513,21 @@ async fn rotate_webhook_secret(id: &str, global: &GlobalArgs) -> Result<()> {
             .format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
 
-async fn list_deliveries(id: &str, status: Option<&str>, global: &GlobalArgs) -> Result<()> {
+async fn list_deliveries(
+    id: &str,
+    status: Option<&str>,
+    page: Option<i32>,
+    per_page: Option<i32>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let webhook_id = parse_uuid(id, "webhook")?;
 
     let client = client_for(global)?;
@@ -437,16 +537,20 @@ async fn list_deliveries(id: &str, status: Option<&str>, global: &GlobalArgs) ->
     if let Some(s) = status {
         req = req.status(s);
     }
+    if let Some(page) = page {
+        req = req.page(page);
+    }
+    if let Some(per_page) = per_page {
+        req = req.per_page(per_page);
+    }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list deliveries", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list deliveries", e))?;
 
     let list = resp.into_inner();
     spinner.finish_and_clear();
 
-    if list.items.is_empty() {
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No deliveries found.");
         return Ok(());
     }
@@ -461,9 +565,52 @@ async fn list_deliveries(id: &str, status: Option<&str>, global: &GlobalArgs) ->
     let (entries, table_str) = format_deliveries_table(&list.items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
+    Ok(())
+}
+
+async fn show_jwks(global: &GlobalArgs) -> Result<()> {
+    let client = client_for_optional_auth(global)?;
+    let (jwks, raw) = artifact_keeper_sdk::raw::capture(client.get_webhook_jwks().send()).await;
+    let jwks = match jwks {
+        Ok(jwks) => jwks.into_inner(),
+        Err(e) => {
+            let action = "get the webhook signing keys";
+            return Err(since_1_11_any_status(e, action, "webhook jwks", global)
+                .await
+                .into());
+        }
+    };
+    if jwks.keys.is_empty() && !output::is_machine_format(&global.format) {
+        eprintln!("This server has no webhook signing keys.");
+        return Ok(());
+    }
+    if matches!(global.format, OutputFormat::Quiet) {
+        for key in &jwks.keys {
+            println!("{}", key.kid);
+        }
+        return Ok(());
+    }
+    let mut table = new_table(vec!["KEY ID", "TYPE", "ALGORITHM", "CURVE"]);
+    for key in &jwks.keys {
+        table.add_row(vec![
+            key.kid.clone(),
+            key.kty.clone(),
+            key.alg.clone(),
+            key.crv.clone(),
+        ]);
+    }
+    println!(
+        "{}",
+        output::render_raw(
+            raw.as_deref(),
+            &jwks,
+            &global.format,
+            Some(table.to_string())
+        )
+    );
     Ok(())
 }
 
@@ -474,22 +621,21 @@ async fn redeliver_webhook(id: &str, delivery_id: &str, global: &GlobalArgs) -> 
     let client = client_for(global)?;
     let spinner = output::spinner("Redelivering webhook...");
 
-    let delivery = client
-        .redeliver()
-        .id(webhook_id)
-        .delivery_id(del_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("redeliver webhook", e))?;
+    let (delivery, raw) = artifact_keeper_sdk::raw::capture(
+        client.redeliver().id(webhook_id).delivery_id(del_id).send(),
+    )
+    .await;
+    let delivery = delivery.map_err(|e| sdk_err("redeliver webhook", e))?;
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", delivery.id);
-        return Ok(());
-    }
-
-    eprintln!("Delivery {} redelivered.", delivery.id);
+    emit_mutation_raw(
+        raw.as_deref(),
+        &*delivery,
+        &delivery.id.to_string(),
+        &format!("Delivery {} redelivered.", delivery.id),
+        global,
+    );
 
     Ok(())
 }
@@ -678,6 +824,16 @@ fn format_deliveries_table(deliveries: &[DeliveryResponse]) -> (Vec<Value>, Stri
 
 #[cfg(test)]
 mod tests {
+    fn test_options(repo: Option<&str>) -> WebhookOptions {
+        WebhookOptions {
+            repo: repo.map(str::to_string),
+            signing_mode: None,
+            event_schema_version: None,
+            payload_template: None,
+            headers: Vec::new(),
+        }
+    }
+
     use super::*;
     use clap::Parser;
 
@@ -700,7 +856,7 @@ mod tests {
     #[test]
     fn parse_list_no_args() {
         let cli = parse(&["test", "list"]);
-        if let WebhookCommand::List { repo, enabled } = cli.command {
+        if let WebhookCommand::List { repo, enabled, .. } = cli.command {
             assert!(repo.is_none());
             assert!(enabled.is_none());
         } else {
@@ -716,7 +872,7 @@ mod tests {
             "--repo",
             "00000000-0000-0000-0000-000000000001",
         ]);
-        if let WebhookCommand::List { repo, enabled } = cli.command {
+        if let WebhookCommand::List { repo, enabled, .. } = cli.command {
             assert_eq!(repo.unwrap(), "00000000-0000-0000-0000-000000000001");
             assert!(enabled.is_none());
         } else {
@@ -727,7 +883,7 @@ mod tests {
     #[test]
     fn parse_list_with_enabled() {
         let cli = parse(&["test", "list", "--enabled", "true"]);
-        if let WebhookCommand::List { repo, enabled } = cli.command {
+        if let WebhookCommand::List { repo, enabled, .. } = cli.command {
             assert!(repo.is_none());
             assert_eq!(enabled.unwrap(), true);
         } else {
@@ -745,7 +901,7 @@ mod tests {
             "--enabled",
             "false",
         ]);
-        if let WebhookCommand::List { repo, enabled } = cli.command {
+        if let WebhookCommand::List { repo, enabled, .. } = cli.command {
             assert!(repo.is_some());
             assert_eq!(enabled.unwrap(), false);
         } else {
@@ -787,6 +943,7 @@ mod tests {
             secret,
             secret_stdin,
             repo,
+            ..
         } = cli.command
         {
             assert_eq!(name, "deploy-hook");
@@ -868,6 +1025,7 @@ mod tests {
             secret,
             secret_stdin,
             repo,
+            ..
         } = cli.command
         {
             assert_eq!(name, "deploy-hook");
@@ -1001,7 +1159,7 @@ mod tests {
     #[test]
     fn parse_deliveries() {
         let cli = parse(&["test", "deliveries", "webhook-id"]);
-        if let WebhookCommand::Deliveries { id, status } = cli.command {
+        if let WebhookCommand::Deliveries { id, status, .. } = cli.command {
             assert_eq!(id, "webhook-id");
             assert!(status.is_none());
         } else {
@@ -1012,7 +1170,7 @@ mod tests {
     #[test]
     fn parse_deliveries_with_status() {
         let cli = parse(&["test", "deliveries", "webhook-id", "--status", "failed"]);
-        if let WebhookCommand::Deliveries { id, status } = cli.command {
+        if let WebhookCommand::Deliveries { id, status, .. } = cli.command {
             assert_eq!(id, "webhook-id");
             assert_eq!(status.unwrap(), "failed");
         } else {
@@ -1408,7 +1566,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_webhooks(None, None, &global).await;
+        let result = list_webhooks(None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1428,7 +1586,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_webhooks(None, None, &global).await;
+        let result = list_webhooks(None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1448,7 +1606,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = list_webhooks(None, None, &global).await;
+        let result = list_webhooks(None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1488,7 +1646,7 @@ mod tests {
             "https://ci.example.com/hook",
             &events,
             Some("secret"),
-            None,
+            test_options(None),
             &global,
         )
         .await;
@@ -1517,7 +1675,7 @@ mod tests {
             "https://ci.example.com/hook",
             &events,
             None,
-            None,
+            test_options(None),
             &global,
         )
         .await;
@@ -1669,7 +1827,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_deliveries(NIL_UUID, None, &global).await;
+        let result = list_deliveries(NIL_UUID, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1689,7 +1847,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_deliveries(NIL_UUID, None, &global).await;
+        let result = list_deliveries(NIL_UUID, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -1709,7 +1867,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = list_deliveries(NIL_UUID, None, &global).await;
+        let result = list_deliveries(NIL_UUID, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

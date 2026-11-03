@@ -211,6 +211,14 @@ pub enum AdminCommand {
 pub enum BackupCommand {
     /// List available backups
     List {
+        /// Only backups with this status
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Only backups of this type
+        #[arg(long)]
+        r#type: Option<String>,
+
         /// Page number
         #[arg(long, default_value = "1")]
         page: i32,
@@ -224,6 +232,22 @@ pub enum BackupCommand {
         /// Backup type (full, incremental)
         #[arg(long, default_value = "full")]
         r#type: String,
+
+        /// A name for the backup
+        #[arg(long)]
+        name: Option<String>,
+
+        /// Only these repository keys or IDs, comma-separated
+        #[arg(long)]
+        repos: Option<String>,
+
+        /// Leave out these repository keys or IDs, comma-separated
+        #[arg(long)]
+        exclude_repos: Option<String>,
+
+        /// Only artifacts changed since this RFC 3339 time
+        #[arg(long)]
+        since: Option<chrono::DateTime<chrono::Utc>>,
     },
     /// Restore from a backup
     Restore {
@@ -237,6 +261,14 @@ pub enum BackupCommand {
         /// Restore artifact files
         #[arg(long)]
         artifacts: bool,
+
+        /// Restore into this repository key or ID
+        #[arg(long)]
+        target_repo: Option<String>,
+
+        /// Restore an archive even if its integrity can't be verified
+        #[arg(long)]
+        allow_unverified_archive: bool,
     },
     /// Show a backup's details
     Get {
@@ -672,6 +704,9 @@ pub enum CiOidcCommand {
         /// Enable the provider on creation
         #[arg(long)]
         enabled: bool,
+
+        #[command(flatten)]
+        keys: CiOidcKeyArgs,
     },
     /// Show a CI OIDC provider
     Get {
@@ -702,6 +737,9 @@ pub enum CiOidcCommand {
         /// Set enabled state
         #[arg(long)]
         enabled: Option<bool>,
+
+        #[command(flatten)]
+        keys: CiOidcKeyArgs,
     },
     /// Delete a CI OIDC provider
     Delete {
@@ -726,6 +764,46 @@ pub enum CiOidcCommand {
         #[command(subcommand)]
         command: CiOidcMappingCommand,
     },
+}
+
+/// Where a CI OIDC provider's signing keys come from.
+#[derive(clap::Args)]
+pub struct CiOidcKeyArgs {
+    /// `discovery`, from the issuer, or `static`, from --static-jwks. Needs a 1.11
+    /// server
+    #[arg(long)]
+    key_source: Option<String>,
+
+    /// The keys as a JWKS JSON object: the text, @file or @-. Needs a 1.11 server
+    #[arg(long)]
+    static_jwks: Option<String>,
+}
+
+impl CiOidcKeyArgs {
+    /// The flags as the API's fields. A 1.10 server ignores both and would go on
+    /// trusting the issuer's keys, so it's refused before anything's sent.
+    async fn resolve(
+        self,
+        global: &GlobalArgs,
+    ) -> Result<(
+        Option<String>,
+        Option<serde_json::Map<String, serde_json::Value>>,
+    )> {
+        let static_jwks = self
+            .static_jwks
+            .as_deref()
+            .map(|value| super::helpers::parse_json_arg(value, "--static-jwks"))
+            .transpose()?;
+        let mut flags = Vec::new();
+        if self.key_source.is_some() {
+            flags.push("--key-source");
+        }
+        if static_jwks.is_some() {
+            flags.push("--static-jwks");
+        }
+        super::helpers::refuse_flags_before_1_11(&flags, global).await?;
+        Ok((self.key_source, static_jwks))
+    }
 }
 
 #[derive(Subcommand)]
@@ -758,6 +836,10 @@ pub enum CiOidcMappingCommand {
         /// Enable the mapping on creation
         #[arg(long)]
         enabled: bool,
+
+        /// Group binding IDs the mapping grants, comma-separated. Needs a 1.11 server
+        #[arg(long, value_delimiter = ',')]
+        group_binding_ids: Option<Vec<uuid::Uuid>>,
     },
     /// Show an identity mapping
     Get {
@@ -794,6 +876,10 @@ pub enum CiOidcMappingCommand {
         /// Set enabled state
         #[arg(long)]
         enabled: Option<bool>,
+
+        /// New group binding IDs, comma-separated. Needs a 1.11 server
+        #[arg(long, value_delimiter = ',')]
+        group_binding_ids: Option<Vec<uuid::Uuid>>,
     },
     /// Delete an identity mapping
     Delete {
@@ -917,15 +1003,48 @@ impl AdminCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Backup { command } => match command {
-                BackupCommand::List { page, per_page } => {
-                    list_backups(page, per_page, global).await
+                BackupCommand::List {
+                    status,
+                    r#type,
+                    page,
+                    per_page,
+                } => {
+                    list_backups(status.as_deref(), r#type.as_deref(), page, per_page, global).await
                 }
-                BackupCommand::Create { r#type } => create_backup(&r#type, global).await,
+                BackupCommand::Create {
+                    r#type,
+                    name,
+                    repos,
+                    exclude_repos,
+                    since,
+                } => {
+                    create_backup(
+                        &r#type,
+                        name,
+                        repos.as_deref(),
+                        exclude_repos.as_deref(),
+                        since,
+                        global,
+                    )
+                    .await
+                }
                 BackupCommand::Restore {
                     id,
                     database,
                     artifacts,
-                } => restore_backup(&id, database, artifacts, global).await,
+                    target_repo,
+                    allow_unverified_archive,
+                } => {
+                    restore_backup(
+                        &id,
+                        database,
+                        artifacts,
+                        target_repo.as_deref(),
+                        allow_unverified_archive,
+                        global,
+                    )
+                    .await
+                }
                 BackupCommand::Get { id } => get_backup(&id, global).await,
                 BackupCommand::Delete { id, yes } => delete_backup(&id, yes, global).await,
                 BackupCommand::Cancel { id } => cancel_backup(&id, global).await,
@@ -1085,6 +1204,7 @@ impl AdminCommand {
                     audience,
                     provider_type,
                     enabled,
+                    keys,
                 } => {
                     create_ci_oidc_provider(
                         &name,
@@ -1092,6 +1212,7 @@ impl AdminCommand {
                         audience.as_deref(),
                         provider_type.as_deref(),
                         enabled,
+                        keys,
                         global,
                     )
                     .await
@@ -1104,6 +1225,7 @@ impl AdminCommand {
                     audience,
                     provider_type,
                     enabled,
+                    keys,
                 } => {
                     update_ci_oidc_provider(
                         &id,
@@ -1112,6 +1234,7 @@ impl AdminCommand {
                         audience.as_deref(),
                         provider_type.as_deref(),
                         enabled,
+                        keys,
                         global,
                     )
                     .await
@@ -1133,6 +1256,7 @@ impl AdminCommand {
                         priority,
                         allowed_repo_ids,
                         enabled,
+                        group_binding_ids,
                     } => {
                         create_ci_oidc_mapping(
                             &provider_id,
@@ -1141,6 +1265,7 @@ impl AdminCommand {
                             priority,
                             allowed_repo_ids.as_deref(),
                             enabled,
+                            group_binding_ids,
                             global,
                         )
                         .await
@@ -1157,6 +1282,7 @@ impl AdminCommand {
                         priority,
                         allowed_repo_ids,
                         enabled,
+                        group_binding_ids,
                     } => {
                         update_ci_oidc_mapping(
                             &provider_id,
@@ -1166,6 +1292,7 @@ impl AdminCommand {
                             priority,
                             allowed_repo_ids.as_deref(),
                             enabled,
+                            group_binding_ids,
                             global,
                         )
                         .await
@@ -1230,14 +1357,24 @@ impl AdminCommand {
     }
 }
 
-async fn list_backups(page: i32, per_page: i32, global: &GlobalArgs) -> Result<()> {
+async fn list_backups(
+    status: Option<&str>,
+    backup_type: Option<&str>,
+    page: i32,
+    per_page: i32,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching backups...");
 
-    let (resp, raw) = artifact_keeper_sdk::raw::capture(
-        client.list_backups().page(page).per_page(per_page).send(),
-    )
-    .await;
+    let mut req = client.list_backups().page(page).per_page(per_page);
+    if let Some(status) = status {
+        req = req.status(status);
+    }
+    if let Some(backup_type) = backup_type {
+        req = req.type_(backup_type);
+    }
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
     let resp = resp.map_err(|e| sdk_err("list backups", e))?;
 
     spinner.finish_and_clear();
@@ -1302,15 +1439,24 @@ async fn list_backups(page: i32, per_page: i32, global: &GlobalArgs) -> Result<(
     Ok(())
 }
 
-async fn create_backup(backup_type: &str, global: &GlobalArgs) -> Result<()> {
+async fn create_backup(
+    backup_type: &str,
+    name: Option<String>,
+    repos: Option<&str>,
+    exclude_repos: Option<&str>,
+    since: Option<chrono::DateTime<chrono::Utc>>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
+    let repository_ids = parse_repo_ids(&client, repos).await?;
+    let exclude_repositories = parse_repo_ids(&client, exclude_repos).await?;
     let spinner = output::spinner("Creating backup...");
 
     let body = artifact_keeper_sdk::types::CreateBackupRequest {
-        exclude_repositories: None,
-        name: None,
-        repository_ids: None,
-        since: None,
+        exclude_repositories,
+        name,
+        repository_ids,
+        since,
         type_: Some(backup_type.to_string()),
     };
 
@@ -1348,9 +1494,13 @@ async fn restore_backup(
     backup_id: &str,
     database: bool,
     artifacts: bool,
+    target_repo: Option<&str>,
+    allow_unverified_archive: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
+    let target_repository_id =
+        super::helpers::resolve_optional_repo_id(&client, target_repo).await?;
 
     let id = parse_uuid(backup_id, "backup")?;
 
@@ -1365,10 +1515,10 @@ async fn restore_backup(
     let spinner = output::spinner("Restoring backup...");
 
     let body = artifact_keeper_sdk::types::RestoreRequest {
-        allow_unverified_archive: None,
+        allow_unverified_archive: allow_unverified_archive.then_some(true),
         restore_database: database.then_some(true),
         restore_artifacts: artifacts.then_some(true),
-        target_repository_id: None,
+        target_repository_id,
     };
 
     let (resp, raw) =
@@ -3658,8 +3808,10 @@ async fn create_ci_oidc_provider(
     audience: Option<&str>,
     provider_type: Option<&str>,
     enabled: bool,
+    keys: CiOidcKeyArgs,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let (key_source, static_jwks) = keys.resolve(global).await?;
     let client = client_for(global)?;
     let spinner = output::spinner("Creating CI OIDC provider...");
 
@@ -3669,8 +3821,8 @@ async fn create_ci_oidc_provider(
         audience: audience.map(|s| s.to_string()),
         provider_type: provider_type.map(|s| s.to_string()),
         is_enabled: enabled.then_some(true),
-        key_source: None,
-        static_jwks: None,
+        key_source,
+        static_jwks,
     };
 
     let (p, raw) =
@@ -3688,6 +3840,7 @@ async fn create_ci_oidc_provider(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn update_ci_oidc_provider(
     provider_id: &str,
     name: Option<&str>,
@@ -3695,8 +3848,10 @@ async fn update_ci_oidc_provider(
     audience: Option<&str>,
     provider_type: Option<&str>,
     enabled: Option<bool>,
+    keys: CiOidcKeyArgs,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let (key_source, static_jwks) = keys.resolve(global).await?;
     let client = client_for(global)?;
     let id = parse_uuid(provider_id, "provider")?;
     let spinner = output::spinner("Updating CI OIDC provider...");
@@ -3707,8 +3862,8 @@ async fn update_ci_oidc_provider(
         audience: audience.map(|s| s.to_string()),
         provider_type: provider_type.map(|s| s.to_string()),
         is_enabled: enabled,
-        key_source: None,
-        static_jwks: None,
+        key_source,
+        static_jwks,
     };
 
     let (p, raw) =
@@ -3935,8 +4090,12 @@ async fn create_ci_oidc_mapping(
     priority: Option<i32>,
     allowed_repo_ids: Option<&str>,
     enabled: bool,
+    group_binding_ids: Option<Vec<uuid::Uuid>>,
     global: &GlobalArgs,
 ) -> Result<()> {
+    if group_binding_ids.is_some() {
+        super::helpers::refuse_flags_before_1_11(&["--group-binding-ids"], global).await?;
+    }
     let client = client_for(global)?;
     let id = parse_uuid(provider_id, "provider")?;
 
@@ -3952,7 +4111,7 @@ async fn create_ci_oidc_mapping(
         claim_filters: filters,
         priority,
         allowed_repo_ids: allowed,
-        group_binding_ids: None,
+        group_binding_ids,
         is_enabled: enabled.then_some(true),
     };
 
@@ -3980,8 +4139,12 @@ async fn update_ci_oidc_mapping(
     priority: Option<i32>,
     allowed_repo_ids: Option<&str>,
     enabled: Option<bool>,
+    group_binding_ids: Option<Vec<uuid::Uuid>>,
     global: &GlobalArgs,
 ) -> Result<()> {
+    if group_binding_ids.is_some() {
+        super::helpers::refuse_flags_before_1_11(&["--group-binding-ids"], global).await?;
+    }
     let client = client_for(global)?;
     let id = parse_uuid(provider_id, "provider")?;
     let mid = parse_uuid(mapping_id, "mapping")?;
@@ -4001,7 +4164,7 @@ async fn update_ci_oidc_mapping(
         claim_filters: filters,
         priority,
         allowed_repo_ids: allowed,
-        group_binding_ids: None,
+        group_binding_ids,
         is_enabled: enabled,
     };
 
@@ -4534,7 +4697,7 @@ mod tests {
     fn parse_backup_list_defaults() {
         let cli = parse(&["test", "backup", "list"]);
         if let AdminCommand::Backup {
-            command: BackupCommand::List { page, per_page },
+            command: BackupCommand::List { page, per_page, .. },
         } = cli.command
         {
             assert_eq!(page, 1);
@@ -4548,7 +4711,7 @@ mod tests {
     fn parse_backup_list_custom_page() {
         let cli = parse(&["test", "backup", "list", "--page", "3", "--per-page", "10"]);
         if let AdminCommand::Backup {
-            command: BackupCommand::List { page, per_page },
+            command: BackupCommand::List { page, per_page, .. },
         } = cli.command
         {
             assert_eq!(page, 3);
@@ -4562,7 +4725,7 @@ mod tests {
     fn parse_backup_create() {
         let cli = parse(&["test", "backup", "create"]);
         if let AdminCommand::Backup {
-            command: BackupCommand::Create { r#type },
+            command: BackupCommand::Create { r#type, .. },
         } = cli.command
         {
             assert_eq!(r#type, "full");
@@ -4575,7 +4738,7 @@ mod tests {
     fn parse_backup_create_incremental() {
         let cli = parse(&["test", "backup", "create", "--type", "incremental"]);
         if let AdminCommand::Backup {
-            command: BackupCommand::Create { r#type },
+            command: BackupCommand::Create { r#type, .. },
         } = cli.command
         {
             assert_eq!(r#type, "incremental");
@@ -4593,6 +4756,7 @@ mod tests {
                     id,
                     database,
                     artifacts,
+                    ..
                 },
         } = cli.command
         {
@@ -4620,6 +4784,7 @@ mod tests {
                     id,
                     database,
                     artifacts,
+                    ..
                 },
         } = cli.command
         {
@@ -5902,7 +6067,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_backups(1, 20, &global).await;
+        let result = list_backups(None, None, 1, 20, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -5931,7 +6096,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = list_backups(1, 20, &global).await;
+        let result = list_backups(None, None, 1, 20, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -5957,7 +6122,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = create_backup("full", &global).await;
+        let result = create_backup("full", None, None, None, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -7117,6 +7282,7 @@ mod tests {
                     audience,
                     provider_type,
                     enabled,
+                    ..
                 },
         } = cli.command
         {
@@ -7243,6 +7409,7 @@ mod tests {
                             priority,
                             allowed_repo_ids,
                             enabled,
+                            ..
                         },
                 },
         } = cli.command

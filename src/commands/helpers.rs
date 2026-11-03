@@ -163,6 +163,22 @@ pub async fn since_1_11_raw(
     raw_err(action, status, body)
 }
 
+/// [`since_1_11`] for a route whose last segment an older server takes for an `{id}`:
+/// it answers 400 "UUID parsing failed", not 404.
+pub async fn since_1_11_any_status(
+    error: artifact_keeper_sdk::Error,
+    action: &str,
+    command: &str,
+    global: &GlobalArgs,
+) -> AkError {
+    if let Some(version) = server_before_1_11(global).await {
+        return AkError::ServerError(format!(
+            "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
+        ));
+    }
+    sdk_err(action, error)
+}
+
 /// The bytes of a flag's value: the text itself, `@file` or `@-` for stdin.
 pub fn read_inline_or_file(value: &str, flag: &str) -> Result<Vec<u8>> {
     match value.strip_prefix('@') {
