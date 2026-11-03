@@ -102,6 +102,9 @@ pub enum Command {
         after_help = "Examples:\n  ak setup auto\n  ak setup npm --repo my-npm-repo\n  ak setup pip\n  ak setup docker\n  ak setup maven --repo libs-release"
     )]
     Setup {
+        #[command(flatten)]
+        options: commands::setup::TokenOptions,
+
         #[command(subcommand)]
         command: commands::setup::SetupCommand,
     },
@@ -485,7 +488,7 @@ impl Cli {
             Command::Instance { command } => command.execute(&global).await,
             Command::Repo { command } => command.execute(&global).await,
             Command::Artifact { command } => command.execute(&global).await,
-            Command::Setup { command } => command.execute(&global).await,
+            Command::Setup { options, command } => command.execute(options, &global).await,
             Command::Scan { command } => command.execute(&global).await,
             Command::Doctor => commands::doctor::execute(&global).await,
             Command::Migrate {

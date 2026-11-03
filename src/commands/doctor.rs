@@ -1,12 +1,11 @@
 use std::time::Duration;
 
 use artifact_keeper_sdk::{ClientAuthExt, ClientRepositoriesExt};
-use base64::Engine;
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use console::style;
 use miette::Result;
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
+use super::helpers::decode_jwt_expiry;
 use crate::config::credentials::{StoredCredential, get_credential};
 use crate::config::{AppConfig, InstanceConfig};
 
@@ -371,14 +370,6 @@ async fn check_auth(name: &str, instance: &InstanceConfig, diag: &mut DiagResult
     }
 
     diag.pass(&format!("{name} -- {details}"));
-}
-
-/// Decode JWT expiry claim without verifying the signature.
-fn decode_jwt_expiry(token: &str) -> Option<i64> {
-    let payload = token.split('.').nth(1)?;
-    let bytes = URL_SAFE_NO_PAD.decode(payload).ok()?;
-    let json: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
-    json.get("exp")?.as_i64()
 }
 
 // ---------------------------------------------------------------------------

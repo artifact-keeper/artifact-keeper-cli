@@ -31,6 +31,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak curation update-rule` keeps a rule's engine and config. An update used to reset them to the defaults.
 - `ak admin users role assign` warns that the role grants no repository access, since backend 1.11 deprecated the endpoint in favour of `ak permission create`.
 - `ak lifecycle update` and `ak email-subscriptions subscribe` use the generated SDK instead of raw HTTP.
+- `ak setup` no longer writes your 30-minute login token into permanent config files. It creates an API token named `ak-setup-<tool>-<repo>` with `read:artifacts` and `write:artifacts` that lasts 90 days (`--token-days`), and prints its ID and how to revoke it. `--session-token` keeps the old behavior with a warning. An API token in `AK_TOKEN` is used as it is.
 
 ### Fixed
 
@@ -40,6 +41,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak artifact push` now sends a detected `Content-Type` instead of always using `application/octet-stream`, so the server stores a meaningful `content_type` for each artifact. The type is guessed from the file extension via `mime_guess`, with overrides for extensions its database gets wrong (for example `.rpm` is `application/x-rpm` and `.deb` is `application/vnd.debian.binary-package`) and an `application/octet-stream` fallback for unknown types. A new `--content-type` flag sets the type explicitly. Applies to both the single-PUT and chunked-upload paths. This changes only the stored `content_type`, not how the server classifies or indexes packages (#185)
 - Linux release binaries (and the `.deb`/`.rpm` packages that wrap them) are now fully static musl builds, so they run on any Linux distribution regardless of its glibc version: Debian 12, Ubuntu 22.04, RHEL/Alma/Rocky 8 and 9, Amazon Linux 2023, Alpine and distroless images. They were previously built on `ubuntu-latest` and required glibc 2.39. CI now fails if a dependency breaks static linking (#178)
 - `ak admin storage-gc run` now always sends `dry_run` explicitly, so a live run posts `{"dry_run": false}` instead of an empty body. Companion to artifact-keeper#3619, which makes `dry_run` required on the storage-GC endpoint and rejects unknown fields (422)
+- `ak setup` writes working URLs (#155). Package-manager endpoints are mounted at the server root, not under `/api/v1`. NuGet uses `/nuget/<repo>/v3/index.json`, apt uses `/debian/<repo>/`, and Cargo uses the sparse protocol. It no longer forces https on http instances, and `setup docker` keeps the port. For http instances it adds the setting each client needs (`allowInsecureProtocol`, `allowInsecureConnections`, `trusted-host`, a protocol on the apt `machine` line). `setup go` now says the go command will not send credentials over plain HTTP. `setup go` no longer suggests the nonexistent `GONOSUMCHECK`.
 
 ### Removed
 

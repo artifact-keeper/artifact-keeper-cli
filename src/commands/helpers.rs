@@ -44,6 +44,19 @@ pub fn emit_mutation<T: Serialize>(value: &T, id: &str, human: &str, global: &Gl
     }
 }
 
+/// The `exp` claim of a JWT, read without verifying the signature, or `None` if
+/// the token isn't a JWT with one. Only for telling a user when their own token
+/// runs out: the server is what decides whether a token is good.
+pub fn decode_jwt_expiry(token: &str) -> Option<i64> {
+    use base64::Engine;
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+
+    let payload = token.split('.').nth(1)?;
+    let bytes = URL_SAFE_NO_PAD.decode(payload).ok()?;
+    let json: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    json.get("exp")?.as_i64()
+}
+
 /// Parse a string as a UUID, returning a friendly error with the given label.
 pub fn parse_uuid(id: &str, label: &str) -> Result<uuid::Uuid> {
     id.parse()
