@@ -187,6 +187,156 @@ N
     dotnet build -v q >/dev/null'
 }
 
+check_debian() {
+  local d; d="$(fresh debian)"
+  REPO="$(new_repo debian debian)" || return 1
+  box docker.io/library/debian:12-slim "$d" '
+    for n in demoak libakdemo; do
+      r=$n; mkdir -p $r/DEBIAN $r/usr/share/$n; echo 41 > $r/usr/share/$n/value
+      printf "Package: $n\nVersion: 1.0.$RUN_ID\nArchitecture: all\nMaintainer: t <t@example.com>\nDescription: demo\n" > $r/DEBIAN/control
+      dpkg-deb --build --root-owner-group $r ${n}_1.0.${RUN_ID}_all.deb >/dev/null
+    done' || return 1
+  ak pkg debian publish "$REPO" "$d/demoak_1.0.${RUN_ID}_all.deb" || return 1
+  ak pkg debian publish "$REPO" "$d/libakdemo_1.0.${RUN_ID}_all.deb" --endpoint upload || return 1
+  box docker.io/library/debian:12-slim "$d" '
+    echo "deb [trusted=yes] $BASE/debian/$REPO stable main" > /etc/apt/sources.list
+    rm -f /etc/apt/sources.list.d/*
+    apt-get -qq update
+    apt-get -qq install -y demoak libakdemo >/dev/null
+    test "$(cat /usr/share/demoak/value)" = 41
+    test "$(cat /usr/share/libakdemo/value)" = 41'
+}
+
+check_rpm() {
+  local d; d="$(fresh rpm)"
+  REPO="$(new_repo rpm rpm)" || return 1
+  box docker.io/library/fedora:41 "$d" '
+    dnf -q -y install rpm-build >/dev/null
+    for n in akone aktwo akthree; do
+      cat > $n.spec <<S
+Name: $n
+Version: 1.0.$RUN_ID
+Release: 1
+Summary: demo
+License: MIT
+BuildArch: noarch
+%description
+demo
+%install
+mkdir -p %{buildroot}/usr/share/$n
+echo 41 > %{buildroot}/usr/share/$n/value
+%files
+/usr/share/$n/value
+S
+      rpmbuild -bb --quiet --define "_rpmdir /w/out" $n.spec
+    done' || return 1
+  ak pkg rpm publish "$REPO" "$d/out/noarch/akone-1.0.$RUN_ID-1.noarch.rpm" || return 1
+  ak pkg rpm publish "$REPO" "$d/out/noarch/aktwo-1.0.$RUN_ID-1.noarch.rpm" --endpoint upload || return 1
+  # What issue #185 reported: the same package through `ak artifact push`.
+  ak artifact push "$REPO" "$d/out/noarch/akthree-1.0.$RUN_ID-1.noarch.rpm" >/dev/null || return 1
+  box docker.io/library/fedora:41 "$d" '
+    cat > /etc/yum.repos.d/ak.repo <<R
+[ak]
+name=ak
+baseurl=$BASE/rpm/$REPO/
+gpgcheck=0
+repo_gpgcheck=0
+R
+    dnf -q -y --disablerepo="*" --enablerepo=ak install akone aktwo akthree >/dev/null
+    for n in akone aktwo akthree; do test "$(cat /usr/share/$n/value)" = 41; done'
+}
+
+check_alpine() {
+  local d; d="$(fresh alpine)"
+  REPO="$(new_repo alpine alpine)" || return 1
+  box docker.io/library/alpine:3.20 "$d" '
+    apk add -q alpine-sdk >/dev/null
+    adduser -D b; addgroup b abuild; mkdir -p /home/b/akdemo /tmp/out; chown -R b /home/b /tmp/out
+    cat > /home/b/akdemo/APKBUILD <<A
+pkgname=akdemo
+pkgver=1.0.$RUN_ID
+pkgrel=0
+pkgdesc="demo"
+url="https://example.com"
+arch="noarch"
+license="MIT"
+options="!check"
+package() { mkdir -p "\$pkgdir/usr/share/akdemo"; echo 41 > "\$pkgdir/usr/share/akdemo/value"; }
+A
+    su b -c "abuild-keygen -a -n -q; cd ~/akdemo && REPODEST=/tmp/out abuild -d -q -r" 2>&1 | tail -3
+    find /tmp/out -name "*.apk" -exec cp {} /w/ \;' || return 1
+  ak pkg alpine publish "$REPO" "$d/akdemo-1.0.$RUN_ID-r0.apk" --arch x86_64 || return 1
+  box docker.io/library/alpine:3.20 "$d" '
+    apk add -q --no-cache --allow-untrusted --repository "$BASE/alpine/$REPO/edge/main" akdemo >/dev/null
+    test "$(cat /usr/share/akdemo/value)" = 41'
+}
+
+check_pacman() {
+  local d; d="$(fresh pacman)"
+  REPO="$(new_repo pacman pacman)" || return 1
+  box docker.io/library/archlinux:base-devel "$d" '
+    useradd -m b; mkdir /tmp/b; chown b /tmp/b; cd /tmp/b
+    cat > PKGBUILD <<P
+pkgname=akdemo
+pkgver=1.0.$RUN_ID
+pkgrel=1
+pkgdesc=demo
+arch=(any)
+license=(MIT)
+package() { mkdir -p "\$pkgdir/usr/share/akdemo"; echo 41 > "\$pkgdir/usr/share/akdemo/value"; }
+P
+    su b -c "makepkg -s --noconfirm >/dev/null 2>&1"
+    cp *.pkg.tar.* /w/' || return 1
+  ak pkg pacman publish "$REPO" "$d/"akdemo-*.pkg.tar.* || return 1
+  box docker.io/library/archlinux:base-devel "$d" '
+    printf "\n[$REPO]\nSigLevel = Never\nServer = $BASE/pacman/$REPO/\$arch\n" >> /etc/pacman.conf
+    pacman -Sy --noconfirm --config /etc/pacman.conf akdemo >/dev/null
+    test "$(cat /usr/share/akdemo/value)" = 41'
+}
+
+check_conda() {
+  local d; d="$(fresh conda)"
+  REPO="$(new_repo conda conda)" || return 1
+  # conda-build is a large install for a directory of metadata and a tar.bz2.
+  box docker.io/library/python:3.12-slim "$d" '
+    python -I - <<P
+import io, json, os, tarfile
+run = os.environ["RUN_ID"]
+for name in ("akdemo", "aktoken", "aktoken2", "akgone"):
+    index = {"name": name, "version": "1.0."+run, "build": "0", "build_number": 0,
+             "subdir": "noarch", "depends": [], "arch": None, "platform": None, "noarch": "generic"}
+    files = {"info/index.json": json.dumps(index), "info/files": "share/"+name+"/value\n",
+             "info/paths.json": json.dumps({"paths": [{"_path": "share/"+name+"/value", "path_type": "hardlink",
+                 "sha256": __import__("hashlib").sha256(b"41\n").hexdigest(), "size_in_bytes": 3}], "paths_version": 1}),
+             "share/"+name+"/value": "41\n"}
+    with tarfile.open(f"/w/{name}-1.0.{run}-0.tar.bz2", "w:bz2") as t:
+        for path, text in files.items():
+            data = text.encode(); info = tarfile.TarInfo(path); info.size = len(data); t.addfile(info, io.BytesIO(data))
+P' || return 1
+  ak pkg conda publish "$REPO" "$d/akdemo-1.0.$RUN_ID-0.tar.bz2" || return 1
+  # The token in the URL has to be an API token.
+  local api_token
+  api_token="$(ak --format json auth token create --description "conda-$RUN_ID" --scope write:artifacts --expires-in 1 |
+    python3 -I -c 'import json,sys;print(json.load(sys.stdin)["token"])')" || return 1
+  AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken-1.0.$RUN_ID-0.tar.bz2" --subdir noarch --token-in-url t-conda || return 1
+  AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken2-1.0.$RUN_ID-0.tar.bz2" --token-in-url conda-t || return 1
+  # An attestation has to be a signed bundle, which is out of reach here, so this shows
+  # only that it reaches the handler: the server reads it, and refuses it for what it is.
+  local refused
+  refused="$(ak pkg conda attest "$REPO" noarch "akdemo-1.0.$RUN_ID-0.tar.bz2" '{}' 2>&1)" && return 1
+  case "$refused" in *404*) echo "$refused"; return 1 ;; esac
+  # A withdrawn package isn't offered any more.
+  ak pkg conda publish "$REPO" "$d/akgone-1.0.$RUN_ID-0.tar.bz2" --subdir noarch || return 1
+  ak pkg conda withdraw "$REPO" noarch "akgone-1.0.$RUN_ID-0.tar.bz2" --reason test --yes || return 1
+  box docker.io/mambaorg/micromamba:1.5-bookworm-slim "$d" '
+    export MAMBA_ROOT_PREFIX=/tmp/m
+    micromamba create -q -y -n e --override-channels -c "$BASE/conda/$REPO" akdemo aktoken aktoken2 >/dev/null
+    for n in akdemo aktoken aktoken2; do test "$(cat /tmp/m/envs/e/share/$n/value)" = 41; done
+    if micromamba create -q -y -n g --override-channels -c "$BASE/conda/$REPO" akgone >/dev/null 2>&1; then
+      echo "a withdrawn package installed"; exit 1
+    fi'
+}
+
 # A format's check, its outcome on one line, and its output only if it failed.
 run() {
   local name="$1" log="$WORK/$1.log"
@@ -200,6 +350,6 @@ run() {
 }
 
 FAILED=0
-ALL=(pypi npm cargo helm nuget)
+ALL=(pypi npm cargo helm nuget debian rpm alpine pacman conda)
 for name in "${@:-${ALL[@]}}"; do run "$name"; done
 exit "$FAILED"

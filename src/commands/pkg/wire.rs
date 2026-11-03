@@ -68,6 +68,16 @@ impl Wire {
             .header(reqwest::header::AUTHORIZATION, &self.auth)
     }
 
+    /// A request that carries its credential in the URL, so no header. See [`Wire::token`].
+    pub fn request_no_header(&self, method: Method, url: Url) -> RequestBuilder {
+        self.client.request(method, url)
+    }
+
+    /// The token itself, for a route that takes it in the URL. Never print a URL holding it.
+    pub fn token(&self) -> &str {
+        self.auth.strip_prefix("Bearer ").unwrap_or(&self.auth)
+    }
+
     /// Send, and turn any status but a success into the server's own message.
     pub async fn send(&self, action: &str, request: RequestBuilder) -> Result<Reply> {
         let response = request.send().await.map_err(|e| {
@@ -107,6 +117,19 @@ impl Wire {
     }
 }
 
+/// `a/b/c` as segments. An empty or dot segment can't be meant: the URL would point
+/// somewhere other than the path given.
+pub fn split_path<'a>(path: &'a str, what: &str) -> Result<Vec<&'a str>> {
+    let segments: Vec<&str> = path.trim_start_matches('/').split('/').collect();
+    if segments
+        .iter()
+        .any(|s| s.is_empty() || *s == "." || *s == "..")
+    {
+        return Err(AkError::ConfigError(format!("{what} `{path}` isn't a valid path")).into());
+    }
+    Ok(segments)
+}
+
 /// A file to upload. Checked before anything is sent.
 pub struct Upload {
     pub path: PathBuf,
@@ -139,6 +162,18 @@ impl Upload {
             file,
             256 * 1024,
         )))
+    }
+
+    /// A request with the file as its body, its length known and streamed.
+    pub async fn attach(
+        &self,
+        request: RequestBuilder,
+        content_type: &str,
+    ) -> Result<RequestBuilder> {
+        Ok(request
+            .header(reqwest::header::CONTENT_TYPE, content_type)
+            .header(reqwest::header::CONTENT_LENGTH, self.len)
+            .body(self.body().await?))
     }
 
     /// The file as a multipart part with its name, streamed.

@@ -137,3 +137,59 @@ pub fn nupkg(dir: &Path, id: &str, version: &str) -> PathBuf {
         &[(&format!("{id}.nuspec"), nuspec.as_bytes())],
     )
 }
+
+/// A `.deb`: an `ar` of a version, a control tarball and a data tarball.
+#[allow(dead_code)]
+pub fn deb(dir: &Path, name: &str, version: &str) -> PathBuf {
+    let control = format!(
+        "Package: {name}\nVersion: {version}\nArchitecture: all\nMaintainer: t <t@example.com>\n\
+         Description: demo\n"
+    );
+    let control_tar = dir.join("control.tar.gz");
+    tar_gz(&control_tar, &[("./control", control.as_bytes())]);
+    let data_tar = dir.join("data.tar.gz");
+    tar_gz(&data_tar, &[("./usr/share/demo/value", b"41\n")]);
+    let members: [(&str, Vec<u8>); 3] = [
+        ("debian-binary", b"2.0\n".to_vec()),
+        (
+            "control.tar.gz",
+            std::fs::read(&control_tar).expect("control"),
+        ),
+        ("data.tar.gz", std::fs::read(&data_tar).expect("data")),
+    ];
+    let mut out = b"!<arch>\n".to_vec();
+    for (member, content) in members {
+        let header = format!(
+            "{member:<16}{:<12}{:<6}{:<6}{:<8}{:<10}`\n",
+            0,
+            0,
+            0,
+            "100644",
+            content.len()
+        );
+        out.extend_from_slice(header.as_bytes());
+        out.extend_from_slice(&content);
+        if content.len() % 2 == 1 {
+            out.push(b'\n');
+        }
+    }
+    let path = dir.join(format!("{name}_{version}_all.deb"));
+    std::fs::write(&path, out).expect("write deb");
+    path
+}
+
+/// An `.apk`, or a pacman package with `.pkg.tar.gz`: a `.PKGINFO` and one file.
+#[allow(dead_code)]
+pub fn pkginfo_package(path: &Path, name: &str, version: &str, arch: &str) -> PathBuf {
+    let info = format!(
+        "pkgname = {name}\npkgver = {version}\npkgdesc = demo\nurl = https://example.com\n\
+         arch = {arch}\nsize = 3\nlicense = MIT\n"
+    );
+    tar_gz(
+        path,
+        &[
+            (".PKGINFO", info.as_bytes()),
+            ("usr/share/demo/value", b"41\n"),
+        ],
+    )
+}
