@@ -164,7 +164,7 @@ async fn artifact_commands() {
         "/api/v1/repositories/r/artifacts/a.bin",
         "GET",
         artifact(),
-        &["artifact", "info", "r", "a.bin"],
+        &["artifact", "show", "r", "a.bin"],
     )
     .await;
     assert_prints_the_body(
@@ -196,7 +196,7 @@ async fn whoami() {
 fn every_subcommand_definition_is_valid() {
     for args in [
         vec!["artifact", "pull", "--help"],
-        vec!["artifact", "info", "--help"],
+        vec!["artifact", "show", "--help"],
         vec!["artifact", "search", "--help"],
         vec!["artifact", "push", "--help"],
         vec!["repo", "create", "--help"],
@@ -644,14 +644,14 @@ async fn package_commands() {
         "/api/v1/packages",
         "GET",
         list_of(package()),
-        &["packages", "list"],
+        &["catalog", "list"],
     )
     .await;
     assert_prints_the_body(
         &format!("/api/v1/packages/{UUID}"),
         "GET",
         package(),
-        &["packages", "show", UUID],
+        &["catalog", "show", UUID],
     )
     .await;
 }
@@ -1464,7 +1464,7 @@ async fn system_commands() {
             "checks": {"database": {"status": "ok"}, "storage": {"status": "ok"}},
             "from_a_newer_server": 1
         }),
-        &["system", "health"],
+        &["monitoring", "health"],
     )
     .await;
 }

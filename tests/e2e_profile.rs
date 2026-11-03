@@ -11,7 +11,7 @@ use predicates::prelude::*;
 fn profile_show() {
     let env = common::TestEnv::setup();
     env.ak_cmd()
-        .args(["profile", "show"])
+        .args(["auth", "whoami"])
         .assert()
         .success()
         .stdout(predicate::str::contains("admin"));

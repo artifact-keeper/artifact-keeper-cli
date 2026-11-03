@@ -187,7 +187,7 @@ fn artifact_output_exposes_the_id_and_quarantine_takes_a_path() {
 
     let info = json_of(
         env.ak_cmd()
-            .args(["artifact", "info", key, "docs/resolver.txt"]),
+            .args(["artifact", "show", key, "docs/resolver.txt"]),
     );
     let id = info["id"].as_str().expect("artifact info has an id");
     assert!(id.parse::<uuid::Uuid>().is_ok(), "{id}");

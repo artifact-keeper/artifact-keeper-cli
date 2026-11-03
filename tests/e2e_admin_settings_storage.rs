@@ -155,7 +155,7 @@ fn a_deleted_artifact_can_be_restored_from_the_trash() {
         .args(["--path", "a.bin"])
         .assert()
         .success();
-    let id = run(&env, &["artifact", "info", &key, "a.bin"])["id"]
+    let id = run(&env, &["artifact", "show", &key, "a.bin"])["id"]
         .as_str()
         .unwrap()
         .to_string();
@@ -258,7 +258,7 @@ fn ledger_and_package_backfills_report() {
     let env = common::TestEnv::setup();
     let ledger = run(&env, &["admin", "storage", "ledger-backfill"]);
     assert!(ledger["repositories_checked"].is_i64(), "{ledger}");
-    let packages = run(&env, &["packages", "backfill"]);
+    let packages = run(&env, &["catalog", "backfill"]);
     assert!(packages["artifacts_scanned"].is_i64(), "{packages}");
 }
 

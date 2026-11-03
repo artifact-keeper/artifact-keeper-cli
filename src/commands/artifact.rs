@@ -66,7 +66,6 @@ pub enum ArtifactCommand {
     },
 
     /// Download an artifact from a repository
-    #[command(disable_version_flag = true)]
     Pull {
         /// Repository key
         repo: String,
@@ -82,8 +81,8 @@ pub enum ArtifactCommand {
         #[arg(long)]
         force: bool,
 
-        /// Revision to download, from `ak artifact versions`
-        #[arg(long)]
+        /// Revision to download, from `ak artifact versions`. Needs a versioned repository
+        #[arg(long = "revision")]
         version: Option<String>,
     },
 
@@ -108,24 +107,19 @@ pub enum ArtifactCommand {
         per_page: i32,
     },
 
-    /// Show artifact metadata and details
-    #[command(disable_version_flag = true)]
-    Info {
-        /// Repository key
-        repo: String,
-
-        /// Artifact path
-        path: String,
-
-        /// Revision to show, from `ak artifact versions`
-        #[arg(long)]
-        version: Option<String>,
-    },
-
-    /// Show an artifact by its ID or <repo-key>/<path>
+    /// Show an artifact: by <repo> <path>, <repo-key>/<path> or its ID
+    #[command(alias = "info")]
     Show {
-        /// Artifact ID or <repo-key>/<path>
-        id: String,
+        /// Repository key, or an artifact ID or <repo-key>/<path>
+        #[arg(value_name = "REPO|ID")]
+        target: String,
+
+        /// Artifact path, when the first argument is a repository key
+        path: Option<String>,
+
+        /// Revision to show, from `ak artifact versions`. Needs a versioned repository
+        #[arg(long = "revision")]
+        version: Option<String>,
     },
 
     /// Show format-specific metadata for an artifact
@@ -463,12 +457,21 @@ impl ArtifactCommand {
                 page,
                 per_page,
             } => list(&repo, search.as_deref(), &filters, page, per_page, global).await,
-            Self::Info {
-                repo,
+            Self::Show {
+                target,
                 path,
                 version,
-            } => info(&repo, &path, version.as_deref(), global).await,
-            Self::Show { id } => show_by_id(&id, global).await,
+            } => match (path, version) {
+                (Some(path), version) => info(&target, &path, version.as_deref(), global).await,
+                (None, None) => show_by_id(&target, global).await,
+                (None, Some(version)) => match target.split_once('/') {
+                    Some((repo, path)) => info(repo, path, Some(&version), global).await,
+                    None => Err(AkError::Usage(
+                        "--revision needs <repo> <path> or <repo-key>/<path>, not an ID".into(),
+                    )
+                    .into()),
+                },
+            },
             Self::Metadata { id } => show_metadata(&id, global).await,
             Self::Stats { id } => show_stats(&id, global).await,
             Self::PackageAnalysis { id } => package_analysis(&id, global).await,
@@ -971,6 +974,30 @@ async fn open_pull_output(out_path: &Path, force: bool) -> Result<tokio::fs::Fil
         })
 }
 
+/// A repository that isn't versioned answers any `?version=` with its one artifact,
+/// so `--revision` there would look like it had worked.
+async fn require_versioned(client: &artifact_keeper_sdk::Client, repo: &str) -> Result<()> {
+    let (found, raw) = capture(client.get_repository().key(repo).send()).await;
+    if let Err(e) = found
+        && !matches!(e, artifact_keeper_sdk::Error::InvalidPayload { .. })
+    {
+        return Err(crate::commands::helpers::sdk_err("get repository", e).into());
+    }
+    // Only this one field matters here, so it's read from the body. Without it, the
+    // server gets to answer for itself.
+    let versioned = raw
+        .and_then(|body| serde_json::from_slice::<serde_json::Value>(&body).ok())
+        .and_then(|repo| repo["versioning_enabled"].as_bool());
+    if versioned == Some(false) {
+        return Err(AkError::Usage(format!(
+            "--revision needs a versioned repository, and '{repo}' isn't one. Leave it out to \
+             get the artifact."
+        ))
+        .into());
+    }
+    Ok(())
+}
+
 async fn pull(
     repo: &str,
     artifact_path: &str,
@@ -980,6 +1007,10 @@ async fn pull(
     global: &GlobalArgs,
 ) -> Result<()> {
     let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
+
+    if version.is_some() {
+        require_versioned(&client_for(global)?, repo).await?;
+    }
 
     if output == Some("-") {
         return pull_to_stdout(&base_url, &auth_header, repo, artifact_path, version).await;
@@ -1247,6 +1278,10 @@ async fn info(
 ) -> Result<()> {
     let client = client_for_optional_auth(global)?;
 
+    if version.is_some() {
+        require_versioned(&client, repo).await?;
+    }
+
     let mut req = client
         .get_repository_artifact_metadata()
         .key(repo)
@@ -1278,7 +1313,8 @@ async fn info(
     });
 
     let table_str = format!(
-        "Path:         {}\n\
+        "ID:           {}\n\
+         Path:         {}\n\
          Name:         {}\n\
          Version:      {}\n\
          Size:         {}\n\
@@ -1287,6 +1323,7 @@ async fn info(
          Downloads:    {}\n\
          Repository:   {}\n\
          Created:      {}",
+        artifact.id,
         artifact.path,
         artifact.name,
         artifact.version.as_deref().unwrap_or("-"),
@@ -2504,43 +2541,32 @@ mod tests {
         assert!(try_parse(&["test", "list"]).is_err());
     }
 
-    // ---- Info subcommand parsing ----
+    // ---- Show subcommand parsing ----
 
     #[test]
-    fn parse_info() {
-        let cli = parse(&["test", "info", "my-repo", "org/pkg/1.0/pkg.jar"]);
-        if let ArtifactCommand::Info { repo, path, .. } = cli.command {
-            assert_eq!(repo, "my-repo");
-            assert_eq!(path, "org/pkg/1.0/pkg.jar");
-        } else {
-            panic!("Expected ArtifactCommand::Info");
+    fn parse_show_with_repo_and_path() {
+        for name in ["show", "info"] {
+            let cli = parse(&["test", name, "my-repo", "org/pkg/1.0/pkg.jar"]);
+            let ArtifactCommand::Show { target, path, .. } = cli.command else {
+                panic!("Expected ArtifactCommand::Show");
+            };
+            assert_eq!(target, "my-repo");
+            assert_eq!(path.as_deref(), Some("org/pkg/1.0/pkg.jar"));
         }
     }
-
-    #[test]
-    fn parse_info_missing_path_fails() {
-        assert!(try_parse(&["test", "info", "my-repo"]).is_err());
-    }
-
-    #[test]
-    fn parse_info_missing_repo_fails() {
-        assert!(try_parse(&["test", "info"]).is_err());
-    }
-
-    // ---- Show/Metadata/Stats (by-id) subcommand parsing ----
 
     #[test]
     fn parse_show_by_id() {
         let cli = parse(&["test", "show", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]);
-        if let ArtifactCommand::Show { id } = cli.command {
-            assert_eq!(id, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-        } else {
+        let ArtifactCommand::Show { target, path, .. } = cli.command else {
             panic!("Expected ArtifactCommand::Show");
-        }
+        };
+        assert_eq!(target, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        assert_eq!(path, None);
     }
 
     #[test]
-    fn parse_show_by_id_missing_id_fails() {
+    fn parse_show_missing_target_fails() {
         assert!(try_parse(&["test", "show"]).is_err());
     }
 

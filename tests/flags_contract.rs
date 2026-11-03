@@ -258,7 +258,7 @@ async fn flags_with_no_e2e_reach_the_request() {
 
     let package = format!("/api/v1/packages/{ID}");
     m.respond("GET", &package, 200, unparseable.clone()).await;
-    m.ak(&["packages", "show", ID, "--repo", "r"]);
+    m.ak(&["catalog", "show", ID, "--repo", "r"]);
     let (query, _) = m.last("GET").await;
     assert_eq!(query, vec![("repository_key".to_string(), "r".to_string())]);
 

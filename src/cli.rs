@@ -19,7 +19,6 @@ pub struct GlobalArgs {
     about = "Artifact Keeper CLI — manage artifacts, repositories, and registries",
     version,
     long_about = None,
-    propagate_version = true,
     after_help = "Exit codes:
   0   success
   1   anything else that failed, such as a file that can't be written
@@ -96,7 +95,7 @@ pub enum Command {
 
     /// Authenticate with an Artifact Keeper instance
     #[command(
-        after_help = "Examples:\n  ak auth login\n  ak auth login https://registry.company.com\n  ak auth login --token\n  ak auth login --oidc-device\n  ak auth login --oidc-device --scope read:artifacts,write:artifacts\n  ak auth whoami\n  ak auth refresh\n  ak auth revoke-token <id>\n  ak auth setup-status\n  ak auth logout"
+        after_help = "Examples:\n  ak auth login\n  ak auth login https://registry.company.com\n  ak auth login --token\n  ak auth login --oidc-device\n  ak auth login --oidc-device --scope read:artifacts,write:artifacts\n  ak auth whoami\n  ak auth refresh\n  ak auth token revoke <id>\n  ak auth setup-status\n  ak auth logout"
     )]
     Auth {
         #[command(subcommand)]
@@ -311,9 +310,9 @@ pub enum Command {
         command: commands::permission::PermissionCommand,
     },
 
-    /// Manage your user profile and API tokens
+    /// Manage your user profile
     #[command(
-        after_help = "Examples:\n  ak profile show\n  ak profile update --display-name \"Alice Smith\"\n  ak profile change-password\n  ak profile tokens list\n  ak profile tokens create ci-token --scopes read,write"
+        after_help = "Examples:\n  ak profile update --display-name \"Alice Smith\"\n  ak profile change-password\n  ak auth token list\n  ak auth token create"
     )]
     Profile {
         #[command(subcommand)]
@@ -332,7 +331,7 @@ pub enum Command {
 
     /// Administrative operations (backup, cleanup, users, plugins)
     #[command(
-        after_help = "Examples:\n  ak admin backup list\n  ak admin backup create --type full\n  ak admin cleanup --audit-logs --old-backups\n  ak admin metrics\n  ak admin users list\n  ak admin plugins list"
+        after_help = "Examples:\n  ak admin backup list\n  ak admin backup create --type full\n  ak admin cleanup --audit-logs --old-backups\n  ak admin stats\n  ak admin users list\n  ak admin plugins list"
     )]
     Admin {
         #[command(subcommand)]
@@ -475,15 +474,17 @@ pub enum Command {
     },
     /// Discover packages and browse repository trees
     #[command(
-        after_help = "Examples:\n  ak packages list\n  ak packages list --repo npm-local --pkg-format npm\n  ak packages show <package-id>\n  ak packages versions <package-id>\n  ak packages tree npm-local --path org/pkg\n  ak packages tree npm-local --path org/pkg/1.0/pkg.tgz --content"
+        name = "catalog",
+        alias = "packages",
+        after_help = "Examples:\n  ak catalog list\n  ak catalog list --repo npm-local --pkg-format npm\n  ak catalog show <package-id>\n  ak catalog versions <package-id>\n  ak catalog tree npm-local --path org/pkg\n  ak catalog tree npm-local --path org/pkg/1.0/pkg.tgz --content"
     )]
-    Packages {
+    Catalog {
         #[command(subcommand)]
         command: commands::packages::PackagesCommand,
     },
 
-    /// Inspect instance configuration and health
-    #[command(after_help = "Examples:\n  ak system config\n  ak system health\n  ak system info")]
+    /// Inspect instance configuration
+    #[command(after_help = "Examples:\n  ak system config\n  ak system openapi")]
     System {
         #[command(subcommand)]
         command: commands::system::SystemCommand,
@@ -654,7 +655,7 @@ impl Cli {
             Command::Quarantine { command } => command.execute(&global).await,
             Command::Curation { command } => command.execute(&global).await,
             Command::Monitoring { command } => command.execute(&global).await,
-            Command::Packages { command } => command.execute(&global).await,
+            Command::Catalog { command } => command.execute(&global).await,
             Command::System { command } => command.execute(&global).await,
             Command::Project { command } => command.execute(&global).await,
             Command::Banner { command } => command.execute(&global).await,
@@ -2718,7 +2719,7 @@ mod tests {
     #[test]
     fn parse_packages_list() {
         let cli = parse(&["ak", "packages", "list"]).unwrap();
-        assert!(matches!(cli.command, Command::Packages { .. }));
+        assert!(matches!(cli.command, Command::Catalog { .. }));
     }
 
     #[test]
@@ -2735,25 +2736,25 @@ mod tests {
             "left-pad",
         ])
         .unwrap();
-        assert!(matches!(cli.command, Command::Packages { .. }));
+        assert!(matches!(cli.command, Command::Catalog { .. }));
     }
 
     #[test]
     fn parse_packages_show() {
         let cli = parse(&["ak", "packages", "show", "some-id"]).unwrap();
-        assert!(matches!(cli.command, Command::Packages { .. }));
+        assert!(matches!(cli.command, Command::Catalog { .. }));
     }
 
     #[test]
     fn parse_packages_versions() {
         let cli = parse(&["ak", "packages", "versions", "some-id"]).unwrap();
-        assert!(matches!(cli.command, Command::Packages { .. }));
+        assert!(matches!(cli.command, Command::Catalog { .. }));
     }
 
     #[test]
     fn parse_packages_tree() {
         let cli = parse(&["ak", "packages", "tree", "npm-local", "--path", "org/pkg"]).unwrap();
-        assert!(matches!(cli.command, Command::Packages { .. }));
+        assert!(matches!(cli.command, Command::Catalog { .. }));
     }
 
     #[test]
@@ -2768,7 +2769,7 @@ mod tests {
             "--content",
         ])
         .unwrap();
-        assert!(matches!(cli.command, Command::Packages { .. }));
+        assert!(matches!(cli.command, Command::Catalog { .. }));
     }
 
     #[test]

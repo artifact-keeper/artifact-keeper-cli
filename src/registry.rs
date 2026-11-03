@@ -263,7 +263,7 @@ pub static COMMANDS: &[Op] = &[
     covered(
         "DELETE",
         "/api/v1/auth/tokens/{token_id}",
-        "auth revoke-token",
+        "auth token revoke",
         &[],
     ),
     covered(
@@ -744,7 +744,7 @@ pub static COMMANDS: &[Op] = &[
     covered(
         "GET",
         "/api/v1/repositories/{key}/artifacts/{path}",
-        "artifact info",
+        "artifact show",
         &["version"],
     ),
     covered(
@@ -1330,7 +1330,7 @@ pub static COMMANDS: &[Op] = &[
     covered(
         "GET",
         "/api/v1/packages/{id}",
-        "packages show",
+        "catalog show",
         &["repository_key"],
     ),
     covered(
@@ -2319,7 +2319,7 @@ pub static COMMANDS: &[Op] = &[
     covered(
         "POST",
         "/api/v1/admin/packages/backfill",
-        "packages backfill",
+        "catalog backfill",
         &["repository_key"],
     ),
     covered("POST", "/api/v1/plugins", "admin plugins install", &[]),
@@ -2350,7 +2350,6 @@ pub static COMMANDS: &[Op] = &[
         "promotion promote",
         &["notes", "skip_policy_check", "target_repository"],
     ),
-    covered("GET", "/api/v1/auth/me", "profile show", &[]),
     covered("GET", "/api/v1/auth/me", "profile update", &[]),
     covered(
         "PATCH",
@@ -2369,10 +2368,9 @@ pub static COMMANDS: &[Op] = &[
     covered(
         "GET",
         "/api/v1/tree",
-        "packages tree",
+        "catalog tree",
         &["include_metadata", "path", "repository_key"],
     ),
-    covered("GET", "/health", "system health", &[]),
     // ---- routes that aren't in the spec ----
     covered("GET", "/api/v1/openapi.json", "system openapi", &[]),
     covered("GET", "/swagger-ui", "system swagger-ui", &[]),
@@ -2493,7 +2491,6 @@ pub static COMMANDS: &[Op] = &[
         "admin instance proxy put",
         &[],
     ),
-    covered("GET", "/api/v1/admin/stats", "admin metrics", &[]),
     covered(
         "GET",
         "/api/v1/plugins/{id}/config",
@@ -3173,13 +3170,13 @@ pub static COMMANDS: &[Op] = &[
     covered(
         "GET",
         "/api/v1/packages",
-        "packages list",
+        "catalog list",
         &["format", "page", "per_page", "repository_key", "search"],
     ),
     covered(
         "GET",
         "/api/v1/packages/{id}/versions",
-        "packages versions",
+        "catalog versions",
         &[],
     ),
     // ---- peer ----

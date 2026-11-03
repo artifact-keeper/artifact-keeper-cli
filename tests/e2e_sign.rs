@@ -79,7 +79,7 @@ fn key_for(env: &TestEnv, repo: &str) -> Value {
 }
 
 fn artifact_id(env: &TestEnv, repo: &str) -> String {
-    let artifact = json_of(env, &["artifact", "info", repo, "f.bin"]);
+    let artifact = json_of(env, &["artifact", "show", repo, "f.bin"]);
     artifact["id"].as_str().unwrap().to_string()
 }
 
@@ -167,7 +167,7 @@ fn signing_an_artifact_satisfies_a_policy_that_requires_it() {
     env.ak_cmd().args(promote).assert().success();
     let in_release = env
         .ak_cmd()
-        .args(["artifact", "info", &release, "f.bin"])
+        .args(["artifact", "show", &release, "f.bin"])
         .output()
         .unwrap();
     assert!(

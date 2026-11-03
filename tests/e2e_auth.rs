@@ -203,7 +203,7 @@ fn token_create_sends_scopes_and_a_selector() {
         .expect("the new token is listed");
     assert_eq!(token["scopes"], serde_json::json!(["read:artifacts"]));
     env.ak_cmd()
-        .args(["auth", "revoke-token", &id])
+        .args(["auth", "token", "revoke", &id])
         .assert()
         .success();
 
@@ -225,7 +225,7 @@ fn token_create_sends_scopes_and_a_selector() {
         String::from_utf8_lossy(&output.stderr)
     );
     env.ak_cmd()
-        .args(["auth", "revoke-token", &id_of(&output.stdout)])
+        .args(["auth", "token", "revoke", &id_of(&output.stdout)])
         .assert()
         .success();
 }

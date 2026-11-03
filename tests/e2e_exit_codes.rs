@@ -90,7 +90,7 @@ fn five_on_not_found() {
     let env = common::TestEnv::setup();
     assert_eq!(code(env.ak_cmd().args(["repo", "show", "no-such-repo"])), 5);
     assert_eq!(
-        code(env.ak_cmd().args(["artifact", "info", "no-such-repo", "x"])),
+        code(env.ak_cmd().args(["artifact", "show", "no-such-repo", "x"])),
         5
     );
     assert_eq!(

@@ -59,7 +59,7 @@ fn write_test_file(path: &std::path::Path, size: usize) -> Vec<u8> {
 fn stored_content_type(env: &common::TestEnv, repo: &str, path: &str) -> String {
     let output = env
         .ak_cmd()
-        .args(["artifact", "info", repo, path])
+        .args(["artifact", "show", repo, path])
         .assert()
         .success()
         .get_output()
@@ -432,7 +432,7 @@ fn artifact_copy_to_a_path_and_by_exact_source() {
         .success();
     let copied = json_stdout(
         env.ak_cmd()
-            .args(["artifact", "info", &dst, "new/b.txt"])
+            .args(["artifact", "show", &dst, "new/b.txt"])
             .assert()
             .success(),
     );
@@ -464,7 +464,7 @@ fn artifact_copy_to_a_path_and_by_exact_source() {
     assert_eq!(promoted["target"], format!("{dst}/d/a.txt"));
     let same = json_stdout(
         env.ak_cmd()
-            .args(["artifact", "info", &dst, "d/a.txt"])
+            .args(["artifact", "show", &dst, "d/a.txt"])
             .assert()
             .success(),
     );
@@ -572,7 +572,7 @@ fn artifact_session_fields_and_skip_if_present() {
         .success();
     let info = json_stdout(
         env.ak_cmd()
-            .args(["artifact", "info", &repo, "s.bin"])
+            .args(["artifact", "show", &repo, "s.bin"])
             .assert()
             .success(),
     );
@@ -706,7 +706,7 @@ fn artifact_versions_labels_and_pull_by_revision() {
             "v.txt",
             "-o",
             out.to_str().unwrap(),
-            "--version",
+            "--revision",
             "1",
         ])
         .assert()
@@ -715,11 +715,55 @@ fn artifact_versions_labels_and_pull_by_revision() {
 
     let first = json_stdout(
         env.ak_cmd()
-            .args(["artifact", "info", &repo, "v.txt", "--version", "1"])
+            .args(["artifact", "show", &repo, "v.txt", "--revision", "1"])
             .assert()
             .success(),
     );
     assert_eq!(first["version"], "one");
+
+    // A repository that isn't versioned would answer with its one artifact.
+    let plain = format!("e2e-plain-{}", uuid::Uuid::new_v4().simple());
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &plain,
+            "--pkg-format",
+            "generic",
+            "--repo-type",
+            "local",
+        ])
+        .assert()
+        .success();
+    env.ak_cmd()
+        .args(["artifact", "push", &plain, file.to_str().unwrap()])
+        .assert()
+        .success();
+    for args in [
+        vec!["artifact", "show", &plain, "v.txt", "--revision", "1"],
+        vec![
+            "artifact",
+            "pull",
+            &plain,
+            "v.txt",
+            "-o",
+            "-",
+            "--revision",
+            "1",
+        ],
+    ] {
+        let output = env.ak_cmd().args(&args).output().unwrap();
+        assert_eq!(output.status.code(), Some(2), "{args:?}: {output:?}");
+        assert!(output.stdout.is_empty(), "{args:?}");
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("versioned"),
+            "{args:?}: {output:?}"
+        );
+    }
+    env.ak_cmd()
+        .args(["repo", "delete", &plain, "--yes", "--wait"])
+        .assert()
+        .success();
 
     env.ak_cmd()
         .args(["repo", "delete", &repo, "--yes", "--wait"])

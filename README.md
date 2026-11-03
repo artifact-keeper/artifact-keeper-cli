@@ -162,7 +162,7 @@ Security & Compliance
 Organization
   ak group         Manage user groups
   ak permission    Manage fine-grained permission rules
-  ak profile       Manage your user profile and API tokens
+  ak profile       Manage your user profile
   ak label         Tag repositories with key-value labels
   ak sso           Manage SSO authentication providers (LDAP, OIDC, SAML)
 

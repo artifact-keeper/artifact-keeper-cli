@@ -69,9 +69,6 @@ pub enum AdminCommand {
         stale_uploads: bool,
     },
 
-    /// Show server metrics
-    Metrics,
-
     /// Manage users
     Users {
         #[command(subcommand)]
@@ -94,6 +91,7 @@ pub enum AdminCommand {
     Reindex,
 
     /// Show system statistics
+    #[command(alias = "metrics")]
     Stats,
 
     /// Manage server settings
@@ -1105,7 +1103,6 @@ impl AdminCommand {
                 stale_peers,
                 stale_uploads,
             } => run_cleanup(audit_logs, old_backups, stale_peers, stale_uploads, global).await,
-            Self::Metrics => show_metrics(global).await,
             Self::Users { command } => match command {
                 UsersCommand::List {
                     search,
@@ -1676,51 +1673,6 @@ async fn run_cleanup(
         eprintln!("  Old backups deleted:   {}", resp.backups_deleted);
         eprintln!("  Peers marked offline:  {}", resp.peers_marked_offline);
     }
-
-    Ok(())
-}
-
-async fn show_metrics(global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
-    let spinner = output::spinner("Fetching metrics...");
-
-    let (stats, raw) = artifact_keeper_sdk::raw::capture(client.get_system_stats().send()).await;
-    let stats = stats.map_err(|e| sdk_err("get metrics", e))?;
-
-    spinner.finish_and_clear();
-
-    let info = serde_json::json!({
-        "total_artifacts": stats.total_artifacts,
-        "total_downloads": stats.total_downloads,
-        "total_repositories": stats.total_repositories,
-        "total_storage": format_bytes(stats.total_storage_bytes),
-        "total_storage_bytes": stats.total_storage_bytes,
-        "total_users": stats.total_users,
-        "active_peers": stats.active_peers,
-        "pending_sync_tasks": stats.pending_sync_tasks,
-    });
-
-    let table_str = format!(
-        "Artifacts:      {}\n\
-         Downloads:      {}\n\
-         Repositories:   {}\n\
-         Storage:        {}\n\
-         Users:          {}\n\
-         Active Peers:   {}\n\
-         Pending Syncs:  {}",
-        stats.total_artifacts,
-        stats.total_downloads,
-        stats.total_repositories,
-        format_bytes(stats.total_storage_bytes),
-        stats.total_users,
-        stats.active_peers,
-        stats.pending_sync_tasks,
-    );
-
-    println!(
-        "{}",
-        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
-    );
 
     Ok(())
 }
@@ -5013,7 +4965,7 @@ mod tests {
     #[test]
     fn parse_metrics() {
         let cli = parse(&["test", "metrics"]);
-        assert!(matches!(cli.command, AdminCommand::Metrics));
+        assert!(matches!(cli.command, AdminCommand::Stats));
     }
 
     // ---- Users subcommand parsing ----
@@ -6368,7 +6320,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = show_metrics(&global).await;
+        let result = show_stats(&global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

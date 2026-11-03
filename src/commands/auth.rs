@@ -106,7 +106,8 @@ pub enum AuthCommand {
         instance: Option<String>,
     },
 
-    /// Revoke an API token by ID
+    /// Revoke an API token by ID. Use `ak auth token revoke`
+    #[command(hide = true)]
     RevokeToken {
         /// ID of the API token to revoke
         id: String,
@@ -197,6 +198,12 @@ pub enum TokenCommand {
 
     /// List active API tokens
     List,
+
+    /// Revoke an API token by ID
+    Revoke {
+        /// ID of the API token to revoke
+        id: String,
+    },
 }
 
 impl AuthCommand {
@@ -243,6 +250,7 @@ impl AuthCommand {
                     .await
                 }
                 TokenCommand::List => token_list(global).await,
+                TokenCommand::Revoke { id } => revoke_token(&id, global).await,
             },
             Self::Whoami => whoami(global).await,
             Self::Refresh { instance } => refresh(instance.as_deref(), global).await,
@@ -1141,13 +1149,19 @@ async fn setup_status(global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
-async fn whoami(global: &GlobalArgs) -> Result<()> {
+pub(crate) async fn whoami(global: &GlobalArgs) -> Result<()> {
     let (instance_name, instance, client) = authenticated_client(global)?;
 
     let (user, raw) = artifact_keeper_sdk::raw::capture(client.get_current_user().send()).await;
     let user = user.map_err(|e| crate::commands::helpers::sdk_err("get user info", e))?;
 
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", user.id);
+        return Ok(());
+    }
+
     let info = serde_json::json!({
+        "id": user.id,
         "username": user.username,
         "email": user.email,
         "display_name": user.display_name,
@@ -1158,12 +1172,14 @@ async fn whoami(global: &GlobalArgs) -> Result<()> {
     });
 
     let table_str = format!(
-        "Username:     {}\n\
+        "ID:           {}\n\
+         Username:     {}\n\
          Email:        {}\n\
          Display Name: {}\n\
          Admin:        {}\n\
          TOTP:         {}\n\
          Instance:     {} ({})",
+        user.id,
         user.username,
         user.email,
         user.display_name.as_deref().unwrap_or("-"),
