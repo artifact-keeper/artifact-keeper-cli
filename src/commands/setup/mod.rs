@@ -1,3 +1,5 @@
+mod merge;
+
 use std::path::{Path, PathBuf};
 
 use artifact_keeper_sdk::{ClientAuthExt, ClientRepositoriesExt};
@@ -82,7 +84,7 @@ pub enum SetupCommand {
 }
 
 impl SetupCommand {
-    pub async fn execute(self, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+    pub async fn execute(self, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Auto => auto_detect(options, global).await,
             Self::Npm { repo } => setup_npm(repo.as_deref(), options, global).await,
@@ -183,9 +185,10 @@ fn detect_ecosystems(dir: &Path) -> Vec<&'static str> {
     found
 }
 
-/// How `setup` gets a credential that outlives the current login.
+/// How `setup` gets a credential that outlives the current login, and what it may
+/// do to a file that's already there.
 #[derive(clap::Args, Clone, Copy, Debug, Default)]
-pub struct TokenOptions {
+pub struct SetupOptions {
     /// Lifetime in days of the API token created for this package manager
     #[arg(
         long,
@@ -199,6 +202,12 @@ pub struct TokenOptions {
     /// tokens expire soon, and the package manager stops working when this one does
     #[arg(long, global = true)]
     pub session_token: bool,
+
+    /// Replace an existing Maven settings.xml or NuGet.Config that setup didn't
+    /// write, keeping a backup. Without this, setup leaves such a file alone. npm,
+    /// pip and Cargo files don't need it: setup changes only its own keys in them
+    #[arg(long, global = true)]
+    pub replace: bool,
 }
 
 /// Scopes of a token `setup` creates: package managers install and publish.
@@ -215,7 +224,7 @@ struct SetupContext {
     base_url: String,
     token: String,
     client: artifact_keeper_sdk::Client,
-    options: TokenOptions,
+    options: SetupOptions,
     /// Names the package manager in the name of the token `setup` creates.
     tool: &'static str,
 }
@@ -317,7 +326,7 @@ async fn resolve_setup(
     tool: &'static str,
     format: &str,
     explicit_repo: Option<&str>,
-    options: TokenOptions,
+    options: SetupOptions,
     global: &GlobalArgs,
 ) -> Result<SetupContext> {
     let (instance_name, instance, client) = authenticated_client(global)?;
@@ -487,16 +496,69 @@ fn url_encode(token: &str) -> String {
     url::form_urlencoded::byte_serialize(token.as_bytes()).collect()
 }
 
-/// `pip.conf` as a template. The URL keeps the instance's scheme and port.
-fn pip_conf(ctx: &SetupContext) -> String {
+/// The `index-url` for `pip.conf`, keeping the instance's scheme and port.
+fn pip_index_url(ctx: &SetupContext, token: &str) -> String {
     let index_url = format!("{}simple/", ctx.format_url("pypi"));
     let (scheme, rest) = index_url.split_once("://").unwrap_or(("https", &index_url));
-    let mut conf = format!("[global]\nindex-url = {scheme}://__token__:{TOKEN_SLOT}@{rest}\n");
-    if ctx.is_remote_http() {
-        // pip refuses plain HTTP to anything but this machine without this.
-        conf.push_str(&format!("trusted-host = {}\n", ctx.host_and_port()));
+    format!("{scheme}://__token__:{token}@{rest}")
+}
+
+/// pip refuses plain HTTP to anything but this machine unless it's told to trust
+/// the host.
+fn pip_trusted_host(ctx: &SetupContext) -> Option<&str> {
+    ctx.is_remote_http().then(|| ctx.host_and_port())
+}
+
+/// What a config file holds now, empty if it isn't there. A file that isn't text
+/// can't be edited by key, so it's left alone.
+fn read_existing(path: &Path) -> Result<String> {
+    match std::fs::read_to_string(path) {
+        Ok(text) => Ok(text),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(e) => Err(AkError::ConfigError(format!("Can't read {}: {e}", path.display())).into()),
     }
-    conf
+}
+
+/// An error for a file that `setup` can't safely add its settings to.
+fn not_merged(path: &Path, reason: String) -> miette::Report {
+    AkError::ConfigError(format!("{} wasn't changed: {reason}", path.display())).into()
+}
+
+/// Say which of the user's own settings a merge replaced. Only the key is named:
+/// a value such as a URL can hold a password.
+fn report_replaced(path: &Path, keys: &[&str]) {
+    for key in keys {
+        eprintln!(
+            "{key} in {} had another value. setup replaced it, and the old value is in the backup.",
+            path.display()
+        );
+    }
+}
+
+/// Maven and NuGet files are XML with no safe way to edit by key here, so `setup`
+/// replaces one only if it wrote the file itself, or if it's told to. Otherwise
+/// it says what to add. This comes before any prompt or token, so refusing costs
+/// nothing.
+fn check_replaceable(
+    path: &Path,
+    template: &str,
+    url: &str,
+    snippet: &str,
+    options: SetupOptions,
+) -> Result<()> {
+    let existing = read_existing(path)?;
+    if existing.is_empty()
+        || options.replace
+        || merge::is_generated(&existing, template, url, TOKEN_SLOT)
+    {
+        return Ok(());
+    }
+    eprintln!(
+        "\n{} has settings setup didn't write, so it's unchanged. To use Artifact Keeper, add \
+         this to it, with a token from `ak auth token create` in place of {TOKEN_SLOT}:\n\n{snippet}",
+        path.display()
+    );
+    Err(AkError::SetupFileNotOurs(path.display().to_string()).into())
 }
 
 /// The `.netrc` line for Go module authentication, as a template.
@@ -542,7 +604,23 @@ fn yum_repo_file(repo_key: &str, yum_url: &str) -> String {
 fn confirm_write(path: &Path, template: &str, no_input: bool) -> Result<bool> {
     eprintln!("\nConfiguration to write to {}:\n", path.display());
     eprintln!("{template}");
+    confirm_prompt(no_input)
+}
 
+/// `confirm_write` for a file that `setup` edits by key.
+fn confirm_merge(path: &Path, template: &str, no_input: bool) -> Result<bool> {
+    if !path.exists() {
+        return confirm_write(path, template, no_input);
+    }
+    eprintln!(
+        "\nSettings to set in {}. Everything else in the file stays:\n",
+        path.display()
+    );
+    eprintln!("{template}");
+    confirm_prompt(no_input)
+}
+
+fn confirm_prompt(no_input: bool) -> Result<bool> {
     if no_input {
         return Ok(true);
     }
@@ -604,7 +682,7 @@ fn run_with_secret_on_stdin(
         .into_diagnostic()
 }
 
-async fn auto_detect(options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn auto_detect(options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let cwd = std::env::current_dir().into_diagnostic()?;
     let detected = detect_ecosystems(&cwd);
 
@@ -620,46 +698,57 @@ async fn auto_detect(options: TokenOptions, global: &GlobalArgs) -> Result<()> {
     }
     eprintln!();
 
+    // A file setup won't touch is one tool, and it shouldn't stop the others.
+    let mut left_alone = None;
     for name in &detected {
         eprintln!("--- Setting up {name} ---");
-        match *name {
-            "npm" => setup_npm(None, options, global).await?,
-            "pip" => setup_pip(None, options, global).await?,
-            "cargo" => setup_cargo(None, options, global).await?,
-            "docker" => setup_docker(None, options, global).await?,
-            "maven" => setup_maven(None, options, global).await?,
-            "gradle" => setup_gradle(None, options, global).await?,
-            "go" => setup_go(None, options, global).await?,
-            "helm" => setup_helm(None, options, global).await?,
-            "nuget" => setup_nuget(None, options, global).await?,
-            _ => {}
+        let outcome = match *name {
+            "npm" => setup_npm(None, options, global).await,
+            "pip" => setup_pip(None, options, global).await,
+            "cargo" => setup_cargo(None, options, global).await,
+            "docker" => setup_docker(None, options, global).await,
+            "maven" => setup_maven(None, options, global).await,
+            "gradle" => setup_gradle(None, options, global).await,
+            "go" => setup_go(None, options, global).await,
+            "helm" => setup_helm(None, options, global).await,
+            "nuget" => setup_nuget(None, options, global).await,
+            _ => Ok(()),
+        };
+        match outcome {
+            Err(e) if matches!(e.downcast_ref(), Some(AkError::SetupFileNotOurs(_))) => {
+                left_alone.get_or_insert(e);
+            }
+            other => other?,
         }
         eprintln!();
     }
 
+    if let Some(e) = left_alone {
+        eprintln!("The other tools are configured.");
+        return Err(e);
+    }
     eprintln!("All done! Your tools are configured.");
     Ok(())
 }
 
-async fn setup_npm(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn setup_npm(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("npm", "npm", repo, options, global).await?;
     let npm_registry_url = ctx.format_url("npm");
 
-    let npmrc_content = format!(
-        "registry={npm_registry_url}\n\
-         //{host}:_authToken={TOKEN_SLOT}\n",
-        host = strip_protocol(&npm_registry_url),
-    );
-
+    let auth_key = format!("//{}:_authToken", strip_protocol(&npm_registry_url));
     let npmrc_path = home_dir()?.join(".npmrc");
+    let existing = read_existing(&npmrc_path)?;
+    let preview = merge::npmrc("", &npm_registry_url, &auth_key, TOKEN_SLOT).text;
 
-    if !confirm_write(&npmrc_path, &npmrc_content, global.no_input)? {
+    if !confirm_merge(&npmrc_path, &preview, global.no_input)? {
         eprintln!("Skipped npm configuration.");
         return Ok(());
     }
 
     let token = ctx.token_for_config().await?;
-    write_config_file(&npmrc_path, &fill_token(&npmrc_content, &token), ".npmrc")?;
+    let merged = merge::npmrc(&existing, &npm_registry_url, &auth_key, &token);
+    write_config_file(&npmrc_path, &merged.text, ".npmrc")?;
+    report_replaced(&npmrc_path, &merged.replaced);
     eprintln!(
         "npm is now configured to use repository '{}'.",
         ctx.repo_key
@@ -667,24 +756,25 @@ async fn setup_npm(repo: Option<&str>, options: TokenOptions, global: &GlobalArg
     Ok(())
 }
 
-async fn setup_pip(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn setup_pip(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("pip", "pypi", repo, options, global).await?;
-    let pip_conf_content = pip_conf(&ctx);
+    let trusted_host = pip_trusted_host(&ctx);
+    let preview = merge::pip_conf("", &pip_index_url(&ctx, TOKEN_SLOT), trusted_host).text;
 
     let filename = if cfg!(windows) { "pip.ini" } else { "pip.conf" };
     let pip_conf_path = config_dir()?.join("pip").join(filename);
+    let existing = read_existing(&pip_conf_path)?;
 
-    if !confirm_write(&pip_conf_path, &pip_conf_content, global.no_input)? {
+    if !confirm_merge(&pip_conf_path, &preview, global.no_input)? {
         eprintln!("Skipped pip configuration.");
         return Ok(());
     }
 
     let token = ctx.token_for_config().await?;
-    write_config_file(
-        &pip_conf_path,
-        &fill_token(&pip_conf_content, &url_encode(&token)),
-        "pip.conf",
-    )?;
+    let index_url = pip_index_url(&ctx, &url_encode(&token));
+    let merged = merge::pip_conf(&existing, &index_url, trusted_host);
+    write_config_file(&pip_conf_path, &merged.text, "pip.conf")?;
+    report_replaced(&pip_conf_path, &merged.replaced);
     eprintln!(
         "pip is now configured to use repository '{}'.",
         ctx.repo_key
@@ -692,7 +782,7 @@ async fn setup_pip(repo: Option<&str>, options: TokenOptions, global: &GlobalArg
     Ok(())
 }
 
-async fn setup_cargo(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn setup_cargo(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("cargo", "cargo", repo, options, global).await?;
     // Sparse protocol: config.json and the index are served under this URL.
     let cargo_registry_url = format!("sparse+{}", ctx.format_url("cargo"));
@@ -705,30 +795,30 @@ async fn setup_cargo(repo: Option<&str>, options: TokenOptions, global: &GlobalA
                 .join(".cargo")
         });
 
-    let config_content = format!(
-        "[registries.artifact-keeper]\n\
-         index = \"{cargo_registry_url}\"\n\
-         \n\
-         [registry]\n\
-         default = \"artifact-keeper\"\n\
-         global-credential-providers = [\"cargo:token\"]\n"
-    );
-
-    let credentials_content = format!(
-        "[registries.artifact-keeper]\n\
-         token = \"Bearer {TOKEN_SLOT}\"\n",
-    );
-
     let config_path = cargo_home.join("config.toml");
     let creds_path = cargo_home.join("credentials.toml");
+    let existing_config = read_existing(&config_path)?;
+    let existing_creds = read_existing(&creds_path)?;
+
+    // Both are checked before any prompt or token: neither file should change if
+    // the other can't be merged.
+    let config = merge::cargo_config(&existing_config, &cargo_registry_url)
+        .map_err(|reason| not_merged(&config_path, reason))?;
+    merge::cargo_credentials(&existing_creds, TOKEN_SLOT)
+        .map_err(|reason| not_merged(&creds_path, reason))?;
+    let config_preview = merge::cargo_config("", &cargo_registry_url)
+        .map_err(|reason| not_merged(&config_path, reason))?
+        .text;
+    let creds_preview = merge::cargo_credentials("", TOKEN_SLOT)
+        .map_err(|reason| not_merged(&creds_path, reason))?;
 
     eprintln!("Will write two files:");
-    if !confirm_write(&config_path, &config_content, global.no_input)? {
+    if !confirm_merge(&config_path, &config_preview, global.no_input)? {
         eprintln!("Skipped Cargo configuration.");
         return Ok(());
     }
 
-    let write_credentials = confirm_write(&creds_path, &credentials_content, global.no_input)?;
+    let write_credentials = confirm_merge(&creds_path, &creds_preview, global.no_input)?;
     // Before any write, so that no token leaves the existing files as they were.
     let token = if write_credentials {
         Some(ctx.token_for_config().await?)
@@ -736,17 +826,16 @@ async fn setup_cargo(repo: Option<&str>, options: TokenOptions, global: &GlobalA
         None
     };
 
-    write_config_file(&config_path, &config_content, "cargo config.toml")?;
+    write_config_file(&config_path, &config.text, "cargo config.toml")?;
+    report_replaced(&config_path, &config.replaced);
 
     let Some(token) = token else {
         eprintln!("Skipped Cargo credentials.");
         return Ok(());
     };
-    write_config_file(
-        &creds_path,
-        &fill_token(&credentials_content, &token),
-        "cargo credentials.toml",
-    )?;
+    let credentials = merge::cargo_credentials(&existing_creds, &token)
+        .map_err(|reason| not_merged(&creds_path, reason))?;
+    write_config_file(&creds_path, &credentials, "cargo credentials.toml")?;
     eprintln!(
         "Cargo is now configured to use repository '{}'.",
         ctx.repo_key
@@ -756,7 +845,7 @@ async fn setup_cargo(repo: Option<&str>, options: TokenOptions, global: &GlobalA
 
 async fn setup_docker(
     repo: Option<&str>,
-    options: TokenOptions,
+    options: SetupOptions,
     global: &GlobalArgs,
 ) -> Result<()> {
     let ctx = resolve_setup("docker", "docker", repo, options, global).await?;
@@ -796,7 +885,7 @@ async fn setup_docker(
     Ok(())
 }
 
-async fn setup_maven(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn setup_maven(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("maven", "maven", repo, options, global).await?;
     let maven_url = ctx.format_url("maven");
 
@@ -834,6 +923,34 @@ async fn setup_maven(repo: Option<&str>, options: TokenOptions, global: &GlobalA
     );
 
     let settings_path = home_dir()?.join(".m2").join("settings.xml");
+    let snippet = format!(
+        r#"In <servers>:
+    <server>
+      <id>artifact-keeper</id>
+      <username>__token__</username>
+      <password>{TOKEN_SLOT}</password>
+    </server>
+In <profiles>:
+    <profile>
+      <id>artifact-keeper</id>
+      <repositories>
+        <repository>
+          <id>artifact-keeper</id>
+          <url>{maven_url}</url>
+        </repository>
+      </repositories>
+    </profile>
+In <activeProfiles>:
+    <activeProfile>artifact-keeper</activeProfile>
+"#
+    );
+    check_replaceable(
+        &settings_path,
+        &settings_content,
+        &maven_url,
+        &snippet,
+        options,
+    )?;
 
     if !confirm_write(&settings_path, &settings_content, global.no_input)? {
         eprintln!("Skipped Maven configuration.");
@@ -862,7 +979,7 @@ async fn setup_maven(repo: Option<&str>, options: TokenOptions, global: &GlobalA
 
 async fn setup_gradle(
     repo: Option<&str>,
-    options: TokenOptions,
+    options: SetupOptions,
     global: &GlobalArgs,
 ) -> Result<()> {
     let ctx = resolve_setup("gradle", "maven", repo, options, global).await?;
@@ -912,7 +1029,7 @@ async fn setup_gradle(
     Ok(())
 }
 
-async fn setup_go(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn setup_go(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("go", "go", repo, options, global).await?;
     let goproxy_url = ctx.format_url("go");
     // The go command matches this against the host and port of the request.
@@ -963,7 +1080,7 @@ async fn setup_go(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs
     Ok(())
 }
 
-async fn setup_helm(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn setup_helm(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("helm", "helm", repo, options, global).await?;
     let helm_url = ctx.format_url("helm");
 
@@ -992,7 +1109,7 @@ async fn setup_helm(repo: Option<&str>, options: TokenOptions, global: &GlobalAr
     Ok(())
 }
 
-async fn setup_nuget(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn setup_nuget(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("nuget", "nuget", repo, options, global).await?;
     let nuget_url = format!("{}v3/index.json", ctx.format_url("nuget"));
     // NuGet 6.12 and newer refuse http:// sources unless the source allows it.
@@ -1027,6 +1144,18 @@ async fn setup_nuget(repo: Option<&str>, options: TokenOptions, global: &GlobalA
             .join("NuGet.Config")
     };
 
+    let snippet = format!(
+        r#"In <packageSources>:
+    <add key="ArtifactKeeper" value="{nuget_url}" protocolVersion="3"{allow_http} />
+In <packageSourceCredentials>:
+    <ArtifactKeeper>
+      <add key="Username" value="__token__" />
+      <add key="ClearTextPassword" value="{TOKEN_SLOT}" />
+    </ArtifactKeeper>
+"#
+    );
+    check_replaceable(&config_path, &nuget_config, &nuget_url, &snippet, options)?;
+
     if !confirm_write(&config_path, &nuget_config, global.no_input)? {
         eprintln!("Skipped NuGet configuration.");
         return Ok(());
@@ -1045,7 +1174,7 @@ async fn setup_nuget(repo: Option<&str>, options: TokenOptions, global: &GlobalA
     Ok(())
 }
 
-async fn setup_yum(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn setup_yum(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("yum", "rpm", repo, options, global).await?;
     let yum_url = ctx.format_url("rpm");
 
@@ -1092,7 +1221,7 @@ async fn setup_yum(repo: Option<&str>, options: TokenOptions, global: &GlobalArg
     Ok(())
 }
 
-async fn setup_apt(repo: Option<&str>, options: TokenOptions, global: &GlobalArgs) -> Result<()> {
+async fn setup_apt(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs) -> Result<()> {
     let ctx = resolve_setup("apt", "debian", repo, options, global).await?;
     let apt_url = ctx.format_url("debian");
     // apt withholds credentials from plain HTTP unless the entry names the

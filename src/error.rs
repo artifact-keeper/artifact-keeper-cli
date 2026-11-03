@@ -82,6 +82,16 @@ pub enum AkError {
     )]
     SetupToken(String),
 
+    #[error("{0} has settings setup didn't write, so it's unchanged")]
+    #[diagnostic(
+        code(ak::setup_file_not_ours),
+        help(
+            "Add the lines shown above to it, or pass --replace to replace the whole file. \
+             A backup is kept."
+        )
+    )]
+    SetupFileNotOurs(String),
+
     #[error(transparent)]
     #[diagnostic(code(ak::io_error))]
     Io(#[from] std::io::Error),
