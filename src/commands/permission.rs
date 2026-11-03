@@ -4,7 +4,8 @@ use miette::Result;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_uuid, print_page_info, sdk_err,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, parse_uuid,
+    print_page_info, refuse_flags_before_1_11, sdk_err,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -20,6 +21,14 @@ pub enum PermissionCommand {
         /// Filter by principal type (user, group)
         #[arg(long)]
         principal_type: Option<String>,
+
+        /// Filter by principal ID (user or group UUID)
+        #[arg(long)]
+        principal: Option<String>,
+
+        /// Filter by target ID. Repository keys work with --target-type repository
+        #[arg(long)]
+        target: Option<String>,
 
         /// Page number
         #[arg(long, default_value = "1")]
@@ -51,6 +60,11 @@ pub enum PermissionCommand {
         /// Actions to grant (comma-separated: read, write, admin)
         #[arg(long, value_delimiter = ',')]
         actions: Vec<String>,
+
+        /// Conditions on the grant, as a JSON object: the text, @file or @-. Needs a
+        /// 1.11 server
+        #[arg(long)]
+        conditions: Option<String>,
     },
 
     /// Show a permission rule
@@ -83,6 +97,11 @@ pub enum PermissionCommand {
         /// Actions to grant (comma-separated: read, write, admin)
         #[arg(long, value_delimiter = ',')]
         actions: Vec<String>,
+
+        /// Conditions on the grant, as a JSON object: the text, @file or @-. Needs a
+        /// 1.11 server
+        #[arg(long)]
+        conditions: Option<String>,
     },
 
     /// Delete a permission rule
@@ -102,12 +121,16 @@ impl PermissionCommand {
             Self::List {
                 target_type,
                 principal_type,
+                principal,
+                target,
                 page,
                 per_page,
             } => {
                 list_permissions(
                     target_type.as_deref(),
                     principal_type.as_deref(),
+                    principal.as_deref(),
+                    target.as_deref(),
                     page,
                     per_page,
                     global,
@@ -120,6 +143,7 @@ impl PermissionCommand {
                 target,
                 target_type,
                 actions,
+                conditions,
             } => {
                 create_permission(
                     &principal,
@@ -127,6 +151,7 @@ impl PermissionCommand {
                     &target,
                     &target_type,
                     actions,
+                    conditions.as_deref(),
                     global,
                 )
                 .await
@@ -139,6 +164,7 @@ impl PermissionCommand {
                 target,
                 target_type,
                 actions,
+                conditions,
             } => {
                 update_permission(
                     &id,
@@ -147,6 +173,7 @@ impl PermissionCommand {
                     &target,
                     &target_type,
                     actions,
+                    conditions.as_deref(),
                     global,
                 )
                 .await
@@ -177,12 +204,9 @@ async fn show_permission(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching permission...");
 
-    let perm = client
-        .get_permission()
-        .id(perm_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get permission", e))?;
+    let (perm, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_permission().id(perm_id).send()).await;
+    let perm = perm.map_err(|e| sdk_err("get permission", e))?;
 
     spinner.finish_and_clear();
 
@@ -209,7 +233,10 @@ async fn show_permission(id: &str, global: &GlobalArgs) -> Result<()> {
         perm.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -228,6 +255,21 @@ async fn resolve_target(
     }
 }
 
+/// A `--conditions` flag as the API's type. A 1.10 server ignores conditions and would
+/// store a broader grant than was asked for, so it's refused before anything's sent.
+async fn parse_conditions(
+    conditions: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<Option<artifact_keeper_sdk::types::PermissionConditions>> {
+    let Some(conditions) = conditions else {
+        return Ok(None);
+    };
+    let parsed = parse_json_arg(conditions, "--conditions")?;
+    refuse_flags_before_1_11(&["--conditions"], global).await?;
+    Ok(Some(parsed))
+}
+
+#[allow(clippy::too_many_arguments)]
 async fn update_permission(
     id: &str,
     principal: &str,
@@ -235,10 +277,12 @@ async fn update_permission(
     target: &str,
     target_type: &str,
     actions: Vec<String>,
+    conditions: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let perm_id = parse_uuid(id, "permission")?;
     let principal_id = parse_uuid(principal, "principal")?;
+    let conditions = parse_conditions(conditions, global).await?;
 
     let client = client_for(global)?;
     let target_id = resolve_target(&client, target, target_type).await?;
@@ -250,20 +294,18 @@ async fn update_permission(
         target_id,
         target_type: target_type.to_string(),
         actions,
-        conditions: None,
+        conditions,
     };
 
-    let perm = client
-        .update_permission()
-        .id(perm_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update permission", e))?;
+    let (perm, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_permission().id(perm_id).body(body).send())
+            .await;
+    let perm = perm.map_err(|e| sdk_err("update permission", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*perm,
         &perm.id.to_string(),
         &format!(
@@ -280,17 +322,31 @@ async fn update_permission(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn list_permissions(
     target_type: Option<&str>,
     principal_type: Option<&str>,
+    principal: Option<&str>,
+    target: Option<&str>,
     page: i32,
     per_page: i32,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let principal_id = super::helpers::parse_optional_uuid(principal, "principal")?;
     let client = client_for(global)?;
+    let target_id = match target {
+        Some(target) => Some(resolve_target(&client, target, target_type.unwrap_or("")).await?),
+        None => None,
+    };
     let spinner = output::spinner("Fetching permissions...");
 
     let mut req = client.list_permissions().page(page).per_page(per_page);
+    if let Some(id) = principal_id {
+        req = req.principal_id(id);
+    }
+    if let Some(id) = target_id {
+        req = req.target_id(id);
+    }
     if let Some(tt) = target_type {
         req = req.target_type(tt);
     }
@@ -298,14 +354,12 @@ async fn list_permissions(
         req = req.principal_type(pt);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list permissions", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list permissions", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No permissions found.");
         return Ok(());
     }
@@ -359,7 +413,7 @@ async fn list_permissions(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     print_page_info(
@@ -378,9 +432,11 @@ async fn create_permission(
     target: &str,
     target_type: &str,
     actions: Vec<String>,
+    conditions: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let principal_id = parse_uuid(principal, "principal")?;
+    let conditions = parse_conditions(conditions, global).await?;
 
     let client = client_for(global)?;
     let target_id = resolve_target(&client, target, target_type).await?;
@@ -392,19 +448,17 @@ async fn create_permission(
         target_id,
         target_type: target_type.to_string(),
         actions,
-        conditions: None,
+        conditions,
     };
 
-    let perm = client
-        .create_permission()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create permission", e))?;
+    let (perm, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_permission().body(body).send()).await;
+    let perm = perm.map_err(|e| sdk_err("create permission", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*perm,
         &perm.id.to_string(),
         &format!(
@@ -484,6 +538,7 @@ mod tests {
                 principal_type,
                 page,
                 per_page,
+                ..
             } => {
                 assert!(target_type.is_none());
                 assert!(principal_type.is_none());
@@ -554,6 +609,7 @@ mod tests {
                 target,
                 target_type,
                 actions,
+                ..
             } => {
                 assert_eq!(principal, "00000000-0000-0000-0000-000000000001");
                 assert_eq!(principal_type, "user");
@@ -699,6 +755,7 @@ mod tests {
                 target,
                 target_type,
                 actions,
+                ..
             } => {
                 assert_eq!(id, "00000000-0000-0000-0000-000000000009");
                 assert_eq!(principal, "00000000-0000-0000-0000-000000000001");
@@ -801,7 +858,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_permissions(None, None, 1, 50, &global).await;
+        let result = list_permissions(None, None, None, None, 1, 50, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -821,7 +878,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_permissions(None, None, 1, 50, &global).await;
+        let result = list_permissions(None, None, None, None, 1, 50, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -841,7 +898,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
-        let result = list_permissions(None, None, 1, 50, &global).await;
+        let result = list_permissions(None, None, None, None, 1, 50, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -864,6 +921,7 @@ mod tests {
             NIL_UUID,
             "repository",
             vec!["read".to_string()],
+            None,
             &global,
         )
         .await;
@@ -914,6 +972,7 @@ mod tests {
             NIL_UUID,
             "repository",
             vec!["read".to_string(), "write".to_string()],
+            None,
             &global,
         )
         .await;
@@ -931,6 +990,7 @@ mod tests {
             NIL_UUID,
             "repository",
             vec!["read".to_string()],
+            None,
             &global,
         )
         .await;

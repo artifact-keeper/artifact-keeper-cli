@@ -324,3 +324,138 @@ fn create_disabled_stays_disabled_or_is_refused() {
     let enabled = json_output(env.ak_cmd().args(["lifecycle", "update", &id, "--enabled"]));
     assert_eq!(enabled["enabled"], true);
 }
+
+fn repo_id_of(env: &common::TestEnv, repo: &str) -> String {
+    let repo: Value = env
+        .api_client()
+        .get(format!("{}/api/v1/repositories/{repo}", env.url))
+        .bearer_auth(&env.token)
+        .send()
+        .unwrap()
+        .json()
+        .unwrap();
+    repo["id"].as_str().unwrap().to_string()
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn attach_and_detach_change_which_repositories_a_policy_applies_to() {
+    let env = common::TestEnv::setup();
+    let suffix = std::process::id();
+    let artifact = format!("lifecycle-attach-{suffix}.bin");
+    let repo = format!("e2e-lc-attach-{suffix}");
+    let mut guard = repo_with_artifact(&env, &repo, &artifact);
+    let other = format!("e2e-lc-attach2-{suffix}");
+    let _other = repo_with_artifact(&env, &other, &artifact);
+    let config = format!(r#"{{"pattern":"^{artifact}"}}"#);
+
+    if common::server_older_than(1, 11, "lifecycle attach and detach") {
+        // A 1.10 server would ignore `repository_ids` and make this policy global.
+        env.ak_cmd()
+            .args(["lifecycle", "create", &format!("e2e-never-{suffix}")])
+            .args(["--policy-type", "tag_pattern_delete", "--config", &config])
+            .args(["--repos", &format!("{repo},{other}")])
+            .assert()
+            .failure()
+            .stderr(predicates::str::contains("1.11"));
+        let policy = json_output(env.ak_cmd().args([
+            "lifecycle",
+            "create",
+            &format!("e2e-attach-{suffix}"),
+            "--policy-type",
+            "tag_pattern_delete",
+            "--config",
+            &config,
+            "--repo",
+            &repo,
+        ]));
+        let id = policy["id"].as_str().unwrap().to_string();
+        guard.policies.push(id.clone());
+        for args in [
+            vec!["lifecycle", "attach", &id, &other],
+            vec!["lifecycle", "detach", &id, &other],
+            vec!["lifecycle", "update", &id, "--repos", &other],
+            vec!["lifecycle", "update", &id, "--all-repos", "true"],
+            vec!["lifecycle", "capabilities"],
+        ] {
+            env.ak_cmd()
+                .args(&args)
+                .assert()
+                .failure()
+                .stderr(predicates::str::contains("1.11"));
+        }
+        return;
+    }
+
+    let capabilities = json_output(env.ak_cmd().args(["lifecycle", "capabilities"]));
+    assert_eq!(capabilities["explicit_repository_assignment"], true);
+
+    let policy = json_output(env.ak_cmd().args([
+        "lifecycle",
+        "create",
+        &format!("e2e-attach-{suffix}"),
+        "--policy-type",
+        "tag_pattern_delete",
+        "--config",
+        &config,
+        "--repos",
+        &format!("{repo},{other}"),
+    ]));
+    let id = policy["id"].as_str().unwrap().to_string();
+    guard.policies.push(id.clone());
+    let (repo_id, other_id) = (repo_id_of(&env, &repo), repo_id_of(&env, &other));
+    let ids = |policy: &Value| -> Vec<String> {
+        let mut ids: Vec<String> = policy["repository_ids"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|id| id.as_str().unwrap().to_string())
+            .collect();
+        ids.sort();
+        ids
+    };
+    let mut both = vec![repo_id.clone(), other_id.clone()];
+    both.sort();
+    assert_eq!(ids(&policy), both);
+    assert_eq!(matched(&env, &id), 2);
+
+    // By key, as a user knows it.
+    let detached = json_output(env.ak_cmd().args(["lifecycle", "detach", &id, &other]));
+    assert_eq!(ids(&detached), vec![repo_id.clone()]);
+    assert_eq!(matched(&env, &id), 1);
+
+    let attached = json_output(env.ak_cmd().args(["lifecycle", "attach", &id, &other]));
+    assert_eq!(ids(&attached), both);
+    assert_eq!(matched(&env, &id), 2);
+
+    let updated = json_output(
+        env.ak_cmd()
+            .args(["lifecycle", "update", &id, "--repos", &repo]),
+    );
+    assert_eq!(ids(&updated), vec![repo_id.clone()]);
+
+    let cleared = json_output(
+        env.ak_cmd()
+            .args(["lifecycle", "update", &id, "--repos", ""]),
+    );
+    assert!(ids(&cleared).is_empty(), "{cleared}");
+    assert_eq!(matched(&env, &id), 0);
+
+    let global =
+        json_output(
+            env.ak_cmd()
+                .args(["lifecycle", "update", &id, "--all-repos", "true"]),
+        );
+    assert_eq!(global["applies_to_all"], true);
+    // A policy on every repository can't name any.
+    env.ak_cmd()
+        .args(["lifecycle", "attach", &id, &repo])
+        .assert()
+        .failure();
+    let local =
+        json_output(
+            env.ak_cmd()
+                .args(["lifecycle", "update", &id, "--all-repos", "false"]),
+        );
+    assert_eq!(local["applies_to_all"], false);
+}

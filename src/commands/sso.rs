@@ -10,13 +10,15 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_uuid, resolve_secret, sdk_err, short_id,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, parse_uuid,
+    read_inline_or_file, resolve_secret, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
 pub enum SsoCommand {
     /// List all SSO providers (LDAP, OIDC, SAML)
     List,
@@ -150,6 +152,14 @@ pub enum SsoUpdateCommand {
         #[arg(long)]
         use_starttls: Option<bool>,
 
+        /// PEM CA certificate to verify the server with: the text or @file
+        #[arg(long)]
+        ca_certificate: Option<String>,
+
+        /// Don't verify the server's certificate (true/false)
+        #[arg(long)]
+        insecure_skip_verify: Option<bool>,
+
         #[arg(long)]
         priority: Option<i32>,
 
@@ -201,6 +211,19 @@ pub enum SsoUpdateCommand {
         #[arg(long)]
         pkce_enabled: Option<bool>,
 
+        /// Group whose members become admins
+        #[arg(long)]
+        admin_group: Option<String>,
+
+        /// Claim mapping as a JSON object: the text, @file or @-
+        #[arg(long)]
+        attribute_mapping: Option<String>,
+
+        /// Replace the stored mapping with --attribute-mapping rather than merging
+        /// (true/false)
+        #[arg(long)]
+        attribute_mapping_replace: Option<bool>,
+
         /// Enable or disable the provider (true/false)
         #[arg(long)]
         is_enabled: Option<bool>,
@@ -247,10 +270,157 @@ pub enum SsoUpdateCommand {
         #[arg(long)]
         use_absolute_acs_url: Option<bool>,
 
+        /// Attribute mapping as a JSON object: the text, @file or @-
+        #[arg(long)]
+        attribute_mapping: Option<String>,
+
+        /// Map IdP groups onto local groups (true/false)
+        #[arg(long)]
+        map_groups_to_groups: Option<bool>,
+
+        /// The URL-safe name in this provider's ACS URL
+        #[arg(long)]
+        slug: Option<String>,
+
         /// Enable or disable the provider (true/false)
         #[arg(long)]
         is_enabled: Option<bool>,
     },
+}
+
+/// The optional fields of a new LDAP provider. The server has a default for each.
+#[derive(clap::Args, Default)]
+pub struct LdapOptions {
+    #[arg(long)]
+    user_filter: Option<String>,
+
+    #[arg(long)]
+    username_attribute: Option<String>,
+
+    #[arg(long)]
+    email_attribute: Option<String>,
+
+    #[arg(long)]
+    display_name_attribute: Option<String>,
+
+    #[arg(long)]
+    groups_attribute: Option<String>,
+
+    #[arg(long)]
+    group_base_dn: Option<String>,
+
+    #[arg(long)]
+    group_filter: Option<String>,
+
+    #[arg(long)]
+    admin_group_dn: Option<String>,
+
+    /// PEM CA certificate to verify the server with: the text or @file
+    #[arg(long)]
+    ca_certificate: Option<String>,
+
+    /// Don't verify the server's certificate (true/false)
+    #[arg(long)]
+    insecure_skip_verify: Option<bool>,
+
+    #[arg(long)]
+    priority: Option<i32>,
+
+    /// Create it enabled or disabled (true/false)
+    #[arg(long)]
+    is_enabled: Option<bool>,
+}
+
+/// The optional fields of a new OIDC provider.
+#[derive(clap::Args, Default)]
+pub struct OidcOptions {
+    /// Group whose members become admins
+    #[arg(long)]
+    admin_group: Option<String>,
+
+    /// Accept legacy RSA signing keys (true/false)
+    #[arg(long)]
+    allow_legacy_rsa_keys: Option<bool>,
+
+    /// Claim mapping as a JSON object: the text, @file or @-
+    #[arg(long)]
+    attribute_mapping: Option<String>,
+
+    /// Map IdP groups onto local groups (true/false)
+    #[arg(long)]
+    map_groups_to_groups: Option<bool>,
+
+    /// Enable PKCE (true/false)
+    #[arg(long)]
+    pkce_enabled: Option<bool>,
+
+    /// Requested OIDC scopes (repeatable)
+    #[arg(long = "scope")]
+    scope: Vec<String>,
+
+    /// Create it enabled or disabled (true/false)
+    #[arg(long)]
+    is_enabled: Option<bool>,
+}
+
+/// The optional fields of a new SAML provider.
+#[derive(clap::Args, Default)]
+pub struct SamlOptions {
+    #[arg(long)]
+    sp_entity_id: Option<String>,
+
+    #[arg(long)]
+    slo_url: Option<String>,
+
+    #[arg(long)]
+    name_id_format: Option<String>,
+
+    /// Group whose members become admins
+    #[arg(long)]
+    admin_group: Option<String>,
+
+    /// Attribute mapping as a JSON object: the text, @file or @-
+    #[arg(long)]
+    attribute_mapping: Option<String>,
+
+    /// Map IdP groups onto local groups (true/false)
+    #[arg(long)]
+    map_groups_to_groups: Option<bool>,
+
+    /// The URL-safe name in this provider's ACS URL
+    #[arg(long)]
+    slug: Option<String>,
+
+    /// Require signed assertions (true/false)
+    #[arg(long)]
+    require_signed_assertions: Option<bool>,
+
+    /// Use an absolute ACS URL (true/false)
+    #[arg(long)]
+    use_absolute_acs_url: Option<bool>,
+
+    /// Create it enabled or disabled (true/false)
+    #[arg(long)]
+    is_enabled: Option<bool>,
+}
+
+/// A flag holding a PEM certificate: the text, or @file for the contents.
+fn certificate_arg(value: &str, flag: &str) -> Result<String> {
+    String::from_utf8(read_inline_or_file(value, flag)?)
+        .map_err(|_| AkError::ConfigError(format!("{flag}: not text")).into())
+}
+
+fn optional_certificate(value: Option<String>, flag: &str) -> Result<Option<String>> {
+    value.map(|value| certificate_arg(&value, flag)).transpose()
+}
+
+/// A flag holding a JSON object of an attribute mapping.
+fn mapping_arg(
+    value: Option<String>,
+) -> Result<Option<serde_json::Map<String, serde_json::Value>>> {
+    value
+        .map(|value| parse_json_arg(&value, "--attribute-mapping"))
+        .transpose()
 }
 
 #[derive(Subcommand)]
@@ -280,6 +450,9 @@ pub enum SsoCreateCommand {
 
         #[arg(long)]
         use_starttls: bool,
+
+        #[command(flatten)]
+        options: LdapOptions,
     },
 
     /// Create OIDC provider
@@ -304,6 +477,9 @@ pub enum SsoCreateCommand {
 
         #[arg(long)]
         auto_create_users: bool,
+
+        #[command(flatten)]
+        options: OidcOptions,
     },
 
     /// Create SAML provider
@@ -317,11 +493,15 @@ pub enum SsoCreateCommand {
         #[arg(long)]
         sso_url: String,
 
+        /// PEM certificate of the identity provider: the text or @file
         #[arg(long)]
         certificate: String,
 
         #[arg(long)]
         sign_requests: bool,
+
+        #[command(flatten)]
+        options: SamlOptions,
     },
 }
 
@@ -339,6 +519,7 @@ impl SsoCommand {
                     bind_password,
                     bind_password_stdin,
                     use_starttls,
+                    options,
                 } => {
                     // Resolve the bind password off the command line; only
                     // prompt when a bind DN was given (anonymous binds need
@@ -357,6 +538,7 @@ impl SsoCommand {
                         bind_dn.as_deref(),
                         bind_password.as_deref(),
                         use_starttls,
+                        options,
                         global,
                     )
                     .await
@@ -368,6 +550,7 @@ impl SsoCommand {
                     client_secret,
                     client_secret_stdin,
                     auto_create_users,
+                    options,
                 } => {
                     // Resolve the client secret off the command line: stdin /
                     // env var / no-echo prompt on a TTY.
@@ -384,6 +567,7 @@ impl SsoCommand {
                         &client_id,
                         client_secret,
                         auto_create_users,
+                        options,
                         global,
                     )
                     .await
@@ -394,13 +578,16 @@ impl SsoCommand {
                     sso_url,
                     certificate,
                     sign_requests,
+                    options,
                 } => {
+                    let certificate = certificate_arg(&certificate, "--certificate")?;
                     create_saml(
                         &name,
                         &entity_id,
                         &sso_url,
                         &certificate,
                         sign_requests,
+                        options,
                         global,
                     )
                     .await
@@ -437,6 +624,8 @@ impl SsoUpdateCommand {
                 group_filter,
                 admin_group_dn,
                 use_starttls,
+                ca_certificate,
+                insecure_skip_verify,
                 priority,
                 is_enabled,
             } => {
@@ -463,8 +652,8 @@ impl SsoUpdateCommand {
                     group_base_dn,
                     group_filter,
                     admin_group_dn,
-                    ca_certificate: None,
-                    insecure_skip_verify: None,
+                    ca_certificate: optional_certificate(ca_certificate, "--ca-certificate")?,
+                    insecure_skip_verify,
                     use_starttls,
                     priority,
                     is_enabled,
@@ -483,6 +672,9 @@ impl SsoUpdateCommand {
                 allow_legacy_rsa_keys,
                 map_groups_to_groups,
                 pkce_enabled,
+                admin_group,
+                attribute_mapping,
+                attribute_mapping_replace,
                 is_enabled,
             } => {
                 // No prompt fallback on update: an omitted secret means
@@ -495,15 +687,15 @@ impl SsoUpdateCommand {
                     global.no_input,
                 )?;
                 let body = UpdateOidcConfigRequest {
-                    admin_group: None,
+                    admin_group,
                     name,
                     issuer_url,
                     client_id,
                     client_secret,
                     auto_create_users,
                     scopes: if scope.is_empty() { None } else { Some(scope) },
-                    attribute_mapping: None,
-                    attribute_mapping_replace: None,
+                    attribute_mapping: mapping_arg(attribute_mapping)?,
+                    attribute_mapping_replace,
                     allow_legacy_rsa_keys,
                     map_groups_to_groups,
                     pkce_enabled,
@@ -524,8 +716,12 @@ impl SsoUpdateCommand {
                 sign_requests,
                 require_signed_assertions,
                 use_absolute_acs_url,
+                attribute_mapping,
+                map_groups_to_groups,
+                slug,
                 is_enabled,
             } => {
+                let certificate = optional_certificate(certificate, "--certificate")?;
                 let body = UpdateSamlConfigRequest {
                     name,
                     entity_id,
@@ -535,9 +731,9 @@ impl SsoUpdateCommand {
                     slo_url,
                     name_id_format,
                     admin_group,
-                    attribute_mapping: None,
-                    map_groups_to_groups: None,
-                    slug: None,
+                    attribute_mapping: mapping_arg(attribute_mapping)?,
+                    map_groups_to_groups,
+                    slug,
                     sign_requests,
                     require_signed_assertions,
                     use_absolute_acs_url,
@@ -568,7 +764,11 @@ async fn list_providers(global: &GlobalArgs) -> Result<()> {
     let oidc_list = oidc.unwrap_or_default();
     let saml_list = saml.unwrap_or_default();
 
-    if ldap_list.is_empty() && oidc_list.is_empty() && saml_list.is_empty() {
+    if ldap_list.is_empty()
+        && oidc_list.is_empty()
+        && saml_list.is_empty()
+        && !output::is_machine_format(&global.format)
+    {
         eprintln!("No SSO providers found.");
         return Ok(());
     }
@@ -602,40 +802,40 @@ async fn show_provider(id: &str, provider_type: &str, global: &GlobalArgs) -> Re
 
     match provider_type {
         "ldap" => {
-            let resp = client
-                .get_ldap()
-                .id(provider_id)
-                .send()
-                .await
-                .map_err(|e| sdk_err("get LDAP provider", e))?;
+            let (resp, raw) =
+                artifact_keeper_sdk::raw::capture(client.get_ldap().id(provider_id).send()).await;
+            let resp = resp.map_err(|e| sdk_err("get LDAP provider", e))?;
             spinner.finish_and_clear();
             let p = resp.into_inner();
             let (info, table_str) = format_ldap_detail(&p);
-            println!("{}", output::render(&info, &global.format, Some(table_str)));
+            println!(
+                "{}",
+                output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+            );
         }
         "oidc" => {
-            let resp = client
-                .get_oidc()
-                .id(provider_id)
-                .send()
-                .await
-                .map_err(|e| sdk_err("get OIDC provider", e))?;
+            let (resp, raw) =
+                artifact_keeper_sdk::raw::capture(client.get_oidc().id(provider_id).send()).await;
+            let resp = resp.map_err(|e| sdk_err("get OIDC provider", e))?;
             spinner.finish_and_clear();
             let p = resp.into_inner();
             let (info, table_str) = format_oidc_detail(&p);
-            println!("{}", output::render(&info, &global.format, Some(table_str)));
+            println!(
+                "{}",
+                output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+            );
         }
         "saml" => {
-            let resp = client
-                .get_saml()
-                .id(provider_id)
-                .send()
-                .await
-                .map_err(|e| sdk_err("get SAML provider", e))?;
+            let (resp, raw) =
+                artifact_keeper_sdk::raw::capture(client.get_saml().id(provider_id).send()).await;
+            let resp = resp.map_err(|e| sdk_err("get SAML provider", e))?;
             spinner.finish_and_clear();
             let p = resp.into_inner();
             let (info, table_str) = format_saml_detail(&p);
-            println!("{}", output::render(&info, &global.format, Some(table_str)));
+            println!(
+                "{}",
+                output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+            );
         }
         _ => unreachable!("clap validates provider type"),
     }
@@ -643,6 +843,7 @@ async fn show_provider(id: &str, provider_type: &str, global: &GlobalArgs) -> Re
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn create_ldap(
     name: &str,
     server_url: &str,
@@ -650,6 +851,7 @@ async fn create_ldap(
     bind_dn: Option<&str>,
     bind_password: Option<&str>,
     use_starttls: bool,
+    options: LdapOptions,
     global: &GlobalArgs,
 ) -> Result<()> {
     // Secret resolution (prompt/stdin/env) happens at the dispatch layer via
@@ -666,31 +868,29 @@ async fn create_ldap(
         bind_dn: bind_dn.map(|s| s.to_string()),
         bind_password,
         use_starttls: Some(use_starttls),
-        ca_certificate: None,
-        insecure_skip_verify: None,
-        user_filter: None,
-        username_attribute: None,
-        email_attribute: None,
-        display_name_attribute: None,
-        groups_attribute: None,
-        group_base_dn: None,
-        group_filter: None,
-        admin_group_dn: None,
-        is_enabled: None,
-        priority: None,
+        ca_certificate: optional_certificate(options.ca_certificate, "--ca-certificate")?,
+        insecure_skip_verify: options.insecure_skip_verify,
+        user_filter: options.user_filter,
+        username_attribute: options.username_attribute,
+        email_attribute: options.email_attribute,
+        display_name_attribute: options.display_name_attribute,
+        groups_attribute: options.groups_attribute,
+        group_base_dn: options.group_base_dn,
+        group_filter: options.group_filter,
+        admin_group_dn: options.admin_group_dn,
+        is_enabled: options.is_enabled,
+        priority: options.priority,
     };
 
-    let resp = client
-        .create_ldap()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create LDAP provider", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_ldap().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("create LDAP provider", e))?;
 
     spinner.finish_and_clear();
     let p = resp.into_inner();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &p,
         &p.id.to_string(),
         &format!("LDAP provider '{}' created (ID: {}).", p.name, p.id),
@@ -705,6 +905,7 @@ async fn create_oidc(
     client_id: &str,
     client_secret: Option<String>,
     auto_create_users: bool,
+    options: OidcOptions,
     global: &GlobalArgs,
 ) -> Result<()> {
     // Secret resolution (prompt/stdin/env) happens at the dispatch layer via
@@ -721,31 +922,29 @@ async fn create_oidc(
     let spinner = output::spinner("Creating OIDC provider...");
 
     let body = CreateOidcConfigRequest {
-        admin_group: None,
+        admin_group: options.admin_group,
         name: name.to_string(),
         issuer_url: issuer_url.to_string(),
         client_id: client_id.to_string(),
         client_secret,
         auto_create_users: Some(auto_create_users),
-        scopes: None,
-        attribute_mapping: None,
-        is_enabled: None,
-        allow_legacy_rsa_keys: None,
-        map_groups_to_groups: None,
-        pkce_enabled: None,
+        scopes: (!options.scope.is_empty()).then_some(options.scope),
+        attribute_mapping: mapping_arg(options.attribute_mapping)?,
+        is_enabled: options.is_enabled,
+        allow_legacy_rsa_keys: options.allow_legacy_rsa_keys,
+        map_groups_to_groups: options.map_groups_to_groups,
+        pkce_enabled: options.pkce_enabled,
     };
 
-    let resp = client
-        .create_oidc()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create OIDC provider", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_oidc().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("create OIDC provider", e))?;
 
     spinner.finish_and_clear();
     let p = resp.into_inner();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &p,
         &p.id.to_string(),
         &format!("OIDC provider '{}' created (ID: {}).", p.name, p.id),
@@ -760,6 +959,7 @@ async fn create_saml(
     sso_url: &str,
     certificate: &str,
     sign_requests: bool,
+    options: SamlOptions,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -771,29 +971,27 @@ async fn create_saml(
         sso_url: sso_url.to_string(),
         certificate: certificate.to_string(),
         sign_requests: Some(sign_requests),
-        map_groups_to_groups: None,
-        slug: None,
-        sp_entity_id: None,
-        slo_url: None,
-        attribute_mapping: None,
-        name_id_format: None,
-        require_signed_assertions: None,
-        admin_group: None,
-        is_enabled: None,
-        use_absolute_acs_url: None,
+        map_groups_to_groups: options.map_groups_to_groups,
+        slug: options.slug,
+        sp_entity_id: options.sp_entity_id,
+        slo_url: options.slo_url,
+        attribute_mapping: mapping_arg(options.attribute_mapping)?,
+        name_id_format: options.name_id_format,
+        require_signed_assertions: options.require_signed_assertions,
+        admin_group: options.admin_group,
+        is_enabled: options.is_enabled,
+        use_absolute_acs_url: options.use_absolute_acs_url,
     };
 
-    let resp = client
-        .create_saml()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create SAML provider", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_saml().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("create SAML provider", e))?;
 
     spinner.finish_and_clear();
     let p = resp.into_inner();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &p,
         &p.id.to_string(),
         &format!("SAML provider '{}' created (ID: {}).", p.name, p.id),
@@ -878,12 +1076,9 @@ async fn test_provider(id: &str, provider_type: &str, global: &GlobalArgs) -> Re
     let client = client_for(global)?;
     let spinner = output::spinner("Testing LDAP connectivity...");
 
-    let resp = client
-        .test_ldap()
-        .id(provider_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("test LDAP provider", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.test_ldap().id(provider_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("test LDAP provider", e))?;
 
     spinner.finish_and_clear();
     let result = resp.into_inner();
@@ -894,7 +1089,10 @@ async fn test_provider(id: &str, provider_type: &str, global: &GlobalArgs) -> Re
     }
 
     let (info, table_str) = format_test_result(&result);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -956,17 +1154,15 @@ async fn update_ldap(id: &str, body: UpdateLdapConfigRequest, global: &GlobalArg
     let client = client_for(global)?;
     let spinner = output::spinner("Updating LDAP provider...");
 
-    let resp = client
-        .update_ldap()
-        .id(provider_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update LDAP provider", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_ldap().id(provider_id).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("update LDAP provider", e))?;
 
     spinner.finish_and_clear();
     let p = resp.into_inner();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &p,
         &p.id.to_string(),
         &format!("LDAP provider '{}' updated (ID: {}).", p.name, p.id),
@@ -980,17 +1176,15 @@ async fn update_oidc(id: &str, body: UpdateOidcConfigRequest, global: &GlobalArg
     let client = client_for(global)?;
     let spinner = output::spinner("Updating OIDC provider...");
 
-    let resp = client
-        .update_oidc()
-        .id(provider_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update OIDC provider", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_oidc().id(provider_id).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("update OIDC provider", e))?;
 
     spinner.finish_and_clear();
     let p = resp.into_inner();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &p,
         &p.id.to_string(),
         &format!("OIDC provider '{}' updated (ID: {}).", p.name, p.id),
@@ -1004,17 +1198,15 @@ async fn update_saml(id: &str, body: UpdateSamlConfigRequest, global: &GlobalArg
     let client = client_for(global)?;
     let spinner = output::spinner("Updating SAML provider...");
 
-    let resp = client
-        .update_saml()
-        .id(provider_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update SAML provider", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_saml().id(provider_id).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("update SAML provider", e))?;
 
     spinner.finish_and_clear();
     let p = resp.into_inner();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &p,
         &p.id.to_string(),
         &format!("SAML provider '{}' updated (ID: {}).", p.name, p.id),
@@ -1027,25 +1219,21 @@ async fn list_enabled_providers(public: bool, global: &GlobalArgs) -> Result<()>
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching enabled SSO providers...");
 
-    let providers = if public {
-        client
-            .list_providers()
-            .send()
-            .await
-            .map_err(|e| sdk_err("list public SSO providers", e))?
-            .into_inner()
+    let (providers, raw) = if public {
+        let (providers, raw) =
+            artifact_keeper_sdk::raw::capture(client.list_providers().send()).await;
+        let providers = providers.map_err(|e| sdk_err("list public SSO providers", e))?;
+        (providers.into_inner(), raw)
     } else {
-        client
-            .list_sso_providers_admin()
-            .send()
-            .await
-            .map_err(|e| sdk_err("list SSO providers", e))?
-            .into_inner()
+        let (providers, raw) =
+            artifact_keeper_sdk::raw::capture(client.list_sso_providers_admin().send()).await;
+        let providers = providers.map_err(|e| sdk_err("list SSO providers", e))?;
+        (providers.into_inner(), raw)
     };
 
     spinner.finish_and_clear();
 
-    if providers.is_empty() {
+    if providers.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No enabled SSO providers.");
         return Ok(());
     }
@@ -1060,7 +1248,7 @@ async fn list_enabled_providers(public: bool, global: &GlobalArgs) -> Result<()>
     let (entries, table_str) = format_provider_infos(&providers);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1473,6 +1661,7 @@ mod tests {
                     bind_password,
                     bind_password_stdin,
                     use_starttls,
+                    ..
                 },
         } = cli.command
         {
@@ -1579,6 +1768,7 @@ mod tests {
                     client_secret,
                     client_secret_stdin,
                     auto_create_users,
+                    ..
                 },
         } = cli.command
         {
@@ -1696,6 +1886,7 @@ mod tests {
                     sso_url,
                     certificate,
                     sign_requests,
+                    ..
                 },
         } = cli.command
         {
@@ -2211,6 +2402,7 @@ mod tests {
             Some("cn=admin,dc=corp"),
             Some("secret"),
             false,
+            Default::default(),
             &global,
         )
         .await;
@@ -2236,6 +2428,7 @@ mod tests {
             "abc123",
             Some("secret456".into()),
             true,
+            Default::default(),
             &global,
         )
         .await;
@@ -2261,6 +2454,7 @@ mod tests {
             "https://login.microsoftonline.com/tenant-id/saml2",
             "MIIC...",
             true,
+            Default::default(),
             &global,
         )
         .await;

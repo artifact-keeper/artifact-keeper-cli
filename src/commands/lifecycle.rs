@@ -4,9 +4,10 @@ use miette::Result;
 
 use super::client::client_for;
 use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid,
+    refuse_flags_before_1_11, sdk_err, short_id, since_1_11, since_1_11_any_status,
 };
-use super::helpers::{refuse_flags_before_1_11, resolve_optional_repo_id, resolve_repo_id};
+use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -58,6 +59,11 @@ pub enum LifecycleCommand {
         #[arg(long, conflicts_with = "all_repos")]
         repo: Option<String>,
 
+        /// Apply to these repository keys or IDs, comma-separated. Needs a 1.11
+        /// server
+        #[arg(long, value_delimiter = ',', conflicts_with_all = ["repo", "all_repos"])]
+        repos: Vec<String>,
+
         /// Apply to every repository. A 1.10 server refuses this for max_versions
         /// and size_quota_bytes, which there need --repo
         #[arg(long)]
@@ -106,6 +112,16 @@ pub enum LifecycleCommand {
         /// New cron schedule for automatic execution (e.g. "0 2 * * *")
         #[arg(long)]
         cron_schedule: Option<String>,
+
+        /// Apply to exactly these repository keys or IDs, comma-separated, or to
+        /// none with an empty value (--repos ''). Needs a 1.11 server
+        #[arg(long, value_delimiter = ',')]
+        repos: Option<Vec<String>>,
+
+        /// Apply to every repository (true), or stop doing so (false). Needs a 1.11
+        /// server
+        #[arg(long)]
+        all_repos: Option<bool>,
     },
 
     /// Delete a lifecycle policy
@@ -132,6 +148,27 @@ pub enum LifecycleCommand {
         /// Policy ID
         id: String,
     },
+
+    /// Add a repository to what a policy applies to. Needs a 1.11 server
+    Attach {
+        /// Policy ID
+        id: String,
+
+        /// Repository key or ID
+        repo: String,
+    },
+
+    /// Remove a repository from what a policy applies to. Needs a 1.11 server
+    Detach {
+        /// Policy ID
+        id: String,
+
+        /// Repository key or ID
+        repo: String,
+    },
+
+    /// Show what this server's lifecycle API can do. Needs a 1.11 server
+    Capabilities,
 }
 
 impl LifecycleCommand {
@@ -146,6 +183,7 @@ impl LifecycleCommand {
                 description,
                 priority,
                 repo,
+                repos,
                 all_repos,
                 disabled,
                 cron_schedule,
@@ -157,6 +195,7 @@ impl LifecycleCommand {
                     description.as_deref(),
                     priority,
                     repo.as_deref(),
+                    &repos,
                     all_repos,
                     disabled,
                     cron_schedule.as_deref(),
@@ -173,6 +212,8 @@ impl LifecycleCommand {
                 description,
                 config,
                 cron_schedule,
+                repos,
+                all_repos,
             } => {
                 update_policy(
                     &id,
@@ -183,6 +224,8 @@ impl LifecycleCommand {
                     description.as_deref(),
                     config.as_deref(),
                     cron_schedule.as_deref(),
+                    repos.as_deref(),
+                    all_repos,
                     global,
                 )
                 .await
@@ -191,6 +234,9 @@ impl LifecycleCommand {
             Self::ExecuteAll => execute_all_policies(global).await,
             Self::Preview { id } => preview_policy(&id, global).await,
             Self::Execute { id } => execute_policy(&id, global).await,
+            Self::Attach { id, repo } => change_scope(&id, &repo, true, global).await,
+            Self::Detach { id, repo } => change_scope(&id, &repo, false, global).await,
+            Self::Capabilities => capabilities(global).await,
         }
     }
 }
@@ -384,6 +430,7 @@ async fn create_policy(
     description: Option<&str>,
     priority: Option<i32>,
     repo_id: Option<&str>,
+    repos: &[String],
     all_repos: bool,
     disabled: bool,
     cron_schedule: Option<&str>,
@@ -391,11 +438,11 @@ async fn create_policy(
 ) -> Result<()> {
     // A policy is live once it's created and it deletes, so its reach has to be
     // asked for, not assumed from a flag that was left off.
-    if repo_id.is_none() && !all_repos {
+    if repo_id.is_none() && repos.is_empty() && !all_repos {
         return Err(AkError::ConfigError(
-            "say what this policy applies to: --repo <key> for one repository, or \
-             --all-repos for every repository. Unless it's --disabled, it's live as soon as \
-             it's created"
+            "say what this policy applies to: --repo <key> for one repository, --repos for \
+             several, or --all-repos for every repository. Unless it's --disabled, it's live \
+             as soon as it's created"
                 .to_string(),
         )
         .into());
@@ -412,6 +459,12 @@ async fn create_policy(
 
     let config_map = parse_config(config)?;
     let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
+    // A 1.10 server ignores `repository_ids`, and there a policy with no repository
+    // deletes across every repository. So it mustn't get as far as being sent.
+    if !repos.is_empty() {
+        refuse_flags_before_1_11(&["--repos"], global).await?;
+    }
+    let repository_ids = resolve_repos(&client, repos).await?;
 
     // A 1.10 server ignores `enabled`, and the policy it then creates is live.
     if disabled {
@@ -434,7 +487,7 @@ async fn create_policy(
         // 1.10 ignores `repository_ids` and would create a policy for every
         // repository, and 1.11 stores this as a one-element `repository_ids`.
         repository_id,
-        repository_ids: None,
+        repository_ids: (!repository_ids.is_empty()).then_some(repository_ids),
     };
 
     let spinner = output::spinner("Creating lifecycle policy...");
@@ -483,6 +536,18 @@ async fn create_policy(
     Ok(())
 }
 
+/// The IDs of repositories given by key or ID.
+async fn resolve_repos(
+    client: &artifact_keeper_sdk::Client,
+    repos: &[String],
+) -> Result<Vec<uuid::Uuid>> {
+    let mut ids = Vec::with_capacity(repos.len());
+    for repo in repos {
+        ids.push(resolve_repo_id(client, repo).await?);
+    }
+    Ok(ids)
+}
+
 /// Parse a `--config` value, which must be a JSON object.
 fn parse_config(config: &str) -> Result<serde_json::Map<String, serde_json::Value>> {
     let value: serde_json::Value = serde_json::from_str(config)
@@ -503,6 +568,8 @@ async fn update_policy(
     description: Option<&str>,
     config: Option<&str>,
     cron_schedule: Option<&str>,
+    repos: Option<&[String]>,
+    all_repos: Option<bool>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let policy_id = parse_uuid(id, "policy")?;
@@ -525,25 +592,43 @@ async fn update_policy(
         && description.is_none()
         && config_field.is_none()
         && cron_schedule.is_none()
+        && repos.is_none()
+        && all_repos.is_none()
     {
         return Err(AkError::ConfigError(
-            "No fields to update; provide at least one of --name/--enabled/--disabled/--priority/--description/--config/--cron-schedule".into(),
+            "No fields to update; provide at least one of --name/--enabled/--disabled/--priority/--description/--config/--cron-schedule/--repos/--all-repos".into(),
         )
         .into());
     }
 
+    let client = client_for(global)?;
+    let mut scope_flags = Vec::new();
+    if repos.is_some() {
+        scope_flags.push("--repos");
+    }
+    if all_repos.is_some() {
+        scope_flags.push("--all-repos");
+    }
+    refuse_flags_before_1_11(&scope_flags, global).await?;
+    let repository_ids = match repos {
+        Some(repos) => {
+            let repos: Vec<String> = repos.iter().filter(|r| !r.is_empty()).cloned().collect();
+            Some(resolve_repos(&client, &repos).await?)
+        }
+        None => None,
+    };
+
     let body = artifact_keeper_sdk::types::UpdateLifecyclePolicyRequest {
-        applies_to_all: None,
+        applies_to_all: all_repos,
         config: config_field,
         cron_schedule: cron_schedule.map(str::to_string),
         description: description.map(str::to_string),
         enabled: enabled_field,
         name: name.map(str::to_string),
         priority,
-        repository_ids: None,
+        repository_ids,
     };
 
-    let client = client_for(global)?;
     let spinner = output::spinner("Updating lifecycle policy...");
 
     let (resp, raw) = artifact_keeper_sdk::raw::capture(
@@ -575,16 +660,15 @@ async fn execute_all_policies(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Executing all policies...");
 
-    let results = client
-        .execute_all_policies()
-        .send()
-        .await
+    let (results, raw) =
+        artifact_keeper_sdk::raw::capture(client.execute_all_policies().send()).await;
+    let results = results
         .map_err(|e| sdk_err("execute all policies", e))?
         .into_inner();
 
     spinner.finish_and_clear();
 
-    if results.is_empty() {
+    if results.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No policies were executed.");
         return Ok(());
     }
@@ -592,7 +676,7 @@ async fn execute_all_policies(global: &GlobalArgs) -> Result<()> {
     if matches!(global.format, OutputFormat::Table) {
         eprintln!("Executed {} policy/policies:", results.len());
         for result in &results {
-            print_execution_result(result, "Execution", global);
+            print_execution_result(result, None, "Execution", global);
         }
     } else {
         let entries: Vec<_> = results
@@ -609,7 +693,10 @@ async fn execute_all_policies(global: &GlobalArgs) -> Result<()> {
                 })
             })
             .collect();
-        println!("{}", output::render(&entries, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &entries, &global.format, None)
+        );
     }
 
     Ok(())
@@ -653,15 +740,12 @@ async fn preview_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Previewing policy execution...");
 
-    let result = client
-        .preview_policy()
-        .id(policy_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("preview policy", e))?;
+    let (result, raw) =
+        artifact_keeper_sdk::raw::capture(client.preview_policy().id(policy_id).send()).await;
+    let result = result.map_err(|e| sdk_err("preview policy", e))?;
 
     spinner.finish_and_clear();
-    print_execution_result(&result, "Preview", global);
+    print_execution_result(&result, raw.as_deref(), "Preview", global);
 
     Ok(())
 }
@@ -672,21 +756,98 @@ async fn execute_policy(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Executing policy...");
 
-    let result = client
-        .execute_policy()
-        .id(policy_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("execute policy", e))?;
+    let (result, raw) =
+        artifact_keeper_sdk::raw::capture(client.execute_policy().id(policy_id).send()).await;
+    let result = result.map_err(|e| sdk_err("execute policy", e))?;
 
     spinner.finish_and_clear();
-    print_execution_result(&result, "Execution", global);
+    print_execution_result(&result, raw.as_deref(), "Execution", global);
 
+    Ok(())
+}
+
+/// Add a repository to a policy's scope, or remove it.
+async fn change_scope(id: &str, repo: &str, attach: bool, global: &GlobalArgs) -> Result<()> {
+    let policy_id = parse_uuid(id, "policy")?;
+    let client = client_for(global)?;
+    let repository_id = resolve_repo_id(&client, repo).await?;
+    let spinner = output::spinner("Changing what the policy applies to...");
+    let (policy, raw) = if attach {
+        let req = client
+            .attach_lifecycle_repository()
+            .id(policy_id)
+            .repository_id(repository_id);
+        artifact_keeper_sdk::raw::capture(req.send()).await
+    } else {
+        let req = client
+            .detach_lifecycle_repository()
+            .id(policy_id)
+            .repository_id(repository_id);
+        artifact_keeper_sdk::raw::capture(req.send()).await
+    };
+    spinner.finish_and_clear();
+    let policy = match policy {
+        Ok(policy) => policy.into_inner(),
+        Err(e) => {
+            let (action, command) = if attach {
+                ("attach repository", "lifecycle attach")
+            } else {
+                ("detach repository", "lifecycle detach")
+            };
+            return Err(since_1_11(e, action, command, global).await.into());
+        }
+    };
+    emit_mutation_raw(
+        raw.as_deref(),
+        &policy,
+        id,
+        &format!(
+            "Policy '{}' now applies to: {}.",
+            policy.name,
+            policy_scope(&policy)
+        ),
+        global,
+    );
+    Ok(())
+}
+
+async fn capabilities(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_lifecycle_capabilities().send()).await;
+    let resp = match resp {
+        Ok(resp) => resp.into_inner(),
+        Err(e) => {
+            let action = "get lifecycle capabilities";
+            return Err(
+                since_1_11_any_status(e, action, "lifecycle capabilities", global)
+                    .await
+                    .into(),
+            );
+        }
+    };
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", resp.explicit_repository_assignment);
+        return Ok(());
+    }
+    let table = format!(
+        "Explicit repository assignment: {}",
+        if resp.explicit_repository_assignment {
+            "yes"
+        } else {
+            "no"
+        }
+    );
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &resp, &global.format, Some(table))
+    );
     Ok(())
 }
 
 fn print_execution_result(
     result: &artifact_keeper_sdk::types::PolicyExecutionResult,
+    raw: Option<&[u8]>,
     label: &str,
     global: &GlobalArgs,
 ) {
@@ -717,7 +878,7 @@ fn print_execution_result(
             }
         }
     } else {
-        println!("{}", output::render(&info, &global.format, None));
+        println!("{}", output::render_raw(raw, &info, &global.format, None));
     }
 }
 
@@ -808,6 +969,7 @@ mod tests {
                 all_repos,
                 disabled,
                 cron_schedule,
+                ..
             } => {
                 assert_eq!(name, "retention-policy");
                 assert_eq!(policy_type, "max_age_days");
@@ -853,6 +1015,7 @@ mod tests {
                 all_repos,
                 disabled,
                 cron_schedule,
+                ..
             } => {
                 assert_eq!(name, "strict-policy");
                 assert_eq!(policy_type, "max_versions");
@@ -932,6 +1095,7 @@ mod tests {
                 description,
                 config,
                 cron_schedule,
+                ..
             } => {
                 assert_eq!(id, "policy-id");
                 assert_eq!(name.as_deref(), Some("renamed"));
@@ -1140,6 +1304,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             true,
             false,
             None,
@@ -1192,6 +1357,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             true,
             true,
             None,
@@ -1239,6 +1405,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             false,
             false,
             None,
@@ -1279,6 +1446,7 @@ mod tests {
             None,
             None,
             Some(ID),
+            &[],
             false,
             false,
             None,
@@ -1413,6 +1581,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             true,
             false,
             None,
@@ -1442,6 +1611,7 @@ mod tests {
             Some("desc"),
             Some(5),
             None,
+            &[],
             true,
             false,
             None,
@@ -1462,6 +1632,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             true,
             false,
             None,
@@ -1481,6 +1652,7 @@ mod tests {
             None,
             None,
             None,
+            &[],
             true,
             false,
             None,
@@ -1528,6 +1700,8 @@ mod tests {
             None,
             None,
             None,
+            None,
+            None,
             &global,
         )
         .await;
@@ -1539,7 +1713,7 @@ mod tests {
     async fn handler_update_policy_no_fields() {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
         let result = update_policy(
-            NIL_UUID, None, false, false, None, None, None, None, &global,
+            NIL_UUID, None, false, false, None, None, None, None, None, None, &global,
         )
         .await;
         assert!(result.is_err());
@@ -1556,6 +1730,8 @@ mod tests {
             None,
             None,
             Some("not-json"),
+            None,
+            None,
             None,
             &global,
         )
