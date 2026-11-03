@@ -92,6 +92,13 @@ pub enum AkError {
     )]
     SetupFileNotOurs(String),
 
+    #[error("Promotion blocked: {0}")]
+    #[diagnostic(
+        code(ak::promotion_blocked),
+        help("An admin can override policy checks with --skip-checks.")
+    )]
+    PromotionBlocked(String),
+
     #[error(transparent)]
     #[diagnostic(code(ak::io_error))]
     Io(#[from] std::io::Error),

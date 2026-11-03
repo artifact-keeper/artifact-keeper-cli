@@ -87,6 +87,7 @@ These can change what you see, or break a script, coming from 1.2:
 
 ### Fixed
 
+- `ak promotion promote` and `bulk-promote` exit 1 with the policy's reason when a promotion is blocked. The server answers 200 for these, so they exited 0 and a CI script saw success, including `--format quiet`, which printed nothing. For `--format json` and `yaml` both print the server's response on stdout, as received, so `bulk-promote` JSON is now `{"total", "promoted", "failed", "results"}` rather than a bare list, with each result's `policy_violations`.
 - `ak admin plugins list` and `show` no longer fail on a server with a plugin that has no config schema. The server sends null there although the API spec doesn't allow it.
 - Virtual repositories show the size of their members in `ak repo list`, `ak repo show` and the TUI, rather than 0 (#181).
 - The `ak lifecycle create` help names the right config key for `size_quota_bytes`: `quota_bytes`.
