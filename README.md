@@ -184,6 +184,7 @@ Administration
   ak banner        System-wide maintenance and downtime banners
   ak bundle        Offline bundles: format, manifest checks, export and import jobs
   ak environment   Stored lockfiles, and which of them contain a component
+  ak image-build   Server-side container image builds and image inspection
   ak tui           Launch interactive TUI dashboard
   ak completion    Generate shell completions (bash/zsh/fish/powershell)
   ak man-pages     Generate man pages for all commands

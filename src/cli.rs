@@ -488,6 +488,16 @@ pub enum Command {
         #[command(subcommand)]
         command: commands::environment::EnvironmentCommand,
     },
+
+    /// Build container images on the server, and inspect pushed images
+    #[command(
+        name = "image-build",
+        after_help = "Examples:\n  ak image-build settings my-images\n  ak image-build render my-images --base-image python:3.12-slim --pip requests\n  ak image-build create my-images team/app 1.0 --base-image python:3.12-slim --pip requests\n  ak image-build log my-images <build-id>\n  ak image-build inspect my-images team/app 1.0"
+    )]
+    ImageBuild {
+        #[command(subcommand)]
+        command: commands::image_build::ImageBuildCommand,
+    },
 }
 
 impl Cli {
@@ -586,6 +596,7 @@ impl Cli {
             Command::Banner { command } => command.execute(&global).await,
             Command::Bundle { command } => command.execute(&global).await,
             Command::Environment { command } => command.execute(&global).await,
+            Command::ImageBuild { command } => command.execute(&global).await,
         }
     }
 }
@@ -2798,6 +2809,33 @@ mod tests {
     #[test]
     fn parse_environment_lookup_needs_a_purl() {
         assert!(parse(&["ak", "environment", "lookup"]).is_err());
+    }
+
+    // ---- Image build command parsing ----
+
+    #[test]
+    fn parse_image_build_create() {
+        let cli = parse(&[
+            "ak",
+            "image-build",
+            "create",
+            "r",
+            "team/app",
+            "1.0",
+            "--base-image",
+            "b",
+            "--pip",
+            "x",
+            "--pip",
+            "y",
+        ])
+        .unwrap();
+        assert!(matches!(cli.command, Command::ImageBuild { .. }));
+    }
+
+    #[test]
+    fn parse_image_build_inspect_needs_a_reference() {
+        assert!(parse(&["ak", "image-build", "inspect", "r", "team/app"]).is_err());
     }
 
     // ---- System command parsing ----
