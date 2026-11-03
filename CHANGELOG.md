@@ -23,6 +23,8 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - `ak api <METHOD> <path>` sends any HTTP request to the instance with its auth and TLS settings, so anything curl can do works here even without a first-class command: any method, repeatable `-H` and `-Q`, `--body` (JSON text, `@file`, `@-`), `--raw-body` (streamed), `--form` (multipart), `--urlencode`, `-o` (streamed), `--include`, `--head-only`, `--no-follow`, `--fail`, `--no-fail`, `--url`, `--anon` and `--max-time`. The instance's token goes only to the instance's own scheme, host and port. Run `ak api --help` for exit codes and examples.
 - `ak project` manages projects and their members: `list`, `show`, `create`, `update`, `delete` and `members list|add|remove`. Every command takes a project's key or its ID.
 - `ak banner` manages system-wide maintenance banners: `list`, `show`, `create`, `update` and `delete` for admins, and `active`, which needs no login. `update` changes only what you pass, and `--no-link-url`, `--no-starts-at` and `--no-ends-at` clear a field. Needs a 1.11 server: on 1.10 these routes don't exist, and the command reports the server's 404.
+- `ak repo create` and `ak repo update` can set every field in the 1.11 API: `--visibility`, `--project-id`, `--versioning-enabled`, `--repodata-depth`, `--custom-user-agent`, `--trusted-gpg-key`, `--curation-allow-unverified`, `--allow-public-with-upstream-credentials`, `--apt-origin`, `--apt-label`, `--apt-description`, `--apt-release-version`, `--npm-allowed-scopes`, `--npm-allowed-name-patterns`, `--npm-allow-unscoped`, `--npm-virtual-isolate-hosted-names`, `--oci-trusted-bearer-realms` and `--debian` (JSON). `create` also takes `--name`, `--allow-anonymous`, `--promotion-only`, `--quota-bytes`, `--index-upstream-url`, `--pypi-upstream-index-path`, `--format-key`, `--member`, `--storage-backend`, `--upstream-auth-type`, `--upstream-username`, `--upstream-password` and `--upstream-password-stdin`. `update` also takes `--upstream-url`, `--curation-enabled`, `--curation-default-action`, `--virtual-metadata-partial`, `--clear-project` and `--clear-trusted-gpg-key`.
+- `ak repo delete --wait` follows a background deletion to its end, and `--wait-timeout` limits how long it waits (default 30 minutes).
 
 ### Changed
 
@@ -54,6 +56,9 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 - A prompt with no terminal now says to pass `--yes` or `--no-input`, rather than failing with `IO error: not a terminal`.
 - With `--no-input` or `AK_NO_INPUT`, a secret that was not given (such as `ak webhook create` without `--secret`) no longer waits on an open stdin. To pipe a secret with `--no-input`, use the command's `--<flag>-stdin`.
 - `ak import source list`, `import job list` and `import job items` work against 1.11 and 1.10. The server wraps these lists in `{"items": [...]}` while the spec declares an array (artifact-keeper-api#46), so the SDK could not parse them. In JSON and YAML they print the body as received.
+- `ak repo create --repo-type proxy` and `ak repo list --repo-type proxy` work. The API's word is `remote` and it rejected `proxy`, so `ak` now sends `remote` (#154).
+- `ak repo delete` accepts the `202 Accepted` and job that backend 1.12 answers with, where it used to report failure on a delete the server had accepted. It prints the job ID, and `--format quiet` prints only that (#182).
+- `ak repo create` no longer sends `is_public: false` when `--public` isn't given.
 
 ### Removed
 

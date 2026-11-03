@@ -85,7 +85,7 @@ pub enum Command {
     )]
     Repo {
         #[command(subcommand)]
-        command: commands::repo::RepoCommand,
+        command: Box<commands::repo::RepoCommand>,
     },
 
     /// Upload, download, search, and manage artifacts

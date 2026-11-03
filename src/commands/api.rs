@@ -27,6 +27,7 @@ use reqwest::{Method, StatusCode};
 use tokio_util::io::ReaderStream;
 use url::Url;
 
+use super::helpers::read_inline_or_file;
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
 use crate::config::credentials::get_credential;
@@ -736,23 +737,6 @@ impl RequestBody {
 }
 
 /// The bytes for a flag that takes text, @file or @-.
-fn read_inline_or_file(value: &str, flag: &str) -> Result<Vec<u8>> {
-    match value.strip_prefix('@') {
-        Some("-") => {
-            use std::io::Read;
-            let mut bytes = Vec::new();
-            std::io::stdin()
-                .lock()
-                .read_to_end(&mut bytes)
-                .map_err(|e| AkError::ConfigError(format!("{flag}: can't read stdin: {e}")))?;
-            Ok(bytes)
-        }
-        Some(path) => std::fs::read(path)
-            .map_err(|e| AkError::ConfigError(format!("{flag}: can't read '{path}': {e}")).into()),
-        None => Ok(value.as_bytes().to_vec()),
-    }
-}
-
 fn check_readable(path: &Path, flag: &str) -> Result<()> {
     std::fs::File::open(path).map(|_| ()).map_err(|e| {
         AkError::ConfigError(format!("{flag}: can't read '{}': {e}", path.display())).into()

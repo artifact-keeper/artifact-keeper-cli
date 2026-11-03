@@ -1,11 +1,14 @@
 use artifact_keeper_sdk::ClientRepositoriesExt;
-use clap::Subcommand;
+use clap::{Args, Subcommand};
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use futures::StreamExt;
 use miette::{IntoDiagnostic, Result};
 
 use super::client::{client_for, client_for_optional_auth};
-use super::helpers::{confirm_action, emit_mutation, emit_mutation_raw, new_table, sdk_err};
+use super::helpers::{
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, raw_err,
+    read_inline_or_file, resolve_secret, sdk_err,
+};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -50,12 +53,17 @@ pub enum RepoCommand {
         #[arg(long = "pkg-format", id = "pkg_format_create")]
         pkg_format: String,
 
-        /// Repository type
+        /// Repository type: local, remote, virtual or staging. `proxy` means
+        /// `remote` and `hosted` means `local`
         #[arg(long, default_value = "local")]
         repo_type: String,
 
+        /// Display name (defaults to the key)
+        #[arg(long)]
+        name: Option<String>,
+
         /// Upstream URL
-        #[arg(long, default_value = None, required_if_eq("repo_type", "remote"))]
+        #[arg(long, default_value = None, required_if_eq_any([("repo_type", "remote"), ("repo_type", "proxy")]))]
         upstream_url: Option<String>,
 
         /// Description
@@ -65,9 +73,61 @@ pub enum RepoCommand {
         /// Make repository public
         #[arg(long, default_value = None)]
         public: bool,
+
+        /// Allow anonymous (unauthenticated) downloads (true/false)
+        #[arg(long = "allow-anonymous")]
+        allow_anonymous: Option<bool>,
+
+        /// Restrict this repository to receive artifacts via promotion only (true/false)
+        #[arg(long = "promotion-only")]
+        promotion_only: Option<bool>,
+
+        /// Storage quota in bytes
+        #[arg(long = "quota-bytes")]
+        quota_bytes: Option<i64>,
+
+        /// Cargo index upstream URL (remote repos)
+        #[arg(long = "index-upstream-url")]
+        index_upstream_url: Option<String>,
+
+        /// PyPI simple-index prefix ("" for flat CDN, "simple" for PEP 503 default)
+        #[arg(long = "pypi-upstream-index-path")]
+        pypi_upstream_index_path: Option<String>,
+
+        /// Custom format key for a WASM plugin format handler
+        #[arg(long = "format-key")]
+        format_key: Option<String>,
+
+        /// Member of a virtual repository, as `key` or `key=priority` (repeatable)
+        #[arg(long = "member")]
+        members: Vec<String>,
+
+        /// Storage backend, instead of the server's default
+        #[arg(long = "storage-backend")]
+        storage_backend: Option<String>,
+
+        /// Upstream auth type (basic or bearer)
+        #[arg(long = "upstream-auth-type")]
+        upstream_auth_type: Option<String>,
+
+        /// Username for upstream basic auth
+        #[arg(long = "upstream-username")]
+        upstream_username: Option<String>,
+
+        /// Password or token for upstream auth. Prefer --upstream-password-stdin
+        #[arg(long = "upstream-password")]
+        upstream_password: Option<String>,
+
+        /// Read the upstream password or token from stdin
+        #[arg(long = "upstream-password-stdin", conflicts_with = "upstream_password")]
+        upstream_password_stdin: bool,
+
+        #[command(flatten)]
+        settings: RepoSettingsArgs,
     },
 
-    /// Delete a repository
+    /// Delete a repository. From backend 1.12.0 the server runs this as a
+    /// background job and answers with its ID
     Delete {
         /// Repository key
         key: String,
@@ -75,6 +135,14 @@ pub enum RepoCommand {
         /// Skip confirmation prompt
         #[arg(long)]
         yes: bool,
+
+        /// Wait for a background deletion to finish
+        #[arg(long)]
+        wait: bool,
+
+        /// How long --wait waits, in seconds
+        #[arg(long = "wait-timeout", default_value = "1800", requires = "wait")]
+        wait_timeout: u64,
     },
 
     /// Interactively browse artifacts in a repository
@@ -135,6 +203,33 @@ pub enum RepoCommand {
         /// Link this staging repo to a release repo by key ("" removes the link)
         #[arg(long = "release-repository-key")]
         release_repository_key: Option<String>,
+
+        /// Replace the upstream URL (remote repos)
+        #[arg(long = "upstream-url")]
+        upstream_url: Option<String>,
+
+        /// Enforce curation rules on this repository's proxy paths (true/false)
+        #[arg(long = "curation-enabled")]
+        curation_enabled: Option<bool>,
+
+        /// Curation action when no rule matches: allow or review
+        #[arg(long = "curation-default-action")]
+        curation_default_action: Option<String>,
+
+        /// Serve a partial merge when a virtual member's metadata can't be read (true/false)
+        #[arg(long = "virtual-metadata-partial")]
+        virtual_metadata_partial: Option<bool>,
+
+        /// Take the repository out of its project
+        #[arg(long = "clear-project", conflicts_with = "project_id")]
+        clear_project: bool,
+
+        /// Remove the trusted upstream OpenPGP key
+        #[arg(long = "clear-trusted-gpg-key", conflicts_with = "trusted_gpg_key")]
+        clear_trusted_gpg_key: bool,
+
+        #[command(flatten)]
+        settings: RepoSettingsArgs,
     },
 
     /// Manage virtual-repository members
@@ -211,6 +306,166 @@ pub enum RepoCommand {
         #[arg(long = "max-bytes")]
         max_bytes: Option<i64>,
     },
+}
+
+/// Settings `repo create` and `repo update` have in common.
+#[derive(Args, Debug, Default)]
+pub struct RepoSettingsArgs {
+    /// Who can read before any grant is consulted: public, internal or private
+    #[arg(long, value_parser = ["public", "internal", "private"])]
+    visibility: Option<String>,
+
+    /// Accept a public repository that carries upstream credentials (true/false)
+    #[arg(long = "allow-public-with-upstream-credentials")]
+    allow_public_with_upstream_credentials: Option<bool>,
+
+    /// Project to assign this repository to (ID)
+    #[arg(long = "project-id")]
+    project_id: Option<uuid::Uuid>,
+
+    /// Append immutable revisions on upload (Generic and ML model repos; true/false)
+    #[arg(long = "versioning-enabled")]
+    versioning_enabled: Option<bool>,
+
+    /// Metadata root directory depth (local RPM repos)
+    #[arg(long = "repodata-depth")]
+    repodata_depth: Option<i32>,
+
+    /// User-Agent for requests to the upstream ("" removes it on update)
+    #[arg(long = "custom-user-agent")]
+    custom_user_agent: Option<String>,
+
+    /// Trusted upstream OpenPGP public key for RPM curation: armored text, @file or @-
+    #[arg(long = "trusted-gpg-key")]
+    trusted_gpg_key: Option<String>,
+
+    /// Ingest unverified upstream metadata on keyless RPM curation sync (true/false)
+    #[arg(long = "curation-allow-unverified")]
+    curation_allow_unverified: Option<bool>,
+
+    /// Debian remote settings: JSON text, @file or @-
+    #[arg(long)]
+    debian: Option<String>,
+
+    /// Origin field of Debian/APT Release files
+    #[arg(long = "apt-origin")]
+    apt_origin: Option<String>,
+
+    /// Label field of Debian/APT Release files
+    #[arg(long = "apt-label")]
+    apt_label: Option<String>,
+
+    /// Description field of Debian/APT Release files
+    #[arg(long = "apt-description")]
+    apt_description: Option<String>,
+
+    /// Version field of Debian/APT Release files
+    #[arg(long = "apt-release-version")]
+    apt_release_version: Option<String>,
+
+    /// Allowed npm @scopes, comma separated ("" clears them on update)
+    #[arg(long = "npm-allowed-scopes", value_delimiter = ',')]
+    npm_allowed_scopes: Option<Vec<String>>,
+
+    /// Allowed npm full-name globs, comma separated ("" clears them on update)
+    #[arg(long = "npm-allowed-name-patterns", value_delimiter = ',')]
+    npm_allowed_name_patterns: Option<Vec<String>>,
+
+    /// Let unscoped npm names resolve through this remote (true/false)
+    #[arg(long = "npm-allow-unscoped")]
+    npm_allow_unscoped: Option<bool>,
+
+    /// npm virtual isolate mode: a hosted member's name is served only from
+    /// hosted members (true/false)
+    #[arg(long = "npm-virtual-isolate-hosted-names")]
+    npm_virtual_isolate_hosted_names: Option<bool>,
+
+    /// Cross-origin OCI Bearer token realms to trust, comma separated ("" clears them on update)
+    #[arg(long = "oci-trusted-bearer-realms", value_delimiter = ',')]
+    oci_trusted_bearer_realms: Option<Vec<String>>,
+}
+
+/// A create or update request: the fields given, plus the ones from
+/// [`RepoSettingsArgs`], which the two requests name the same way.
+macro_rules! with_settings {
+    ($request:ident, $settings:ident, $debian:ident, { $($fields:tt)* }) => {
+        artifact_keeper_sdk::types::$request {
+            $($fields)*
+            visibility: parse_visibility($settings.visibility)?,
+            allow_public_with_upstream_credentials: $settings
+                .allow_public_with_upstream_credentials,
+            project_id: $settings.project_id,
+            versioning_enabled: $settings.versioning_enabled,
+            repodata_depth: $settings.repodata_depth,
+            custom_user_agent: $settings.custom_user_agent,
+            trusted_gpg_key: trusted_key($settings.trusted_gpg_key)?,
+            curation_allow_unverified: $settings.curation_allow_unverified,
+            debian: $debian,
+            apt_origin: $settings.apt_origin,
+            apt_label: $settings.apt_label,
+            apt_description: $settings.apt_description,
+            apt_release_version: $settings.apt_release_version,
+            npm_allowed_scopes: list_flag($settings.npm_allowed_scopes),
+            npm_allowed_name_patterns: list_flag($settings.npm_allowed_name_patterns),
+            npm_allow_unscoped: $settings.npm_allow_unscoped,
+            npm_virtual_isolate_hosted_names: $settings.npm_virtual_isolate_hosted_names,
+            oci_trusted_bearer_realms: list_flag($settings.oci_trusted_bearer_realms),
+        }
+    };
+}
+
+/// A list flag's values, with `""` meaning an empty list.
+fn list_flag(values: Option<Vec<String>>) -> Option<Vec<String>> {
+    values.map(|v| v.into_iter().filter(|s| !s.is_empty()).collect())
+}
+
+fn parse_visibility(
+    value: Option<String>,
+) -> Result<Option<artifact_keeper_sdk::types::RepositoryVisibility>> {
+    value
+        .map(|v| {
+            v.parse()
+                .map_err(|e| AkError::ConfigError(format!("Invalid --visibility: {e}")).into())
+        })
+        .transpose()
+}
+
+/// The text of an armored key given inline, as `@file` or as `@-`.
+fn trusted_key(value: Option<String>) -> Result<Option<String>> {
+    value
+        .map(|v| {
+            let bytes = read_inline_or_file(&v, "--trusted-gpg-key")?;
+            String::from_utf8(bytes).map_err(|_| {
+                AkError::ConfigError("--trusted-gpg-key: the key isn't text".into()).into()
+            })
+        })
+        .transpose()
+}
+
+/// The repository type the API calls this. It says `remote` where a user might
+/// say `proxy`, and rejects `proxy` outright (#154).
+fn api_repo_type(repo_type: &str) -> &str {
+    match repo_type {
+        "proxy" => "remote",
+        other => other,
+    }
+}
+
+/// `key` or `key=priority`, as a virtual repository member at creation.
+fn parse_member(entry: &str) -> Result<artifact_keeper_sdk::types::CreateVirtualMemberInput> {
+    let (repo_key, priority) = match entry.split_once('=') {
+        Some((key, priority)) => {
+            let priority = priority.parse().map_err(|_| {
+                AkError::ConfigError(format!("Invalid priority in --member '{entry}'"))
+            })?;
+            (key, Some(priority))
+        }
+        None => (entry, None),
+    };
+    Ok(artifact_keeper_sdk::types::CreateVirtualMemberInput {
+        repo_key: repo_key.to_string(),
+        priority,
+    })
 }
 
 /// Virtual-repository member management.
@@ -370,22 +625,69 @@ impl RepoCommand {
                 key,
                 pkg_format,
                 repo_type,
+                name,
                 upstream_url,
                 description,
                 public,
+                allow_anonymous,
+                promotion_only,
+                quota_bytes,
+                index_upstream_url,
+                pypi_upstream_index_path,
+                format_key,
+                members,
+                storage_backend,
+                upstream_auth_type,
+                upstream_username,
+                upstream_password,
+                upstream_password_stdin,
+                settings,
             } => {
-                create_repo(
-                    &key,
-                    &pkg_format,
-                    &repo_type,
-                    upstream_url.as_deref(),
-                    description.as_deref(),
-                    public,
-                    global,
-                )
-                .await
+                let upstream_password = resolve_secret(
+                    upstream_password,
+                    upstream_password_stdin,
+                    "--upstream-password",
+                    None,
+                    global.no_input,
+                )?;
+                let member_repos = members
+                    .iter()
+                    .map(|m| parse_member(m))
+                    .collect::<Result<Vec<_>>>()?;
+                let debian = settings
+                    .debian
+                    .as_deref()
+                    .map(|v| parse_json_arg(v, "--debian"))
+                    .transpose()?;
+                let body = with_settings!(CreateRepositoryRequest, settings, debian, {
+                    name: name.unwrap_or_else(|| key.clone()),
+                    key,
+                    format: pkg_format,
+                    repo_type: api_repo_type(&repo_type).to_string(),
+                    upstream_url,
+                    description,
+                    // Only when asked for: `false` next to --visibility is a contradiction.
+                    is_public: public.then_some(true),
+                    allow_anonymous_access: allow_anonymous,
+                    promotion_only,
+                    quota_bytes,
+                    index_upstream_url,
+                    pypi_upstream_index_path,
+                    format_key,
+                    member_repos: (!member_repos.is_empty()).then_some(member_repos),
+                    storage_backend,
+                    upstream_auth_type,
+                    upstream_username,
+                    upstream_password,
+                });
+                create_repo(body, global).await
             }
-            Self::Delete { key, yes } => delete_repo(&key, yes, global).await,
+            Self::Delete {
+                key,
+                yes,
+                wait,
+                wait_timeout,
+            } => delete_repo(&key, yes, wait.then_some(wait_timeout), global).await,
             Self::Browse { key } => browse_repo(&key, global).await,
             Self::Update {
                 key,
@@ -401,10 +703,29 @@ impl RepoCommand {
                 index_upstream_url,
                 pypi_upstream_index_path,
                 release_repository_key,
+                upstream_url,
+                curation_enabled,
+                curation_default_action,
+                virtual_metadata_partial,
+                clear_project,
+                clear_trusted_gpg_key,
+                settings,
             } => {
+                let debian = settings
+                    .debian
+                    .as_deref()
+                    .map(|v| parse_json_arg(v, "--debian"))
+                    .transpose()?;
+                let clear = [
+                    ("project_id", clear_project),
+                    ("trusted_gpg_key", clear_trusted_gpg_key),
+                ]
+                .into_iter()
+                .filter_map(|(field, on)| on.then_some(field))
+                .collect::<Vec<_>>();
                 update_repo(
                     &key,
-                    artifact_keeper_sdk::types::UpdateRepositoryRequest {
+                    with_settings!(UpdateRepositoryRequest, settings, debian, {
                         key: new_key,
                         name,
                         description,
@@ -417,8 +738,12 @@ impl RepoCommand {
                         index_upstream_url,
                         pypi_upstream_index_path,
                         release_repository_key,
-                        ..Default::default()
-                    },
+                        upstream_url,
+                        curation_enabled,
+                        curation_default_action,
+                        virtual_metadata_partial,
+                    }),
+                    &clear,
                     global,
                 )
                 .await
@@ -503,7 +828,7 @@ async fn list_repos(
         req = req.format(fmt);
     }
     if let Some(t) = type_filter {
-        req = req.type_(t);
+        req = req.type_(api_repo_type(t));
     }
     if let Some(q) = search {
         req = req.q(q);
@@ -583,6 +908,53 @@ async fn list_repos(
     }
 
     Ok(())
+}
+
+/// PATCH a repository with fields set to `null`, which is how the API clears
+/// them. The SDK's types can't say this: they leave a `None` out, and leaving a
+/// field out means "keep it".
+async fn patch_with_nulls(
+    key: &str,
+    body: &artifact_keeper_sdk::types::UpdateRepositoryRequest,
+    clear: &[&str],
+    global: &GlobalArgs,
+) -> Result<(
+    artifact_keeper_sdk::types::RepositoryResponse,
+    Option<Vec<u8>>,
+)> {
+    let mut json = serde_json::to_value(body).into_diagnostic()?;
+    for field in clear {
+        json[*field] = serde_json::Value::Null;
+    }
+
+    let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
+    let mut url = reqwest::Url::parse(&base_url)
+        .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
+    url.path_segments_mut()
+        .map_err(|_| AkError::ConfigError(format!("Invalid instance URL: {base_url}")))?
+        .pop_if_empty()
+        .extend(["api", "v1", "repositories", key]);
+
+    let response = super::client::raw_http_client()?
+        .patch(url)
+        .header(reqwest::header::AUTHORIZATION, auth_header)
+        .json(&json)
+        .send()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Failed to update repository: {e}")))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let text = response.text().await.unwrap_or_default();
+        return Err(raw_err("Failed to update repository", status, &text).into());
+    }
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Failed to update repository: {e}")))?;
+    let parsed = serde_json::from_slice(&bytes)
+        .map_err(|e| AkError::ServerError(format!("Invalid update response: {e}")))?;
+    Ok((parsed, Some(bytes.to_vec())))
 }
 
 /// The size to show for a repository. A virtual repository stores nothing of
@@ -667,54 +1039,10 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
 }
 
 async fn create_repo(
-    key: &str,
-    format: &str,
-    repo_type: &str,
-    upstream_url: Option<&str>,
-    description: Option<&str>,
-    public: bool,
+    body: artifact_keeper_sdk::types::CreateRepositoryRequest,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-
-    let body = artifact_keeper_sdk::types::CreateRepositoryRequest {
-        key: key.to_string(),
-        name: key.to_string(),
-        format: format.to_string(),
-        repo_type: repo_type.to_string(),
-        upstream_url: upstream_url.map(|d| d.to_string()),
-        description: description.map(|d| d.to_string()),
-        is_public: public.into(),
-        allow_anonymous_access: None,
-        promotion_only: None,
-        pypi_upstream_index_path: None,
-        quota_bytes: None,
-        format_key: None,
-        index_upstream_url: None,
-        member_repos: None,
-        storage_backend: None,
-        upstream_auth_type: None,
-        upstream_username: None,
-        upstream_password: None,
-        allow_public_with_upstream_credentials: None,
-        apt_description: None,
-        apt_label: None,
-        apt_origin: None,
-        apt_release_version: None,
-        curation_allow_unverified: None,
-        custom_user_agent: None,
-        debian: None,
-        npm_allow_unscoped: None,
-        npm_allowed_name_patterns: None,
-        npm_allowed_scopes: None,
-        oci_trusted_bearer_realms: None,
-        npm_virtual_isolate_hosted_names: None,
-        project_id: None,
-        repodata_depth: None,
-        trusted_gpg_key: None,
-        versioning_enabled: None,
-        visibility: None,
-    };
 
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.create_repository().body(body).send()).await;
@@ -735,37 +1063,181 @@ async fn create_repo(
     Ok(())
 }
 
-async fn delete_repo(key: &str, skip_confirm: bool, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
-
-    let needs_confirmation = !skip_confirm && !global.no_input;
-    if needs_confirmation {
-        let confirmed = dialoguer::Confirm::new()
-            .with_prompt(format!("Delete repository '{key}'? This cannot be undone"))
-            .default(false)
-            .interact()
-            .into_diagnostic()?;
-
-        if !confirmed {
-            eprintln!("Cancelled.");
-            return Ok(());
-        }
+async fn delete_repo(
+    key: &str,
+    skip_confirm: bool,
+    wait_secs: Option<u64>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    if !confirm_action(
+        &format!("Delete repository '{key}'? This cannot be undone"),
+        skip_confirm,
+        global.no_input,
+    )? {
+        return Ok(());
     }
 
-    client
-        .delete_repository()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| AkError::ServerError(format!("Failed to delete repository: {e}")))?;
+    let client = client_for(global)?;
 
-    emit_mutation(
-        &serde_json::json!({ "key": key, "status": "deleted" }),
-        key,
-        &format!("Deleted repository '{key}'."),
+    match client.delete_repository().key(key).send().await {
+        Ok(_) => {
+            emit_mutation(
+                &serde_json::json!({ "key": key, "status": "deleted" }),
+                key,
+                &format!("Deleted repository '{key}'."),
+                global,
+            );
+            Ok(())
+        }
+        // Backend 1.12.0 accepts the delete and runs it as a job. The SDK is
+        // generated from 1.11, where 202 isn't a documented answer, so it arrives
+        // here as an error carrying the body.
+        Err(e) if e.status() == Some(reqwest::StatusCode::ACCEPTED) => {
+            deletion_accepted(key, e.body().unwrap_or_default(), wait_secs, global).await
+        }
+        Err(e) => Err(sdk_err("delete repository", e).into()),
+    }
+}
+
+/// The server took a repository delete as a background job: report the job, and
+/// follow it when asked to. Being unable to read the answer doesn't turn an
+/// accepted delete into a failure, unless the caller needed to wait for it.
+async fn deletion_accepted(
+    key: &str,
+    body: &[u8],
+    wait_secs: Option<u64>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let job: serde_json::Value = serde_json::from_slice(body).unwrap_or_default();
+    let Some(job_id) = job["id"]
+        .as_str()
+        .and_then(|id| id.parse::<uuid::Uuid>().ok())
+    else {
+        if wait_secs.is_some() {
+            return Err(AkError::ServerError(format!(
+                "The server accepted the delete of '{key}' but gave no job ID, so --wait can't follow it"
+            ))
+            .into());
+        }
+        emit_mutation_raw(
+            Some(body),
+            &serde_json::json!({ "key": key, "status": "accepted" }),
+            key,
+            &format!("The server accepted the delete of repository '{key}'."),
+            global,
+        );
+        return Ok(());
+    };
+
+    let Some(timeout) = wait_secs else {
+        emit_mutation_raw(
+            Some(body),
+            &job,
+            &job_id.to_string(),
+            &format!(
+                "Deleting repository '{key}' in the background (job {job_id}). \
+                 Check it with: ak api GET /api/v1/repository-deletions/{job_id}"
+            ),
+            global,
+        );
+        return Ok(());
+    };
+
+    let final_body = wait_for_deletion(key, job_id, timeout, global).await?;
+    emit_mutation_raw(
+        Some(&final_body),
+        &job,
+        &job_id.to_string(),
+        &format!("Deleted repository '{key}' (job {job_id})."),
         global,
     );
     Ok(())
+}
+
+/// Consecutive failed polls `--wait` puts up with before giving up on a job.
+const MAX_POLL_FAILURES: u32 = 5;
+
+/// Poll a repository deletion job until it ends, returning its last body. A job
+/// that ends in anything but `completed` is an error.
+async fn wait_for_deletion(
+    key: &str,
+    job_id: uuid::Uuid,
+    timeout_secs: u64,
+    global: &GlobalArgs,
+) -> Result<Vec<u8>> {
+    let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
+    let url = format!(
+        "{}/api/v1/repository-deletions/{job_id}",
+        base_url.trim_end_matches('/')
+    );
+    let http = super::client::raw_http_client()?;
+    let spinner = output::spinner(&format!("Deleting '{key}'..."));
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
+    let mut failures = 0;
+
+    loop {
+        let response = http
+            .get(&url)
+            .header(reqwest::header::AUTHORIZATION, &auth_header)
+            .send()
+            .await;
+        let polled = match response {
+            Ok(r) if r.status().is_success() => r.bytes().await.ok(),
+            Ok(r) if r.status().is_client_error() => {
+                spinner.finish_and_clear();
+                let status = r.status();
+                let text = r.text().await.unwrap_or_default();
+                return Err(
+                    raw_err(&format!("Follow deletion job {job_id}"), status, &text).into(),
+                );
+            }
+            _ => None,
+        };
+
+        match polled {
+            Some(bytes) => {
+                failures = 0;
+                let job: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_default();
+                match job["status"].as_str() {
+                    Some("completed") => {
+                        spinner.finish_and_clear();
+                        return Ok(bytes.to_vec());
+                    }
+                    Some(status @ ("failed" | "cancelled")) => {
+                        spinner.finish_and_clear();
+                        let reason = job["error_summary"].as_str().unwrap_or("no reason given");
+                        return Err(AkError::ServerError(format!(
+                            "Deletion job {job_id} for '{key}' {status}: {}",
+                            output::sanitize_terminal(reason)
+                        ))
+                        .into());
+                    }
+                    _ => {}
+                }
+            }
+            None => {
+                failures += 1;
+                if failures >= MAX_POLL_FAILURES {
+                    spinner.finish_and_clear();
+                    return Err(AkError::ServerError(format!(
+                        "Can't read deletion job {job_id} for '{key}'. It may still be running: \
+                         ak api GET /api/v1/repository-deletions/{job_id}"
+                    ))
+                    .into());
+                }
+            }
+        }
+
+        if std::time::Instant::now() >= deadline {
+            spinner.finish_and_clear();
+            return Err(AkError::ServerError(format!(
+                "Deletion job {job_id} for '{key}' hasn't finished after {timeout_secs}s. It's still \
+                 running: ak api GET /api/v1/repository-deletions/{job_id}"
+            ))
+            .into());
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
 }
 
 async fn browse_repo(key: &str, global: &GlobalArgs) -> Result<()> {
@@ -819,15 +1291,25 @@ async fn browse_repo(key: &str, global: &GlobalArgs) -> Result<()> {
 async fn update_repo(
     key: &str,
     body: artifact_keeper_sdk::types::UpdateRepositoryRequest,
+    clear: &[&str],
     global: &GlobalArgs,
 ) -> Result<()> {
-    let client = client_for(global)?;
     let spinner = output::spinner("Updating repository...");
 
-    let (resp, raw) =
-        artifact_keeper_sdk::raw::capture(client.update_repository().key(key).body(body).send())
-            .await;
-    let resp = resp.map_err(|e| sdk_err("update repository", e))?;
+    let (resp, raw) = if clear.is_empty() {
+        let client = client_for(global)?;
+        let (resp, raw) = artifact_keeper_sdk::raw::capture(
+            client.update_repository().key(key).body(body).send(),
+        )
+        .await;
+        (
+            resp.map_err(|e| sdk_err("update repository", e))?
+                .into_inner(),
+            raw,
+        )
+    } else {
+        patch_with_nulls(key, &body, clear, global).await?
+    };
 
     spinner.finish_and_clear();
 
@@ -1665,6 +2147,7 @@ mod tests {
             upstream_url,
             description,
             public,
+            ..
         } = cli.command
         {
             assert_eq!(key, "my-repo");
@@ -1701,6 +2184,7 @@ mod tests {
             upstream_url,
             description,
             public,
+            ..
         } = cli.command
         {
             assert_eq!(key, "my-pypi");
@@ -1729,7 +2213,7 @@ mod tests {
     #[test]
     fn parse_delete() {
         let cli = parse(&["test", "delete", "my-repo"]);
-        if let RepoCommand::Delete { key, yes } = cli.command {
+        if let RepoCommand::Delete { key, yes, .. } = cli.command {
             assert_eq!(key, "my-repo");
             assert!(!yes);
         } else {
@@ -1740,7 +2224,7 @@ mod tests {
     #[test]
     fn parse_delete_with_yes() {
         let cli = parse(&["test", "delete", "my-repo", "--yes"]);
-        if let RepoCommand::Delete { key, yes } = cli.command {
+        if let RepoCommand::Delete { key, yes, .. } = cli.command {
             assert_eq!(key, "my-repo");
             assert!(yes);
         } else {
@@ -2207,6 +2691,13 @@ mod tests {
         crate::test_utils::teardown_env();
     }
 
+    fn create_body() -> artifact_keeper_sdk::types::CreateRepositoryRequest {
+        serde_json::from_value(json!({
+            "key": "new-repo", "name": "new-repo", "format": "npm", "repo_type": "local"
+        }))
+        .expect("valid request")
+    }
+
     #[tokio::test]
     async fn handler_create_repo_json() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
@@ -2219,7 +2710,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = create_repo("new-repo", "npm", "local", None, None, false, &global).await;
+        let result = create_repo(create_body(), &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2236,16 +2727,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = create_repo(
-            "new-repo",
-            "npm",
-            "local",
-            None,
-            Some("A test repo"),
-            false,
-            &global,
-        )
-        .await;
+        let result = create_repo(create_body(), &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2263,7 +2745,7 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
         // skip_confirm=true and no_input=true so no prompt
-        let result = delete_repo("old-repo", true, &global).await;
+        let result = delete_repo("old-repo", true, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2338,7 +2820,7 @@ mod tests {
             description: Some("updated".into()),
             ..Default::default()
         };
-        let result = update_repo("npm-local", body, &global).await;
+        let result = update_repo("npm-local", body, &[], &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
