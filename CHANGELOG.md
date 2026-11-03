@@ -27,7 +27,7 @@ release is built for API 1.11.10 and supports servers on 1.11 and 1.10.
 ### Changed
 
 - Regenerated the SDK from the API 1.11.10 spec, adding the operations and fields new since 1.4.0. Two multipart operations (`POST /api/v1/plugins`, `POST /api/v1/plugins/install/zip`) remain outside the generated SDK.
-- `ak lifecycle create` without `--repo` creates a policy that applies to all repositories. Backend 1.11 made a policy with no repository dormant, so these policies never deleted anything. `ak lifecycle list` and `show` now show the scope.
+- `ak lifecycle create` now requires `--repo` or the new `--all-repos`, and fails with neither, so **scripts that pass neither have to add one**. A policy is enabled as soon as it's created, so its reach is no longer implied by a missing flag. Omitting `--repo` used to mean every repository on a 1.10 server, and a dormant policy that never deleted anything on 1.11. `--all-repos` gives a policy for every repository on both. `ak lifecycle list` and `show` now show the scope.
 - `ak webhook rotate-secret` no longer shows a new secret, because the server no longer returns one. It shows the digest, and `--format quiet` prints the webhook ID.
 - `ak quality-gate checks` now requires `--artifact`, as the API does.
 - `ak scan scores`: the `UNSCANNED` column is now `OPEN`. It subtracted acknowledged findings from `total_findings`, which the server already counts as open findings only.
