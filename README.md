@@ -130,7 +130,7 @@ stored credential.
 Core
   ak instance      Add, remove, and switch between registry instances
   ak auth          Log in, manage tokens, check identity
-  ak repo          List, show, create, and delete repositories
+  ak repo          List, show, create, update, and delete repositories
   ak artifact      Push, pull, list, search, copy, and delete artifacts
   ak api           Send any HTTP request to the instance, with its auth and TLS settings
   ak setup         Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more

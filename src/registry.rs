@@ -84,6 +84,43 @@ const BANNER_FIELDS: &[&str] = &[
     "enabled",
 ];
 
+/// The fields `repo create` and `repo update` share, plus the ones given.
+macro_rules! repo_body_fields {
+    ($($field:literal),*) => {
+        &[
+            "allow_anonymous_access",
+            "allow_public_with_upstream_credentials",
+            "apt_description",
+            "apt_label",
+            "apt_origin",
+            "apt_release_version",
+            "curation_allow_unverified",
+            "custom_user_agent",
+            "debian",
+            "description",
+            "index_upstream_url",
+            "is_public",
+            "key",
+            "name",
+            "npm_allow_unscoped",
+            "npm_allowed_name_patterns",
+            "npm_allowed_scopes",
+            "npm_virtual_isolate_hosted_names",
+            "oci_trusted_bearer_realms",
+            "project_id",
+            "promotion_only",
+            "pypi_upstream_index_path",
+            "quota_bytes",
+            "repodata_depth",
+            "trusted_gpg_key",
+            "upstream_url",
+            "versioning_enabled",
+            "visibility",
+            $($field),*
+        ]
+    };
+}
+
 /// Every route with a known place in the CLI. Workstreams add to this. It isn't
 /// complete until the coverage gate says so.
 pub static COMMANDS: &[Op] = &[
@@ -121,9 +158,35 @@ pub static COMMANDS: &[Op] = &[
         "repo list",
         &["page", "per_page", "format", "type", "q"],
     ),
-    covered("POST", "/api/v1/repositories", "repo create", &[]),
+    covered(
+        "POST",
+        "/api/v1/repositories",
+        "repo create",
+        repo_body_fields!(
+            "format",
+            "format_key",
+            "member_repos",
+            "repo_type",
+            "storage_backend",
+            "upstream_auth_type",
+            "upstream_password",
+            "upstream_username"
+        ),
+    ),
     covered("GET", "/api/v1/repositories/{key}", "repo show", &[]),
-    covered("PATCH", "/api/v1/repositories/{key}", "repo update", &[]),
+    covered(
+        "PATCH",
+        "/api/v1/repositories/{key}",
+        "repo update",
+        repo_body_fields!(
+            "curation_default_action",
+            "curation_enabled",
+            "quarantine_duration_minutes",
+            "quarantine_enabled",
+            "release_repository_key",
+            "virtual_metadata_partial"
+        ),
+    ),
     covered("DELETE", "/api/v1/repositories/{key}", "repo delete", &[]),
     // ---- artifacts ----
     covered(

@@ -85,6 +85,49 @@ pub fn emit_mutation_raw<T: Serialize>(
     }
 }
 
+/// The bytes of a flag's value: the text itself, `@file` or `@-` for stdin.
+pub fn read_inline_or_file(value: &str, flag: &str) -> Result<Vec<u8>> {
+    match value.strip_prefix('@') {
+        Some("-") => {
+            use std::io::Read;
+            let mut bytes = Vec::new();
+            std::io::stdin()
+                .lock()
+                .read_to_end(&mut bytes)
+                .map_err(|e| AkError::ConfigError(format!("{flag}: can't read stdin: {e}")))?;
+            Ok(bytes)
+        }
+        Some(path) => std::fs::read(path)
+            .map_err(|e| AkError::ConfigError(format!("{flag}: can't read '{path}': {e}")).into()),
+        None => Ok(value.as_bytes().to_vec()),
+    }
+}
+
+/// Parse a flag that takes a nested JSON object: text, `@file` or `@-`. A key the
+/// type doesn't have is an error rather than something to drop quietly, because
+/// the user would believe it had been set.
+pub fn parse_json_arg<T>(value: &str, flag: &str) -> Result<T>
+where
+    T: serde::de::DeserializeOwned + Serialize,
+{
+    let bytes = read_inline_or_file(value, flag)?;
+    let given: serde_json::Value = serde_json::from_slice(&bytes)
+        .map_err(|e| AkError::ConfigError(format!("{flag}: invalid JSON: {e}")))?;
+    let parsed: T = serde_json::from_value(given.clone())
+        .map_err(|e| AkError::ConfigError(format!("{flag}: {e}")))?;
+    let kept = serde_json::to_value(&parsed).into_diagnostic()?;
+    if let Some(given) = given.as_object() {
+        for (field, field_value) in given {
+            if !field_value.is_null() && kept.get(field).is_none() {
+                return Err(
+                    AkError::ConfigError(format!("{flag}: unknown field '{field}'")).into(),
+                );
+            }
+        }
+    }
+    Ok(parsed)
+}
+
 /// Parse a string as a UUID, returning a friendly error with the given label.
 pub fn parse_uuid(id: &str, label: &str) -> Result<uuid::Uuid> {
     id.parse()
