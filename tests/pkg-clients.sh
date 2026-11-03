@@ -337,6 +337,208 @@ P' || return 1
     fi'
 }
 
+check_maven() {
+  local d; d="$(fresh maven)"
+  REPO="$(new_repo maven maven)" || return 1
+  box docker.io/library/maven:3-eclipse-temurin-21 "$d" '
+    mkdir -p src/main/java/ak
+    echo "package ak; public class Demo { public static int v() { return 41; } }" > src/main/java/ak/Demo.java
+    cat > pom.xml <<P
+<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion>
+<groupId>com.acme.ak</groupId><artifactId>demo</artifactId><version>1.0.$RUN_ID</version><packaging>jar</packaging>
+<properties><maven.compiler.source>21</maven.compiler.source><maven.compiler.target>21</maven.compiler.target></properties></project>
+P
+    mvn -q -B -Dmaven.repo.local=/tmp/m2 package >/dev/null' || return 1
+  ak pkg maven publish "$REPO" "$d/target/demo-1.0.$RUN_ID.jar" --group com.acme.ak --artifact demo --version "1.0.$RUN_ID" --pom "$d/pom.xml" || return 1
+  # With a generated POM.
+  ak pkg maven publish "$REPO" "$d/target/demo-1.0.$RUN_ID.jar" --group com.acme.ak --artifact generated --version "1.0.$RUN_ID" || return 1
+  box docker.io/library/maven:3-eclipse-temurin-21 "$d" '
+    mkdir -p /tmp/s; cat > /tmp/s/settings.xml <<S
+<settings><mirrors><mirror><id>ak</id><url>$BASE/maven/$REPO</url><mirrorOf>ak</mirrorOf></mirror></mirrors></settings>
+S
+    mkdir -p use; cd use; cat > pom.xml <<P
+<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion>
+<groupId>u</groupId><artifactId>u</artifactId><version>1</version>
+<repositories><repository><id>ak</id><url>http://ak.invalid/</url></repository></repositories>
+<dependencies>
+<dependency><groupId>com.acme.ak</groupId><artifactId>demo</artifactId><version>1.0.$RUN_ID</version></dependency>
+<dependency><groupId>com.acme.ak</groupId><artifactId>generated</artifactId><version>1.0.$RUN_ID</version></dependency>
+</dependencies></project>
+P
+    mvn -q -B -s /tmp/s/settings.xml -Dmaven.repo.local=/tmp/m3 -Dmaven.wagon.http.ssl.insecure=true \
+      -Dmaven.resolver.transport=wagon -Daether.checksums.algorithms=SHA-512,SHA-256,SHA-1,MD5 \
+      -Dmaven.resolver.checksumPolicy=fail dependency:resolve 2>&1 | tail -5
+    test -f /tmp/m3/com/acme/ak/demo/1.0.$RUN_ID/demo-1.0.$RUN_ID.jar
+    test -f /tmp/m3/com/acme/ak/generated/1.0.$RUN_ID/generated-1.0.$RUN_ID.jar'
+}
+
+check_go() {
+  local d; d="$(fresh go)"
+  REPO="$(new_repo go go)" || return 1
+  box docker.io/library/golang:1.23 "$d" '
+    export GOFLAGS=-mod=mod GOPATH=/tmp/gp GOCACHE=/tmp/gc
+    mkdir -p src; cd src
+    printf "module example.com/Ak/demo\n\ngo 1.21\n" > go.mod
+    printf "package demo\n\nconst V = 41\n" > demo.go
+    cd ..
+    # A module zip by the book: every path starts with <module>@<version>.
+    p="example.com/!ak/demo"; v="v1.0.$RUN_ID"
+    mkdir -p "z/example.com/Ak/demo@$v"
+    cp src/go.mod src/demo.go "z/example.com/Ak/demo@$v/"
+    apt-get -qq update >/dev/null; apt-get -qq install -y zip >/dev/null
+    (cd z && zip -qr ../mod.zip "example.com/Ak/demo@$v")' || return 1
+  ak pkg go publish "$REPO" "$d/mod.zip" || return 1
+  box docker.io/library/golang:1.23 "$d" '
+    export GOPATH=/tmp/gp GOCACHE=/tmp/gc GONOSUMDB="*" GONOSUMCHECK=1 GOFLAGS=-mod=mod GOINSECURE="*"
+    export GOPROXY="$BASE/go/$REPO"
+    mkdir use; cd use
+    printf "module u\n\ngo 1.21\n" > go.mod
+    printf "package main\n\nimport d \"example.com/Ak/demo\"\n\nfunc main() { if d.V != 41 { panic(d.V) } }\n" > m.go
+    go get "example.com/Ak/demo@v1.0.$RUN_ID"
+    go run .'
+}
+
+check_gems() {
+  local d; d="$(fresh gems)"
+  REPO="$(new_repo rubygems gems)" || return 1
+  box docker.io/library/ruby:3.3-slim "$d" '
+    cat > akdemo.gemspec <<G
+Gem::Specification.new do |s|
+  s.name = "akdemo"; s.version = "1.0.$RUN_ID"; s.summary = "demo"; s.authors = ["t"]
+  s.files = ["lib/akdemo.rb"]; s.license = "MIT"; s.homepage = "https://example.com"
+end
+G
+    mkdir lib; echo "module Akdemo; V = 41; end" > lib/akdemo.rb
+    gem build -q akdemo.gemspec >/dev/null' || return 1
+  ak pkg gems publish "$REPO" "$d/akdemo-1.0.$RUN_ID.gem" || return 1
+  box docker.io/library/ruby:3.3-slim "$d" '
+    gem install -q --no-document --clear-sources --source "$BASE/gems/$REPO" akdemo -v 1.0.$RUN_ID >/dev/null
+    ruby -e "require %q(akdemo); exit(Akdemo::V == 41 ? 0 : 1)"'
+}
+
+check_composer() {
+  local d; d="$(fresh composer)"
+  REPO="$(new_repo composer composer)" || return 1
+  box docker.io/library/composer:2 "$d" '
+    mkdir -p src/src; cd src
+    printf "{\"name\":\"acme/akdemo\",\"version\":\"1.0.$RUN_ID\",\"autoload\":{\"files\":[\"src/v.php\"]}}" > composer.json
+    printf "<?php\nconst AK_V = 41;\n" > src/v.php
+    apk add -q zip >/dev/null 2>&1 || true
+    zip -qr ../akdemo.zip .' || return 1
+  ak pkg composer publish "$REPO" "$d/akdemo.zip" || return 1
+  box docker.io/library/composer:2 "$d" '
+    export COMPOSER_HOME=/tmp/ch
+    mkdir use; cd use
+    cat > composer.json <<C
+{"repositories":[{"type":"composer","url":"$BASE/composer/$REPO"},{"packagist.org":false}],
+ "config":{"secure-http":false},"require":{"acme/akdemo":"1.0.$RUN_ID"}}
+C
+    composer -q --no-interaction install
+    php -r "require \"vendor/autoload.php\"; exit(AK_V === 41 ? 0 : 1);"'
+}
+
+check_cran() {
+  local d; d="$(fresh cran)"
+  REPO="$(new_repo cran cran)" || return 1
+  box docker.io/rocker/r-ver:4.4 "$d" '
+    mkdir -p akdemo/R; cd akdemo
+    printf "Package: akdemo\nVersion: 1.0.0\nTitle: Demo\nDescription: A demo.\nLicense: MIT\nAuthor: t\nMaintainer: t <t@example.com>\n" > DESCRIPTION
+    echo "export(v)" > NAMESPACE
+    echo "v <- function() 41" > R/v.R
+    cd ..; R CMD build akdemo >/dev/null' || return 1
+  ak pkg cran publish "$REPO" "$d/akdemo_1.0.0.tar.gz" || return 1
+  box docker.io/rocker/r-ver:4.4 "$d" '
+    Rscript -e "install.packages(\"akdemo\", repos=\"$BASE/cran/$REPO\", lib=\"/tmp\", quiet=TRUE); library(akdemo, lib.loc=\"/tmp\"); stopifnot(v() == 41)"'
+}
+
+check_pub() {
+  local d; d="$(fresh pub)"
+  REPO="$(new_repo pub pub)" || return 1
+  box docker.io/library/dart:stable "$d" '
+    mkdir -p src/lib; cd src
+    printf "name: akdemo\nversion: 1.0.$RUN_ID\nenvironment:\n  sdk: \">=3.0.0 <4.0.0\"\n" > pubspec.yaml
+    echo "const v = 41;" > lib/akdemo.dart
+    tar czf ../akdemo.tar.gz .' || return 1
+  ak pkg pub publish "$REPO" "$d/akdemo.tar.gz" || return 1
+  box docker.io/library/dart:stable "$d" '
+    export PUB_CACHE=/tmp/pc HOME=/tmp/h; mkdir -p /tmp/h use/bin; cd use
+    cat > pubspec.yaml <<P
+name: useit
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+dependencies:
+  akdemo:
+    hosted: $BASE/pub/$REPO
+    version: 1.0.$RUN_ID
+P
+    printf "import \"package:akdemo/akdemo.dart\";\nvoid main() { if (v != 41) throw v; }\n" > bin/m.dart
+    dart pub get >/dev/null
+    dart run bin/m.dart'
+}
+
+check_hex() {
+  local d; d="$(fresh hex)"
+  REPO="$(new_repo hex hex)" || return 1
+  box docker.io/library/elixir:1.17 "$d" '
+    export MIX_HOME=/tmp/mh HEX_HOME=/tmp/hh
+    mix local.hex --force >/dev/null
+    mix new akdemo >/dev/null 2>&1; cd akdemo
+    sed -i "s/version: \"0.1.0\"/version: \"1.0.$RUN_ID\", description: \"demo\", package: [licenses: [\"MIT\"], links: %{}]/" mix.exs
+    mix hex.build -o /w/akdemo.tar >/dev/null' || return 1
+  ak pkg hex publish "$REPO" "$d/akdemo.tar" || return 1
+  box docker.io/library/elixir:1.17 "$d" '
+    export MIX_HOME=/tmp/mh HEX_HOME=/tmp/hh HEX_UNSAFE_REGISTRY=1
+    mix local.hex --force >/dev/null
+    # The server signs its registry for a repository named after the key.
+    mix hex.repo add "$REPO" "$BASE/hex/$REPO" --auth-key "$AK_TOKEN" >/dev/null
+    mix new useit >/dev/null 2>&1; cd useit
+    sed -i "s/# {:dep_from_hexpm.*/{:akdemo, \"1.0.$RUN_ID\", repo: \"$REPO\"}/" mix.exs
+    mix deps.get >/dev/null
+    mix deps.compile >/dev/null
+    test -d _build/dev/lib/akdemo'
+}
+
+check_ivy() {
+  local d; d="$(fresh ivy)"
+  REPO="$(new_repo sbt ivy)" || return 1
+  box docker.io/library/maven:3-eclipse-temurin-21 "$d" '
+    mkdir -p j/ak; echo "package ak; public class Demo {}" > j/ak/Demo.java
+    javac -d o j/ak/Demo.java; jar cf demo.jar -C o .
+    cat > ivy.xml <<I
+<ivy-module version="2.0"><info organisation="com.acme" module="demo" revision="1.0.$RUN_ID"/>
+<publications><artifact name="demo" type="jar" ext="jar"/></publications></ivy-module>
+I' || return 1
+  local a=(--org com.acme --module demo --revision "1.0.$RUN_ID")
+  ak pkg ivy publish "$REPO" "$d/demo.jar" "${a[@]}" || return 1
+  ak pkg ivy publish "$REPO" "$d/ivy.xml" --descriptor "${a[@]}" || return 1
+  box docker.io/library/maven:3-eclipse-temurin-21 "$d" '
+    mvn -q -B -Dmaven.repo.local=/tmp/m2 dependency:get -Dartifact=org.apache.ivy:ivy:2.5.2 2>&1 | tail -3
+    cat > /tmp/s.xml <<S
+<ivysettings><settings defaultResolver="ak"/><resolvers><url name="ak">
+<ivy pattern="$BASE/ivy/$REPO/[organisation]/[module]/[revision]/ivy-[revision].xml"/>
+<artifact pattern="$BASE/ivy/$REPO/[organisation]/[module]/[revision]/[type]s/[artifact]-[revision].[ext]"/>
+</url></resolvers></ivysettings>
+S
+    cd /tmp; java -jar /tmp/m2/org/apache/ivy/ivy/2.5.2/ivy-2.5.2.jar -settings /tmp/s.xml -cache /tmp/c \
+      -dependency com.acme demo 1.0.$RUN_ID -retrieve "/tmp/out/[artifact].[ext]" >/tmp/ivy.log 2>&1 || { tail -20 /tmp/ivy.log; exit 1; }
+    jar tf /tmp/out/demo.jar | grep -q ak/Demo.class'
+}
+
+check_bazel() {
+  local d; d="$(fresh bazel)"
+  REPO="$(new_repo bazel bazel)" || return 1
+  cat >"$d/MODULE.bazel" <<'M'
+module(name = "akdemo", version = "1.0.0")
+M
+  printf '{"url":"https://example.com/none.tgz","integrity":"sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="}' >"$d/source.json"
+  ak pkg bazel publish "$REPO" akdemo 1.0.0 "$d/MODULE.bazel" "$d/source.json" || return 1
+  box gcr.io/bazel-public/bazel:7.4.1 "$d" '
+    export HOME=/tmp/h; mkdir -p $HOME /tmp/use; cd /tmp/use
+    printf "bazel_dep(name = \"akdemo\", version = \"1.0.0\")\n" > MODULE.bazel
+    bazel --output_user_root=/tmp/o mod graph --registry="$BASE/bazel/$REPO" --registry=https://bcr.bazel.build 2>&1 | tail -6
+    bazel --output_user_root=/tmp/o mod graph --registry="$BASE/bazel/$REPO" --registry=https://bcr.bazel.build 2>/dev/null | grep -q "akdemo@1.0.0"'
+}
+
 # A format's check, its outcome on one line, and its output only if it failed.
 run() {
   local name="$1" log="$WORK/$1.log"
@@ -350,6 +552,6 @@ run() {
 }
 
 FAILED=0
-ALL=(pypi npm cargo helm nuget debian rpm alpine pacman conda)
+ALL=(pypi npm cargo helm nuget debian rpm alpine pacman conda maven go gems composer cran pub hex ivy bazel)
 for name in "${@:-${ALL[@]}}"; do run "$name"; done
 exit "$FAILED"

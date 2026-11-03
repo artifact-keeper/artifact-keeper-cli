@@ -32,6 +32,14 @@ pub struct Reply {
 }
 
 impl Reply {
+    /// A reply this command made up, for what's several requests with no one answer.
+    pub fn new(body: Value) -> Self {
+        Self {
+            status: StatusCode::OK,
+            body: body.to_string().into_bytes(),
+        }
+    }
+
     pub fn json(&self) -> Option<Value> {
         serde_json::from_slice(&self.body).ok()
     }
@@ -115,6 +123,26 @@ impl Wire {
         }
         Ok(Reply { status, body })
     }
+}
+
+/// Send a file as the body of `request`, and report it published. This is all a publish
+/// is for a format whose server reads everything it needs from the file.
+pub async fn publish_file(
+    wire: &Wire,
+    request: RequestBuilder,
+    upload: &Upload,
+    repo: &str,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let request = upload.attach(request, "application/octet-stream").await?;
+    let reply = wire.send("upload the package", request).await?;
+    emit(
+        &reply,
+        &upload.name,
+        &format!("Published {} to {repo}.", upload.name),
+        global,
+    );
+    Ok(())
 }
 
 /// `a/b/c` as segments. An empty or dot segment can't be meant: the URL would point
