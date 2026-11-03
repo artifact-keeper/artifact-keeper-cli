@@ -6,7 +6,7 @@ use super::client::client_for;
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
 };
-use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
+use super::helpers::{refuse_flags_before_1_11, resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -26,8 +26,9 @@ pub enum LifecycleCommand {
         id: String,
     },
 
-    /// Create a lifecycle policy. It's enabled from the start, so say what it
-    /// applies to with --repo or --all-repos
+    /// Create a lifecycle policy. Say what it applies to with --repo or --all-repos.
+    /// Unless it's --disabled, it's live at once, and the server's scheduler can start
+    /// deleting within about a minute, with or without a --cron-schedule
     Create {
         /// Policy name
         name: String,
@@ -61,6 +62,12 @@ pub enum LifecycleCommand {
         /// and size_quota_bytes, which there need --repo
         #[arg(long)]
         all_repos: bool,
+
+        /// Create it disabled, so nothing runs until `lifecycle update <id> --enabled`.
+        /// `lifecycle preview` still works, to see what it would delete. Needs a 1.11
+        /// server: 1.10 ignores this and would create a live policy, so it's refused
+        #[arg(long)]
+        disabled: bool,
 
         /// Cron schedule for automatic execution (e.g. "0 2 * * *")
         #[arg(long)]
@@ -140,6 +147,7 @@ impl LifecycleCommand {
                 priority,
                 repo,
                 all_repos,
+                disabled,
                 cron_schedule,
             } => {
                 create_policy(
@@ -150,6 +158,7 @@ impl LifecycleCommand {
                     priority,
                     repo.as_deref(),
                     all_repos,
+                    disabled,
                     cron_schedule.as_deref(),
                     global,
                 )
@@ -376,6 +385,7 @@ async fn create_policy(
     priority: Option<i32>,
     repo_id: Option<&str>,
     all_repos: bool,
+    disabled: bool,
     cron_schedule: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
@@ -384,7 +394,8 @@ async fn create_policy(
     if repo_id.is_none() && !all_repos {
         return Err(AkError::ConfigError(
             "say what this policy applies to: --repo <key> for one repository, or \
-             --all-repos for every repository. It's enabled as soon as it's created"
+             --all-repos for every repository. Unless it's --disabled, it's live as soon as \
+             it's created"
                 .to_string(),
         )
         .into());
@@ -402,6 +413,11 @@ async fn create_policy(
     let config_map = parse_config(config)?;
     let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
 
+    // A 1.10 server ignores `enabled`, and the policy it then creates is live.
+    if disabled {
+        refuse_flags_before_1_11(&["--disabled"], global).await?;
+    }
+
     let body = artifact_keeper_sdk::types::CreateLifecyclePolicyRequest {
         // 1.11 needs this for a global policy: with no repository and no
         // `applies_to_all`, it creates a dormant one that never deletes anything.
@@ -410,7 +426,7 @@ async fn create_policy(
         config: config_map,
         cron_schedule: cron_schedule.map(str::to_string),
         description: description.map(str::to_string),
-        enabled: None,
+        enabled: disabled.then_some(false),
         name: name.to_string(),
         policy_type: policy_type.to_string(),
         priority,
@@ -432,14 +448,34 @@ async fn create_policy(
     let policy = resp.into_inner();
     let id = policy.id.to_string();
 
+    // The version check can't tell if the server's version couldn't be read. A
+    // policy that's live when it was asked not to be mustn't stay.
+    if disabled && policy.enabled {
+        let outcome = match client.delete_lifecycle_policy().id(policy.id).send().await {
+            Ok(_) => "so it was deleted again".to_string(),
+            Err(e) => format!(
+                "and it couldn't be deleted ({e}). IT IS LIVE: run `ak lifecycle delete {id} --yes`"
+            ),
+        };
+        return Err(AkError::ServerError(format!(
+            "The server ignored --disabled and created an enabled policy, {outcome}"
+        ))
+        .into());
+    }
+
     emit_mutation_raw(
         raw.as_deref(),
         &policy,
         &id,
         &format!(
-            "Lifecycle policy '{}' created (ID: {id}, scope: {}).",
+            "Lifecycle policy '{}' created (ID: {id}, scope: {}, {}).",
             policy.name,
-            policy_scope(&policy)
+            policy_scope(&policy),
+            if policy.enabled {
+                "enabled"
+            } else {
+                "disabled"
+            }
         ),
         global,
     );
@@ -770,6 +806,7 @@ mod tests {
                 priority,
                 repo,
                 all_repos,
+                disabled,
                 cron_schedule,
             } => {
                 assert_eq!(name, "retention-policy");
@@ -779,6 +816,7 @@ mod tests {
                 assert!(priority.is_none());
                 assert!(repo.is_none());
                 assert!(!all_repos);
+                assert!(!disabled);
                 assert!(cron_schedule.is_none());
             }
             _ => panic!("expected Create"),
@@ -813,6 +851,7 @@ mod tests {
                 priority,
                 repo,
                 all_repos,
+                disabled,
                 cron_schedule,
             } => {
                 assert_eq!(name, "strict-policy");
@@ -822,6 +861,7 @@ mod tests {
                 assert_eq!(priority, Some(10));
                 assert_eq!(repo.as_deref(), Some("repo-id"));
                 assert!(!all_repos);
+                assert!(!disabled);
                 assert_eq!(cron_schedule.as_deref(), Some("0 2 * * *"));
             }
             _ => panic!("expected Create"),
@@ -1101,12 +1141,83 @@ mod tests {
             None,
             None,
             true,
+            false,
             None,
             &global,
         )
         .await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
+    }
+
+    /// Create with `--disabled` against a mock on this server version, answering
+    /// with this `enabled`.
+    async fn create_disabled(
+        version: &str,
+        answer_enabled: bool,
+        expected_posts: u64,
+        expected_deletes: u64,
+    ) -> Result<()> {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "version": version })))
+            .mount(&server)
+            .await;
+        let mut policy = lifecycle_policy_json();
+        policy["enabled"] = json!(answer_enabled);
+        Mock::given(method("POST"))
+            .and(path("/api/v1/admin/lifecycle"))
+            .and(wiremock::matchers::body_partial_json(
+                json!({ "enabled": false }),
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(policy))
+            .expect(expected_posts)
+            .mount(&server)
+            .await;
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/v1/admin/lifecycle/{NIL_UUID}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+            .expect(expected_deletes)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Quiet);
+        let result = create_policy(
+            "p",
+            "max_age_days",
+            r#"{"days":30}"#,
+            None,
+            None,
+            None,
+            true,
+            true,
+            None,
+            &global,
+        )
+        .await;
+        server.verify().await;
+        crate::test_utils::teardown_env();
+        result
+    }
+
+    #[tokio::test]
+    async fn create_disabled_sends_enabled_false() {
+        assert!(create_disabled("1.11.10", false, 1, 0).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn create_disabled_is_refused_before_1_11_with_nothing_sent() {
+        let err = create_disabled("1.10.2", true, 0, 0).await.unwrap_err();
+        assert!(err.to_string().contains("--disabled"), "{err}");
+    }
+
+    #[tokio::test]
+    async fn create_disabled_deletes_a_policy_that_came_back_enabled() {
+        let err = create_disabled("1.11.10", true, 1, 1).await.unwrap_err();
+        assert!(err.to_string().contains("deleted again"), "{err}");
     }
 
     #[tokio::test]
@@ -1128,6 +1239,7 @@ mod tests {
             None,
             None,
             None,
+            false,
             false,
             None,
             &global,
@@ -1167,6 +1279,7 @@ mod tests {
             None,
             None,
             Some(ID),
+            false,
             false,
             None,
             &global,
@@ -1301,6 +1414,7 @@ mod tests {
             None,
             None,
             true,
+            false,
             None,
             &global,
         )
@@ -1329,6 +1443,7 @@ mod tests {
             Some(5),
             None,
             true,
+            false,
             None,
             &global,
         )
@@ -1348,6 +1463,7 @@ mod tests {
             None,
             None,
             true,
+            false,
             None,
             &global,
         )
@@ -1366,6 +1482,7 @@ mod tests {
             None,
             None,
             true,
+            false,
             None,
             &global,
         )
