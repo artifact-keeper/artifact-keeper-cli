@@ -405,9 +405,7 @@ async fn create_session(
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(
-            AkError::ServerError(format!("Create session failed ({status}): {text}")).into(),
-        );
+        return Err(super::helpers::raw_err("Create session failed", status, &text).into());
     }
 
     resp.json::<CreateSessionResponse>()
@@ -436,7 +434,7 @@ async fn upload_chunk(
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(AkError::ServerError(format!("Chunk upload failed ({status}): {text}")).into());
+        return Err(super::helpers::raw_err("Chunk upload failed", status, &text).into());
     }
 
     resp.json::<UploadChunkResponse>()
@@ -465,9 +463,7 @@ async fn get_session_status(
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(
-            AkError::ServerError(format!("Session status failed ({status}): {text}")).into(),
-        );
+        return Err(super::helpers::raw_err("Session status failed", status, &text).into());
     }
 
     let status = resp
@@ -494,7 +490,7 @@ async fn finalize_upload(
     if !resp.status().is_success() {
         let status = resp.status();
         let text = resp.text().await.unwrap_or_default();
-        return Err(AkError::ServerError(format!("Finalize failed ({status}): {text}")).into());
+        return Err(super::helpers::raw_err("Finalize failed", status, &text).into());
     }
 
     resp.json::<FinalizeResponse>()

@@ -5,7 +5,6 @@ use miette::Result;
 use super::client::{client_for, resolve_base_url_and_auth};
 use super::helpers::{emit_mutation, parse_uuid, sdk_err};
 use crate::cli::GlobalArgs;
-use crate::error::AkError;
 use crate::output;
 
 #[derive(Subcommand)]
@@ -114,7 +113,7 @@ async fn hold(artifact: &str, reason: Option<&str>, global: &GlobalArgs) -> Resu
     spinner.finish_and_clear();
 
     if !status.is_success() {
-        return Err(hold_error(status, &text, artifact_id).into());
+        return Err(super::helpers::raw_err("Failed to quarantine artifact", status, &text).into());
     }
 
     let action: serde_json::Value =
@@ -131,37 +130,6 @@ async fn hold(artifact: &str, reason: Option<&str>, global: &GlobalArgs) -> Resu
     emit_mutation(&action, &id, &human, global);
 
     Ok(())
-}
-
-/// Map a failed hold response to an actionable message.
-///
-/// The raw-HTTP path exposes the status code, so unlike the SDK-backed
-/// subcommands this can explain what to do about a 403/404/409 instead of
-/// surfacing a bare transport error.
-fn hold_error(status: reqwest::StatusCode, text: &str, artifact_id: uuid::Uuid) -> AkError {
-    let server_msg = serde_json::from_str::<serde_json::Value>(text)
-        .ok()
-        .and_then(|v| {
-            v.get("message")
-                .and_then(|m| m.as_str())
-                .map(str::to_string)
-        })
-        .unwrap_or_else(|| text.to_string());
-
-    let detail = match status.as_u16() {
-        403 => "Quarantining an artifact requires admin access.".to_string(),
-        404 => format!("No artifact with ID {artifact_id} exists on this instance."),
-        409 => {
-            "The artifact was rejected during security review, so it cannot be quarantined again."
-                .to_string()
-        }
-        _ => server_msg,
-    };
-
-    AkError::ServerError(format!(
-        "quarantine artifact failed (HTTP {}): {detail}",
-        status.as_u16()
-    ))
 }
 
 async fn release(artifact: &str, global: &GlobalArgs) -> Result<()> {
@@ -583,7 +551,10 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path(format!("/api/v1/quarantine/{NIL_UUID}/quarantine")))
-            .respond_with(ResponseTemplate::new(404).set_body_json(json!({"message": "not found"})))
+            .respond_with(ResponseTemplate::new(404).set_body_json(json!({
+                "code": "NOT_FOUND",
+                "message": format!("Artifact {NIL_UUID} not found"),
+            })))
             .mount(&server)
             .await;
 
@@ -593,7 +564,7 @@ mod tests {
         assert!(msg.contains("404"), "should carry the status: {msg}");
         assert!(
             msg.contains(NIL_UUID),
-            "404 should name the artifact looked for: {msg}"
+            "404 should show the server's message: {msg}"
         );
         crate::test_utils::teardown_env();
     }

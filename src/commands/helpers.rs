@@ -26,6 +26,15 @@ pub fn sdk_err(action: &str, e: impl std::fmt::Display) -> AkError {
     AkError::ServerError(format!("Failed to {action}: {e}"))
 }
 
+/// An error for a failed raw HTTP call, in the form `sdk_err` gives SDK errors:
+/// the status and the server's message rather than its raw JSON.
+pub fn raw_err(action: &str, status: reqwest::StatusCode, body: &str) -> AkError {
+    match artifact_keeper_sdk::error::server_message(body.as_bytes()) {
+        Some(message) => AkError::ServerError(format!("{action}: {status}: {message}")),
+        None => AkError::ServerError(format!("{action}: {status}")),
+    }
+}
+
 /// Emit the result of a mutation (create/update/delete) honoring the output
 /// format so results are machine-consumable.
 ///
@@ -328,6 +337,19 @@ mod tests {
     }
 
     // ---- sdk_err ----
+
+    #[test]
+    fn raw_err_shows_the_servers_message_and_not_its_json() {
+        let err = raw_err(
+            "Upload failed",
+            reqwest::StatusCode::CONFLICT,
+            r#"{"code":"CONFLICT","message":"Artifact is immutable"}"#,
+        );
+        assert_eq!(
+            err.to_string(),
+            "Server error: Upload failed: 409 Conflict: Artifact is immutable"
+        );
+    }
 
     #[test]
     fn sdk_err_message() {

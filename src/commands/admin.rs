@@ -2374,10 +2374,9 @@ async fn install_plugin_zip(path: &str, global: &GlobalArgs) -> Result<()> {
         let status = resp.status();
         let body = resp.text().await.unwrap_or_default();
         spinner.finish_and_clear();
-        return Err(crate::error::AkError::ServerError(format!(
-            "Failed to install plugin from ZIP: HTTP {status}: {body}"
-        ))
-        .into());
+        return Err(
+            super::helpers::raw_err("Failed to install plugin from ZIP", status, &body).into(),
+        );
     }
 
     let parsed: artifact_keeper_sdk::types::PluginInstallResponse = resp
