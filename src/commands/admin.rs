@@ -6222,7 +6222,8 @@ mod tests {
                 .respond_with(ResponseTemplate::new(200).set_body_json(json!({
                     "tables_restored": [],
                     "artifacts_restored": 0,
-                    "errors": []
+                    "errors": [],
+                    "integrity_anchor": "not_verified"
                 })))
                 .expect(1)
                 .mount(&server)
