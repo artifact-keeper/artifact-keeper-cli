@@ -566,27 +566,6 @@ fn go_netrc_line(host: &str) -> String {
     format!("machine {host} login __token__ password {TOKEN_SLOT}")
 }
 
-/// Append a line to `.netrc`, which is owner-only from creation.
-fn append_netrc_line(path: &Path, line: &str) -> Result<()> {
-    use std::io::Write;
-    let mut options = std::fs::OpenOptions::new();
-    options.create(true).append(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    let mut file = options.open(path).into_diagnostic()?;
-    writeln!(file, "{line}").into_diagnostic()?;
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).into_diagnostic()?;
-    }
-    Ok(())
-}
-
 /// The yum/dnf `.repo` file, as a template.
 fn yum_repo_file(repo_key: &str, yum_url: &str) -> String {
     format!(
@@ -1065,15 +1044,16 @@ async fn setup_go(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs
     }
 
     let write_netrc = dialoguer::Confirm::new()
-        .with_prompt("Append to .netrc now?")
+        .with_prompt("Write this to .netrc now?")
         .default(true)
         .interact()
         .into_diagnostic()?;
 
     if write_netrc {
+        let existing = read_existing(&netrc_path)?;
         let token = ctx.token_for_config().await?;
-        append_netrc_line(&netrc_path, &fill_token(&netrc_template, &token))?;
-        eprintln!("Updated {}", netrc_path.display());
+        let merged = merge::netrc(&existing, &host, &fill_token(&netrc_template, &token));
+        write_config_file(&netrc_path, &merged, ".netrc")?;
     }
 
     eprintln!("Go is configured to use repository '{}'.", ctx.repo_key);
