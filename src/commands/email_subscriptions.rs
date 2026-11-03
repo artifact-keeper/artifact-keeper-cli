@@ -3,7 +3,9 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -82,16 +84,13 @@ async fn list_subscriptions(repo: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching email subscriptions...");
 
-    let resp = client
-        .list_subscriptions()
-        .key(repo)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list email subscriptions", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_subscriptions().key(repo).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list email subscriptions", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.subscriptions.is_empty() {
+    if resp.subscriptions.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No email subscriptions on repository '{repo}'.");
         return Ok(());
     }
@@ -121,7 +120,7 @@ async fn list_subscriptions(repo: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -155,13 +154,10 @@ async fn subscribe(
     let client = client_for(global)?;
     let spinner = output::spinner("Creating email subscription...");
 
-    let resp = client
-        .create_subscription()
-        .key(repo)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create email subscription", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_subscription().key(repo).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("create email subscription", e))?;
 
     spinner.finish_and_clear();
 
@@ -170,7 +166,8 @@ async fn subscribe(
     let recipient_count = sub.recipients.len();
     let event_count = sub.event_types.len();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &sub,
         &id,
         &format!(

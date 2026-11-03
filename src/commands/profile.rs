@@ -11,8 +11,8 @@ use std::io::IsTerminal;
 
 use super::client::{client_for, raw_http_client, resolve_base_url_and_auth};
 use super::helpers::{
-    emit_mutation, new_table, parse_uuid, raw_err, require_secret, resolve_secret, sdk_err,
-    short_id,
+    emit_mutation, emit_mutation_raw, new_table, parse_uuid, raw_err, require_secret,
+    resolve_secret, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -288,16 +288,13 @@ async fn update_profile(
     };
 
     let spinner = output::spinner("Updating profile...");
-    client
-        .update_user()
-        .id(me.id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update profile", e))?;
+    let (updated, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_user().id(me.id).body(body).send()).await;
+    updated.map_err(|e| sdk_err("update profile", e))?;
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({ "status": "updated" }),
         "profile",
         "Profile updated.",

@@ -336,7 +336,10 @@ pub(crate) async fn enroll_complete_request(
 async fn enroll_setup(ticket: &str, global: &GlobalArgs) -> Result<()> {
     let config = AppConfig::load()?;
     let (_, instance) = config.resolve_instance(global.instance.as_deref())?;
-    let result = enroll_setup_request(&anon_client(&instance.url)?, ticket).await?;
+    let client = anon_client(&instance.url)?;
+    let (result, raw) =
+        artifact_keeper_sdk::raw::capture(enroll_setup_request(&client, ticket)).await;
+    let result = result?;
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", result.secret);
@@ -350,7 +353,11 @@ async fn enroll_setup(ticket: &str, global: &GlobalArgs) -> Result<()> {
          ak totp enroll complete --totp-token-stdin --code <code>",
         result.secret, result.qr_code_url,
     );
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    // Showing this secret is why the command ran.
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 

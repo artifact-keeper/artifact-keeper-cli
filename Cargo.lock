@@ -4798,6 +4798,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "openapiv3",
+ "proc-macro2",
  "progenitor",
  "quote",
  "serde",

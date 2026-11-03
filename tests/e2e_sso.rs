@@ -92,7 +92,7 @@ fn ldap_create_sets_every_flag_and_update_changes_only_what_is_given() {
 
     let listed = json_of(env.ak_cmd().args(["sso", "list"]));
     assert!(
-        listed
+        listed["ldap"]
             .as_array()
             .unwrap()
             .iter()
@@ -292,7 +292,7 @@ fn a_bad_attribute_mapping_is_refused_before_any_request() {
         .failure();
     let listed = json_of(env.ak_cmd().args(["sso", "list"]));
     assert!(
-        !listed
+        !listed["saml"]
             .as_array()
             .unwrap()
             .iter()

@@ -116,14 +116,12 @@ async fn downloads(from: Option<&str>, to: Option<&str>, global: &GlobalArgs) ->
         req = req.to(t.to_string());
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("get download trends", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("get download trends", e))?;
     let items = resp.into_inner();
     spinner.finish_and_clear();
 
-    if items.is_empty() {
+    if items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No download trend data found.");
         return Ok(());
     }
@@ -138,7 +136,7 @@ async fn downloads(from: Option<&str>, to: Option<&str>, global: &GlobalArgs) ->
     let (entries, table_str) = format_downloads_table(&items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -148,15 +146,13 @@ async fn storage_breakdown(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching storage breakdown...");
 
-    let resp = client
-        .get_storage_breakdown()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get storage breakdown", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_storage_breakdown().send()).await;
+    let resp = resp.map_err(|e| sdk_err("get storage breakdown", e))?;
     let items = resp.into_inner();
     spinner.finish_and_clear();
 
-    if items.is_empty() {
+    if items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No storage breakdown data found.");
         return Ok(());
     }
@@ -171,7 +167,7 @@ async fn storage_breakdown(global: &GlobalArgs) -> Result<()> {
     let (entries, table_str) = format_storage_table(&items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -189,10 +185,8 @@ async fn growth_summary(from: Option<&str>, to: Option<&str>, global: &GlobalArg
         req = req.to(t.to_string());
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("get growth summary", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("get growth summary", e))?;
     let summary = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -205,7 +199,10 @@ async fn growth_summary(from: Option<&str>, to: Option<&str>, global: &GlobalArg
     }
 
     let (info, table_str) = format_growth_detail(&summary);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -222,14 +219,12 @@ async fn storage_trend(from: Option<&str>, to: Option<&str>, global: &GlobalArgs
         req = req.to(t.to_string());
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("get storage trend", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("get storage trend", e))?;
     let items = resp.into_inner();
     spinner.finish_and_clear();
 
-    if items.is_empty() {
+    if items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No storage trend data found.");
         return Ok(());
     }
@@ -244,7 +239,7 @@ async fn storage_trend(from: Option<&str>, to: Option<&str>, global: &GlobalArgs
     let (entries, table_str) = format_storage_trend_table(&items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -254,17 +249,15 @@ async fn top_stale(days: i32, limit: i64, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching stale artifacts...");
 
-    let resp = client
-        .get_stale_artifacts()
-        .days(days)
-        .limit(limit)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get stale artifacts", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client.get_stale_artifacts().days(days).limit(limit).send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("get stale artifacts", e))?;
     let items = resp.into_inner();
     spinner.finish_and_clear();
 
-    if items.is_empty() {
+    if items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No stale artifacts found.");
         return Ok(());
     }
@@ -279,7 +272,7 @@ async fn top_stale(days: i32, limit: i64, global: &GlobalArgs) -> Result<()> {
     let (entries, table_str) = format_stale_table(&items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -304,14 +297,12 @@ async fn repo_trend(
         req = req.to(t.to_string());
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("get repository trend", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("get repository trend", e))?;
     let items = resp.into_inner();
     spinner.finish_and_clear();
 
-    if items.is_empty() {
+    if items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No repository trend data found.");
         return Ok(());
     }
@@ -329,7 +320,7 @@ async fn repo_trend(
     let (entries, table_str) = format_repo_trend_table(&items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -339,11 +330,8 @@ async fn capture_snapshot(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Capturing analytics snapshot...");
 
-    let resp = client
-        .capture_snapshot()
-        .send()
-        .await
-        .map_err(|e| sdk_err("capture snapshot", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.capture_snapshot().send()).await;
+    let resp = resp.map_err(|e| sdk_err("capture snapshot", e))?;
     let snapshot = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -353,7 +341,10 @@ async fn capture_snapshot(global: &GlobalArgs) -> Result<()> {
     }
 
     let (info, table_str) = format_snapshot_detail(&snapshot);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }

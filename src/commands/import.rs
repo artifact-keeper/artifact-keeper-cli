@@ -21,7 +21,7 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::{client_for, resolve_base_url_and_auth};
-use super::helpers::{new_table, parse_uuid, resolve_secret, sdk_err, short_id};
+use super::helpers::{emit_mutation_raw, new_table, parse_uuid, resolve_secret, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -472,12 +472,9 @@ async fn source_add(
     };
 
     let spinner = output::spinner("Creating source connection...");
-    let resp = client
-        .create_connection()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create source connection", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_connection().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("create source connection", e))?;
     let created = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -487,7 +484,10 @@ async fn source_add(
     }
 
     let (info, table_str) = format_connection_detail(&created);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 
@@ -496,17 +496,17 @@ async fn source_show(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Fetching source connection...");
-    let resp = client
-        .get_connection()
-        .id(conn_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get source connection", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_connection().id(conn_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get source connection", e))?;
     let conn = resp.into_inner();
     spinner.finish_and_clear();
 
     let (info, table_str) = format_connection_detail(&conn);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 
@@ -544,17 +544,17 @@ async fn source_test(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Testing source connection...");
-    let resp = client
-        .test_connection()
-        .id(conn_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("test source connection", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.test_connection().id(conn_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("test source connection", e))?;
     let result = resp.into_inner();
     spinner.finish_and_clear();
 
     let (info, table_str) = format_test_result(&result);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     if !result.success {
         std::process::exit(1);
@@ -567,16 +567,14 @@ async fn source_repos(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Listing source repositories...");
-    let resp = client
-        .list_source_repositories()
-        .id(conn_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list source repositories", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_source_repositories().id(conn_id).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("list source repositories", e))?;
     let repos = resp.into_inner();
     spinner.finish_and_clear();
 
-    if repos.is_empty() {
+    if repos.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No repositories found on source.");
         return Ok(());
     }
@@ -591,7 +589,7 @@ async fn source_repos(id: &str, global: &GlobalArgs) -> Result<()> {
     let (entries, table_str) = format_source_repos_table(&repos);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
     Ok(())
 }
@@ -617,12 +615,9 @@ async fn job_create(
     };
 
     let spinner = output::spinner("Creating import job...");
-    let resp = client
-        .create_migration()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create import job", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_migration().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("create import job", e))?;
     let job = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -632,7 +627,10 @@ async fn job_create(
     }
 
     let (info, table_str) = format_job_detail(&job);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 
@@ -688,17 +686,17 @@ async fn job_status(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Fetching import job...");
-    let resp = client
-        .get_migration()
-        .id(job_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get import job", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_migration().id(job_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get import job", e))?;
     let job = resp.into_inner();
     spinner.finish_and_clear();
 
     let (info, table_str) = format_job_detail(&job);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 
@@ -707,19 +705,19 @@ async fn job_start(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Starting import job...");
-    let resp = client
-        .start_migration()
-        .id(job_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("start import job", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.start_migration().id(job_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("start import job", e))?;
     let job = resp.into_inner();
     spinner.finish_and_clear();
 
     eprintln!("Import job {id} started (status: {}).", job.status);
     if !matches!(global.format, OutputFormat::Quiet) {
         let (info, table_str) = format_job_detail(&job);
-        println!("{}", output::render(&info, &global.format, Some(table_str)));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+        );
     }
     Ok(())
 }
@@ -729,16 +727,19 @@ async fn job_pause(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Pausing import job...");
-    let resp = client
-        .pause_migration()
-        .id(job_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("pause import job", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.pause_migration().id(job_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("pause import job", e))?;
     let job = resp.into_inner();
     spinner.finish_and_clear();
 
-    eprintln!("Import job {id} paused (status: {}).", job.status);
+    emit_mutation_raw(
+        raw.as_deref(),
+        &job,
+        id,
+        &format!("Import job {id} paused (status: {}).", job.status),
+        global,
+    );
     Ok(())
 }
 
@@ -747,16 +748,19 @@ async fn job_resume(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Resuming import job...");
-    let resp = client
-        .resume_migration()
-        .id(job_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("resume import job", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.resume_migration().id(job_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("resume import job", e))?;
     let job = resp.into_inner();
     spinner.finish_and_clear();
 
-    eprintln!("Import job {id} resumed (status: {}).", job.status);
+    emit_mutation_raw(
+        raw.as_deref(),
+        &job,
+        id,
+        &format!("Import job {id} resumed (status: {}).", job.status),
+        global,
+    );
     Ok(())
 }
 
@@ -765,16 +769,19 @@ async fn job_cancel(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Cancelling import job...");
-    let resp = client
-        .cancel_migration()
-        .id(job_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("cancel import job", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.cancel_migration().id(job_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("cancel import job", e))?;
     let job = resp.into_inner();
     spinner.finish_and_clear();
 
-    eprintln!("Import job {id} cancelled (status: {}).", job.status);
+    emit_mutation_raw(
+        raw.as_deref(),
+        &job,
+        id,
+        &format!("Import job {id} cancelled (status: {}).", job.status),
+        global,
+    );
     Ok(())
 }
 
@@ -871,15 +878,16 @@ async fn job_report(id: &str, format: Option<&str>, global: &GlobalArgs) -> Resu
     }
 
     let spinner = output::spinner("Fetching reconciliation report...");
-    let resp = builder
-        .send()
-        .await
-        .map_err(|e| sdk_err("get reconciliation report", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(builder.send()).await;
+    let resp = resp.map_err(|e| sdk_err("get reconciliation report", e))?;
     let report = resp.into_inner();
     spinner.finish_and_clear();
 
     let (info, table_str) = format_report_detail(&report);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 
@@ -932,18 +940,21 @@ async fn assess_run(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Starting pre-migration assessment...");
-    let resp = client
-        .run_assessment()
-        .id(job_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("run assessment", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.run_assessment().id(job_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("run assessment", e))?;
     let job = resp.into_inner();
     spinner.finish_and_clear();
 
-    eprintln!(
-        "Assessment started for job {id} (status: {}). Use `ak import assess result {id}`.",
-        job.status
+    emit_mutation_raw(
+        raw.as_deref(),
+        &job,
+        id,
+        &format!(
+            "Assessment started for job {id} (status: {}). Use `ak import assess result {id}`.",
+            job.status
+        ),
+        global,
     );
     Ok(())
 }
@@ -953,17 +964,17 @@ async fn assess_result(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Fetching assessment results...");
-    let resp = client
-        .get_assessment()
-        .id(job_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get assessment", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_assessment().id(job_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get assessment", e))?;
     let assessment = resp.into_inner();
     spinner.finish_and_clear();
 
     let (info, table_str) = format_assessment_detail(&assessment);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 

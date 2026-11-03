@@ -1096,7 +1096,10 @@ async fn drain_stream(
 /// Pretty-print a raw JSON body honoring the output format.
 fn print_stream_body(body: &str, global: &GlobalArgs) {
     match serde_json::from_str::<serde_json::Value>(body) {
-        Ok(value) => println!("{}", output::render(&value, &global.format, None)),
+        Ok(value) => println!(
+            "{}",
+            output::render_raw(Some(body.as_bytes()), &value, &global.format, None)
+        ),
         Err(_) => println!("{}", body.trim()),
     }
 }

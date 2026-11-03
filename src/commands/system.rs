@@ -91,10 +91,8 @@ async fn show_config(global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching system configuration...");
 
-    let config = client
-        .get_system_config()
-        .send()
-        .await
+    let (config, raw) = artifact_keeper_sdk::raw::capture(client.get_system_config().send()).await;
+    let config = config
         .map_err(|e| sdk_err("get system configuration", e))?
         .into_inner();
 
@@ -103,7 +101,7 @@ async fn show_config(global: &GlobalArgs) -> Result<()> {
     let table_str = format_config_detail(&config);
     println!(
         "{}",
-        output::render(&config, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &config, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -113,10 +111,8 @@ async fn show_health(global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching system health...");
 
-    let health = client
-        .health_check()
-        .send()
-        .await
+    let (health, raw) = artifact_keeper_sdk::raw::capture(client.health_check().send()).await;
+    let health = health
         .map_err(|e| sdk_err("get system health", e))?
         .into_inner();
 
@@ -130,7 +126,7 @@ async fn show_health(global: &GlobalArgs) -> Result<()> {
     let table_str = format_health_detail(&health);
     println!(
         "{}",
-        output::render(&health, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &health, &global.format, Some(table_str))
     );
 
     Ok(())

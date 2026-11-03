@@ -673,16 +673,22 @@ pub fn run(root: &Path, options: Options) -> Result<()> {
         base.as_ref(),
     );
     println!("{}", report(&findings));
-    if findings.errors.is_empty() {
+    let raw = crate::raw_layer::check(root)?;
+    println!(
+        "Raw JSON: {} functions print the server's body as sent, {} entries opt out with a reason.\n",
+        raw.captured, raw.opted_out
+    );
+    let errors: Vec<&String> = findings.errors.iter().chain(&raw.errors).collect();
+    if errors.is_empty() {
         println!("Coverage gate: OK");
         return Ok(());
     }
-    println!("## Problems ({})\n", findings.errors.len());
-    for error in &findings.errors {
+    println!("## Problems ({})\n", errors.len());
+    for error in &errors {
         println!("- {error}");
     }
     if options.check {
-        bail!("Coverage gate: {} problems", findings.errors.len());
+        bail!("Coverage gate: {} problems", errors.len());
     }
     Ok(())
 }

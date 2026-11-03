@@ -754,15 +754,15 @@ async fn list_providers(global: &GlobalArgs) -> Result<()> {
     let spinner = output::spinner("Fetching SSO providers...");
 
     // Fetch all three provider types, tolerating individual failures.
-    let ldap = client.list_ldap().send().await.map(|r| r.into_inner());
-    let oidc = client.list_oidc().send().await.map(|r| r.into_inner());
-    let saml = client.list_saml().send().await.map(|r| r.into_inner());
+    let (ldap, ldap_raw) = artifact_keeper_sdk::raw::capture(client.list_ldap().send()).await;
+    let (oidc, oidc_raw) = artifact_keeper_sdk::raw::capture(client.list_oidc().send()).await;
+    let (saml, saml_raw) = artifact_keeper_sdk::raw::capture(client.list_saml().send()).await;
 
     spinner.finish_and_clear();
 
-    let ldap_list = ldap.unwrap_or_default();
-    let oidc_list = oidc.unwrap_or_default();
-    let saml_list = saml.unwrap_or_default();
+    let ldap_list = ldap.map(|r| r.into_inner()).unwrap_or_default();
+    let oidc_list = oidc.map(|r| r.into_inner()).unwrap_or_default();
+    let saml_list = saml.map(|r| r.into_inner()).unwrap_or_default();
 
     if ldap_list.is_empty()
         && oidc_list.is_empty()
@@ -787,12 +787,34 @@ async fn list_providers(global: &GlobalArgs) -> Result<()> {
     }
 
     let (entries, table_str) = format_providers_table(&ldap_list, &oidc_list, &saml_list);
+    let raw = merge_provider_bodies(
+        ldap_raw.as_deref(),
+        oidc_raw.as_deref(),
+        saml_raw.as_deref(),
+    );
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
+}
+
+/// `sso list` is three requests, so there's no one body to print. This puts each body
+/// as sent under its type. A type whose request failed, or whose body isn't JSON, is
+/// `null`.
+fn merge_provider_bodies(
+    ldap: Option<&[u8]>,
+    oidc: Option<&[u8]>,
+    saml: Option<&[u8]>,
+) -> Option<Vec<u8>> {
+    let parsed = |raw: Option<&[u8]>| raw.and_then(|b| serde_json::from_slice::<Value>(b).ok());
+    serde_json::to_vec(&serde_json::json!({
+        "ldap": parsed(ldap),
+        "oidc": parsed(oidc),
+        "saml": parsed(saml),
+    }))
+    .ok()
 }
 
 async fn show_provider(id: &str, provider_type: &str, global: &GlobalArgs) -> Result<()> {

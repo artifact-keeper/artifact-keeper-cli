@@ -90,16 +90,13 @@ async fn list_repo_tokens(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
     let spinner = output::spinner("Fetching repository tokens...");
-    let resp = client
-        .list_repo_tokens()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list repository tokens", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_repo_tokens().key(key).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list repository tokens", e))?;
     let list = resp.into_inner();
     spinner.finish_and_clear();
 
-    if list.items.is_empty() {
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No tokens found on repository '{key}'.");
         return Ok(());
     }
@@ -114,7 +111,7 @@ async fn list_repo_tokens(key: &str, global: &GlobalArgs) -> Result<()> {
     let (entries, table_str) = format_tokens_table(&list.items);
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -125,18 +122,19 @@ async fn show_repo_token(key: &str, id: &str, global: &GlobalArgs) -> Result<()>
     let client = client_for(global)?;
 
     let spinner = output::spinner("Fetching repository token...");
-    let resp = client
-        .get_repo_token()
-        .key(key)
-        .token_id(token_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get repository token", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client.get_repo_token().key(key).token_id(token_id).send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("get repository token", e))?;
     let token = resp.into_inner();
     spinner.finish_and_clear();
 
     let (info, table_str) = format_token_detail(&token);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -163,13 +161,10 @@ async fn create_repo_token(
     };
 
     let spinner = output::spinner("Creating repository token...");
-    let resp = client
-        .create_repo_token()
-        .key(key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create repository token", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_repo_token().key(key).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("create repository token", e))?;
     let created = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -178,8 +173,12 @@ async fn create_repo_token(
         return Ok(());
     }
 
+    // The one time the server shows this token, and showing it is why the command ran.
     let (info, table_str) = format_created_token(&created);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }

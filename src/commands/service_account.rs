@@ -3,7 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{confirm_action, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -200,15 +200,13 @@ async fn list_accounts(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching service accounts...");
 
-    let resp = client
-        .list_service_accounts()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list service accounts", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_service_accounts().send()).await;
+    let resp = resp.map_err(|e| sdk_err("list service accounts", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No service accounts found.");
         return Ok(());
     }
@@ -265,7 +263,7 @@ async fn list_accounts(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -276,12 +274,9 @@ async fn show_account(id: &str, global: &GlobalArgs) -> Result<()> {
     let account_id = parse_uuid(id, "service account")?;
 
     let spinner = output::spinner("Fetching service account...");
-    let sa = client
-        .get_service_account()
-        .id(account_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get service account", e))?;
+    let (sa, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_service_account().id(account_id).send()).await;
+    let sa = sa.map_err(|e| sdk_err("get service account", e))?;
     spinner.finish_and_clear();
 
     let info = serde_json::json!({
@@ -308,7 +303,10 @@ async fn show_account(id: &str, global: &GlobalArgs) -> Result<()> {
         sa.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -358,24 +356,20 @@ async fn create_account(name: &str, description: Option<&str>, global: &GlobalAr
         return Err(super::helpers::raw_err("Create service account failed", status, &text).into());
     }
 
-    let sa: CreateAccountResponse = match resp.json().await {
-        Ok(v) => v,
-        Err(e) => {
-            spinner.finish_and_clear();
-            return Err(
-                AkError::ServerError(format!("Invalid service account response: {e}")).into(),
-            );
-        }
-    };
-
+    let raw = resp.bytes().await;
     spinner.finish_and_clear();
+    let raw =
+        raw.map_err(|e| AkError::ServerError(format!("Invalid service account response: {e}")))?;
+    let sa: CreateAccountResponse = serde_json::from_slice(&raw)
+        .map_err(|e| AkError::ServerError(format!("Invalid service account response: {e}")))?;
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", sa.id);
-        return Ok(());
-    }
-
-    eprintln!("Service account '{}' created (ID: {}).", sa.username, sa.id);
+    emit_mutation_raw(
+        Some(&raw),
+        &serde_json::json!({ "id": sa.id, "username": sa.username }),
+        &sa.id,
+        &format!("Service account '{}' created (ID: {}).", sa.username, sa.id),
+        global,
+    );
 
     Ok(())
 }
@@ -402,22 +396,25 @@ async fn update_account(
         is_active,
     };
 
-    let sa = client
-        .update_service_account()
-        .id(account_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update service account", e))?;
+    let (sa, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .update_service_account()
+            .id(account_id)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let sa = sa.map_err(|e| sdk_err("update service account", e))?;
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", sa.id);
-        return Ok(());
-    }
-
-    eprintln!("Service account '{}' updated.", sa.username);
+    emit_mutation_raw(
+        raw.as_deref(),
+        &*sa,
+        &sa.id.to_string(),
+        &format!("Service account '{}' updated.", sa.username),
+        global,
+    );
 
     Ok(())
 }
@@ -454,16 +451,13 @@ async fn list_tokens(account: &str, global: &GlobalArgs) -> Result<()> {
     let account_id = parse_uuid(account, "service account")?;
     let spinner = output::spinner("Fetching tokens...");
 
-    let resp = client
-        .list_tokens()
-        .id(account_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list tokens", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_tokens().id(account_id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list tokens", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No tokens found for service account {account}.");
         return Ok(());
     }
@@ -532,7 +526,7 @@ async fn list_tokens(account: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -578,13 +572,10 @@ async fn create_token(
         description: description.map(|s| s.to_string()),
     };
 
-    let resp = client
-        .create_token()
-        .id(account_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create token", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_token().id(account_id).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("create token", e))?;
 
     spinner.finish_and_clear();
 
@@ -593,13 +584,17 @@ async fn create_token(
         return Ok(());
     }
 
+    // The one time the server shows this token, and showing it is why the command ran.
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         let info = serde_json::json!({
             "id": resp.id.to_string(),
             "name": resp.name,
             "token": resp.token,
         });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
         return Ok(());
     }
 
@@ -655,12 +650,9 @@ async fn preview_selector(selector: &str, global: &GlobalArgs) -> Result<()> {
 
     let body = artifact_keeper_sdk::types::PreviewRepoSelectorRequest { repo_selector };
 
-    let resp = client
-        .preview_repo_selector()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("preview repo selector", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.preview_repo_selector().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("preview repo selector", e))?;
 
     spinner.finish_and_clear();
 
@@ -694,7 +686,7 @@ async fn preview_selector(selector: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} repositories matched.", resp.total);

@@ -6,9 +6,7 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::resolve_optional_repo_id;
-use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
-};
+use super::helpers::{confirm_action, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -247,15 +245,14 @@ async fn delete_policy(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Res
     let client = client_for(global)?;
     let spinner = output::spinner("Deleting license policy...");
 
-    client
-        .delete_license_policy()
-        .id(policy_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("delete license policy", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.delete_license_policy().id(policy_id).send())
+            .await;
+    resp.map_err(|e| sdk_err("delete license policy", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({ "id": id, "status": "deleted" }),
         id,
         &format!("License policy {id} deleted."),

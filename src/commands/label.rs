@@ -3,7 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{emit_mutation, new_table, parse_uuid, sdk_err};
+use super::helpers::{emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -126,16 +126,13 @@ async fn list_labels(repo_key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching labels...");
 
-    let resp = client
-        .list_repo_labels()
-        .key(repo_key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list labels", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_repo_labels().key(repo_key).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list labels", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No labels on repository '{repo_key}'.");
         return Ok(());
     }
@@ -181,7 +178,7 @@ async fn list_labels(repo_key: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -199,17 +196,20 @@ async fn add_label(repo_key: &str, label: &str, global: &GlobalArgs) -> Result<(
         value: Some(label_value.to_string()),
     };
 
-    client
-        .add_repo_label()
-        .key(repo_key)
-        .label_key(label_key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("add label", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .add_repo_label()
+            .key(repo_key)
+            .label_key(label_key)
+            .body(body)
+            .send(),
+    )
+    .await;
+    resp.map_err(|e| sdk_err("add label", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({
             "repo_key": repo_key,
             "key": label_key,
@@ -285,13 +285,10 @@ async fn set_labels(repo_key: &str, labels: &[String], global: &GlobalArgs) -> R
 
     let body = artifact_keeper_sdk::types::SetLabelsRequest { labels: entries };
 
-    let resp = client
-        .set_repo_labels()
-        .key(repo_key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("set labels", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.set_repo_labels().key(repo_key).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("set labels", e))?;
 
     spinner.finish_and_clear();
 
@@ -306,7 +303,8 @@ async fn set_labels(repo_key: &str, labels: &[String], global: &GlobalArgs) -> R
         })
         .collect();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({
             "repo_key": repo_key,
             "count": resp.items.len(),
@@ -332,16 +330,14 @@ async fn list_artifact_labels(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching labels...");
 
-    let resp = client
-        .list_artifact_labels()
-        .id(artifact_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list artifact labels", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_artifact_labels().id(artifact_id).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("list artifact labels", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No labels on artifact '{id}'.");
         return Ok(());
     }
@@ -374,7 +370,7 @@ async fn list_artifact_labels(id: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -393,17 +389,20 @@ async fn add_artifact_label(id: &str, label: &str, global: &GlobalArgs) -> Resul
         value: Some(label_value.to_string()),
     };
 
-    client
-        .add_artifact_label()
-        .id(artifact_id)
-        .label_key(label_key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("add artifact label", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .add_artifact_label()
+            .id(artifact_id)
+            .label_key(label_key)
+            .body(body)
+            .send(),
+    )
+    .await;
+    resp.map_err(|e| sdk_err("add artifact label", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({
             "artifact_id": id,
             "key": label_key,
@@ -469,13 +468,15 @@ async fn set_artifact_labels(id: &str, labels: &[String], global: &GlobalArgs) -
 
     let body = artifact_keeper_sdk::types::SetArtifactLabelsRequest { labels: entries };
 
-    let resp = client
-        .set_artifact_labels()
-        .id(artifact_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("set artifact labels", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .set_artifact_labels()
+            .id(artifact_id)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("set artifact labels", e))?;
 
     spinner.finish_and_clear();
 
@@ -490,7 +491,8 @@ async fn set_artifact_labels(id: &str, labels: &[String], global: &GlobalArgs) -
         })
         .collect();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({
             "artifact_id": id,
             "count": resp.items.len(),
