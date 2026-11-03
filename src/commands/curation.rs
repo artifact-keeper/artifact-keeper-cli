@@ -551,7 +551,11 @@ async fn sync(repo: &str, global: &GlobalArgs) -> Result<()> {
         raw.as_deref(),
         &result,
         &result.repository,
-        &format!("Synced '{}'.", result.repository),
+        &if result.succeeded {
+            format!("Synced '{}'.", result.repository)
+        } else {
+            format!("Sync of '{}' didn't complete.", result.repository)
+        },
         global,
     );
 
@@ -755,7 +759,17 @@ async fn bulk_decision(
     spinner.finish_and_clear();
     emit_stream_result(&body, ids.len(), approve, global);
 
-    Ok(())
+    let verb = if approve { "approved" } else { "blocked" };
+    match bulk_count(&body) {
+        Some(changed) if changed < ids.len() as u64 => {
+            Err(crate::commands::helpers::reported_failure(&format!(
+                "The server {verb} {changed} of {} package(s). The others don't exist, or \
+                 aren't in a state that changes.",
+                ids.len()
+            )))
+        }
+        _ => Ok(()),
+    }
 }
 
 async fn re_evaluate(
@@ -1104,6 +1118,15 @@ fn print_stream_body(body: &str, global: &GlobalArgs) {
     }
 }
 
+/// How many packages a bulk approve/block changed, if its answer says.
+fn bulk_count(body: &str) -> Option<u64> {
+    let value: serde_json::Value = serde_json::from_str(body).ok()?;
+    value
+        .as_u64()
+        .or_else(|| value.get("updated")?.as_u64())
+        .or_else(|| value.get("count")?.as_u64())
+}
+
 /// Emit the result of a bulk approve/block honoring the output format.
 fn emit_stream_result(body: &str, requested: usize, approve: bool, global: &GlobalArgs) {
     match global.format {
@@ -1115,9 +1138,14 @@ fn emit_stream_result(body: &str, requested: usize, approve: bool, global: &Glob
         }
         OutputFormat::Table => {
             let verb = if approve { "approved" } else { "blocked" };
-            eprintln!("Bulk {verb} {requested} package(s).");
-            if !body.trim().is_empty() {
-                eprintln!("{}", body.trim());
+            match bulk_count(body) {
+                Some(changed) => eprintln!("Bulk {verb} {changed} of {requested} package(s)."),
+                None => {
+                    eprintln!("Requested a bulk {verb} of {requested} package(s).");
+                    if !body.trim().is_empty() {
+                        eprintln!("{}", output::sanitize_terminal(body.trim()));
+                    }
+                }
             }
         }
     }

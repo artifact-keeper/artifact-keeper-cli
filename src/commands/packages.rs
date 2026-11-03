@@ -480,24 +480,30 @@ async fn backfill(repo: Option<String>, global: &GlobalArgs) -> Result<()> {
 
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", report.packages_registered);
-        return Ok(());
-    }
-    let table = format!(
-        "{}\n\
+    } else {
+        let table = format!(
+            "{}\n\
          Artifacts scanned:    {}\n\
          Packages registered:  {}\n\
          Artifacts skipped:    {}\n\
          Artifacts failed:     {}",
-        report.message,
-        report.artifacts_scanned,
-        report.packages_registered,
-        report.artifacts_skipped,
-        report.artifacts_failed,
-    );
-    println!(
-        "{}",
-        output::render_raw(raw.as_deref(), &report, &global.format, Some(table))
-    );
+            report.message,
+            report.artifacts_scanned,
+            report.packages_registered,
+            report.artifacts_skipped,
+            report.artifacts_failed,
+        );
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &report, &global.format, Some(table))
+        );
+    }
+    if report.artifacts_failed > 0 {
+        return Err(super::helpers::reported_failure(&format!(
+            "The backfill failed for {} of {} artifacts: {}",
+            report.artifacts_failed, report.artifacts_scanned, report.message
+        )));
+    }
     Ok(())
 }
 

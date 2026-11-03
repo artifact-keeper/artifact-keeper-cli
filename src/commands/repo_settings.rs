@@ -689,7 +689,7 @@ pub async fn storage_gc(key: &str, dry_run: bool, yes: bool, global: &GlobalArgs
         human.push_str(&format!("\nError: {}", output::sanitize_terminal(error)));
     }
     emit_mutation_raw(raw.as_deref(), &*resp, key, &human, global);
-    Ok(())
+    super::helpers::fail_on_errors("Storage GC", &resp.errors)
 }
 
 fn yes_no(value: bool) -> &'static str {

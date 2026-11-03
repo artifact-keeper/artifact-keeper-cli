@@ -1614,23 +1614,20 @@ async fn restore_backup(
             "{}",
             output::render_raw(raw.as_deref(), &*resp, &global.format, None)
         );
-        return Ok(());
+    } else {
+        eprintln!(
+            "{}: {} artifacts restored, {} tables restored.",
+            if resp.errors.is_empty() {
+                "Restore complete"
+            } else {
+                "Restore finished with errors"
+            },
+            resp.artifacts_restored,
+            resp.tables_restored.len()
+        );
     }
 
-    eprintln!(
-        "Restore complete: {} artifacts restored, {} tables restored.",
-        resp.artifacts_restored,
-        resp.tables_restored.len()
-    );
-
-    if !resp.errors.is_empty() {
-        eprintln!("Errors:");
-        for err in &resp.errors {
-            eprintln!("  - {err}");
-        }
-    }
-
-    Ok(())
+    super::helpers::fail_on_errors("Restore", &resp.errors)
 }
 
 async fn run_cleanup(
@@ -3837,6 +3834,13 @@ async fn execute_backup(backup_id: &str, global: &GlobalArgs) -> Result<()> {
 
     spinner.finish_and_clear();
     render_backup(raw.as_deref(), &backup, global);
+    if backup.status == "failed" {
+        return Err(super::helpers::reported_failure(&format!(
+            "Backup {} failed: {}",
+            backup.id,
+            backup.error_message.as_deref().unwrap_or("no reason given")
+        )));
+    }
     Ok(())
 }
 
@@ -4444,7 +4448,7 @@ async fn run_storage_gc(dry_run: bool, global: &GlobalArgs) -> Result<()> {
             }
         }
     }
-    Ok(())
+    super::helpers::fail_on_errors("Storage GC", &r.errors)
 }
 
 async fn oci_blob_report(grace_hours: Option<i64>, global: &GlobalArgs) -> Result<()> {
@@ -4610,8 +4614,12 @@ async fn send_test_email(to: &str, global: &GlobalArgs) -> Result<()> {
         );
     } else if resp.success {
         eprintln!("Test email sent to {to}: {}", resp.message);
-    } else {
-        eprintln!("Test email failed: {}", resp.message);
+    }
+    if !resp.success {
+        return Err(super::helpers::reported_failure(&format!(
+            "Test email failed: {}",
+            resp.message
+        )));
     }
     Ok(())
 }
