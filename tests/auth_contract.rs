@@ -699,3 +699,92 @@ async fn repo_selector_is_refused_only_where_the_server_would_drop_it() {
         assert_eq!(output.status.success(), posts == 1, "{version}: {output:?}");
     }
 }
+
+fn empty_session() -> Value {
+    let mut session = session();
+    session["access_token"] = json!("");
+    session
+}
+
+/// A 200 with empty tokens used to be stored, with "Logged in" and exit 0.
+#[tokio::test]
+async fn an_empty_token_is_never_stored() {
+    let ldap_route = format!("/api/v1/auth/sso/ldap/{ID}/login");
+    let ldap = format!("ldap:{ID}");
+    for (route, args, stdin) in [
+        (
+            "/api/v1/auth/totp/verify",
+            vec!["auth", "verify-totp", "123456", "--totp-token", "t"],
+            "",
+        ),
+        (
+            "/api/v1/auth/sso/exchange",
+            vec!["auth", "sso-exchange", "--code", "c"],
+            "",
+        ),
+        (
+            ldap_route.as_str(),
+            vec![
+                "auth",
+                "login",
+                "--sso",
+                ldap.as_str(),
+                "--username",
+                "alice",
+                "--password-stdin",
+            ],
+            "secret\n",
+        ),
+    ] {
+        let mock = Mocked::start().await;
+        mock.respond("POST", route, 200, empty_session()).await;
+        let output = mock.ak_anon(&args, stdin, &[]);
+        assert_eq!(output.status.code(), Some(1), "{args:?}: {output:?}");
+        let stderr = mock::unwrapped(&output.stderr);
+        assert!(!stderr.contains("ogged in to"), "{args:?}: {stderr}");
+        assert!(stderr.contains("no session token"), "{args:?}: {stderr}");
+        assert!(
+            !mock.stored_credentials().contains("access_token"),
+            "{args:?}"
+        );
+    }
+}
+
+/// With no version to go on, the flag goes ahead and the user is told.
+#[tokio::test]
+async fn a_flag_says_so_when_the_version_cant_be_read() {
+    let mock = Mocked::start().await;
+    mock.respond("GET", "/health", 503, json!({})).await;
+    mock.respond(
+        "POST",
+        "/api/v1/auth/tokens",
+        200,
+        json!({
+            "id": "00000000-0000-0000-0000-000000000001",
+            "name": "n",
+            "token": "t",
+            "policy_applied": false
+        }),
+    )
+    .await;
+    let output = mock.ak(&[
+        "auth",
+        "token",
+        "create",
+        "--description",
+        "n",
+        "--repo-selector",
+        r#"{"match_formats":["npm"]}"#,
+        "--format",
+        "json",
+    ]);
+    assert!(output.status.success(), "{output:?}");
+    let stderr = mock::unwrapped(&output.stderr);
+    assert!(
+        stderr.contains("couldn't read this server's version"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("1.10.2"), "{stderr}");
+    // Not on stdout, which a script parses.
+    serde_json::from_slice::<Value>(&output.stdout).expect("JSON on stdout");
+}
