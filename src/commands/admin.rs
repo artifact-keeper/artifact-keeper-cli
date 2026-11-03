@@ -3,7 +3,9 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::{client_for, resolve_base_url_and_auth};
-use super::helpers::{confirm_action, emit_mutation, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -1173,17 +1175,15 @@ async fn list_backups(page: i32, per_page: i32, global: &GlobalArgs) -> Result<(
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching backups...");
 
-    let resp = client
-        .list_backups()
-        .page(page)
-        .per_page(per_page)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list backups", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client.list_backups().page(page).per_page(per_page).send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("list backups", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No backups found.");
         return Ok(());
     }
@@ -1235,7 +1235,7 @@ async fn list_backups(page: i32, per_page: i32, global: &GlobalArgs) -> Result<(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     eprintln!("{} backups total.", resp.total);
@@ -1255,12 +1255,9 @@ async fn create_backup(backup_type: &str, global: &GlobalArgs) -> Result<()> {
         type_: Some(backup_type.to_string()),
     };
 
-    let backup = client
-        .create_backup()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create backup", e))?;
+    let (backup, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_backup().body(body).send()).await;
+    let backup = backup.map_err(|e| sdk_err("create backup", e))?;
 
     spinner.finish_and_clear();
 
@@ -1280,7 +1277,10 @@ async fn create_backup(backup_type: &str, global: &GlobalArgs) -> Result<()> {
         backup.id, backup.type_, backup.status
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1312,15 +1312,19 @@ async fn restore_backup(
         target_repository_id: None,
     };
 
-    let resp = client
-        .restore_backup()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("restore backup", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.restore_backup().id(id).body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("restore backup", e))?;
 
     spinner.finish_and_clear();
+
+    if output::is_machine_format(&global.format) {
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &*resp, &global.format, None)
+        );
+        return Ok(());
+    }
 
     eprintln!(
         "Restore complete: {} artifacts restored, {} tables restored.",
@@ -1354,12 +1358,9 @@ async fn run_cleanup(
         cleanup_stale_uploads: None,
     };
 
-    let resp = client
-        .run_cleanup()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("run cleanup", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.run_cleanup().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("run cleanup", e))?;
 
     spinner.finish_and_clear();
 
@@ -1369,7 +1370,10 @@ async fn run_cleanup(
             "backups_deleted": resp.backups_deleted,
             "peers_marked_offline": resp.peers_marked_offline,
         });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else {
         eprintln!("Cleanup complete:");
         eprintln!("  Audit logs deleted:    {}", resp.audit_logs_deleted);
@@ -1384,11 +1388,8 @@ async fn show_metrics(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching metrics...");
 
-    let stats = client
-        .get_system_stats()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get metrics", e))?;
+    let (stats, raw) = artifact_keeper_sdk::raw::capture(client.get_system_stats().send()).await;
+    let stats = stats.map_err(|e| sdk_err("get metrics", e))?;
 
     spinner.finish_and_clear();
 
@@ -1420,7 +1421,10 @@ async fn show_metrics(global: &GlobalArgs) -> Result<()> {
         stats.pending_sync_tasks,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1439,11 +1443,12 @@ async fn list_users(
         req = req.search(q);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("list users", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list users", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No users found.");
         return Ok(());
     }
@@ -1503,7 +1508,7 @@ async fn list_users(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     if resp.pagination.total_pages > 1 {
@@ -1534,16 +1539,14 @@ async fn create_user(
         is_admin: admin.then_some(true),
     };
 
-    let resp = client
-        .create_user()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create user", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_user().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("create user", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*resp,
         &resp.user.id.to_string(),
         &format!(
@@ -1582,16 +1585,13 @@ async fn update_user(
         is_active: active,
     };
 
-    let user = client
-        .update_user()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update user", e))?;
+    let (user, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_user().id(id).body(body).send()).await;
+    let user = user.map_err(|e| sdk_err("update user", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*user,
         &user.id.to_string(),
         &format!("User '{}' updated (ID: {}).", user.username, user.id),
@@ -1624,6 +1624,7 @@ async fn delete_user(user_id: &str, skip_confirm: bool, global: &GlobalArgs) -> 
         .map_err(|e| sdk_err("delete user", e))?;
 
     spinner.finish_and_clear();
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": user_id, "status": "deleted" }),
         user_id,
@@ -1638,15 +1639,12 @@ async fn list_plugins(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching plugins...");
 
-    let resp = client
-        .list_plugins()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list plugins", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.list_plugins().send()).await;
+    let resp = resp.map_err(|e| sdk_err("list plugins", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No plugins installed.");
         return Ok(());
     }
@@ -1703,7 +1701,7 @@ async fn list_plugins(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1718,25 +1716,22 @@ async fn install_plugin(url: &str, git_ref: Option<&str>, global: &GlobalArgs) -
         ref_: git_ref.map(|s| s.to_string()),
     };
 
-    let resp = client
-        .install_from_git()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("install plugin", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.install_from_git().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("install plugin", e))?;
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", resp.plugin_id);
-        return Ok(());
-    }
-
-    eprintln!(
-        "Plugin '{}' v{} installed (format: {}).",
-        resp.name, resp.version, resp.format_key
+    emit_mutation_raw(
+        raw.as_deref(),
+        &*resp,
+        &resp.plugin_id.to_string(),
+        &format!(
+            "Plugin '{}' v{} installed (format: {}).\n{}",
+            resp.name, resp.version, resp.format_key, resp.message
+        ),
+        global,
     );
-    eprintln!("{}", resp.message);
 
     Ok(())
 }
@@ -1764,6 +1759,7 @@ async fn remove_plugin(plugin_id: &str, skip_confirm: bool, global: &GlobalArgs)
         .map_err(|e| sdk_err("remove plugin", e))?;
 
     spinner.finish_and_clear();
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": plugin_id, "status": "removed" }),
         plugin_id,
@@ -1853,14 +1849,12 @@ async fn list_format_handlers(
         req = req.enabled(e);
     }
 
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("list format handlers", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list format handlers", e))?;
     let handlers = resp.into_inner();
     spinner.finish_and_clear();
 
-    if handlers.is_empty() {
+    if handlers.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No format handlers found.");
         return Ok(());
     }
@@ -1914,7 +1908,7 @@ async fn list_format_handlers(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -1924,12 +1918,11 @@ async fn show_format_handler(format_key: &str, global: &GlobalArgs) -> Result<()
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching format handler...");
 
-    let resp = client
-        .get_format_handler()
-        .format_key(format_key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get format handler", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client.get_format_handler().format_key(format_key).send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("get format handler", e))?;
     let handler = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -1941,7 +1934,10 @@ async fn show_format_handler(format_key: &str, global: &GlobalArgs) -> Result<()
     let info = format_handler_json(&handler);
     let table_str = format_handler_detail_table(&handler);
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1951,12 +1947,8 @@ async fn show_plugin(plugin_id: &str, global: &GlobalArgs) -> Result<()> {
     let id = parse_uuid(plugin_id, "plugin")?;
     let spinner = output::spinner("Fetching plugin...");
 
-    let resp = client
-        .get_plugin()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get plugin", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.get_plugin().id(id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get plugin", e))?;
     let p = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -2007,7 +1999,10 @@ async fn show_plugin(plugin_id: &str, global: &GlobalArgs) -> Result<()> {
             .unwrap_or_else(|| "-".to_string()),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -2026,18 +2021,19 @@ async fn set_format_handler_enabled(
 
     let spinner = output::spinner(&format!("{gerund} format handler..."));
 
-    let resp = if enable {
-        client
-            .enable_format_handler()
-            .format_key(format_key)
-            .send()
-            .await
+    let (resp, raw) = if enable {
+        artifact_keeper_sdk::raw::capture(
+            client.enable_format_handler().format_key(format_key).send(),
+        )
+        .await
     } else {
-        client
-            .disable_format_handler()
-            .format_key(format_key)
-            .send()
-            .await
+        artifact_keeper_sdk::raw::capture(
+            client
+                .disable_format_handler()
+                .format_key(format_key)
+                .send(),
+        )
+        .await
     };
 
     let handler = resp
@@ -2050,7 +2046,8 @@ async fn set_format_handler_enabled(
     } else {
         "disabled"
     };
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &format_handler_json(&handler),
         &handler.format_key,
         &format!("Format handler '{}' {}.", handler.format_key, state),
@@ -2065,12 +2062,9 @@ async fn get_plugin_config(plugin_id: &str, global: &GlobalArgs) -> Result<()> {
     let id = parse_uuid(plugin_id, "plugin")?;
     let spinner = output::spinner("Fetching plugin config...");
 
-    let resp = client
-        .get_plugin_config()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get plugin config", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_plugin_config().id(id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get plugin config", e))?;
     let cfg = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -2081,7 +2075,10 @@ async fn get_plugin_config(plugin_id: &str, global: &GlobalArgs) -> Result<()> {
     });
 
     let table_str = format_plugin_config(&cfg.config);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -2138,13 +2135,10 @@ async fn set_plugin_config(
     let body = artifact_keeper_sdk::types::UpdatePluginConfigRequest { config };
 
     let spinner = output::spinner("Updating plugin config...");
-    let resp = client
-        .update_plugin_config()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update plugin config", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_plugin_config().id(id).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("update plugin config", e))?;
     let cfg = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -2154,7 +2148,10 @@ async fn set_plugin_config(
             "config": cfg.config,
             "schema": cfg.schema,
         });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", cfg.plugin_id);
     } else {
@@ -2197,6 +2194,7 @@ async fn set_plugin_enabled(plugin_id: &str, enable: bool, global: &GlobalArgs) 
     }
 
     spinner.finish_and_clear();
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": plugin_id, "status": verb }),
         plugin_id,
@@ -2252,13 +2250,15 @@ async fn test_format_handler(
 
     let spinner = output::spinner("Testing format handler...");
 
-    let resp = client
-        .test_format_handler()
-        .format_key(format_key)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("test format handler", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .test_format_handler()
+            .format_key(format_key)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let resp = resp.map_err(|e| sdk_err("test format handler", e))?;
     let result = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -2299,7 +2299,10 @@ async fn test_format_handler(
     }
     let table_str = lines.join("\n");
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -2309,12 +2312,8 @@ async fn reload_plugin(plugin_id: &str, global: &GlobalArgs) -> Result<()> {
     let id = parse_uuid(plugin_id, "plugin")?;
     let spinner = output::spinner("Reloading plugin...");
 
-    let resp = client
-        .reload_plugin()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("reload plugin", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.reload_plugin().id(id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("reload plugin", e))?;
     let p = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -2325,7 +2324,10 @@ async fn reload_plugin(plugin_id: &str, global: &GlobalArgs) -> Result<()> {
             "version": p.version,
             "status": p.status,
         });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", p.id);
     } else {
@@ -2347,27 +2349,20 @@ async fn plugin_events(plugin_id: &str, limit: Option<i64>, global: &GlobalArgs)
     if let Some(limit) = limit {
         req = req.limit(limit);
     }
-    let resp = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("get plugin events", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("get plugin events", e))?;
     let events = resp.into_inner();
     spinner.finish_and_clear();
 
-    if events.is_empty() {
+    if events.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No events for plugin {plugin_id}.");
-        return Ok(());
-    }
-
-    if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        println!("{}", output::render(&events, &global.format, None));
         return Ok(());
     }
 
     let table_str = format_plugin_events(&events);
     println!(
         "{}",
-        output::render(&events, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &events, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -2448,22 +2443,24 @@ async fn install_plugin_zip(path: &str, global: &GlobalArgs) -> Result<()> {
         );
     }
 
-    let parsed: artifact_keeper_sdk::types::PluginInstallResponse = resp
-        .json()
+    let raw = resp
+        .bytes()
         .await
-        .map_err(|e| sdk_err("parse ZIP install response", e))?;
+        .map_err(|e| sdk_err("read ZIP install response", e))?;
+    let parsed: artifact_keeper_sdk::types::PluginInstallResponse =
+        serde_json::from_slice(&raw).map_err(|e| sdk_err("parse ZIP install response", e))?;
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", parsed.plugin_id);
-        return Ok(());
-    }
-
-    eprintln!(
-        "Plugin '{}' v{} installed (format: {}).",
-        parsed.name, parsed.version, parsed.format_key
+    emit_mutation_raw(
+        Some(&raw),
+        &parsed,
+        &parsed.plugin_id.to_string(),
+        &format!(
+            "Plugin '{}' v{} installed (format: {}).\n{}",
+            parsed.name, parsed.version, parsed.format_key, parsed.message
+        ),
+        global,
     );
-    eprintln!("{}", parsed.message);
 
     Ok(())
 }
@@ -2475,23 +2472,24 @@ async fn reset_password(user_id: &str, global: &GlobalArgs) -> Result<()> {
 
     let spinner = output::spinner("Resetting password...");
 
-    let resp = client
-        .reset_password()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("reset password", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.reset_password().id(id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("reset password", e))?;
 
     spinner.finish_and_clear();
 
-    if matches!(global.format, OutputFormat::Quiet) {
-        println!("{}", resp.temporary_password);
-        return Ok(());
-    }
-
-    eprintln!("Password reset for user {user_id}.");
-    eprintln!("Temporary password: {}", resp.temporary_password);
-    eprintln!("(User will be prompted to change on first login.)");
+    emit_mutation_raw(
+        raw.as_deref(),
+        &*resp,
+        &resp.temporary_password,
+        &format!(
+            "Password reset for user {user_id}.\n\
+             Temporary password: {}\n\
+             (User will be prompted to change on first login.)",
+            resp.temporary_password
+        ),
+        global,
+    );
 
     Ok(())
 }
@@ -2516,12 +2514,8 @@ async fn show_user(user_id: &str, global: &GlobalArgs) -> Result<()> {
     let id = parse_uuid(user_id, "user")?;
 
     let spinner = output::spinner("Fetching user...");
-    let user = client
-        .get_user()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get user", e))?;
+    let (user, raw) = artifact_keeper_sdk::raw::capture(client.get_user().id(id).send()).await;
+    let user = user.map_err(|e| sdk_err("get user", e))?;
     let user = user.into_inner();
     spinner.finish_and_clear();
 
@@ -2562,7 +2556,10 @@ async fn show_user(user_id: &str, global: &GlobalArgs) -> Result<()> {
         last_login,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -2572,15 +2569,13 @@ async fn force_password_change(user_id: &str, global: &GlobalArgs) -> Result<()>
     let id = parse_uuid(user_id, "user")?;
 
     let spinner = output::spinner("Forcing password change...");
-    let resp = client
-        .force_password_change()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("force password change", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.force_password_change().id(id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("force password change", e))?;
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({ "id": user_id, "status": "force_password_change" }),
         user_id,
         &resp.message,
@@ -2595,16 +2590,13 @@ async fn list_user_roles(user_id: &str, global: &GlobalArgs) -> Result<()> {
     let id = parse_uuid(user_id, "user")?;
 
     let spinner = output::spinner("Fetching user roles...");
-    let resp = client
-        .get_user_roles()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get user roles", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_user_roles().id(id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("get user roles", e))?;
     let roles = resp.into_inner();
     spinner.finish_and_clear();
 
-    if roles.items.is_empty() {
+    if roles.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No roles assigned.");
         return Ok(());
     }
@@ -2646,7 +2638,7 @@ async fn list_user_roles(user_id: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -2675,6 +2667,7 @@ async fn assign_role(user_id: &str, role_id: &str, global: &GlobalArgs) -> Resul
         .map_err(|e| sdk_err("assign role", e))?;
     spinner.finish_and_clear();
 
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "user_id": user_id, "role_id": role_id, "status": "assigned" }),
         user_id,
@@ -2700,6 +2693,7 @@ async fn revoke_role(user_id: &str, role_id: &str, global: &GlobalArgs) -> Resul
         .map_err(|e| sdk_err("revoke role", e))?;
     spinner.finish_and_clear();
 
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "user_id": user_id, "role_id": role_id, "status": "revoked" }),
         user_id,
@@ -2715,16 +2709,13 @@ async fn list_user_tokens(user_id: &str, global: &GlobalArgs) -> Result<()> {
     let id = parse_uuid(user_id, "user")?;
 
     let spinner = output::spinner("Fetching user tokens...");
-    let resp = client
-        .list_user_tokens()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list user tokens", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_user_tokens().id(id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list user tokens", e))?;
     let list = resp.into_inner();
     spinner.finish_and_clear();
 
-    if list.items.is_empty() {
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No API tokens found.");
         return Ok(());
     }
@@ -2773,7 +2764,7 @@ async fn list_user_tokens(user_id: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -2800,13 +2791,10 @@ async fn create_user_token(
     };
 
     let spinner = output::spinner("Creating API token...");
-    let resp = client
-        .create_user_api_token()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create user token", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_user_api_token().id(id).body(body).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("create user token", e))?;
     let created = resp.into_inner();
     spinner.finish_and_clear();
 
@@ -2829,7 +2817,10 @@ async fn create_user_token(
         created.id, created.name, created.token,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -2849,6 +2840,7 @@ async fn revoke_user_token(user_id: &str, token_id: &str, global: &GlobalArgs) -
         .map_err(|e| sdk_err("revoke user token", e))?;
     spinner.finish_and_clear();
 
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": token_id, "status": "revoked" }),
         token_id,
@@ -2863,10 +2855,8 @@ async fn trigger_reindex(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Triggering reindex...");
 
-    let resp = client
-        .trigger_reindex()
-        .send()
-        .await
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.trigger_reindex().send()).await;
+    let resp = resp
         .map_err(|e| sdk_err("trigger reindex", e))?
         .into_inner();
 
@@ -2878,7 +2868,10 @@ async fn trigger_reindex(global: &GlobalArgs) -> Result<()> {
             "repositories_indexed": resp.repositories_indexed,
             "artifacts_indexed": resp.artifacts_indexed,
         });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else {
         eprintln!("{}", resp.message);
         eprintln!(
@@ -2894,11 +2887,8 @@ async fn show_stats(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching system stats...");
 
-    let stats = client
-        .get_system_stats()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get system stats", e))?;
+    let (stats, raw) = artifact_keeper_sdk::raw::capture(client.get_system_stats().send()).await;
+    let stats = stats.map_err(|e| sdk_err("get system stats", e))?;
 
     spinner.finish_and_clear();
 
@@ -2930,7 +2920,10 @@ async fn show_stats(global: &GlobalArgs) -> Result<()> {
         stats.pending_sync_tasks,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -2939,11 +2932,8 @@ async fn show_settings(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching settings...");
 
-    let settings = client
-        .get_settings()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get settings", e))?;
+    let (settings, raw) = artifact_keeper_sdk::raw::capture(client.get_settings().send()).await;
+    let settings = settings.map_err(|e| sdk_err("get settings", e))?;
 
     spinner.finish_and_clear();
 
@@ -2971,7 +2961,10 @@ async fn show_settings(global: &GlobalArgs) -> Result<()> {
         settings.retention_days,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -2984,12 +2977,9 @@ async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
 
     let spinner = output::spinner("Updating settings...");
 
-    let settings = client
-        .update_settings()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update settings", e))?;
+    let (settings, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_settings().body(body).send()).await;
+    let settings = settings.map_err(|e| sdk_err("update settings", e))?;
 
     spinner.finish_and_clear();
 
@@ -3002,7 +2992,10 @@ async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
             "max_upload_size_bytes": settings.max_upload_size_bytes,
             "retention_days": settings.retention_days,
         });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else {
         eprintln!("Settings updated.");
     }
@@ -3014,11 +3007,9 @@ async fn show_telemetry(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching telemetry settings...");
 
-    let settings = client
-        .get_telemetry_settings()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get telemetry settings", e))?;
+    let (settings, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_telemetry_settings().send()).await;
+    let settings = settings.map_err(|e| sdk_err("get telemetry settings", e))?;
 
     spinner.finish_and_clear();
 
@@ -3031,7 +3022,10 @@ async fn show_telemetry(global: &GlobalArgs) -> Result<()> {
 
     let table_str = format_telemetry_settings(&settings);
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -3061,12 +3055,10 @@ async fn update_telemetry(
 
     let spinner = output::spinner("Updating telemetry settings...");
 
-    let settings = client
-        .update_telemetry_settings()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update telemetry settings", e))?;
+    let (settings, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_telemetry_settings().body(body).send())
+            .await;
+    let settings = settings.map_err(|e| sdk_err("update telemetry settings", e))?;
 
     spinner.finish_and_clear();
 
@@ -3077,7 +3069,10 @@ async fn update_telemetry(
             "review_before_send": settings.review_before_send,
             "scrub_level": settings.scrub_level,
         });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else {
         eprintln!("Telemetry settings updated.");
         eprintln!("{}", format_telemetry_settings(&settings));
@@ -3091,16 +3086,14 @@ async fn list_crashes(pending: bool, page: i32, per_page: i32, global: &GlobalAr
     let spinner = output::spinner("Fetching crash reports...");
 
     if pending {
-        let items = client
-            .list_pending_crashes()
-            .send()
-            .await
-            .map_err(|e| sdk_err("list pending crashes", e))?;
+        let (items, raw) =
+            artifact_keeper_sdk::raw::capture(client.list_pending_crashes().send()).await;
+        let items = items.map_err(|e| sdk_err("list pending crashes", e))?;
         let items = items.into_inner();
 
         spinner.finish_and_clear();
 
-        if items.is_empty() {
+        if items.is_empty() && !output::is_machine_format(&global.format) {
             eprintln!("No pending crash reports.");
             return Ok(());
         }
@@ -3118,22 +3111,20 @@ async fn list_crashes(pending: bool, page: i32, per_page: i32, global: &GlobalAr
 
         println!(
             "{}",
-            output::render(&entries, &global.format, Some(table_str))
+            output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
         );
 
         eprintln!("{} pending crash reports.", items.len());
     } else {
-        let resp = client
-            .list_crashes()
-            .page(page)
-            .per_page(per_page)
-            .send()
-            .await
-            .map_err(|e| sdk_err("list crashes", e))?;
+        let (resp, raw) = artifact_keeper_sdk::raw::capture(
+            client.list_crashes().page(page).per_page(per_page).send(),
+        )
+        .await;
+        let resp = resp.map_err(|e| sdk_err("list crashes", e))?;
 
         spinner.finish_and_clear();
 
-        if resp.items.is_empty() {
+        if resp.items.is_empty() && !output::is_machine_format(&global.format) {
             eprintln!("No crash reports found.");
             return Ok(());
         }
@@ -3151,7 +3142,7 @@ async fn list_crashes(pending: bool, page: i32, per_page: i32, global: &GlobalAr
 
         println!(
             "{}",
-            output::render(&entries, &global.format, Some(table_str))
+            output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
         );
 
         eprintln!("{} crash reports total.", resp.total);
@@ -3184,12 +3175,9 @@ async fn submit_crashes(ids_str: &str, global: &GlobalArgs) -> Result<()> {
 
     let body = artifact_keeper_sdk::types::SubmitCrashesRequest { ids };
 
-    let resp = client
-        .submit_crashes()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("submit crashes", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.submit_crashes().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("submit crashes", e))?;
 
     spinner.finish_and_clear();
 
@@ -3197,7 +3185,10 @@ async fn submit_crashes(ids_str: &str, global: &GlobalArgs) -> Result<()> {
         let info = serde_json::json!({
             "marked_submitted": resp.marked_submitted,
         });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else {
         eprintln!("{} crash report(s) submitted.", resp.marked_submitted);
     }
@@ -3226,12 +3217,9 @@ async fn get_crash(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching crash report...");
 
-    let crash = client
-        .get_crash()
-        .id(crash_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get crash report", e))?;
+    let (crash, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_crash().id(crash_id).send()).await;
+    let crash = crash.map_err(|e| sdk_err("get crash report", e))?;
 
     spinner.finish_and_clear();
 
@@ -3262,7 +3250,10 @@ async fn get_crash(id: &str, global: &GlobalArgs) -> Result<()> {
         crash.last_seen_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -3289,6 +3280,7 @@ async fn delete_crash(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resu
         .map_err(|e| sdk_err("delete crash report", e))?;
 
     spinner.finish_and_clear();
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": id, "status": "deleted" }),
         id,
@@ -3376,7 +3368,11 @@ fn format_plugin_events(events: &[serde_json::Value]) -> String {
 
 // ---- Backup detail operations ----
 
-fn render_backup(b: &artifact_keeper_sdk::types::BackupResponse, global: &GlobalArgs) {
+fn render_backup(
+    raw: Option<&[u8]>,
+    b: &artifact_keeper_sdk::types::BackupResponse,
+    global: &GlobalArgs,
+) {
     let info = serde_json::json!({
         "id": b.id.to_string(),
         "status": b.status,
@@ -3413,7 +3409,10 @@ fn render_backup(b: &artifact_keeper_sdk::types::BackupResponse, global: &Global
         completed,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw, &info, &global.format, Some(table_str))
+    );
 }
 
 async fn get_backup(backup_id: &str, global: &GlobalArgs) -> Result<()> {
@@ -3421,15 +3420,11 @@ async fn get_backup(backup_id: &str, global: &GlobalArgs) -> Result<()> {
     let id = parse_uuid(backup_id, "backup")?;
     let spinner = output::spinner("Fetching backup...");
 
-    let backup = client
-        .get_backup()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get backup", e))?;
+    let (backup, raw) = artifact_keeper_sdk::raw::capture(client.get_backup().id(id).send()).await;
+    let backup = backup.map_err(|e| sdk_err("get backup", e))?;
 
     spinner.finish_and_clear();
-    render_backup(&backup, global);
+    render_backup(raw.as_deref(), &backup, global);
     Ok(())
 }
 
@@ -3454,6 +3449,7 @@ async fn delete_backup(backup_id: &str, skip_confirm: bool, global: &GlobalArgs)
         .map_err(|e| sdk_err("delete backup", e))?;
 
     spinner.finish_and_clear();
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": backup_id, "status": "deleted" }),
         backup_id,
@@ -3476,6 +3472,7 @@ async fn cancel_backup(backup_id: &str, global: &GlobalArgs) -> Result<()> {
         .map_err(|e| sdk_err("cancel backup", e))?;
 
     spinner.finish_and_clear();
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": backup_id, "status": "cancelled" }),
         backup_id,
@@ -3490,15 +3487,12 @@ async fn execute_backup(backup_id: &str, global: &GlobalArgs) -> Result<()> {
     let id = parse_uuid(backup_id, "backup")?;
     let spinner = output::spinner("Executing backup...");
 
-    let backup = client
-        .execute_backup()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("execute backup", e))?;
+    let (backup, raw) =
+        artifact_keeper_sdk::raw::capture(client.execute_backup().id(id).send()).await;
+    let backup = backup.map_err(|e| sdk_err("execute backup", e))?;
 
     spinner.finish_and_clear();
-    render_backup(&backup, global);
+    render_backup(raw.as_deref(), &backup, global);
     Ok(())
 }
 
@@ -3535,15 +3529,13 @@ async fn list_ci_oidc_providers(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching CI OIDC providers...");
 
-    let resp = client
-        .ci_oidc_list_providers()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list CI OIDC providers", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.ci_oidc_list_providers().send()).await;
+    let resp = resp.map_err(|e| sdk_err("list CI OIDC providers", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.is_empty() {
+    if resp.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No CI OIDC providers found.");
         return Ok(());
     }
@@ -3574,7 +3566,7 @@ async fn list_ci_oidc_providers(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
     Ok(())
 }
@@ -3584,18 +3576,19 @@ async fn get_ci_oidc_provider(provider_id: &str, global: &GlobalArgs) -> Result<
     let id = parse_uuid(provider_id, "provider")?;
     let spinner = output::spinner("Fetching CI OIDC provider...");
 
-    let p = client
-        .get_provider()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get CI OIDC provider", e))?;
+    let (p, raw) = artifact_keeper_sdk::raw::capture(client.get_provider().id(id).send()).await;
+    let p = p.map_err(|e| sdk_err("get CI OIDC provider", e))?;
 
     spinner.finish_and_clear();
     let info = provider_json(&p);
     println!(
         "{}",
-        output::render(&info, &global.format, Some(provider_table(&p)))
+        output::render_raw(
+            raw.as_deref(),
+            &info,
+            &global.format,
+            Some(provider_table(&p))
+        )
     );
     Ok(())
 }
@@ -3621,15 +3614,13 @@ async fn create_ci_oidc_provider(
         static_jwks: None,
     };
 
-    let p = client
-        .create_provider()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create CI OIDC provider", e))?;
+    let (p, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_provider().body(body).send()).await;
+    let p = p.map_err(|e| sdk_err("create CI OIDC provider", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &provider_json(&p),
         &p.id.to_string(),
         &format!("CI OIDC provider '{}' created (ID: {}).", p.name, p.id),
@@ -3661,16 +3652,13 @@ async fn update_ci_oidc_provider(
         static_jwks: None,
     };
 
-    let p = client
-        .update_provider()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update CI OIDC provider", e))?;
+    let (p, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_provider().id(id).body(body).send()).await;
+    let p = p.map_err(|e| sdk_err("update CI OIDC provider", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &provider_json(&p),
         &p.id.to_string(),
         &format!("CI OIDC provider '{}' updated (ID: {}).", p.name, p.id),
@@ -3704,6 +3692,7 @@ async fn delete_ci_oidc_provider(
         .map_err(|e| sdk_err("delete CI OIDC provider", e))?;
 
     spinner.finish_and_clear();
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": provider_id, "status": "deleted" }),
         provider_id,
@@ -3724,16 +3713,13 @@ async fn toggle_ci_oidc_provider(
 
     let body = artifact_keeper_sdk::types::CiOidcToggleRequest { enabled };
 
-    let p = client
-        .toggle_provider()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("toggle CI OIDC provider", e))?;
+    let (p, raw) =
+        artifact_keeper_sdk::raw::capture(client.toggle_provider().id(id).body(body).send()).await;
+    let p = p.map_err(|e| sdk_err("toggle CI OIDC provider", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &provider_json(&p),
         &p.id.to_string(),
         &format!(
@@ -3809,16 +3795,12 @@ async fn list_ci_oidc_mappings(provider_id: &str, global: &GlobalArgs) -> Result
     let id = parse_uuid(provider_id, "provider")?;
     let spinner = output::spinner("Fetching identity mappings...");
 
-    let resp = client
-        .list_mappings()
-        .id(id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list identity mappings", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.list_mappings().id(id).send()).await;
+    let resp = resp.map_err(|e| sdk_err("list identity mappings", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.is_empty() {
+    if resp.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No identity mappings found.");
         return Ok(());
     }
@@ -3854,7 +3836,7 @@ async fn list_ci_oidc_mappings(provider_id: &str, global: &GlobalArgs) -> Result
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
     Ok(())
 }
@@ -3869,18 +3851,19 @@ async fn get_ci_oidc_mapping(
     let mid = parse_uuid(mapping_id, "mapping")?;
     let spinner = output::spinner("Fetching identity mapping...");
 
-    let m = client
-        .get_mapping()
-        .id(id)
-        .mid(mid)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get identity mapping", e))?;
+    let (m, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_mapping().id(id).mid(mid).send()).await;
+    let m = m.map_err(|e| sdk_err("get identity mapping", e))?;
 
     spinner.finish_and_clear();
     println!(
         "{}",
-        output::render(&mapping_json(&m), &global.format, Some(mapping_table(&m)))
+        output::render_raw(
+            raw.as_deref(),
+            &mapping_json(&m),
+            &global.format,
+            Some(mapping_table(&m))
+        )
     );
     Ok(())
 }
@@ -3914,16 +3897,13 @@ async fn create_ci_oidc_mapping(
         is_enabled: enabled.then_some(true),
     };
 
-    let m = client
-        .create_mapping()
-        .id(id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create identity mapping", e))?;
+    let (m, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_mapping().id(id).body(body).send()).await;
+    let m = m.map_err(|e| sdk_err("create identity mapping", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &mapping_json(&m),
         &m.id.to_string(),
         &format!("Identity mapping '{}' created (ID: {}).", m.name, m.id),
@@ -3966,17 +3946,15 @@ async fn update_ci_oidc_mapping(
         is_enabled: enabled,
     };
 
-    let m = client
-        .update_mapping()
-        .id(id)
-        .mid(mid)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update identity mapping", e))?;
+    let (m, raw) = artifact_keeper_sdk::raw::capture(
+        client.update_mapping().id(id).mid(mid).body(body).send(),
+    )
+    .await;
+    let m = m.map_err(|e| sdk_err("update identity mapping", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &mapping_json(&m),
         &m.id.to_string(),
         &format!("Identity mapping '{}' updated (ID: {}).", m.name, m.id),
@@ -4013,6 +3991,7 @@ async fn delete_ci_oidc_mapping(
         .map_err(|e| sdk_err("delete identity mapping", e))?;
 
     spinner.finish_and_clear();
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": mapping_id, "status": "deleted" }),
         mapping_id,
@@ -4035,17 +4014,15 @@ async fn toggle_ci_oidc_mapping(
 
     let body = artifact_keeper_sdk::types::CiOidcToggleRequest { enabled };
 
-    let m = client
-        .toggle_mapping()
-        .id(id)
-        .mid(mid)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("toggle identity mapping", e))?;
+    let (m, raw) = artifact_keeper_sdk::raw::capture(
+        client.toggle_mapping().id(id).mid(mid).body(body).send(),
+    )
+    .await;
+    let m = m.map_err(|e| sdk_err("toggle identity mapping", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &mapping_json(&m),
         &m.id.to_string(),
         &format!(
@@ -4075,12 +4052,9 @@ async fn run_storage_gc(dry_run: bool, global: &GlobalArgs) -> Result<()> {
 
     let body = storage_gc_body(dry_run);
 
-    let r = client
-        .run_storage_gc()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("run storage GC", e))?;
+    let (r, raw) =
+        artifact_keeper_sdk::raw::capture(client.run_storage_gc().body(body).send()).await;
+    let r = r.map_err(|e| sdk_err("run storage GC", e))?;
 
     spinner.finish_and_clear();
 
@@ -4094,7 +4068,10 @@ async fn run_storage_gc(dry_run: bool, global: &GlobalArgs) -> Result<()> {
     });
 
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else {
         eprintln!(
             "Storage GC complete{}:",
@@ -4122,10 +4099,8 @@ async fn oci_blob_report(grace_hours: Option<i64>, global: &GlobalArgs) -> Resul
         req = req.grace_hours(h);
     }
 
-    let r = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("get OCI blob report", e))?;
+    let (r, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let r = r.map_err(|e| sdk_err("get OCI blob report", e))?;
 
     spinner.finish_and_clear();
 
@@ -4163,7 +4138,10 @@ async fn oci_blob_report(grace_hours: Option<i64>, global: &GlobalArgs) -> Resul
         r.per_repository.len(),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
     Ok(())
 }
 
@@ -4171,15 +4149,13 @@ async fn list_storage_backends(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching storage backends...");
 
-    let resp = client
-        .list_storage_backends()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list storage backends", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_storage_backends().send()).await;
+    let resp = resp.map_err(|e| sdk_err("list storage backends", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.is_empty() {
+    if resp.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No storage backends configured.");
         return Ok(());
     }
@@ -4191,7 +4167,10 @@ async fn list_storage_backends(global: &GlobalArgs) -> Result<()> {
             }
         }
         OutputFormat::Json | OutputFormat::Yaml => {
-            println!("{}", output::render(&*resp, &global.format, None));
+            println!(
+                "{}",
+                output::render_raw(raw.as_deref(), &*resp, &global.format, None)
+            );
         }
     }
     Ok(())
@@ -4203,17 +4182,18 @@ async fn trigger_search_reindex(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Triggering OpenSearch reindex...");
 
-    let resp = client
-        .trigger_search_reindex()
-        .send()
-        .await
-        .map_err(|e| sdk_err("trigger search reindex", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.trigger_search_reindex().send()).await;
+    let resp = resp.map_err(|e| sdk_err("trigger search reindex", e))?;
 
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         let info = serde_json::json!({ "message": resp.message, "status": resp.status });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else {
         eprintln!("{}", resp.message);
         eprintln!("Status: {}", resp.status);
@@ -4227,12 +4207,9 @@ async fn rescan_for_inventory(limit: Option<i64>, global: &GlobalArgs) -> Result
 
     let body = artifact_keeper_sdk::types::RescanForInventoryRequest { limit };
 
-    let resp = client
-        .rescan_for_inventory()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("rescan for inventory", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.rescan_for_inventory().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("rescan for inventory", e))?;
 
     spinner.finish_and_clear();
 
@@ -4241,7 +4218,10 @@ async fn rescan_for_inventory(limit: Option<i64>, global: &GlobalArgs) -> Result
             "artifacts_enqueued": resp.artifacts_enqueued,
             "limit": resp.limit,
         });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else {
         eprintln!(
             "Enqueued {} artifact(s) for rescan (limit {}).",
@@ -4259,18 +4239,18 @@ async fn send_test_email(to: &str, global: &GlobalArgs) -> Result<()> {
 
     let body = artifact_keeper_sdk::types::SmtpTestRequest { to: to.to_string() };
 
-    let resp = client
-        .send_test_email()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("send test email", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.send_test_email().body(body).send()).await;
+    let resp = resp.map_err(|e| sdk_err("send test email", e))?;
 
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         let info = serde_json::json!({ "success": resp.success, "message": resp.message });
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     } else if resp.success {
         eprintln!("Test email sent to {to}: {}", resp.message);
     } else {
@@ -4294,15 +4274,12 @@ async fn list_instances(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching remote instances...");
 
-    let resp = client
-        .list_instances()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list remote instances", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.list_instances().send()).await;
+    let resp = resp.map_err(|e| sdk_err("list remote instances", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.is_empty() {
+    if resp.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No remote instances found.");
         return Ok(());
     }
@@ -4328,7 +4305,7 @@ async fn list_instances(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
     Ok(())
 }
@@ -4343,15 +4320,13 @@ async fn create_instance(name: &str, url: &str, api_key: &str, global: &GlobalAr
         api_key: api_key.to_string(),
     };
 
-    let i = client
-        .create_instance()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create remote instance", e))?;
+    let (i, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_instance().body(body).send()).await;
+    let i = i.map_err(|e| sdk_err("create remote instance", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &instance_json(&i),
         &i.id.to_string(),
         &format!("Remote instance '{}' registered (ID: {}).", i.name, i.id),
@@ -4381,6 +4356,7 @@ async fn delete_instance(instance_id: &str, skip_confirm: bool, global: &GlobalA
         .map_err(|e| sdk_err("delete remote instance", e))?;
 
     spinner.finish_and_clear();
+    // The server's success response has no body, so this reports the outcome.
     emit_mutation(
         &serde_json::json!({ "id": instance_id, "status": "deleted" }),
         instance_id,
@@ -4447,6 +4423,7 @@ async fn proxy_request(
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
+        // Not a server response: the SDK discards the proxied body, so only the status is known.
         let info = serde_json::json!({
             "method": method,
             "path": path,

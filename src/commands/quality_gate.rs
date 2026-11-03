@@ -3,9 +3,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{
-    confirm_action, emit_mutation, new_table, parse_optional_uuid, parse_uuid, sdk_err, short_id,
-};
+use super::helpers::{confirm_action, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id};
 use super::helpers::{
     print_page_info, resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id,
 };
@@ -275,16 +273,13 @@ async fn list_gates(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching quality gates...");
 
-    let gates = client
-        .list_gates()
-        .send()
-        .await
-        .map_err(|e| sdk_err("list quality gates", e))?;
+    let (gates, raw) = artifact_keeper_sdk::raw::capture(client.list_gates().send()).await;
+    let gates = gates.map_err(|e| sdk_err("list quality gates", e))?;
 
     let gates = gates.into_inner();
     spinner.finish_and_clear();
 
-    if gates.is_empty() {
+    if gates.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No quality gates found.");
         return Ok(());
     }
@@ -337,7 +332,7 @@ async fn list_gates(global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -349,12 +344,8 @@ async fn show_gate(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching quality gate...");
 
-    let gate = client
-        .get_gate()
-        .id(gate_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get quality gate", e))?;
+    let (gate, raw) = artifact_keeper_sdk::raw::capture(client.get_gate().id(gate_id).send()).await;
+    let gate = gate.map_err(|e| sdk_err("get quality gate", e))?;
 
     spinner.finish_and_clear();
 
@@ -423,7 +414,10 @@ async fn show_gate(id: &str, global: &GlobalArgs) -> Result<()> {
         },
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -462,16 +456,14 @@ async fn create_gate(
         required_checks,
     };
 
-    let gate = client
-        .create_gate()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("create quality gate", e))?;
+    let (gate, raw) =
+        artifact_keeper_sdk::raw::capture(client.create_gate().body(body).send()).await;
+    let gate = gate.map_err(|e| sdk_err("create quality gate", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*gate,
         &gate.id.to_string(),
         &format!("Quality gate '{}' created (ID: {}).", gate.name, gate.id),
@@ -512,16 +504,13 @@ async fn update_gate(
         required_checks: None,
     };
 
-    let gate = client
-        .update_gate()
-        .id(gate_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("update quality gate", e))?;
+    let (gate, raw) =
+        artifact_keeper_sdk::raw::capture(client.update_gate().id(gate_id).body(body).send()).await;
+    let gate = gate.map_err(|e| sdk_err("update quality gate", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*gate,
         &gate.id.to_string(),
         &format!("Quality gate '{}' updated.", gate.name),
@@ -545,15 +534,13 @@ async fn delete_gate(id: &str, skip_confirm: bool, global: &GlobalArgs) -> Resul
     let client = client_for(global)?;
     let spinner = output::spinner("Deleting quality gate...");
 
-    client
-        .delete_gate()
-        .id(gate_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("delete quality gate", e))?;
+    let (result, raw) =
+        artifact_keeper_sdk::raw::capture(client.delete_gate().id(gate_id).send()).await;
+    result.map_err(|e| sdk_err("delete quality gate", e))?;
 
     spinner.finish_and_clear();
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &serde_json::json!({ "id": id, "status": "deleted" }),
         id,
         &format!("Quality gate {id} deleted."),
@@ -568,9 +555,8 @@ async fn check_artifact(
     repo_id: Option<&str>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let aid = parse_uuid(artifact_id, "artifact")?;
-
     let client = client_for(global)?;
+    let aid = resolve_artifact_id(&client, artifact_id).await?;
     let spinner = output::spinner("Evaluating quality gates...");
 
     let mut req = client.evaluate_gate().artifact_id(aid);
@@ -578,10 +564,8 @@ async fn check_artifact(
         req = req.repository_id(resolve_repo_id(&client, rid).await?);
     }
 
-    let result = req
-        .send()
-        .await
-        .map_err(|e| sdk_err("evaluate quality gates", e))?;
+    let (result, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let result = result.map_err(|e| sdk_err("evaluate quality gates", e))?;
 
     spinner.finish_and_clear();
 
@@ -623,7 +607,10 @@ async fn check_artifact(
             }
         }
     } else {
-        println!("{}", output::render(&info, &global.format, None));
+        println!(
+            "{}",
+            output::render_raw(raw.as_deref(), &info, &global.format, None)
+        );
     }
 
     if !result.passed {
@@ -783,12 +770,9 @@ async fn show_check(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching quality check...");
 
-    let check = client
-        .get_check()
-        .id(check_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get quality check", e))?;
+    let (check, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_check().id(check_id).send()).await;
+    let check = check.map_err(|e| sdk_err("get quality check", e))?;
 
     spinner.finish_and_clear();
 
@@ -848,7 +832,10 @@ async fn show_check(id: &str, global: &GlobalArgs) -> Result<()> {
         check.error_message.as_deref().unwrap_or("-"),
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -859,7 +846,10 @@ async fn trigger_checks(
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
-    let artifact_id = parse_optional_uuid(artifact, "artifact")?;
+    let artifact_id = match artifact {
+        Some(artifact) => Some(resolve_artifact_id(&client, artifact).await?),
+        None => None,
+    };
     let repository_id = resolve_optional_repo_id(&client, repo).await?;
 
     let spinner = output::spinner("Triggering quality checks...");
@@ -869,16 +859,14 @@ async fn trigger_checks(
         repository_id,
     };
 
-    let result = client
-        .trigger_checks()
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("trigger quality checks", e))?;
+    let (result, raw) =
+        artifact_keeper_sdk::raw::capture(client.trigger_checks().body(body).send()).await;
+    let result = result.map_err(|e| sdk_err("trigger quality checks", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*result,
         &result.artifacts_queued.to_string(),
         &format!(
@@ -897,17 +885,14 @@ async fn list_check_issues(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching check issues...");
 
-    let issues = client
-        .list_check_issues()
-        .id(check_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("list check issues", e))?;
+    let (issues, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_check_issues().id(check_id).send()).await;
+    let issues = issues.map_err(|e| sdk_err("list check issues", e))?;
 
     let issues = issues.into_inner();
     spinner.finish_and_clear();
 
-    if issues.is_empty() {
+    if issues.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No issues found for this check.");
         return Ok(());
     }
@@ -951,7 +936,7 @@ async fn list_check_issues(id: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -963,11 +948,8 @@ async fn health_dashboard(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching health dashboard...");
 
-    let dash = client
-        .get_health_dashboard()
-        .send()
-        .await
-        .map_err(|e| sdk_err("get health dashboard", e))?;
+    let (dash, raw) = artifact_keeper_sdk::raw::capture(client.get_health_dashboard().send()).await;
+    let dash = dash.map_err(|e| sdk_err("get health dashboard", e))?;
 
     spinner.finish_and_clear();
 
@@ -1034,23 +1016,24 @@ async fn health_dashboard(global: &GlobalArgs) -> Result<()> {
         out
     };
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
 
 async fn artifact_health(artifact: &str, global: &GlobalArgs) -> Result<()> {
-    let artifact_id = parse_uuid(artifact, "artifact")?;
-
     let client = client_for(global)?;
+    let artifact_id = resolve_artifact_id(&client, artifact).await?;
     let spinner = output::spinner("Fetching artifact health...");
 
-    let health = client
-        .get_artifact_health()
-        .artifact_id(artifact_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get artifact health", e))?;
+    let (health, raw) = artifact_keeper_sdk::raw::capture(
+        client.get_artifact_health().artifact_id(artifact_id).send(),
+    )
+    .await;
+    let health = health.map_err(|e| sdk_err("get artifact health", e))?;
 
     spinner.finish_and_clear();
 
@@ -1127,7 +1110,10 @@ async fn artifact_health(artifact: &str, global: &GlobalArgs) -> Result<()> {
         out
     };
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1136,12 +1122,9 @@ async fn repo_health(key: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching repository health...");
 
-    let health = client
-        .get_repo_health()
-        .key(key)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get repository health", e))?;
+    let (health, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_repo_health().key(key).send()).await;
+    let health = health.map_err(|e| sdk_err("get repository health", e))?;
 
     spinner.finish_and_clear();
 
@@ -1183,7 +1166,10 @@ async fn repo_health(key: &str, global: &GlobalArgs) -> Result<()> {
         health.artifacts_failing,
     );
 
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -1200,17 +1186,15 @@ async fn suppress_issue(id: &str, reason: &str, global: &GlobalArgs) -> Result<(
         reason: reason.to_string(),
     };
 
-    let issue = client
-        .suppress_issue()
-        .id(issue_id)
-        .body(body)
-        .send()
-        .await
-        .map_err(|e| sdk_err("suppress issue", e))?;
+    let (issue, raw) =
+        artifact_keeper_sdk::raw::capture(client.suppress_issue().id(issue_id).body(body).send())
+            .await;
+    let issue = issue.map_err(|e| sdk_err("suppress issue", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*issue,
         &issue.id.to_string(),
         &format!("Issue '{}' suppressed.", issue.title),
@@ -1226,16 +1210,14 @@ async fn unsuppress_issue(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Removing issue suppression...");
 
-    let issue = client
-        .unsuppress_issue()
-        .id(issue_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("unsuppress issue", e))?;
+    let (issue, raw) =
+        artifact_keeper_sdk::raw::capture(client.unsuppress_issue().id(issue_id).send()).await;
+    let issue = issue.map_err(|e| sdk_err("unsuppress issue", e))?;
 
     spinner.finish_and_clear();
 
-    emit_mutation(
+    emit_mutation_raw(
+        raw.as_deref(),
         &*issue,
         &issue.id.to_string(),
         &format!("Suppression removed from issue '{}'.", issue.title),

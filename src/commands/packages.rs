@@ -125,11 +125,12 @@ async fn list_packages(
         req = req.search(q);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("list packages", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("list packages", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.items.is_empty() {
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No packages found.");
         return Ok(());
     }
@@ -192,7 +193,7 @@ async fn list_packages(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     print_page_info(
@@ -211,12 +212,9 @@ async fn show_package(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching package...");
 
-    let pkg = client
-        .get_package()
-        .id(package_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get package", e))?;
+    let (pkg, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_package().id(package_id).send()).await;
+    let pkg = pkg.map_err(|e| sdk_err("get package", e))?;
 
     spinner.finish_and_clear();
 
@@ -235,7 +233,10 @@ async fn show_package(id: &str, global: &GlobalArgs) -> Result<()> {
     });
 
     let table_str = format_package_detail(&pkg);
-    println!("{}", output::render(&info, &global.format, Some(table_str)));
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+    );
 
     Ok(())
 }
@@ -246,16 +247,14 @@ async fn list_versions(id: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching package versions...");
 
-    let resp = client
-        .get_package_versions()
-        .id(package_id)
-        .send()
-        .await
-        .map_err(|e| sdk_err("get package versions", e))?;
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_package_versions().id(package_id).send())
+            .await;
+    let resp = resp.map_err(|e| sdk_err("get package versions", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.versions.is_empty() {
+    if resp.versions.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No versions found.");
         return Ok(());
     }
@@ -301,7 +300,7 @@ async fn list_versions(id: &str, global: &GlobalArgs) -> Result<()> {
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
@@ -330,11 +329,12 @@ async fn browse_tree(
         req = req.include_metadata(true);
     }
 
-    let resp = req.send().await.map_err(|e| sdk_err("browse tree", e))?;
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = resp.map_err(|e| sdk_err("browse tree", e))?;
 
     spinner.finish_and_clear();
 
-    if resp.nodes.is_empty() {
+    if resp.nodes.is_empty() && !output::is_machine_format(&global.format) {
         eprintln!("No entries found.");
         return Ok(());
     }
@@ -381,7 +381,7 @@ async fn browse_tree(
 
     println!(
         "{}",
-        output::render(&entries, &global.format, Some(table_str))
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
     );
 
     Ok(())
