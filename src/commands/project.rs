@@ -68,7 +68,7 @@ pub enum ProjectCommand {
         project: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -117,7 +117,7 @@ pub enum MembersCommand {
         principal_type: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }

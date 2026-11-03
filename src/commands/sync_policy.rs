@@ -115,7 +115,7 @@ pub enum SyncPolicyCommand {
         id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 

@@ -55,7 +55,7 @@ pub enum AllowlistCommand {
         key: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }
@@ -89,7 +89,7 @@ pub enum UpstreamFilterCommand {
         key: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }

@@ -84,7 +84,7 @@ pub enum TotpPolicyCommand {
         policy: TotpPolicyArg,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }

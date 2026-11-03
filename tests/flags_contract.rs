@@ -117,6 +117,7 @@ async fn backup_restore_sends_its_target_and_the_unverified_flag() {
         "--target-repo",
         GROUP,
         "--allow-unverified-archive",
+        "--yes",
     ]);
     assert!(
         output.status.success(),

@@ -53,7 +53,7 @@ pub enum ServiceAccountCommand {
         id: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -117,7 +117,7 @@ pub enum TokenCommand {
         token: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }

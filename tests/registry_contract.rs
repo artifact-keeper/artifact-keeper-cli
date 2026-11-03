@@ -355,6 +355,8 @@ struct Rig {
 struct Outcome {
     parsed: bool,
     requests: Vec<Seen>,
+    code: Option<i32>,
+    stderr: String,
 }
 
 impl Rig {
@@ -420,6 +422,11 @@ impl Rig {
             .as_ref()
             .map(|o| o.status.code() != Some(2))
             .unwrap_or(true);
+        let code = output.as_ref().ok().and_then(|o| o.status.code());
+        let stderr = output
+            .as_ref()
+            .map(|o| String::from_utf8_lossy(&o.stderr).into_owned())
+            .unwrap_or_default();
         let requests = self
             .server
             .received_requests()
@@ -432,7 +439,12 @@ impl Rig {
                 fields: fields_of(r),
             })
             .collect();
-        Outcome { parsed, requests }
+        Outcome {
+            parsed,
+            requests,
+            code,
+            stderr,
+        }
     }
 
     fn file(&self, name: &str, content: &str) -> String {
@@ -1225,6 +1237,77 @@ async fn a_registry_line_that_lies_is_caught() {
 
     let no_command = check_line(&rig, None, &truth).await;
     assert!(no_command.is_err());
+}
+
+/// `--no-input` turns prompts off and isn't a yes. Every command with `--yes`, run the
+/// way that reaches its route but without the flag, has to fail, say so, and send
+/// nothing at all. What's checked comes from the command tree, so a new command with
+/// `--yes` is covered without being listed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 12)]
+#[ignore = "run by the Coverage job"]
+async fn no_input_without_yes_refuses_and_sends_nothing() {
+    let (lines, leaves) = registry();
+    let leaves: Arc<BTreeMap<String, Leaf>> =
+        Arc::new(leaves.into_iter().map(|l| (l.command.clone(), l)).collect());
+    let lines: Vec<Line> = lines
+        .into_iter()
+        .filter(|l| {
+            leaves
+                .get(&l.command)
+                .is_some_and(|leaf| leaf.args.iter().any(|a| a.id == "yes"))
+        })
+        .collect();
+    assert!(lines.len() > 50, "only {} lines have --yes", lines.len());
+    let map = leaves.clone();
+    let failures: Vec<String> = shards(lines, move |rig, line: Arc<Line>| {
+        let map = map.clone();
+        async move {
+            let leaf = map.get(&line.command).expect("filtered above");
+            let (extra, env) = hints(rig.home.path(), &line);
+            *rig.env.lock().expect("env") = env;
+            let expect = Some((line.method.as_str(), line.path.as_str()));
+            let base = find_base(&rig, leaf, expect, &extra).await;
+            if base.best < 3 {
+                return Some(format!("ak {} never reached its route", line.command));
+            }
+            let args: Vec<String> = build(leaf, &base.chosen)
+                .into_iter()
+                .filter(|a| a != "--yes")
+                .collect();
+            let refused = rig.run(args.clone()).await;
+            let sent: Vec<String> = refused
+                .requests
+                .iter()
+                .map(|r| format!("{} {}", r.method, r.path))
+                .collect();
+            let good = refused.code == Some(2)
+                && sent.is_empty()
+                && refused.stderr.contains("--yes")
+                && refused.stderr.contains("confirmation_refused");
+            (!good).then(|| {
+                format!(
+                    "ak {args:?}: exit {:?}, sent {sent:?}: {}",
+                    refused.code,
+                    refused
+                        .stderr
+                        .split_whitespace()
+                        .take(25)
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                )
+            })
+        }
+    })
+    .await
+    .into_iter()
+    .flatten()
+    .collect();
+    assert!(
+        failures.is_empty(),
+        "{} commands don't refuse:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
 }
 
 /// L0: every route the server has can be sent with `ak api`, by method and path.

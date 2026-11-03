@@ -491,6 +491,7 @@ fn artifact_pull_of_a_quarantined_artifact_shows_the_reason() {
             &format!("{repo}/a.txt"),
             "--reason",
             "e2e",
+            "--yes",
         ])
         .assert()
         .success();

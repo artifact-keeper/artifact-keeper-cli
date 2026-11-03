@@ -12,7 +12,23 @@ mod transport;
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = cli::Cli::parse();
-    cli.execute().await.map_err(explain_no_terminal)
+    let result = cli.execute().await.map_err(explain_no_terminal);
+    if let Err(e) = &result
+        && lacks_consent(e)
+    {
+        eprintln!("Error: {e:?}");
+        std::process::exit(2);
+    }
+    result
+}
+
+/// Nothing said yes to something that needs it. That's how the command was run, not
+/// something that went wrong, so it's a usage error.
+fn lacks_consent(e: &miette::Report) -> bool {
+    matches!(
+        e.downcast_ref::<error::AkError>(),
+        Some(error::AkError::ConfirmationRefused(_) | error::AkError::NoTerminal)
+    )
 }
 
 /// A prompt with no terminal fails deep inside dialoguer, in 20-odd places, with

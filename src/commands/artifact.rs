@@ -185,7 +185,7 @@ pub enum ArtifactCommand {
         path: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -385,7 +385,7 @@ pub enum UploadSessionCommand {
         session_id: uuid::Uuid,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }

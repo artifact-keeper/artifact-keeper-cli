@@ -140,7 +140,7 @@ pub enum RepoCommand {
         key: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
 
         /// Wait for a background deletion to finish
@@ -322,7 +322,7 @@ pub enum RepoCommand {
         dry_run: bool,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 
@@ -643,7 +643,7 @@ pub enum RoutingRulesCommand {
         key: String,
 
         /// Skip confirmation prompt
-        #[arg(long)]
+        #[arg(long, short = 'y')]
         yes: bool,
     },
 }
