@@ -6,7 +6,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use clap::Subcommand;
-use miette::Result;
+use miette::{IntoDiagnostic, Result};
 use reqwest::Method;
 
 use super::wire::{Upload, Wire, emit};
@@ -37,9 +37,13 @@ pub async fn execute(command: GoCommand, global: &GlobalArgs) -> Result<()> {
     let GoCommand::Publish { repo, file, r#mod } = command;
     let wire = Wire::new(global)?;
     let upload = Upload::open(&file)?;
-    let contents = read_module_zip(&file)?;
+    let zip_path = file.clone();
+    let contents = tokio::task::spawn_blocking(move || read_module_zip(&zip_path))
+        .await
+        .into_diagnostic()??;
     let go_mod = match &r#mod {
-        Some(path) => std::fs::read(path)
+        Some(path) => tokio::fs::read(path)
+            .await
             .map_err(|e| AkError::ConfigError(format!("Can't read {}: {e}", path.display())))?,
         None => contents.go_mod.ok_or_else(|| {
             AkError::ConfigError(format!(

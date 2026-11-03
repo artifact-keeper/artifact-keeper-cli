@@ -239,8 +239,8 @@ impl Upload {
             .into_diagnostic()
     }
 
-    pub fn read(&self) -> Result<Vec<u8>> {
-        std::fs::read(&self.path).map_err(|e| {
+    pub async fn read(&self) -> Result<Vec<u8>> {
+        tokio::fs::read(&self.path).await.map_err(|e| {
             AkError::ConfigError(format!("Can't read {}: {e}", self.path.display())).into()
         })
     }

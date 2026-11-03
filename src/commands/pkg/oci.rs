@@ -3,7 +3,6 @@
 //!
 //! An image's name is `<repository key>/<image>`, and may have more segments.
 
-use std::io::Write;
 use std::path::PathBuf;
 
 use clap::Subcommand;
@@ -12,6 +11,7 @@ use miette::{IntoDiagnostic, Result};
 use reqwest::{Method, Url};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+use tokio::io::AsyncWriteExt;
 
 use super::wire::{Reply, Wire, emit};
 use crate::cli::GlobalArgs;
@@ -321,10 +321,14 @@ async fn manifest(wire: &Wire, command: ManifestCommand, global: &GlobalArgs) ->
                 .await?;
             // The digest is of these exact bytes, so they aren't reformatted.
             match output {
-                Some(path) => std::fs::write(&path, &reply.body).map_err(|e| {
+                Some(path) => tokio::fs::write(&path, &reply.body).await.map_err(|e| {
                     AkError::ConfigError(format!("Can't write {}: {e}", path.display()))
                 })?,
-                None => std::io::stdout().write_all(&reply.body).into_diagnostic()?,
+                None => {
+                    let mut stdout = tokio::io::stdout();
+                    stdout.write_all(&reply.body).await.into_diagnostic()?;
+                    stdout.flush().await.into_diagnostic()?;
+                }
             }
             Ok(())
         }
@@ -364,7 +368,8 @@ async fn manifest(wire: &Wire, command: ManifestCommand, global: &GlobalArgs) ->
             let body = if file.starts_with('@') {
                 read_inline_or_file(&file, "the manifest")?
             } else {
-                std::fs::read(&file)
+                tokio::fs::read(&file)
+                    .await
                     .map_err(|e| AkError::ConfigError(format!("Can't read {file}: {e}")))?
             };
             let parsed: Value = serde_json::from_slice(&body)
@@ -461,26 +466,29 @@ async fn blob(wire: &Wire, command: BlobCommand) -> Result<()> {
                         .parent()
                         .filter(|p| !p.as_os_str().is_empty())
                         .map_or_else(|| PathBuf::from("."), PathBuf::from);
-                    let mut temp = tempfile::NamedTempFile::new_in(&dir).map_err(|e| {
+                    let temp = tempfile::NamedTempFile::new_in(&dir).map_err(|e| {
                         AkError::ConfigError(format!("Can't write in {}: {e}", dir.display()))
                     })?;
+                    let mut writer = tokio::fs::File::from_std(temp.reopen().into_diagnostic()?);
                     while let Some(chunk) = stream.next().await {
                         let chunk = chunk.into_diagnostic()?;
                         hasher.update(&chunk);
-                        temp.write_all(&chunk).into_diagnostic()?;
+                        writer.write_all(&chunk).await.into_diagnostic()?;
                     }
+                    writer.flush().await.into_diagnostic()?;
                     check_digest(hasher, expected.as_deref())?;
                     temp.persist(&path).map_err(|e| {
                         AkError::ConfigError(format!("Can't write {}: {e}", path.display()))
                     })?;
                 }
                 None => {
-                    let mut stdout = std::io::stdout();
+                    let mut stdout = tokio::io::stdout();
                     while let Some(chunk) = stream.next().await {
                         let chunk = chunk.into_diagnostic()?;
                         hasher.update(&chunk);
-                        stdout.write_all(&chunk).into_diagnostic()?;
+                        stdout.write_all(&chunk).await.into_diagnostic()?;
                     }
+                    stdout.flush().await.into_diagnostic()?;
                     check_digest(hasher, expected.as_deref())?;
                 }
             }
