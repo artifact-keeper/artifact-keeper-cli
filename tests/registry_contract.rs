@@ -676,6 +676,13 @@ fn hints(
             ],
             vec![],
         ),
+        ("agent plugins delete", ..) => (
+            vec![
+                ("slug", "demo".to_string()),
+                ("version", "1.0.0".to_string()),
+            ],
+            vec![],
+        ),
         ("lifecycle create", ..) => (
             vec![
                 ("policy_type", "max_versions".to_string()),

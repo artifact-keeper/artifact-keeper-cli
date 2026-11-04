@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod age_gate;
+pub mod agent;
 pub mod analytics;
 pub mod api;
 pub mod approval;

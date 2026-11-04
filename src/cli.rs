@@ -17,6 +17,7 @@ const ROOT_ORDER: &[&str] = &[
     "artifact",
     "api",
     "pkg",
+    "agent",
     "setup",
     "doctor",
     "config",
@@ -533,6 +534,15 @@ pub enum Command {
     /// Publish packages and use format APIs without the format's own client
     Pkg(commands::pkg::PkgArgs),
 
+    /// Plugins for AI coding agents: publish, install, update
+    #[command(
+        after_help = "Examples:\n  ak agent plugins publish ./deploy-tools --repo plugins\n  ak agent plugins install deploy-tools --repo plugins --harness claude,cursor\n  ak agent plugins list --check-updates"
+    )]
+    Agent {
+        #[command(subcommand)]
+        command: commands::agent::AgentCommand,
+    },
+
     /// Manage CLI configuration
     #[command(
         after_help = "Examples:\n  ak config list\n  ak config get default_instance\n  ak config set default_instance prod"
@@ -779,6 +789,7 @@ impl Cli {
             Command::Artifact { command } => command.execute(&global).await,
             Command::Api(args) => commands::api::execute(args, &global).await,
             Command::Pkg(args) => commands::pkg::execute(args, &global).await,
+            Command::Agent { command } => command.execute(&global).await,
             Command::Registry => {
                 crate::registry::print_dump();
                 Ok(())
