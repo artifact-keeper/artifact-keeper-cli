@@ -1,5 +1,5 @@
 {
-  "backend_version": "1.11.11",
+  "backend_version": "1.11.12",
   "routes": [
     {"method": "POST", "path": "/alpine/{repo_key}/upload", "handler": "alpine"},
     {"method": "GET", "path": "/alpine/{repo_key}/{branch}/keys/{APK_SIGNING_KEY_FILENAME}", "handler": "alpine"},
@@ -791,6 +791,7 @@
     {"method": "GET", "path": "/puppet/{repo_key}/v3/files/{file_path}", "handler": "puppet"},
     {"method": "GET", "path": "/puppet/{repo_key}/v3/modules/{owner_name}", "handler": "puppet"},
     {"method": "GET", "path": "/puppet/{repo_key}/v3/modules/{owner_name}/releases", "handler": "puppet"},
+    {"method": "GET", "path": "/puppet/{repo_key}/v3/releases", "handler": "puppet"},
     {"method": "POST", "path": "/puppet/{repo_key}/v3/releases", "handler": "puppet"},
     {"method": "GET", "path": "/puppet/{repo_key}/v3/releases/{owner_name_version}", "handler": "puppet"},
     {"method": "POST", "path": "/pypi/{repo_key}", "handler": "pypi"},
