@@ -75,7 +75,7 @@ tar = "0.4"
 zip = { version = "9", default-features = false, features = ["deflate"] }
 
 # Utilities
-dirs = "6"
+dirs = "7"
 url = "2"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
