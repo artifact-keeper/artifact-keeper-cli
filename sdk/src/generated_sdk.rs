@@ -2139,6 +2139,13 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"pagination\": {"]
     #[doc = "      \"$ref\": \"#/components/schemas/Pagination\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_is_exact\": {"]
+    #[doc = "      \"description\": \"Whether `pagination.total` and `pagination.total_pages` are exact\\n(#5255). `false` means they are a lower bound (the rows seen so far,\\n+1 when another page exists): page with `has_more` / `next_cursor`\\nuntil `has_more` is false, or pass `?count=exact`, instead of looping\\nto `total_pages`. Set on every artifact listing; absent only from\\nservers older than this field.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -2160,6 +2167,9 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_cursor: ::std::option::Option<::std::string::String>,
         pub pagination: Pagination,
+        #[doc = "Whether `pagination.total` and `pagination.total_pages` are exact\n(#5255). `false` means they are a lower bound (the rows seen so far,\n+1 when another page exists): page with `has_more` / `next_cursor`\nuntil `has_more` is false, or pass `?count=exact`, instead of looping\nto `total_pages`. Set on every artifact listing; absent only from\nservers older than this field."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub total_is_exact: ::std::option::Option<bool>,
     }
     impl ArtifactListResponse {
         pub fn builder() -> builder::ArtifactListResponse {
@@ -2806,6 +2816,7 @@ pub mod types {
     #[doc = "      \"type\": \"object\""]
     #[doc = "    },"]
     #[doc = "    \"replication_mode\": {"]
+    #[doc = "      \"description\": \"`push` (the default) or `mirror`, which both send each new artifact\\nto the peer as it is uploaded, or `none` (assigned, not replicated).\\n`pull` is refused with 400: it is not implemented and never created a\\nsync task (#5293).\","]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
@@ -2835,6 +2846,7 @@ pub mod types {
     pub struct AssignRepoRequest {
         #[doc = "Optional JSONB filter constraining which artifacts in the repository\nget replicated. Shape: `{\"include_patterns\": [\"^v\\\\d+\\\\.\"], \"exclude_patterns\": [\".*-SNAPSHOT$\"]}`.\nNull/absent means replicate everything."]
         pub replication_filter: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[doc = "`push` (the default) or `mirror`, which both send each new artifact\nto the peer as it is uploaded, or `none` (assigned, not replicated).\n`pull` is refused with 400: it is not implemented and never created a\nsync task (#5293)."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub replication_mode: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
@@ -9274,6 +9286,23 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"curation_default_action\": {"]
+    #[doc = "      \"description\": \"Not settable on create (#5324): set it with\\n`PATCH /api/v1/repositories/{key}` after creating the repository.\\nAnything other than `allow` (the default) is refused with 400 rather\\nthan ignored.\","]
+    #[doc = "      \"examples\": ["]
+    #[doc = "        \"allow\""]
+    #[doc = "      ],"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"curation_enabled\": {"]
+    #[doc = "      \"description\": \"Not settable on create (#5324): enable curation with\\n`PATCH /api/v1/repositories/{key}` after creating the repository.\\n`true` is refused with 400 rather than ignored; `false` (the default)\\nis accepted.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"custom_user_agent\": {"]
     #[doc = "      \"description\": \"Custom User-Agent sent on outbound HTTP requests to the upstream for\\nthis repository. Only valid for remote repositories. Max 256 characters.\","]
     #[doc = "      \"type\": ["]
@@ -9396,12 +9425,34 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"quarantine_duration_minutes\": {"]
+    #[doc = "      \"description\": \"Quarantine hold duration in minutes (#5324). Must be non-negative.\\nStored in `repository_config` under `quarantine_duration_minutes`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"quarantine_enabled\": {"]
+    #[doc = "      \"description\": \"Enable the upload-time quarantine period (Package Age Policy) from the\\nfirst upload (#5324). Same rules as on update: enabling is refused\\n(400) on a Virtual repository, which has no cache of its own. Stored\\nin `repository_config` under `quarantine_enabled`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"quota_bytes\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"integer\","]
     #[doc = "        \"null\""]
     #[doc = "      ],"]
     #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"release_repository_key\": {"]
+    #[doc = "      \"description\": \"Not settable on create (#5324): link a staging repository to its\\nrelease repository after creating it, with\\n`PATCH /api/v1/repositories/{key}` or\\n`PUT /api/v1/repositories/{key}/release-target`. A non-empty value is\\nrefused with 400 rather than ignored.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"repo_type\": {"]
     #[doc = "      \"description\": \"One of `local`, `remote`, `virtual`, `staging`. `hosted` is accepted as\\nan alias of `local` (#4157), which is what the docs call the same thing.\","]
@@ -9462,6 +9513,13 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"virtual_metadata_partial\": {"]
+    #[doc = "      \"description\": \"Virtual repositories only: serve a partial metadata merge instead of\\na 502 when a member fails (#4192); see\\n`UpdateRepositoryRequest.virtual_metadata_partial`. Refused (400) on\\nany other repository type.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"visibility\": {"]
     #[doc = "      \"$ref\": \"#/components/schemas/RepositoryVisibility\""]
     #[doc = "    }"]
@@ -9492,6 +9550,12 @@ pub mod types {
         #[doc = "Opt into ingesting UNVERIFIED upstream metadata on the keyless RPM\ncuration-sync path (#2569). Omit or `false` to keep the fail-closed\ndefault (a keyless curation sync refuses to ingest unverified upstream\npackages); `true` reverts to the legacy unverified-ingest behavior. Only\nmeaningful for RPM curation staging repositories."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub curation_allow_unverified: ::std::option::Option<bool>,
+        #[doc = "Not settable on create (#5324): set it with\n`PATCH /api/v1/repositories/{key}` after creating the repository.\nAnything other than `allow` (the default) is refused with 400 rather\nthan ignored."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub curation_default_action: ::std::option::Option<::std::string::String>,
+        #[doc = "Not settable on create (#5324): enable curation with\n`PATCH /api/v1/repositories/{key}` after creating the repository.\n`true` is refused with 400 rather than ignored; `false` (the default)\nis accepted."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub curation_enabled: ::std::option::Option<bool>,
         #[doc = "Custom User-Agent sent on outbound HTTP requests to the upstream for\nthis repository. Only valid for remote repositories. Max 256 characters."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub custom_user_agent: ::std::option::Option<::std::string::String>,
@@ -9539,8 +9603,17 @@ pub mod types {
         #[doc = "Override the PyPI simple-index prefix for upstreams that do not follow\nthe standard PEP 503 `/simple/` layout (issue #1546).\n\n- Omit or `\"simple\"` — standard PEP 503 (pypi.org, devpi, Nexus). Default.\n- `\"\"` (empty) — flat CDN (e.g. `https://download.pytorch.org/whl/cpu`):\n  package files are served directly under the upstream root with no prefix.\n- Any other non-empty string — custom index prefix.\n\nStored in `repository_config` under `pypi_upstream_index_path`.\nOnly meaningful for PyPI / Poetry / Jupyter / Conda Remote repositories."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub pypi_upstream_index_path: ::std::option::Option<::std::string::String>,
+        #[doc = "Quarantine hold duration in minutes (#5324). Must be non-negative.\nStored in `repository_config` under `quarantine_duration_minutes`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_duration_minutes: ::std::option::Option<i64>,
+        #[doc = "Enable the upload-time quarantine period (Package Age Policy) from the\nfirst upload (#5324). Same rules as on update: enabling is refused\n(400) on a Virtual repository, which has no cache of its own. Stored\nin `repository_config` under `quarantine_enabled`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_enabled: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub quota_bytes: ::std::option::Option<i64>,
+        #[doc = "Not settable on create (#5324): link a staging repository to its\nrelease repository after creating it, with\n`PATCH /api/v1/repositories/{key}` or\n`PUT /api/v1/repositories/{key}/release-target`. A non-empty value is\nrefused with 400 rather than ignored."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub release_repository_key: ::std::option::Option<::std::string::String>,
         #[doc = "One of `local`, `remote`, `virtual`, `staging`. `hosted` is accepted as\nan alias of `local` (#4157), which is what the docs call the same thing."]
         pub repo_type: ::std::string::String,
         #[doc = "Metadata root directory depth for local RPM repositories. Omit for 0."]
@@ -9566,6 +9639,9 @@ pub mod types {
         #[doc = "Opt this repository into first-class artifact versioning (#2367):\nuploads to Generic/Mlmodel repos append immutable revisions instead\nof overwriting. Defaults to false (current behavior preserved)."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub versioning_enabled: ::std::option::Option<bool>,
+        #[doc = "Virtual repositories only: serve a partial metadata merge instead of\na 502 when a member fails (#4192); see\n`UpdateRepositoryRequest.virtual_metadata_partial`. Refused (400) on\nany other repository type."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub virtual_metadata_partial: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub visibility: ::std::option::Option<RepositoryVisibility>,
     }
@@ -18430,7 +18506,7 @@ pub mod types {
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"count\": {"]
-    #[doc = "      \"description\": \"Total-count mode for keyset-paged listings (#2520, #2519).\\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\\nexact; otherwise the keyset-paged listings report a cheap lower bound\\n(rows seen so far, +1 when another page exists) and `has_more` is the\\nauthoritative \\\"is there a next page\\\" signal.\","]
+    #[doc = "      \"description\": \"Total-count mode for keyset-paged listings (#2520, #2519, #5255).\\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\\nexact. `count=lower_bound` skips it: `pagination.total` is then exact\\nonly on the last page reached by `page=N` (and on an empty page, which\\nalways counts), and otherwise a lower bound (rows seen so far, +1 when\\nanother page exists). Without the parameter, the flat listings\\n(hosted, virtual, remote) are exact on `page=N` requests and\\n`lower_bound` on `cursor` requests, and the grouped listings\\n(`group_by`) are `lower_bound`.\\nThe response's `total_is_exact` says which one you got; `has_more` is\\nthe authoritative \\\"is there a next page\\\" signal either way, so walk\\npages until it is false rather than up to a lower-bound `total_pages`.\","]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
@@ -18484,7 +18560,7 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct ListArtifactsQuery {
-        #[doc = "Total-count mode for keyset-paged listings (#2520, #2519).\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\nexact; otherwise the keyset-paged listings report a cheap lower bound\n(rows seen so far, +1 when another page exists) and `has_more` is the\nauthoritative \"is there a next page\" signal."]
+        #[doc = "Total-count mode for keyset-paged listings (#2520, #2519, #5255).\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\nexact. `count=lower_bound` skips it: `pagination.total` is then exact\nonly on the last page reached by `page=N` (and on an empty page, which\nalways counts), and otherwise a lower bound (rows seen so far, +1 when\nanother page exists). Without the parameter, the flat listings\n(hosted, virtual, remote) are exact on `page=N` requests and\n`lower_bound` on `cursor` requests, and the grouped listings\n(`group_by`) are `lower_bound`.\nThe response's `total_is_exact` says which one you got; `has_more` is\nthe authoritative \"is there a next page\" signal either way, so walk\npages until it is false rather than up to a lower-bound `total_pages`."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub count: ::std::option::Option<::std::string::String>,
         #[doc = "Opaque keyset cursor (#2520, #2519, #2518). Pass the `next_cursor`\nvalue from the previous response to fetch the next page; `page` is\nignored while a cursor is present. Supported by the flat artifact\nlisting of hosted/local, virtual, and remote repositories (#2518,\n#2519), by `group_by=docker_tag`, and by `group_by=maven_component`\non remote repositories; other listing modes ignore it."]
@@ -32441,6 +32517,7 @@ pub mod types {
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
     #[doc = "    \"created_at\","]
+    #[doc = "    \"effective\","]
     #[doc = "    \"id\","]
     #[doc = "    \"peer_instance_id\","]
     #[doc = "    \"replication_filter\","]
@@ -32451,6 +32528,13 @@ pub mod types {
     #[doc = "    \"created_at\": {"]
     #[doc = "      \"type\": \"string\","]
     #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"effective\": {"]
+    #[doc = "      \"description\": \"`active` when the subscription is enabled and its mode is replicated\\n(`push` or `mirror`); `inactive` otherwise, including a `pull`\\nsubscription stored before `pull` was refused, which never replicated\\nanything (#5293).\","]
+    #[doc = "      \"examples\": ["]
+    #[doc = "        \"active\""]
+    #[doc = "      ],"]
+    #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
     #[doc = "    \"id\": {"]
     #[doc = "      \"type\": \"string\","]
@@ -32496,6 +32580,8 @@ pub mod types {
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct SubscriptionResponse {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "`active` when the subscription is enabled and its mode is replicated\n(`push` or `mirror`); `inactive` otherwise, including a `pull`\nsubscription stored before `pull` was refused, which never replicated\nanything (#5293)."]
+        pub effective: ::std::string::String,
         pub id: ::uuid::Uuid,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub last_replicated_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -41961,6 +42047,8 @@ pub mod types {
                 ::std::string::String,
             >,
             pagination: ::std::result::Result<super::Pagination, ::std::string::String>,
+            total_is_exact:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for ArtifactListResponse {
             fn default() -> Self {
@@ -41971,6 +42059,7 @@ pub mod types {
                     items: Err("no value supplied for items".to_string()),
                     next_cursor: Ok(Default::default()),
                     pagination: Err("no value supplied for pagination".to_string()),
+                    total_is_exact: Ok(Default::default()),
                 }
             }
         }
@@ -42039,6 +42128,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for pagination: {e}"));
                 self
             }
+            pub fn total_is_exact<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_is_exact = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for total_is_exact: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<ArtifactListResponse> for super::ArtifactListResponse {
             type Error = super::error::ConversionError;
@@ -42052,6 +42151,7 @@ pub mod types {
                     items: value.items?,
                     next_cursor: value.next_cursor?,
                     pagination: value.pagination?,
+                    total_is_exact: value.total_is_exact?,
                 })
             }
         }
@@ -42064,6 +42164,7 @@ pub mod types {
                     items: Ok(value.items),
                     next_cursor: Ok(value.next_cursor),
                     pagination: Ok(value.pagination),
+                    total_is_exact: Ok(value.total_is_exact),
                 }
             }
         }
@@ -54417,6 +54518,12 @@ pub mod types {
             >,
             curation_allow_unverified:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            curation_default_action: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            curation_enabled:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             custom_user_agent: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -54469,7 +54576,15 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            quarantine_duration_minutes:
+                ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            quarantine_enabled:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            release_repository_key: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             repo_type: ::std::result::Result<::std::string::String, ::std::string::String>,
             repodata_depth:
                 ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
@@ -54499,6 +54614,8 @@ pub mod types {
             >,
             versioning_enabled:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            virtual_metadata_partial:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             visibility: ::std::result::Result<
                 ::std::option::Option<super::RepositoryVisibility>,
                 ::std::string::String,
@@ -54514,6 +54631,8 @@ pub mod types {
                     apt_origin: Ok(Default::default()),
                     apt_release_version: Ok(Default::default()),
                     curation_allow_unverified: Ok(Default::default()),
+                    curation_default_action: Ok(Default::default()),
+                    curation_enabled: Ok(Default::default()),
                     custom_user_agent: Ok(Default::default()),
                     debian: Ok(Default::default()),
                     description: Ok(Default::default()),
@@ -54532,7 +54651,10 @@ pub mod types {
                     project_id: Ok(Default::default()),
                     promotion_only: Ok(Default::default()),
                     pypi_upstream_index_path: Ok(Default::default()),
+                    quarantine_duration_minutes: Ok(Default::default()),
+                    quarantine_enabled: Ok(Default::default()),
                     quota_bytes: Ok(Default::default()),
+                    release_repository_key: Ok(Default::default()),
                     repo_type: Err("no value supplied for repo_type".to_string()),
                     repodata_depth: Ok(Default::default()),
                     storage_backend: Ok(Default::default()),
@@ -54542,6 +54664,7 @@ pub mod types {
                     upstream_url: Ok(Default::default()),
                     upstream_username: Ok(Default::default()),
                     versioning_enabled: Ok(Default::default()),
+                    virtual_metadata_partial: Ok(Default::default()),
                     visibility: Ok(Default::default()),
                 }
             }
@@ -54612,6 +54735,26 @@ pub mod types {
             {
                 self.curation_allow_unverified = value.try_into().map_err(|e| {
                     format!("error converting supplied value for curation_allow_unverified: {e}")
+                });
+                self
+            }
+            pub fn curation_default_action<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.curation_default_action = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for curation_default_action: {e}")
+                });
+                self
+            }
+            pub fn curation_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.curation_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for curation_enabled: {e}")
                 });
                 self
             }
@@ -54805,6 +54948,26 @@ pub mod types {
                 });
                 self
             }
+            pub fn quarantine_duration_minutes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_duration_minutes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_duration_minutes: {e}")
+                });
+                self
+            }
+            pub fn quarantine_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_enabled: {e}")
+                });
+                self
+            }
             pub fn quota_bytes<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<i64>>,
@@ -54813,6 +54976,16 @@ pub mod types {
                 self.quota_bytes = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for quota_bytes: {e}"));
+                self
+            }
+            pub fn release_repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.release_repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for release_repository_key: {e}")
+                });
                 self
             }
             pub fn repo_type<T>(mut self, value: T) -> Self
@@ -54905,6 +55078,16 @@ pub mod types {
                 });
                 self
             }
+            pub fn virtual_metadata_partial<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.virtual_metadata_partial = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for virtual_metadata_partial: {e}")
+                });
+                self
+            }
             pub fn visibility<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<super::RepositoryVisibility>>,
@@ -54930,6 +55113,8 @@ pub mod types {
                     apt_origin: value.apt_origin?,
                     apt_release_version: value.apt_release_version?,
                     curation_allow_unverified: value.curation_allow_unverified?,
+                    curation_default_action: value.curation_default_action?,
+                    curation_enabled: value.curation_enabled?,
                     custom_user_agent: value.custom_user_agent?,
                     debian: value.debian?,
                     description: value.description?,
@@ -54948,7 +55133,10 @@ pub mod types {
                     project_id: value.project_id?,
                     promotion_only: value.promotion_only?,
                     pypi_upstream_index_path: value.pypi_upstream_index_path?,
+                    quarantine_duration_minutes: value.quarantine_duration_minutes?,
+                    quarantine_enabled: value.quarantine_enabled?,
                     quota_bytes: value.quota_bytes?,
+                    release_repository_key: value.release_repository_key?,
                     repo_type: value.repo_type?,
                     repodata_depth: value.repodata_depth?,
                     storage_backend: value.storage_backend?,
@@ -54958,6 +55146,7 @@ pub mod types {
                     upstream_url: value.upstream_url?,
                     upstream_username: value.upstream_username?,
                     versioning_enabled: value.versioning_enabled?,
+                    virtual_metadata_partial: value.virtual_metadata_partial?,
                     visibility: value.visibility?,
                 })
             }
@@ -54974,6 +55163,8 @@ pub mod types {
                     apt_origin: Ok(value.apt_origin),
                     apt_release_version: Ok(value.apt_release_version),
                     curation_allow_unverified: Ok(value.curation_allow_unverified),
+                    curation_default_action: Ok(value.curation_default_action),
+                    curation_enabled: Ok(value.curation_enabled),
                     custom_user_agent: Ok(value.custom_user_agent),
                     debian: Ok(value.debian),
                     description: Ok(value.description),
@@ -54992,7 +55183,10 @@ pub mod types {
                     project_id: Ok(value.project_id),
                     promotion_only: Ok(value.promotion_only),
                     pypi_upstream_index_path: Ok(value.pypi_upstream_index_path),
+                    quarantine_duration_minutes: Ok(value.quarantine_duration_minutes),
+                    quarantine_enabled: Ok(value.quarantine_enabled),
                     quota_bytes: Ok(value.quota_bytes),
+                    release_repository_key: Ok(value.release_repository_key),
                     repo_type: Ok(value.repo_type),
                     repodata_depth: Ok(value.repodata_depth),
                     storage_backend: Ok(value.storage_backend),
@@ -55002,6 +55196,7 @@ pub mod types {
                     upstream_url: Ok(value.upstream_url),
                     upstream_username: Ok(value.upstream_username),
                     versioning_enabled: Ok(value.versioning_enabled),
+                    virtual_metadata_partial: Ok(value.virtual_metadata_partial),
                     visibility: Ok(value.visibility),
                 }
             }
@@ -93472,6 +93667,7 @@ pub mod types {
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
             >,
+            effective: ::std::result::Result<::std::string::String, ::std::string::String>,
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             last_replicated_at: ::std::result::Result<
                 ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -93497,6 +93693,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     created_at: Err("no value supplied for created_at".to_string()),
+                    effective: Err("no value supplied for effective".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     last_replicated_at: Ok(Default::default()),
                     peer_instance_id: Err("no value supplied for peer_instance_id".to_string()),
@@ -93517,6 +93714,16 @@ pub mod types {
                 self.created_at = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn effective<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.effective = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for effective: {e}"));
                 self
             }
             pub fn id<T>(mut self, value: T) -> Self
@@ -93611,6 +93818,7 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     created_at: value.created_at?,
+                    effective: value.effective?,
                     id: value.id?,
                     last_replicated_at: value.last_replicated_at?,
                     peer_instance_id: value.peer_instance_id?,
@@ -93626,6 +93834,7 @@ pub mod types {
             fn from(value: super::SubscriptionResponse) -> Self {
                 Self {
                     created_at: Ok(value.created_at),
+                    effective: Ok(value.effective),
                     id: Ok(value.id),
                     last_replicated_at: Ok(value.last_replicated_at),
                     peer_instance_id: Ok(value.peer_instance_id),
@@ -103089,7 +103298,7 @@ pub mod types {
     }
 }
 #[derive(Clone, Debug)]
-#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. The one `/api/v1` route that shares this contract is the repository download route, `GET /api/v1/repositories/{key}/download/{path}`: it serves the same bytes as the format endpoints, so it accepts the API token as the Basic password and answers an anonymous request on a non-public repository with `401` and a `WWW-Authenticate` challenge, like they do. Every other `/api/v1/*` route refuses the Basic-with-token fallback.\n\nVersion: 1.11.11"]
+#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. The one `/api/v1` route that shares this contract is the repository download route, `GET /api/v1/repositories/{key}/download/{path}`: it serves the same bytes as the format endpoints, so it accepts the API token as the Basic password and answers an anonymous request on a non-public repository with `401` and a `WWW-Authenticate` challenge, like they do. Every other `/api/v1/*` route refuses the Basic-with-token fallback.\n\nVersion: 1.11.13"]
 pub struct Client {
     pub(crate) baseurl: String,
     pub(crate) client: reqwest::Client,
@@ -103127,7 +103336,7 @@ impl Client {
 }
 impl ClientInfo<()> for Client {
     fn api_version() -> &'static str {
-        "1.11.11"
+        "1.11.13"
     }
     fn baseurl(&self) -> &str {
         self.baseurl.as_str()
@@ -104896,7 +105105,7 @@ pub trait ClientRepositoriesExt {
     fn set_conda_allowlist(&self) -> builder::SetCondaAllowlist<'_>;
     #[doc = "Remove the package allowlist of a virtual conda repository\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/allowlist`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.delete_conda_allowlist()\n    .key(key)\n    .send()\n    .await;\n```"]
     fn delete_conda_allowlist(&self) -> builder::DeleteCondaAllowlist<'_>;
-    #[doc = "List artifacts in repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts`\n\nArguments:\n- `key`: Repository key\n- `count`: Total-count mode for keyset-paged listings (#2520, #2519).\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\nexact; otherwise the keyset-paged listings report a cheap lower bound\n(rows seen so far, +1 when another page exists) and `has_more` is the\nauthoritative \"is there a next page\" signal.\n- `cursor`: Opaque keyset cursor (#2520, #2519, #2518). Pass the `next_cursor`\nvalue from the previous response to fetch the next page; `page` is\nignored while a cursor is present. Supported by the flat artifact\nlisting of hosted/local, virtual, and remote repositories (#2518,\n#2519), by `group_by=docker_tag`, and by `group_by=maven_component`\non remote repositories; other listing modes ignore it.\n- `group_by`: Server-side artifact grouping.\n\nSupported values:\n- `maven_component`: Maven/Gradle artifacts are grouped by\n  groupId, artifactId, and version.  Individual files (jar, pom,\n  checksums) appear in the `artifact_files` array of each component.\n- `docker_tag`: Docker/OCI artifacts are grouped by (image, tag),\n  with `total_size_bytes` summed across the manifest config and\n  referenced layer blobs.  The grouped rows are returned in the\n  `docker_tags` array.\n- `page`\n- `path_prefix`\n- `per_page`\n- `q`\n```ignore\nlet response = client.list_artifacts()\n    .key(key)\n    .count(count)\n    .cursor(cursor)\n    .group_by(group_by)\n    .page(page)\n    .path_prefix(path_prefix)\n    .per_page(per_page)\n    .q(q)\n    .send()\n    .await;\n```"]
+    #[doc = "List artifacts in repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts`\n\nArguments:\n- `key`: Repository key\n- `count`: Total-count mode for keyset-paged listings (#2520, #2519, #5255).\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\nexact. `count=lower_bound` skips it: `pagination.total` is then exact\nonly on the last page reached by `page=N` (and on an empty page, which\nalways counts), and otherwise a lower bound (rows seen so far, +1 when\nanother page exists). Without the parameter, the flat listings\n(hosted, virtual, remote) are exact on `page=N` requests and\n`lower_bound` on `cursor` requests, and the grouped listings\n(`group_by`) are `lower_bound`.\nThe response's `total_is_exact` says which one you got; `has_more` is\nthe authoritative \"is there a next page\" signal either way, so walk\npages until it is false rather than up to a lower-bound `total_pages`.\n- `cursor`: Opaque keyset cursor (#2520, #2519, #2518). Pass the `next_cursor`\nvalue from the previous response to fetch the next page; `page` is\nignored while a cursor is present. Supported by the flat artifact\nlisting of hosted/local, virtual, and remote repositories (#2518,\n#2519), by `group_by=docker_tag`, and by `group_by=maven_component`\non remote repositories; other listing modes ignore it.\n- `group_by`: Server-side artifact grouping.\n\nSupported values:\n- `maven_component`: Maven/Gradle artifacts are grouped by\n  groupId, artifactId, and version.  Individual files (jar, pom,\n  checksums) appear in the `artifact_files` array of each component.\n- `docker_tag`: Docker/OCI artifacts are grouped by (image, tag),\n  with `total_size_bytes` summed across the manifest config and\n  referenced layer blobs.  The grouped rows are returned in the\n  `docker_tags` array.\n- `page`\n- `path_prefix`\n- `per_page`\n- `q`\n```ignore\nlet response = client.list_artifacts()\n    .key(key)\n    .count(count)\n    .cursor(cursor)\n    .group_by(group_by)\n    .page(page)\n    .path_prefix(path_prefix)\n    .per_page(per_page)\n    .q(q)\n    .send()\n    .await;\n```"]
     fn list_artifacts(&self) -> builder::ListArtifacts<'_>;
     #[doc = "Report which of the given artifacts the repository does not already hold\n\nSends a `POST` request to `/api/v1/repositories/{key}/artifacts-missing`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.missing_artifacts()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn missing_artifacts(&self) -> builder::MissingArtifacts<'_>;
@@ -140292,6 +140501,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => crate::raw::parse_response(response).await,
+                400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
