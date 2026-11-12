@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ak agent plugins` publishes and installs AI coding-agent plugins** from an Agent Plugins repository (artifact-keeper/artifact-keeper#5251). `publish` finds the plugin's manifests, checks its name and SemVer version, sets `--version` in each manifest of the upload without touching the directory, and uploads a reproducible zip with its SHA-256. `install` checks the download against the repository's index, unpacks it safely for Claude Code, Cursor, Codex or Copilot / VS Code (`--harness claude,cursor`), records it in `.ak/plugin-info.json`, and runs or prints the agent's own follow-up commands. `list --check-updates`, `update`, `uninstall`, `search` and `delete` complete the set.
 - **`ak pkg oci`:** `catalog`, `tags`, `manifest get|head|put|delete`, `blob get`, which checks the digest, and `referrers`.
 
+### Fixed
+
+- **`ak auth login --sso oidc:<id>` and `saml:<id>` can finish the sign-in against Artifact Keeper 1.12**, which binds an OIDC or SAML browser sign-in to the client that started it (artifact-keeper/artifact-keeper#5486). The browser's callback was refused, since the CLI and not the browser had started the sign-in. The CLI now asks for the server's command-line mode (`client=cli`): the browser ends on a page showing the code, and `ak auth login` or `ak auth sso-exchange` sends it with the cookie the login set. Between `ak auth login --no-input` and `ak auth sso-exchange`, that cookie is kept in `sso-pending.json` in the config directory (owner-only, for 10 minutes, removed once the exchange works). Servers before 1.12 set no cookie, and sign-in works there as before.
+
 ## [1.11.0] - Unreleased
 
 The CLI minor version now tracks the server API minor it's generated from. This

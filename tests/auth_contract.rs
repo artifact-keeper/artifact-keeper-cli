@@ -256,7 +256,13 @@ async fn oidc_login_prints_the_providers_url_without_following_it() {
     assert_eq!(shown["login_url"], to);
     assert_eq!(shown["provider_type"], "oidc");
     let (query, _) = m.last("GET").await;
-    assert_eq!(query, vec![("prompt".to_string(), "login".to_string())]);
+    assert_eq!(
+        query,
+        vec![
+            ("client".to_string(), "cli".to_string()),
+            ("prompt".to_string(), "login".to_string())
+        ]
+    );
     assert!(mock::unwrapped(&output.stderr).contains("sso-exchange"));
     // It's only the start of a login.
     assert_eq!(m.stored_credentials(), "");
@@ -281,6 +287,98 @@ async fn saml_login_prints_the_url_alone_when_quiet() {
     );
     assert!(output.status.success(), "{}", printed(&output));
     assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), to);
+    let (query, _) = m.last("GET").await;
+    assert_eq!(query, vec![("client".to_string(), "cli".to_string())]);
+}
+
+const BINDING: &str = "ak_sso_bind_0123456789abcdef=\
+                       4f1c9a0b7e2d3c5a6b8f9e0d1c2b3a4f5e6d7c8b9a0f1e2d3c4b5a6f7e8d9c0b";
+
+/// The `Cookie` header of the last request with this method, if it had one.
+async fn cookie_sent(m: &Mocked, verb: &str) -> Option<String> {
+    let requests = m.server.received_requests().await.unwrap();
+    let request = requests.iter().rev().find(|r| r.method.as_str() == verb)?;
+    request
+        .headers
+        .get("cookie")
+        .map(|value| value.to_str().unwrap().to_string())
+}
+
+/// A 1.12 server binds a browser login to the client that started it (the
+/// backend's artifact-keeper#5486): the exchange needs the cookie the login set,
+/// even when `ak auth sso-exchange` runs as a separate process.
+#[tokio::test]
+async fn sso_exchange_sends_the_cookie_the_login_set() {
+    for kind in ["oidc", "saml"] {
+        let m = Mocked::start().await;
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/auth/sso/{kind}/{ID}/login")))
+            .respond_with(
+                ResponseTemplate::new(302)
+                    .insert_header("location", "https://idp.example.com/authorize?state=cli-x")
+                    .append_header("set-cookie", "unrelated=1; Path=/")
+                    .append_header(
+                        "set-cookie",
+                        format!(
+                            "{BINDING}; HttpOnly; SameSite=Lax; Path=/api/v1/auth/sso; \
+                             Max-Age=600"
+                        )
+                        .as_str(),
+                    ),
+            )
+            .mount(&m.server)
+            .await;
+        m.respond("POST", "/api/v1/auth/sso/exchange", 200, session())
+            .await;
+        let sso = format!("{kind}:{ID}");
+        let output = m.ak_anon(&["auth", "login", "--sso", &sso], "", &[]);
+        assert!(output.status.success(), "{}", printed(&output));
+        let said = mock::unwrapped(&output.stderr);
+        assert!(said.contains("page showing a code"), "{said}");
+        assert!(!printed(&output).contains(BINDING), "printed the binding");
+
+        let output = m.ak_anon(&["auth", "sso-exchange", "--code-stdin"], "the-code", &[]);
+        assert!(output.status.success(), "{kind}: {}", printed(&output));
+        assert_eq!(
+            cookie_sent(&m, "POST").await.as_deref(),
+            Some(BINDING),
+            "{kind}"
+        );
+        let (_, body) = m.last("POST").await;
+        assert_eq!(body, json!({"code": "the-code"}));
+        assert!(m.stored_credentials().contains(ACCESS));
+
+        // Spent: the next exchange sends none.
+        let output = m.ak_anon(&["auth", "sso-exchange", "--code-stdin"], "the-code", &[]);
+        assert!(output.status.success(), "{}", printed(&output));
+        assert_eq!(cookie_sent(&m, "POST").await, None, "{kind}");
+    }
+}
+
+/// A server before 1.12 sets no cookie, and the exchange goes as it always did.
+#[tokio::test]
+async fn sso_exchange_sends_no_cookie_when_the_login_set_none() {
+    let m = Mocked::start().await;
+    redirect(
+        &m,
+        &format!("/api/v1/auth/sso/oidc/{ID}/login"),
+        "https://idp.example.com/authorize?state=abc",
+    )
+    .await;
+    m.respond("POST", "/api/v1/auth/sso/exchange", 200, session())
+        .await;
+    let sso = format!("oidc:{ID}");
+    let output = m.ak_anon(&["auth", "login", "--sso", &sso], "", &[]);
+    assert!(output.status.success(), "{}", printed(&output));
+    let output = m.ak_anon(
+        &["auth", "sso-exchange", "--code-stdin"],
+        "https://ak.example.com/callback?code=the-code",
+        &[],
+    );
+    assert!(output.status.success(), "{}", printed(&output));
+    assert_eq!(cookie_sent(&m, "POST").await, None);
+    let (_, body) = m.last("POST").await;
+    assert_eq!(body, json!({"code": "the-code"}));
 }
 
 #[tokio::test]

@@ -1,4 +1,5 @@
 pub mod credentials;
+pub mod sso_binding;
 
 use std::path::PathBuf;
 
