@@ -11,7 +11,7 @@ use crate::cli::GlobalArgs;
 use crate::config::credentials::{
     StoredCredential, delete_credential, get_credential, store_credential,
 };
-use crate::config::{AppConfig, InstanceConfig};
+use crate::config::{AppConfig, InstanceConfig, sso_binding};
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 use crate::transport;
@@ -44,10 +44,11 @@ pub struct LoginArgs {
 
     /// Sign in through an SSO provider, as `ldap:<id>`, `oidc:<id>` or `saml:<id>`.
     /// `ak sso providers` lists them. LDAP takes a username and password here. OIDC
-    /// and SAML print a URL to open in a browser, which ends at a callback URL with
-    /// a code to give to this command or to `ak auth sso-exchange`. An instance
-    /// serving the web UI redeems that code on the callback page, and it works only
-    /// once: use an API token or, on 1.12, --oidc-device there
+    /// and SAML print a URL to open in a browser, which ends on a page showing a code
+    /// to give to this command or, on this machine, to `ak auth sso-exchange`. The
+    /// code works for a minute. Servers before 1.12 end at a callback URL with a `code`
+    /// instead, and one serving the web UI redeems it on that page, where it works
+    /// only once: use an API token there
     #[arg(long, value_name = "TYPE:ID")]
     sso: Option<String>,
 
@@ -133,7 +134,8 @@ pub enum AuthCommand {
         totp_token_stdin: bool,
     },
 
-    /// Finish an OIDC or SAML login: trade the code from the callback URL for a session
+    /// Finish an OIDC or SAML login: trade the code the browser shows (or the code in
+    /// the callback URL) for a session
     SsoExchange {
         /// The exchange code, or the whole callback URL
         #[arg(long, env = "AK_SSO_CODE", hide_env_values = true)]
@@ -787,14 +789,25 @@ async fn login_with_ldap(
     Ok(())
 }
 
+/// A browser login the server has started: where to send the browser, and the
+/// cookie that binds the login to this client (none from servers before 1.12).
+struct BrowserLogin {
+    url: String,
+    binding: Option<String>,
+}
+
 /// Where the server sends a browser to sign in with this provider. It answers with
 /// a redirect, which here is the answer rather than something to follow.
+///
+/// `client=cli` asks a 1.12 server for the command-line mode: the browser ends on a
+/// page showing the code rather than being signed in, and the code is redeemed only
+/// with the binding cookie this response sets. Older servers ignore it.
 async fn sso_login_url(
     instance: &InstanceConfig,
     kind: SsoKind,
     provider: uuid::Uuid,
     prompt: Option<&str>,
-) -> Result<String> {
+) -> Result<BrowserLogin> {
     let builder = super::client::raw_http_client_builder(reqwest::redirect::Policy::none());
     let http = transport::apply_custom_ca(builder)?
         .build()
@@ -804,7 +817,10 @@ async fn sso_login_url(
         instance.url.trim_end_matches('/'),
         kind.route()
     );
-    let mut req = http.get(&url).timeout(std::time::Duration::from_secs(30));
+    let mut req = http
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(30))
+        .query(&[("client", "cli")]);
     if let Some(prompt) = prompt {
         req = req.query(&[("prompt", prompt)]);
     }
@@ -817,7 +833,8 @@ async fn sso_login_url(
         let body = resp.text().await.unwrap_or_default();
         return Err(raw_err("Failed to start the SSO login", status, &body).into());
     }
-    resp.headers()
+    let url = resp
+        .headers()
         .get(reqwest::header::LOCATION)
         .and_then(|location| location.to_str().ok())
         .map(str::to_string)
@@ -825,8 +842,14 @@ async fn sso_login_url(
             AkError::ServerError(format!(
                 "Failed to start the SSO login: {status} with no Location"
             ))
-            .into()
-        })
+        })?;
+    let binding = sso_binding::from_set_cookie(
+        resp.headers()
+            .get_all(reqwest::header::SET_COOKIE)
+            .iter()
+            .filter_map(|value| value.to_str().ok()),
+    );
+    Ok(BrowserLogin { url, binding })
 }
 
 async fn login_with_browser(
@@ -840,7 +863,12 @@ async fn login_with_browser(
     if kind == SsoKind::Saml && args.prompt.is_some() {
         return Err(AkError::Usage("--prompt is for OIDC only.".into()).into());
     }
-    let login_url = sso_login_url(instance, kind, provider, args.prompt.as_deref()).await?;
+    let BrowserLogin {
+        url: login_url,
+        binding,
+    } = sso_login_url(instance, kind, provider, args.prompt.as_deref()).await?;
+    // For `ak auth sso-exchange`, which may run in another process.
+    sso_binding::store(instance_name, binding.as_deref())?;
     let info = serde_json::json!({
         "login_url": login_url,
         "provider_type": kind.route(),
@@ -859,11 +887,15 @@ async fn login_with_browser(
     let at_terminal = std::io::IsTerminal::is_terminal(&std::io::stdin());
     if global.no_input || !at_terminal {
         eprintln!(
-            "It ends at a URL with a `code`. Finish with `ak auth sso-exchange --code-stdin`."
+            "It ends on a page showing a code (on servers before 1.12, at a URL with a \
+             `code`). Finish right away with `ak auth sso-exchange --code-stdin`."
         );
         return Ok(());
     }
-    eprintln!("It ends at a URL with a `code`. Paste that URL or the code here.");
+    eprintln!(
+        "It ends on a page showing a code (on servers before 1.12, at a URL with a `code`). \
+         Paste the code or that URL here."
+    );
     let code = dialoguer::Password::new()
         .with_prompt("Code")
         .interact()
@@ -897,7 +929,15 @@ async fn exchange_and_store(
     instance: &InstanceConfig,
     code: &str,
 ) -> Result<()> {
-    let client = anon_client(&instance.url)?;
+    // The binding cookie from `ak auth login --sso`, which a 1.12 server needs to
+    // redeem the code. None from older servers, and then no Cookie is sent.
+    let mut headers = reqwest::header::HeaderMap::new();
+    if let Some(cookie) = sso_binding::load(instance_name)
+        && let Ok(value) = reqwest::header::HeaderValue::from_str(&cookie)
+    {
+        headers.insert(reqwest::header::COOKIE, value);
+    }
+    let client = super::client::anon_client_with_headers(&instance.url, headers)?;
     let body = artifact_keeper_sdk::types::ExchangeCodeRequest {
         code: exchange_code_from(code),
     };
@@ -909,6 +949,8 @@ async fn exchange_and_store(
         .map_err(|e| crate::commands::helpers::classified(format!("SSO exchange failed: {e}"), &e))?
         .into_inner();
     store_session(instance_name, resp.access_token, resp.refresh_token, false)?;
+    // The cookie is spent. A failure here leaves a file that expires on its own.
+    let _ = sso_binding::remove(instance_name);
     eprintln!("Logged in to '{instance_name}'.");
     Ok(())
 }
