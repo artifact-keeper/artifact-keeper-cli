@@ -180,7 +180,18 @@ fn build_client_with_timeout(
 /// Used by pre-auth flows (login, TOTP verify, setup status) that must work
 /// against instances behind a private CA before any credentials exist.
 pub fn anon_client(url: &str) -> Result<artifact_keeper_sdk::Client> {
+    anon_client_with_headers(url, reqwest::header::HeaderMap::new())
+}
+
+/// `anon_client` that sends these headers on every request, such as the SSO
+/// binding cookie on `POST /auth/sso/exchange`. reqwest drops `Cookie` on a
+/// redirect to another host.
+pub fn anon_client_with_headers(
+    url: &str,
+    headers: reqwest::header::HeaderMap,
+) -> Result<artifact_keeper_sdk::Client> {
     let builder = reqwest::ClientBuilder::new()
+        .default_headers(headers)
         .redirect(redirect_policy())
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(30));

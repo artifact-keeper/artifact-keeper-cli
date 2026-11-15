@@ -82,7 +82,7 @@ fn create_update_toggle_preview_and_delete() {
         "--name",
         &format!("{name}-2"),
         "--mode",
-        "pull",
+        "mirror",
         "--description",
         "changed",
         "--priority",
@@ -95,7 +95,7 @@ fn create_update_toggle_preview_and_delete() {
         r#"{"max_age_days":9}"#,
     ]));
     assert_eq!(updated["name"], format!("{name}-2").as_str());
-    assert_eq!(updated["replication_mode"], "pull");
+    assert_eq!(updated["replication_mode"], "mirror");
     assert_eq!(updated["description"], "changed");
     assert_eq!(updated["priority"], 6);
     assert_eq!(updated["precedence"], 3);
@@ -121,7 +121,7 @@ fn create_update_toggle_preview_and_delete() {
         "--peer-selector",
         r#"{"all":true}"#,
         "--mode",
-        "pull",
+        "mirror",
         "--priority",
         "1",
         "--precedence",
