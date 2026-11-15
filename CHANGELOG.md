@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`ak auth login --sso oidc:<id>` and `saml:<id>` can finish the sign-in against Artifact Keeper 1.12**, which binds an OIDC or SAML browser sign-in to the client that started it (artifact-keeper/artifact-keeper#5486). The browser's callback was refused, since the CLI and not the browser had started the sign-in. The CLI now asks for the server's command-line mode (`client=cli`): the browser ends on a page showing the code, and `ak auth login` or `ak auth sso-exchange` sends it with the cookie the login set. Between `ak auth login --no-input` and `ak auth sso-exchange`, that cookie is kept in `sso-pending.json` in the config directory (owner-only, for 10 minutes, removed once the exchange works). Servers before 1.12 set no cookie, and sign-in works there as before.
 
+### Security
+
+- Updated `zip` to 9.0.5 (GHSA-m665-v7pm-7grj / CVE-2026-115905, archives whose local and central-directory headers name different files), and `Cargo.toml` now requires at least 9.0.5. `ak` reads archives with `ZipArchive`, which uses the central directory, and never with the streaming reader the advisory is about. `zip` 9.0.5 needs `libc` 0.2.186 or later through its new `nix` dependency, so `libc` moves from 0.2.183 to 0.2.191. The MSRV stays at 1.88.
+- Updated `quinn-udp` to 0.5.16 (RUSTSEC-2026-0538, receive loop can spin after a truncated datagram). `ak` doesn't compile `quinn-udp`, so it was never affected: this only clears `cargo audit` on `Cargo.lock`.
+
 ## [1.11.0] - Unreleased
 
 The CLI minor version now tracks the server API minor it's generated from. This
