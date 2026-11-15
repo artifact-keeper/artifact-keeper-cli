@@ -7,25 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **`ak pkg <format>` publishes packages without the format's own client.** `ak pkg npm publish`, `ak pkg pypi publish`, `ak pkg cargo publish`, `ak pkg helm publish` and `ak pkg nuget publish` build the request that format's client sends. `ak pkg npm` also has `dist-tag`, `unpublish` and `audit`, `ak pkg helm` has `delete`, and `ak pkg pypi` has `xmlrpc`.
-- **`ak pkg` for system packages:** `ak pkg debian`, `rpm`, `alpine`, `pacman`, `conda`, and `incus`/`lxc` for images, with chunked uploads. `publish` waits until the server has stored the image, since it does that after answering, and fails if it couldn't. `--no-wait` returns at once. `ak pkg conda` also has `attest` and `withdraw`, and can send an API token in the URL.
-- **`ak pkg` for build tools and languages:** `ak pkg maven` (with checksums and a generated POM), `ivy`, `bazel`, `go`, `gems`, `composer`, `cran`, `hex`, `pub` and `terraform`.
-- **More of `ak pkg`:** `conan` (recipes, packages, removal and its token exchange), `lfs` (the batch upload and locks), `huggingface`, `swift`, `ansible`, `puppet`, `chef`, `cocoapods`, `jetbrains`, `vscode` and `proto` (a module upload, and any RPC of the Buf API).
-- **`ak agent plugins` publishes and installs AI coding-agent plugins** from an Agent Plugins repository (artifact-keeper/artifact-keeper#5251). `publish` finds the plugin's manifests, checks its name and SemVer version, sets `--version` in each manifest of the upload without touching the directory, and uploads a reproducible zip with its SHA-256. `install` checks the download against the repository's index, unpacks it safely for Claude Code, Cursor, Codex or Copilot / VS Code (`--harness claude,cursor`), records it in `.ak/plugin-info.json`, and runs or prints the agent's own follow-up commands. `list --check-updates`, `update`, `uninstall`, `search` and `delete` complete the set.
-- **`ak pkg oci`:** `catalog`, `tags`, `manifest get|head|put|delete`, `blob get`, which checks the digest, and `referrers`.
-
-### Fixed
-
-- **`ak auth login --sso oidc:<id>` and `saml:<id>` can finish the sign-in against Artifact Keeper 1.12**, which binds an OIDC or SAML browser sign-in to the client that started it (artifact-keeper/artifact-keeper#5486). The browser's callback was refused, since the CLI and not the browser had started the sign-in. The CLI now asks for the server's command-line mode (`client=cli`): the browser ends on a page showing the code, and `ak auth login` or `ak auth sso-exchange` sends it with the cookie the login set. Between `ak auth login --no-input` and `ak auth sso-exchange`, that cookie is kept in `sso-pending.json` in the config directory (owner-only, for 10 minutes, removed once the exchange works). Servers before 1.12 set no cookie, and sign-in works there as before.
-
-### Security
-
-- Updated `zip` to 9.0.5 (GHSA-m665-v7pm-7grj / CVE-2026-115905, archives whose local and central-directory headers name different files), and `Cargo.toml` now requires at least 9.0.5. `ak` reads archives with `ZipArchive`, which uses the central directory, and never with the streaming reader the advisory is about. `zip` 9.0.5 needs `libc` 0.2.186 or later through its new `nix` dependency, so `libc` moves from 0.2.183 to 0.2.191. The MSRV stays at 1.88.
-- Updated `quinn-udp` to 0.5.16 (RUSTSEC-2026-0538, receive loop can spin after a truncated datagram). `ak` doesn't compile `quinn-udp`, so it was never affected: this only clears `cargo audit` on `Cargo.lock`.
-
-## [1.11.0] - Unreleased
+## [1.11.0] - 2026-11-15
 
 The CLI minor version now tracks the server API minor it's generated from. This
 release is built for API 1.11.11 and supports servers on 1.11 and 1.10.
@@ -122,6 +104,12 @@ These can change what you see, or break a script, coming from 1.2:
 - `ak environment` stores lockfiles and searches them: `ingest`, `list`, `show`, `delete`, `advisories`, `lookup <purl>` and `advisory-transitions`. Commands take an environment's name or its ID. Needs a 1.11 server, and on 1.10 says so.
 - `ak image-build` builds container images on the server and inspects pushed ones: `list`, `show`, `log`, `create`, `render`, `settings`, `base-info` and `inspect`. A spec comes from flags (`--base-image`, `--apt`, `--pip`, `--conda`, `--env`, `--label`, `--user` and more), from `--spec` as JSON, or both. `render` checks a spec and prints the Containerfile without building. `create` needs a server with a builder configured.
 - Admin settings and storage commands: `ak admin settings system|token-policy|totp-policy`, `ak admin storage-scrub run|findings`, `ak admin reindex-storage`, `ak admin trash list|restore` and `ak packages backfill`. `ak admin plugins install` also takes a local JSON manifest or ZIP file as well as a git URL. Operators also have `ak admin storage ledger-backfill` and `ak admin diag memory|heap-profile`, which aren't in the help. The `diag` routes exist only on a server built with its `profiling` feature. `admin settings system`, `storage-scrub`, `reindex-storage` and `trash` need a 1.11 server, and on 1.10 they say so.
+- **`ak pkg <format>` publishes packages without the format's own client.** `ak pkg npm publish`, `ak pkg pypi publish`, `ak pkg cargo publish`, `ak pkg helm publish` and `ak pkg nuget publish` build the request that format's client sends. `ak pkg npm` also has `dist-tag`, `unpublish` and `audit`, `ak pkg helm` has `delete`, and `ak pkg pypi` has `xmlrpc`.
+- **`ak pkg` for system packages:** `ak pkg debian`, `rpm`, `alpine`, `pacman`, `conda`, and `incus`/`lxc` for images, with chunked uploads. `publish` waits until the server has stored the image, since it does that after answering, and fails if it couldn't. `--no-wait` returns at once. `ak pkg conda` also has `attest` and `withdraw`, and can send an API token in the URL.
+- **`ak pkg` for build tools and languages:** `ak pkg maven` (with checksums and a generated POM), `ivy`, `bazel`, `go`, `gems`, `composer`, `cran`, `hex`, `pub` and `terraform`.
+- **More of `ak pkg`:** `conan` (recipes, packages, removal and its token exchange), `lfs` (the batch upload and locks), `huggingface`, `swift`, `ansible`, `puppet`, `chef`, `cocoapods`, `jetbrains`, `vscode` and `proto` (a module upload, and any RPC of the Buf API).
+- **`ak agent plugins` publishes and installs AI coding-agent plugins** from an Agent Plugins repository (artifact-keeper/artifact-keeper#5251). `publish` finds the plugin's manifests, checks its name and SemVer version, sets `--version` in each manifest of the upload without touching the directory, and uploads a reproducible zip with its SHA-256. `install` checks the download against the repository's index, unpacks it safely for Claude Code, Cursor, Codex or Copilot / VS Code (`--harness claude,cursor`), records it in `.ak/plugin-info.json`, and runs or prints the agent's own follow-up commands. `list --check-updates`, `update`, `uninstall`, `search` and `delete` complete the set.
+- **`ak pkg oci`:** `catalog`, `tags`, `manifest get|head|put|delete`, `blob get`, which checks the digest, and `referrers`.
 
 ### Changed
 
@@ -184,6 +172,7 @@ These can change what you see, or break a script, coming from 1.2:
 - `ak repo create --repo-type proxy` and `ak repo list --repo-type proxy` work. The API's word is `remote` and it rejected `proxy`, so `ak` now sends `remote` (#154).
 - `ak repo delete` accepts the `202 Accepted` and job that backend 1.12 answers with, where it used to report failure on a delete the server had accepted. It prints the job ID, and `--format quiet` prints only that (#182).
 - `ak repo create` no longer sends `is_public: false` when `--public` isn't given.
+- **`ak auth login --sso oidc:<id>` and `saml:<id>` can finish the sign-in against Artifact Keeper 1.12**, which binds an OIDC or SAML browser sign-in to the client that started it (artifact-keeper/artifact-keeper#5486). The browser's callback was refused, since the CLI and not the browser had started the sign-in. The CLI now asks for the server's command-line mode (`client=cli`): the browser ends on a page showing the code, and `ak auth login` or `ak auth sso-exchange` sends it with the cookie the login set. Between `ak auth login --no-input` and `ak auth sso-exchange`, that cookie is kept in `sso-pending.json` in the config directory (owner-only, for 10 minutes, removed once the exchange works). Servers before 1.12 set no cookie, and sign-in works there as before.
 
 ### Removed
 
@@ -206,6 +195,8 @@ These can change what you see, or break a script, coming from 1.2:
 - Updated `tokio` to 1.54.1 (RUSTSEC-2026-0386, `AsyncFd` I/O-safety unsoundness)
 - The patched `rustls`/`rustls-webpki` require `aws-lc-rs` >= 1.18 (now 1.19.0, with `aws-lc-sys` 0.47.0) and the patched `quinn-proto` requires `rand` 0.10, so those move too (`rand` 0.10 is only in `Cargo.lock` as well)
 - `ak setup pip` no longer prints the access token to stderr (#207). `setup` previews are now built from templates that never hold the token, `setup helm` passes it on stdin instead of the command line, and config files and their backups are 0600 from the moment they exist. If you ran `ak setup pip` in a shared terminal or a CI job, treat that token as exposed.
+- Updated `zip` to 9.0.5 (GHSA-m665-v7pm-7grj / CVE-2026-115905, archives whose local and central-directory headers name different files), and `Cargo.toml` now requires at least 9.0.5. `ak` reads archives with `ZipArchive`, which uses the central directory, and never with the streaming reader the advisory is about. `zip` 9.0.5 needs `libc` 0.2.186 or later through its new `nix` dependency, so `libc` moves from 0.2.183 to 0.2.191. The MSRV stays at 1.88.
+- Updated `quinn-udp` to 0.5.16 (RUSTSEC-2026-0538, receive loop can spin after a truncated datagram). `ak` doesn't compile `quinn-udp`, so it was never affected: this only clears `cargo audit` on `Cargo.lock`.
 
 ## [1.2.0] - 2026-07-13
 
@@ -356,6 +347,9 @@ Initial release of the Artifact Keeper CLI.
 - Covers 250+ API endpoints across all backend features
 - OpenAPI 3.1 → 3.0 conversion handled automatically by the xtask
 
+[Unreleased]: https://github.com/artifact-keeper/artifact-keeper-cli/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v1.11.0
+[1.2.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v1.2.0
 [1.0.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v1.0.0
 [0.5.0]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.5.0
 [0.4.2]: https://github.com/artifact-keeper/artifact-keeper-cli/releases/tag/v0.4.2
