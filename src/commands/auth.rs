@@ -813,14 +813,11 @@ async fn sso_login_url(
         .build()
         .into_diagnostic()?;
     let url = format!(
-        "{}/api/v1/auth/sso/{}/{provider}/login",
+        "{}/api/v1/auth/sso/{}/{provider}/login?client=cli",
         instance.url.trim_end_matches('/'),
         kind.route()
     );
-    let mut req = http
-        .get(&url)
-        .timeout(std::time::Duration::from_secs(30))
-        .query(&[("client", "cli")]);
+    let mut req = http.get(&url).timeout(std::time::Duration::from_secs(30));
     if let Some(prompt) = prompt {
         req = req.query(&[("prompt", prompt)]);
     }
