@@ -72,7 +72,7 @@ hex = "0.4"
 # Reading package archives
 flate2 = "1"
 tar = "0.4"
-zip = { version = "9", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 
 # Utilities
 dirs = "6"
