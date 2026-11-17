@@ -2139,6 +2139,13 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"pagination\": {"]
     #[doc = "      \"$ref\": \"#/components/schemas/Pagination\""]
+    #[doc = "    },"]
+    #[doc = "    \"total_is_exact\": {"]
+    #[doc = "      \"description\": \"Whether `pagination.total` and `pagination.total_pages` are exact\\n(#5255). `false` means they are a lower bound (the rows seen so far,\\n+1 when another page exists): page with `has_more` / `next_cursor`\\nuntil `has_more` is false, or pass `?count=exact`, instead of looping\\nto `total_pages`. Set on every artifact listing; absent only from\\nservers older than this field.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -2160,6 +2167,9 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub next_cursor: ::std::option::Option<::std::string::String>,
         pub pagination: Pagination,
+        #[doc = "Whether `pagination.total` and `pagination.total_pages` are exact\n(#5255). `false` means they are a lower bound (the rows seen so far,\n+1 when another page exists): page with `has_more` / `next_cursor`\nuntil `has_more` is false, or pass `?count=exact`, instead of looping\nto `total_pages`. Set on every artifact listing; absent only from\nservers older than this field."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub total_is_exact: ::std::option::Option<bool>,
     }
     impl ArtifactListResponse {
         pub fn builder() -> builder::ArtifactListResponse {
@@ -2806,6 +2816,7 @@ pub mod types {
     #[doc = "      \"type\": \"object\""]
     #[doc = "    },"]
     #[doc = "    \"replication_mode\": {"]
+    #[doc = "      \"description\": \"`push` (the default) or `mirror`, which both send each new artifact\\nto the peer as it is uploaded, or `none` (assigned, not replicated).\\n`pull` is refused with 400: it is not implemented and never created a\\nsync task (#5293).\","]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
@@ -2835,6 +2846,7 @@ pub mod types {
     pub struct AssignRepoRequest {
         #[doc = "Optional JSONB filter constraining which artifacts in the repository\nget replicated. Shape: `{\"include_patterns\": [\"^v\\\\d+\\\\.\"], \"exclude_patterns\": [\".*-SNAPSHOT$\"]}`.\nNull/absent means replicate everything."]
         pub replication_filter: ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+        #[doc = "`push` (the default) or `mirror`, which both send each new artifact\nto the peer as it is uploaded, or `none` (assigned, not replicated).\n`pull` is refused with 400: it is not implemented and never created a\nsync task (#5293)."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub replication_mode: ::std::option::Option<::std::string::String>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
@@ -9274,6 +9286,23 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"curation_default_action\": {"]
+    #[doc = "      \"description\": \"Not settable on create (#5324): set it with\\n`PATCH /api/v1/repositories/{key}` after creating the repository.\\nAnything other than `allow` (the default) is refused with 400 rather\\nthan ignored.\","]
+    #[doc = "      \"examples\": ["]
+    #[doc = "        \"allow\""]
+    #[doc = "      ],"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"curation_enabled\": {"]
+    #[doc = "      \"description\": \"Not settable on create (#5324): enable curation with\\n`PATCH /api/v1/repositories/{key}` after creating the repository.\\n`true` is refused with 400 rather than ignored; `false` (the default)\\nis accepted.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"custom_user_agent\": {"]
     #[doc = "      \"description\": \"Custom User-Agent sent on outbound HTTP requests to the upstream for\\nthis repository. Only valid for remote repositories. Max 256 characters.\","]
     #[doc = "      \"type\": ["]
@@ -9396,12 +9425,34 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"quarantine_duration_minutes\": {"]
+    #[doc = "      \"description\": \"Quarantine hold duration in minutes (#5324). Must be non-negative.\\nStored in `repository_config` under `quarantine_duration_minutes`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"quarantine_enabled\": {"]
+    #[doc = "      \"description\": \"Enable the upload-time quarantine period (Package Age Policy) from the\\nfirst upload (#5324). Same rules as on update: enabling is refused\\n(400) on a Virtual repository, which has no cache of its own. Stored\\nin `repository_config` under `quarantine_enabled`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"quota_bytes\": {"]
     #[doc = "      \"type\": ["]
     #[doc = "        \"integer\","]
     #[doc = "        \"null\""]
     #[doc = "      ],"]
     #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"release_repository_key\": {"]
+    #[doc = "      \"description\": \"Not settable on create (#5324): link a staging repository to its\\nrelease repository after creating it, with\\n`PATCH /api/v1/repositories/{key}` or\\n`PUT /api/v1/repositories/{key}/release-target`. A non-empty value is\\nrefused with 400 rather than ignored.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"repo_type\": {"]
     #[doc = "      \"description\": \"One of `local`, `remote`, `virtual`, `staging`. `hosted` is accepted as\\nan alias of `local` (#4157), which is what the docs call the same thing.\","]
@@ -9462,6 +9513,13 @@ pub mod types {
     #[doc = "        \"null\""]
     #[doc = "      ]"]
     #[doc = "    },"]
+    #[doc = "    \"virtual_metadata_partial\": {"]
+    #[doc = "      \"description\": \"Virtual repositories only: serve a partial metadata merge instead of\\na 502 when a member fails (#4192); see\\n`UpdateRepositoryRequest.virtual_metadata_partial`. Refused (400) on\\nany other repository type.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
     #[doc = "    \"visibility\": {"]
     #[doc = "      \"$ref\": \"#/components/schemas/RepositoryVisibility\""]
     #[doc = "    }"]
@@ -9492,6 +9550,12 @@ pub mod types {
         #[doc = "Opt into ingesting UNVERIFIED upstream metadata on the keyless RPM\ncuration-sync path (#2569). Omit or `false` to keep the fail-closed\ndefault (a keyless curation sync refuses to ingest unverified upstream\npackages); `true` reverts to the legacy unverified-ingest behavior. Only\nmeaningful for RPM curation staging repositories."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub curation_allow_unverified: ::std::option::Option<bool>,
+        #[doc = "Not settable on create (#5324): set it with\n`PATCH /api/v1/repositories/{key}` after creating the repository.\nAnything other than `allow` (the default) is refused with 400 rather\nthan ignored."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub curation_default_action: ::std::option::Option<::std::string::String>,
+        #[doc = "Not settable on create (#5324): enable curation with\n`PATCH /api/v1/repositories/{key}` after creating the repository.\n`true` is refused with 400 rather than ignored; `false` (the default)\nis accepted."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub curation_enabled: ::std::option::Option<bool>,
         #[doc = "Custom User-Agent sent on outbound HTTP requests to the upstream for\nthis repository. Only valid for remote repositories. Max 256 characters."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub custom_user_agent: ::std::option::Option<::std::string::String>,
@@ -9539,8 +9603,17 @@ pub mod types {
         #[doc = "Override the PyPI simple-index prefix for upstreams that do not follow\nthe standard PEP 503 `/simple/` layout (issue #1546).\n\n- Omit or `\"simple\"` — standard PEP 503 (pypi.org, devpi, Nexus). Default.\n- `\"\"` (empty) — flat CDN (e.g. `https://download.pytorch.org/whl/cpu`):\n  package files are served directly under the upstream root with no prefix.\n- Any other non-empty string — custom index prefix.\n\nStored in `repository_config` under `pypi_upstream_index_path`.\nOnly meaningful for PyPI / Poetry / Jupyter / Conda Remote repositories."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub pypi_upstream_index_path: ::std::option::Option<::std::string::String>,
+        #[doc = "Quarantine hold duration in minutes (#5324). Must be non-negative.\nStored in `repository_config` under `quarantine_duration_minutes`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_duration_minutes: ::std::option::Option<i64>,
+        #[doc = "Enable the upload-time quarantine period (Package Age Policy) from the\nfirst upload (#5324). Same rules as on update: enabling is refused\n(400) on a Virtual repository, which has no cache of its own. Stored\nin `repository_config` under `quarantine_enabled`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quarantine_enabled: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub quota_bytes: ::std::option::Option<i64>,
+        #[doc = "Not settable on create (#5324): link a staging repository to its\nrelease repository after creating it, with\n`PATCH /api/v1/repositories/{key}` or\n`PUT /api/v1/repositories/{key}/release-target`. A non-empty value is\nrefused with 400 rather than ignored."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub release_repository_key: ::std::option::Option<::std::string::String>,
         #[doc = "One of `local`, `remote`, `virtual`, `staging`. `hosted` is accepted as\nan alias of `local` (#4157), which is what the docs call the same thing."]
         pub repo_type: ::std::string::String,
         #[doc = "Metadata root directory depth for local RPM repositories. Omit for 0."]
@@ -9566,6 +9639,9 @@ pub mod types {
         #[doc = "Opt this repository into first-class artifact versioning (#2367):\nuploads to Generic/Mlmodel repos append immutable revisions instead\nof overwriting. Defaults to false (current behavior preserved)."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub versioning_enabled: ::std::option::Option<bool>,
+        #[doc = "Virtual repositories only: serve a partial metadata merge instead of\na 502 when a member fails (#4192); see\n`UpdateRepositoryRequest.virtual_metadata_partial`. Refused (400) on\nany other repository type."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub virtual_metadata_partial: ::std::option::Option<bool>,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub visibility: ::std::option::Option<RepositoryVisibility>,
     }
@@ -14258,6 +14334,20 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"token_type\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"totp_required\": {"]
+    #[doc = "      \"description\": \"Present (and `true`) when the account has TOTP enrolled (#5484): the\\ncode carried no session. `access_token` and `refresh_token` are empty\\nand `totp_token` is redeemed at `POST /api/v1/auth/totp/verify`, as\\nafter `POST /api/v1/auth/login`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"boolean\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"totp_token\": {"]
+    #[doc = "      \"description\": \"Single-use TOTP pending token; see `totp_required`.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -14271,6 +14361,12 @@ pub mod types {
         pub expires_in: ::std::option::Option<i64>,
         pub refresh_token: ::std::string::String,
         pub token_type: ::std::string::String,
+        #[doc = "Present (and `true`) when the account has TOTP enrolled (#5484): the\ncode carried no session. `access_token` and `refresh_token` are empty\nand `totp_token` is redeemed at `POST /api/v1/auth/totp/verify`, as\nafter `POST /api/v1/auth/login`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub totp_required: ::std::option::Option<bool>,
+        #[doc = "Single-use TOTP pending token; see `totp_required`."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub totp_token: ::std::option::Option<::std::string::String>,
     }
     impl ExchangeCodeResponse {
         pub fn builder() -> builder::ExchangeCodeResponse {
@@ -18430,7 +18526,7 @@ pub mod types {
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"count\": {"]
-    #[doc = "      \"description\": \"Total-count mode for keyset-paged listings (#2520, #2519).\\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\\nexact; otherwise the keyset-paged listings report a cheap lower bound\\n(rows seen so far, +1 when another page exists) and `has_more` is the\\nauthoritative \\\"is there a next page\\\" signal.\","]
+    #[doc = "      \"description\": \"Total-count mode for keyset-paged listings (#2520, #2519, #5255).\\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\\nexact. `count=lower_bound` skips it: `pagination.total` is then exact\\nonly on the last page reached by `page=N` (and on an empty page, which\\nalways counts), and otherwise a lower bound (rows seen so far, +1 when\\nanother page exists). Without the parameter, the flat listings\\n(hosted, virtual, remote) are exact on `page=N` requests and\\n`lower_bound` on `cursor` requests, and the grouped listings\\n(`group_by`) are `lower_bound`.\\nThe response's `total_is_exact` says which one you got; `has_more` is\\nthe authoritative \\\"is there a next page\\\" signal either way, so walk\\npages until it is false rather than up to a lower-bound `total_pages`.\","]
     #[doc = "      \"type\": ["]
     #[doc = "        \"string\","]
     #[doc = "        \"null\""]
@@ -18484,7 +18580,7 @@ pub mod types {
     #[doc = r" </details>"]
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct ListArtifactsQuery {
-        #[doc = "Total-count mode for keyset-paged listings (#2520, #2519).\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\nexact; otherwise the keyset-paged listings report a cheap lower bound\n(rows seen so far, +1 when another page exists) and `has_more` is the\nauthoritative \"is there a next page\" signal."]
+        #[doc = "Total-count mode for keyset-paged listings (#2520, #2519, #5255).\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\nexact. `count=lower_bound` skips it: `pagination.total` is then exact\nonly on the last page reached by `page=N` (and on an empty page, which\nalways counts), and otherwise a lower bound (rows seen so far, +1 when\nanother page exists). Without the parameter, the flat listings\n(hosted, virtual, remote) are exact on `page=N` requests and\n`lower_bound` on `cursor` requests, and the grouped listings\n(`group_by`) are `lower_bound`.\nThe response's `total_is_exact` says which one you got; `has_more` is\nthe authoritative \"is there a next page\" signal either way, so walk\npages until it is false rather than up to a lower-bound `total_pages`."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub count: ::std::option::Option<::std::string::String>,
         #[doc = "Opaque keyset cursor (#2520, #2519, #2518). Pass the `next_cursor`\nvalue from the previous response to fetch the next page; `page` is\nignored while a cursor is present. Supported by the flat artifact\nlisting of hosted/local, virtual, and remote repositories (#2518,\n#2519), by `group_by=docker_tag`, and by `group_by=maven_component`\non remote repositories; other listing modes ignore it."]
@@ -25898,6 +25994,58 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "The quota figures `GET /api/v1/system/quota` answers and\n`GET /api/v1/admin/stats` embeds."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"The quota figures `GET /api/v1/system/quota` answers and\\n`GET /api/v1/admin/stats` embeds.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"max_upload_bytes\","]
+    #[doc = "    \"storage_quota\","]
+    #[doc = "    \"transfer_quota\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"max_upload_bytes\": {"]
+    #[doc = "      \"description\": \"`MAX_UPLOAD_SIZE` in bytes; `0` means no limit.\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"quota_help_url\": {"]
+    #[doc = "      \"description\": \"`QUOTA_HELP_URL`, when configured.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"storage_quota\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/StorageQuotaStatus\""]
+    #[doc = "    },"]
+    #[doc = "    \"transfer_quota\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/TransferQuotaStatus\""]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct QuotaOverview {
+        #[doc = "`MAX_UPLOAD_SIZE` in bytes; `0` means no limit."]
+        pub max_upload_bytes: i64,
+        #[doc = "`QUOTA_HELP_URL`, when configured."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quota_help_url: ::std::option::Option<::std::string::String>,
+        pub storage_quota: StorageQuotaStatus,
+        pub transfer_quota: TransferQuotaStatus,
+    }
+    impl QuotaOverview {
+        pub fn builder() -> builder::QuotaOverview {
+            Default::default()
+        }
+    }
     #[doc = "`ReEvaluateRequest`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -31925,6 +32073,72 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "The `storage_quota` object of `GET /api/v1/system/quota`."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"The `storage_quota` object of `GET /api/v1/system/quota`.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"enabled\","]
+    #[doc = "    \"state\","]
+    #[doc = "    \"used_bytes\","]
+    #[doc = "    \"warn_percent\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"percent\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"number\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"double\""]
+    #[doc = "    },"]
+    #[doc = "    \"quota_bytes\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"state\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/StorageState\""]
+    #[doc = "    },"]
+    #[doc = "    \"used_bytes\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"warn_percent\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct StorageQuotaStatus {
+        pub enabled: bool,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub percent: ::std::option::Option<f64>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quota_bytes: ::std::option::Option<i64>,
+        pub state: StorageState,
+        pub used_bytes: i64,
+        pub warn_percent: i32,
+    }
+    impl StorageQuotaStatus {
+        pub fn builder() -> builder::StorageQuotaStatus {
+            Default::default()
+        }
+    }
     #[doc = "Request body for a storage reindex. `dry_run` is required and unknown\nfields are rejected (the #3501 contract for write-capable admin calls)."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -32239,6 +32453,84 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "`ok`, `warning` (at or above the warning threshold) or `exceeded` (at or\nabove the quota)."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"`ok`, `warning` (at or above the warning threshold) or `exceeded` (at or\\nabove the quota).\","]
+    #[doc = "  \"type\": \"string\","]
+    #[doc = "  \"enum\": ["]
+    #[doc = "    \"ok\","]
+    #[doc = "    \"warning\","]
+    #[doc = "    \"exceeded\""]
+    #[doc = "  ]"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    )]
+    pub enum StorageState {
+        #[serde(rename = "ok")]
+        Ok,
+        #[serde(rename = "warning")]
+        Warning,
+        #[serde(rename = "exceeded")]
+        Exceeded,
+    }
+    impl ::std::fmt::Display for StorageState {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            match *self {
+                Self::Ok => f.write_str("ok"),
+                Self::Warning => f.write_str("warning"),
+                Self::Exceeded => f.write_str("exceeded"),
+            }
+        }
+    }
+    impl ::std::str::FromStr for StorageState {
+        type Err = self::error::ConversionError;
+        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            match value {
+                "ok" => Ok(Self::Ok),
+                "warning" => Ok(Self::Warning),
+                "exceeded" => Ok(Self::Exceeded),
+                _ => Err("invalid value".into()),
+            }
+        }
+    }
+    impl ::std::convert::TryFrom<&str> for StorageState {
+        type Error = self::error::ConversionError;
+        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<&::std::string::String> for StorageState {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<::std::string::String> for StorageState {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
     #[doc = "One folder node in the per-prefix storage rollup (#2601)."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -32441,6 +32733,7 @@ pub mod types {
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
     #[doc = "    \"created_at\","]
+    #[doc = "    \"effective\","]
     #[doc = "    \"id\","]
     #[doc = "    \"peer_instance_id\","]
     #[doc = "    \"replication_filter\","]
@@ -32451,6 +32744,13 @@ pub mod types {
     #[doc = "    \"created_at\": {"]
     #[doc = "      \"type\": \"string\","]
     #[doc = "      \"format\": \"date-time\""]
+    #[doc = "    },"]
+    #[doc = "    \"effective\": {"]
+    #[doc = "      \"description\": \"`active` when the subscription is enabled and its mode is replicated\\n(`push` or `mirror`); `inactive` otherwise, including a `pull`\\nsubscription stored before `pull` was refused, which never replicated\\nanything (#5293).\","]
+    #[doc = "      \"examples\": ["]
+    #[doc = "        \"active\""]
+    #[doc = "      ],"]
+    #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
     #[doc = "    \"id\": {"]
     #[doc = "      \"type\": \"string\","]
@@ -32496,6 +32796,8 @@ pub mod types {
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct SubscriptionResponse {
         pub created_at: ::chrono::DateTime<::chrono::offset::Utc>,
+        #[doc = "`active` when the subscription is enabled and its mode is replicated\n(`push` or `mirror`); `inactive` otherwise, including a `pull`\nsubscription stored before `pull` was refused, which never replicated\nanything (#5293)."]
+        pub effective: ::std::string::String,
         pub id: ::uuid::Uuid,
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub last_replicated_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -33032,19 +33334,28 @@ pub mod types {
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
     #[doc = "    \"active_peers\","]
+    #[doc = "    \"max_upload_bytes\","]
     #[doc = "    \"pending_sync_tasks\","]
     #[doc = "    \"proxy_artifact_count\","]
     #[doc = "    \"proxy_storage_bytes\","]
+    #[doc = "    \"storage_quota\","]
     #[doc = "    \"total_artifacts\","]
     #[doc = "    \"total_downloads\","]
     #[doc = "    \"total_repositories\","]
     #[doc = "    \"total_storage_bytes\","]
-    #[doc = "    \"total_users\""]
+    #[doc = "    \"total_users\","]
+    #[doc = "    \"transfer_quota\""]
     #[doc = "  ],"]
     #[doc = "  \"properties\": {"]
     #[doc = "    \"active_peers\": {"]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"max_upload_bytes\": {"]
+    #[doc = "      \"description\": \"`MAX_UPLOAD_SIZE` in bytes (`0` = no limit).\","]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
     #[doc = "    },"]
     #[doc = "    \"pending_sync_tasks\": {"]
     #[doc = "      \"type\": \"integer\","]
@@ -33064,6 +33375,16 @@ pub mod types {
     #[doc = "      \"description\": \"Bytes held by proxy-cached objects. Since #3134 this is a **breakdown\\nof** `total_storage_bytes`, not a disjoint bucket: the ledger's\\n`proxy_bytes` component is already inside that total, so a dashboard\\nthat adds the two double-counts the cache (#3650). The count above and\\nthe bytes here therefore do NOT compose the same way — only the count\\nis disjoint.\","]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"quota_help_url\": {"]
+    #[doc = "      \"description\": \"`QUOTA_HELP_URL`, when configured.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    },"]
+    #[doc = "    \"storage_quota\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/StorageQuotaStatus\""]
     #[doc = "    },"]
     #[doc = "    \"total_artifacts\": {"]
     #[doc = "      \"description\": \"Rows in `artifacts` (for OCI repositories that is manifests only —\\nlayer/config blobs are content-addressed objects, not artifacts).\\nUnlike the byte total, this count still includes legacy backfilled\\n`proxy-cache/%` rows.\","]
@@ -33087,6 +33408,9 @@ pub mod types {
     #[doc = "    \"total_users\": {"]
     #[doc = "      \"type\": \"integer\","]
     #[doc = "      \"format\": \"int64\""]
+    #[doc = "    },"]
+    #[doc = "    \"transfer_quota\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/TransferQuotaStatus\""]
     #[doc = "    }"]
     #[doc = "  }"]
     #[doc = "}"]
@@ -33095,6 +33419,8 @@ pub mod types {
     #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
     pub struct SystemStats {
         pub active_peers: i64,
+        #[doc = "`MAX_UPLOAD_SIZE` in bytes (`0` = no limit)."]
+        pub max_upload_bytes: i64,
         pub pending_sync_tasks: i64,
         #[doc = "Count of proxy-cached (pull-through) objects, tracked in\n`proxy_cache_artifacts` rather than `artifacts`. This COUNT is disjoint\nfrom `total_artifacts`, which reads only the hosted tables."]
         pub proxy_artifact_count: i64,
@@ -33103,6 +33429,10 @@ pub mod types {
         pub proxy_download_count: ::std::option::Option<i64>,
         #[doc = "Bytes held by proxy-cached objects. Since #3134 this is a **breakdown\nof** `total_storage_bytes`, not a disjoint bucket: the ledger's\n`proxy_bytes` component is already inside that total, so a dashboard\nthat adds the two double-counts the cache (#3650). The count above and\nthe bytes here therefore do NOT compose the same way — only the count\nis disjoint."]
         pub proxy_storage_bytes: i64,
+        #[doc = "`QUOTA_HELP_URL`, when configured."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quota_help_url: ::std::option::Option<::std::string::String>,
+        pub storage_quota: StorageQuotaStatus,
         #[doc = "Rows in `artifacts` (for OCI repositories that is manifests only —\nlayer/config blobs are content-addressed objects, not artifacts).\nUnlike the byte total, this count still includes legacy backfilled\n`proxy-cache/%` rows."]
         pub total_artifacts: i64,
         #[doc = "Every recorded download: hosted artifact downloads\n(`download_statistics`) plus proxy pull-through serves\n(`proxy_download_statistics`). Before #4539 this counted hosted\ndownloads only, so an all-proxy deployment reported zero."]
@@ -33111,6 +33441,7 @@ pub mod types {
         #[doc = "All stored bytes, summed from `repository_usage_ledger`\n(`hosted_bytes + proxy_bytes + oci_bytes`) — the same source the\nper-repository `storage_used_bytes` figures are read from, so the\ndashboard total is consistent with the per-repo column by\nconstruction (#3134). Includes OCI layer/config blob bytes\n(`oci_blobs`) and proxy-cached bytes; `proxy_storage_bytes` below is\na *breakdown* of this total, not a disjoint bucket."]
         pub total_storage_bytes: i64,
         pub total_users: i64,
+        pub transfer_quota: TransferQuotaStatus,
     }
     impl SystemStats {
         pub fn builder() -> builder::SystemStats {
@@ -34214,6 +34545,103 @@ pub mod types {
             Default::default()
         }
     }
+    #[doc = "The `transfer_quota` object of `GET /api/v1/system/quota`."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"The `transfer_quota` object of `GET /api/v1/system/quota`.\","]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"required\": ["]
+    #[doc = "    \"enabled\","]
+    #[doc = "    \"grace_percent\","]
+    #[doc = "    \"period_end\","]
+    #[doc = "    \"period_start\","]
+    #[doc = "    \"state\","]
+    #[doc = "    \"used_bytes\","]
+    #[doc = "    \"warn_percent\""]
+    #[doc = "  ],"]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"enabled\": {"]
+    #[doc = "      \"type\": \"boolean\""]
+    #[doc = "    },"]
+    #[doc = "    \"grace_percent\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"hard_limit_bytes\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"percent\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"number\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"double\""]
+    #[doc = "    },"]
+    #[doc = "    \"period_end\": {"]
+    #[doc = "      \"description\": \"End of the current period, the start of the next (RFC 3339, UTC).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"period_start\": {"]
+    #[doc = "      \"description\": \"Start of the current period (RFC 3339, UTC).\","]
+    #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"quota_bytes\": {"]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"integer\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ],"]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"state\": {"]
+    #[doc = "      \"$ref\": \"#/components/schemas/TransferState\""]
+    #[doc = "    },"]
+    #[doc = "    \"used_bytes\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int64\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    },"]
+    #[doc = "    \"warn_percent\": {"]
+    #[doc = "      \"type\": \"integer\","]
+    #[doc = "      \"format\": \"int32\","]
+    #[doc = "      \"minimum\": 0.0"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct TransferQuotaStatus {
+        pub enabled: bool,
+        pub grace_percent: i32,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub hard_limit_bytes: ::std::option::Option<i64>,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub percent: ::std::option::Option<f64>,
+        #[doc = "End of the current period, the start of the next (RFC 3339, UTC)."]
+        pub period_end: ::std::string::String,
+        #[doc = "Start of the current period (RFC 3339, UTC)."]
+        pub period_start: ::std::string::String,
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub quota_bytes: ::std::option::Option<i64>,
+        pub state: TransferState,
+        pub used_bytes: i64,
+        pub warn_percent: i32,
+    }
+    impl TransferQuotaStatus {
+        pub fn builder() -> builder::TransferQuotaStatus {
+            Default::default()
+        }
+    }
     #[doc = "`TransferSessionResponse`"]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
@@ -34291,6 +34719,89 @@ pub mod types {
     impl TransferSessionResponse {
         pub fn builder() -> builder::TransferSessionResponse {
             Default::default()
+        }
+    }
+    #[doc = "`ok`, `warning` (at or above the warning threshold), `over` (at or above\nthe quota, inside the grace band, still serving) or `refusing` (at the\nhard limit)."]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"description\": \"`ok`, `warning` (at or above the warning threshold), `over` (at or above\\nthe quota, inside the grace band, still serving) or `refusing` (at the\\nhard limit).\","]
+    #[doc = "  \"type\": \"string\","]
+    #[doc = "  \"enum\": ["]
+    #[doc = "    \"ok\","]
+    #[doc = "    \"warning\","]
+    #[doc = "    \"over\","]
+    #[doc = "    \"refusing\""]
+    #[doc = "  ]"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(
+        :: serde :: Deserialize,
+        :: serde :: Serialize,
+        Clone,
+        Copy,
+        Debug,
+        Eq,
+        Hash,
+        Ord,
+        PartialEq,
+        PartialOrd,
+    )]
+    pub enum TransferState {
+        #[serde(rename = "ok")]
+        Ok,
+        #[serde(rename = "warning")]
+        Warning,
+        #[serde(rename = "over")]
+        Over,
+        #[serde(rename = "refusing")]
+        Refusing,
+    }
+    impl ::std::fmt::Display for TransferState {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            match *self {
+                Self::Ok => f.write_str("ok"),
+                Self::Warning => f.write_str("warning"),
+                Self::Over => f.write_str("over"),
+                Self::Refusing => f.write_str("refusing"),
+            }
+        }
+    }
+    impl ::std::str::FromStr for TransferState {
+        type Err = self::error::ConversionError;
+        fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            match value {
+                "ok" => Ok(Self::Ok),
+                "warning" => Ok(Self::Warning),
+                "over" => Ok(Self::Over),
+                "refusing" => Ok(Self::Refusing),
+                _ => Err("invalid value".into()),
+            }
+        }
+    }
+    impl ::std::convert::TryFrom<&str> for TransferState {
+        type Error = self::error::ConversionError;
+        fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<&::std::string::String> for TransferState {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: &::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
+        }
+    }
+    impl ::std::convert::TryFrom<::std::string::String> for TransferState {
+        type Error = self::error::ConversionError;
+        fn try_from(
+            value: ::std::string::String,
+        ) -> ::std::result::Result<Self, self::error::ConversionError> {
+            value.parse()
         }
     }
     #[doc = "One page of the trash listing."]
@@ -41961,6 +42472,8 @@ pub mod types {
                 ::std::string::String,
             >,
             pagination: ::std::result::Result<super::Pagination, ::std::string::String>,
+            total_is_exact:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
         }
         impl ::std::default::Default for ArtifactListResponse {
             fn default() -> Self {
@@ -41971,6 +42484,7 @@ pub mod types {
                     items: Err("no value supplied for items".to_string()),
                     next_cursor: Ok(Default::default()),
                     pagination: Err("no value supplied for pagination".to_string()),
+                    total_is_exact: Ok(Default::default()),
                 }
             }
         }
@@ -42039,6 +42553,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for pagination: {e}"));
                 self
             }
+            pub fn total_is_exact<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.total_is_exact = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for total_is_exact: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<ArtifactListResponse> for super::ArtifactListResponse {
             type Error = super::error::ConversionError;
@@ -42052,6 +42576,7 @@ pub mod types {
                     items: value.items?,
                     next_cursor: value.next_cursor?,
                     pagination: value.pagination?,
+                    total_is_exact: value.total_is_exact?,
                 })
             }
         }
@@ -42064,6 +42589,7 @@ pub mod types {
                     items: Ok(value.items),
                     next_cursor: Ok(value.next_cursor),
                     pagination: Ok(value.pagination),
+                    total_is_exact: Ok(value.total_is_exact),
                 }
             }
         }
@@ -54417,6 +54943,12 @@ pub mod types {
             >,
             curation_allow_unverified:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            curation_default_action: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            curation_enabled:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             custom_user_agent: ::std::result::Result<
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
@@ -54469,7 +55001,15 @@ pub mod types {
                 ::std::option::Option<::std::string::String>,
                 ::std::string::String,
             >,
+            quarantine_duration_minutes:
+                ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            quarantine_enabled:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            release_repository_key: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
             repo_type: ::std::result::Result<::std::string::String, ::std::string::String>,
             repodata_depth:
                 ::std::result::Result<::std::option::Option<i32>, ::std::string::String>,
@@ -54499,6 +55039,8 @@ pub mod types {
             >,
             versioning_enabled:
                 ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            virtual_metadata_partial:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
             visibility: ::std::result::Result<
                 ::std::option::Option<super::RepositoryVisibility>,
                 ::std::string::String,
@@ -54514,6 +55056,8 @@ pub mod types {
                     apt_origin: Ok(Default::default()),
                     apt_release_version: Ok(Default::default()),
                     curation_allow_unverified: Ok(Default::default()),
+                    curation_default_action: Ok(Default::default()),
+                    curation_enabled: Ok(Default::default()),
                     custom_user_agent: Ok(Default::default()),
                     debian: Ok(Default::default()),
                     description: Ok(Default::default()),
@@ -54532,7 +55076,10 @@ pub mod types {
                     project_id: Ok(Default::default()),
                     promotion_only: Ok(Default::default()),
                     pypi_upstream_index_path: Ok(Default::default()),
+                    quarantine_duration_minutes: Ok(Default::default()),
+                    quarantine_enabled: Ok(Default::default()),
                     quota_bytes: Ok(Default::default()),
+                    release_repository_key: Ok(Default::default()),
                     repo_type: Err("no value supplied for repo_type".to_string()),
                     repodata_depth: Ok(Default::default()),
                     storage_backend: Ok(Default::default()),
@@ -54542,6 +55089,7 @@ pub mod types {
                     upstream_url: Ok(Default::default()),
                     upstream_username: Ok(Default::default()),
                     versioning_enabled: Ok(Default::default()),
+                    virtual_metadata_partial: Ok(Default::default()),
                     visibility: Ok(Default::default()),
                 }
             }
@@ -54612,6 +55160,26 @@ pub mod types {
             {
                 self.curation_allow_unverified = value.try_into().map_err(|e| {
                     format!("error converting supplied value for curation_allow_unverified: {e}")
+                });
+                self
+            }
+            pub fn curation_default_action<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.curation_default_action = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for curation_default_action: {e}")
+                });
+                self
+            }
+            pub fn curation_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.curation_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for curation_enabled: {e}")
                 });
                 self
             }
@@ -54805,6 +55373,26 @@ pub mod types {
                 });
                 self
             }
+            pub fn quarantine_duration_minutes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_duration_minutes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_duration_minutes: {e}")
+                });
+                self
+            }
+            pub fn quarantine_enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quarantine_enabled = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quarantine_enabled: {e}")
+                });
+                self
+            }
             pub fn quota_bytes<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<i64>>,
@@ -54813,6 +55401,16 @@ pub mod types {
                 self.quota_bytes = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for quota_bytes: {e}"));
+                self
+            }
+            pub fn release_repository_key<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.release_repository_key = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for release_repository_key: {e}")
+                });
                 self
             }
             pub fn repo_type<T>(mut self, value: T) -> Self
@@ -54905,6 +55503,16 @@ pub mod types {
                 });
                 self
             }
+            pub fn virtual_metadata_partial<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.virtual_metadata_partial = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for virtual_metadata_partial: {e}")
+                });
+                self
+            }
             pub fn visibility<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::option::Option<super::RepositoryVisibility>>,
@@ -54930,6 +55538,8 @@ pub mod types {
                     apt_origin: value.apt_origin?,
                     apt_release_version: value.apt_release_version?,
                     curation_allow_unverified: value.curation_allow_unverified?,
+                    curation_default_action: value.curation_default_action?,
+                    curation_enabled: value.curation_enabled?,
                     custom_user_agent: value.custom_user_agent?,
                     debian: value.debian?,
                     description: value.description?,
@@ -54948,7 +55558,10 @@ pub mod types {
                     project_id: value.project_id?,
                     promotion_only: value.promotion_only?,
                     pypi_upstream_index_path: value.pypi_upstream_index_path?,
+                    quarantine_duration_minutes: value.quarantine_duration_minutes?,
+                    quarantine_enabled: value.quarantine_enabled?,
                     quota_bytes: value.quota_bytes?,
+                    release_repository_key: value.release_repository_key?,
                     repo_type: value.repo_type?,
                     repodata_depth: value.repodata_depth?,
                     storage_backend: value.storage_backend?,
@@ -54958,6 +55571,7 @@ pub mod types {
                     upstream_url: value.upstream_url?,
                     upstream_username: value.upstream_username?,
                     versioning_enabled: value.versioning_enabled?,
+                    virtual_metadata_partial: value.virtual_metadata_partial?,
                     visibility: value.visibility?,
                 })
             }
@@ -54974,6 +55588,8 @@ pub mod types {
                     apt_origin: Ok(value.apt_origin),
                     apt_release_version: Ok(value.apt_release_version),
                     curation_allow_unverified: Ok(value.curation_allow_unverified),
+                    curation_default_action: Ok(value.curation_default_action),
+                    curation_enabled: Ok(value.curation_enabled),
                     custom_user_agent: Ok(value.custom_user_agent),
                     debian: Ok(value.debian),
                     description: Ok(value.description),
@@ -54992,7 +55608,10 @@ pub mod types {
                     project_id: Ok(value.project_id),
                     promotion_only: Ok(value.promotion_only),
                     pypi_upstream_index_path: Ok(value.pypi_upstream_index_path),
+                    quarantine_duration_minutes: Ok(value.quarantine_duration_minutes),
+                    quarantine_enabled: Ok(value.quarantine_enabled),
                     quota_bytes: Ok(value.quota_bytes),
+                    release_repository_key: Ok(value.release_repository_key),
                     repo_type: Ok(value.repo_type),
                     repodata_depth: Ok(value.repodata_depth),
                     storage_backend: Ok(value.storage_backend),
@@ -55002,6 +55621,7 @@ pub mod types {
                     upstream_url: Ok(value.upstream_url),
                     upstream_username: Ok(value.upstream_username),
                     versioning_enabled: Ok(value.versioning_enabled),
+                    virtual_metadata_partial: Ok(value.virtual_metadata_partial),
                     visibility: Ok(value.visibility),
                 }
             }
@@ -62673,6 +63293,12 @@ pub mod types {
             expires_in: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             refresh_token: ::std::result::Result<::std::string::String, ::std::string::String>,
             token_type: ::std::result::Result<::std::string::String, ::std::string::String>,
+            totp_required:
+                ::std::result::Result<::std::option::Option<bool>, ::std::string::String>,
+            totp_token: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
         }
         impl ::std::default::Default for ExchangeCodeResponse {
             fn default() -> Self {
@@ -62681,6 +63307,8 @@ pub mod types {
                     expires_in: Ok(Default::default()),
                     refresh_token: Err("no value supplied for refresh_token".to_string()),
                     token_type: Err("no value supplied for token_type".to_string()),
+                    totp_required: Ok(Default::default()),
+                    totp_token: Ok(Default::default()),
                 }
             }
         }
@@ -62725,6 +63353,26 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for token_type: {e}"));
                 self
             }
+            pub fn totp_required<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<bool>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.totp_required = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for totp_required: {e}"));
+                self
+            }
+            pub fn totp_token<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.totp_token = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for totp_token: {e}"));
+                self
+            }
         }
         impl ::std::convert::TryFrom<ExchangeCodeResponse> for super::ExchangeCodeResponse {
             type Error = super::error::ConversionError;
@@ -62736,6 +63384,8 @@ pub mod types {
                     expires_in: value.expires_in?,
                     refresh_token: value.refresh_token?,
                     token_type: value.token_type?,
+                    totp_required: value.totp_required?,
+                    totp_token: value.totp_token?,
                 })
             }
         }
@@ -62746,6 +63396,8 @@ pub mod types {
                     expires_in: Ok(value.expires_in),
                     refresh_token: Ok(value.refresh_token),
                     token_type: Ok(value.token_type),
+                    totp_required: Ok(value.totp_required),
+                    totp_token: Ok(value.totp_token),
                 }
             }
         }
@@ -82369,6 +83021,92 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct QuotaOverview {
+            max_upload_bytes: ::std::result::Result<i64, ::std::string::String>,
+            quota_help_url: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            storage_quota: ::std::result::Result<super::StorageQuotaStatus, ::std::string::String>,
+            transfer_quota:
+                ::std::result::Result<super::TransferQuotaStatus, ::std::string::String>,
+        }
+        impl ::std::default::Default for QuotaOverview {
+            fn default() -> Self {
+                Self {
+                    max_upload_bytes: Err("no value supplied for max_upload_bytes".to_string()),
+                    quota_help_url: Ok(Default::default()),
+                    storage_quota: Err("no value supplied for storage_quota".to_string()),
+                    transfer_quota: Err("no value supplied for transfer_quota".to_string()),
+                }
+            }
+        }
+        impl QuotaOverview {
+            pub fn max_upload_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_upload_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_upload_bytes: {e}")
+                });
+                self
+            }
+            pub fn quota_help_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quota_help_url = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quota_help_url: {e}")
+                });
+                self
+            }
+            pub fn storage_quota<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::StorageQuotaStatus>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.storage_quota = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for storage_quota: {e}"));
+                self
+            }
+            pub fn transfer_quota<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TransferQuotaStatus>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.transfer_quota = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for transfer_quota: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<QuotaOverview> for super::QuotaOverview {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: QuotaOverview,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    max_upload_bytes: value.max_upload_bytes?,
+                    quota_help_url: value.quota_help_url?,
+                    storage_quota: value.storage_quota?,
+                    transfer_quota: value.transfer_quota?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::QuotaOverview> for QuotaOverview {
+            fn from(value: super::QuotaOverview) -> Self {
+                Self {
+                    max_upload_bytes: Ok(value.max_upload_bytes),
+                    quota_help_url: Ok(value.quota_help_url),
+                    storage_quota: Ok(value.storage_quota),
+                    transfer_quota: Ok(value.transfer_quota),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct ReEvaluateRequest {
             default_action: ::std::result::Result<::std::string::String, ::std::string::String>,
             staging_repo_id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
@@ -92721,6 +93459,116 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct StorageQuotaStatus {
+            enabled: ::std::result::Result<bool, ::std::string::String>,
+            percent: ::std::result::Result<::std::option::Option<f64>, ::std::string::String>,
+            quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            state: ::std::result::Result<super::StorageState, ::std::string::String>,
+            used_bytes: ::std::result::Result<i64, ::std::string::String>,
+            warn_percent: ::std::result::Result<i32, ::std::string::String>,
+        }
+        impl ::std::default::Default for StorageQuotaStatus {
+            fn default() -> Self {
+                Self {
+                    enabled: Err("no value supplied for enabled".to_string()),
+                    percent: Ok(Default::default()),
+                    quota_bytes: Ok(Default::default()),
+                    state: Err("no value supplied for state".to_string()),
+                    used_bytes: Err("no value supplied for used_bytes".to_string()),
+                    warn_percent: Err("no value supplied for warn_percent".to_string()),
+                }
+            }
+        }
+        impl StorageQuotaStatus {
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn percent<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<f64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.percent = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for percent: {e}"));
+                self
+            }
+            pub fn quota_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quota_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for quota_bytes: {e}"));
+                self
+            }
+            pub fn state<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::StorageState>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.state = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for state: {e}"));
+                self
+            }
+            pub fn used_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.used_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for used_bytes: {e}"));
+                self
+            }
+            pub fn warn_percent<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.warn_percent = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for warn_percent: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<StorageQuotaStatus> for super::StorageQuotaStatus {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: StorageQuotaStatus,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    enabled: value.enabled?,
+                    percent: value.percent?,
+                    quota_bytes: value.quota_bytes?,
+                    state: value.state?,
+                    used_bytes: value.used_bytes?,
+                    warn_percent: value.warn_percent?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::StorageQuotaStatus> for StorageQuotaStatus {
+            fn from(value: super::StorageQuotaStatus) -> Self {
+                Self {
+                    enabled: Ok(value.enabled),
+                    percent: Ok(value.percent),
+                    quota_bytes: Ok(value.quota_bytes),
+                    state: Ok(value.state),
+                    used_bytes: Ok(value.used_bytes),
+                    warn_percent: Ok(value.warn_percent),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct StorageReindexRequest {
             dry_run: ::std::result::Result<bool, ::std::string::String>,
             limit: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
@@ -93472,6 +94320,7 @@ pub mod types {
                 ::chrono::DateTime<::chrono::offset::Utc>,
                 ::std::string::String,
             >,
+            effective: ::std::result::Result<::std::string::String, ::std::string::String>,
             id: ::std::result::Result<::uuid::Uuid, ::std::string::String>,
             last_replicated_at: ::std::result::Result<
                 ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
@@ -93497,6 +94346,7 @@ pub mod types {
             fn default() -> Self {
                 Self {
                     created_at: Err("no value supplied for created_at".to_string()),
+                    effective: Err("no value supplied for effective".to_string()),
                     id: Err("no value supplied for id".to_string()),
                     last_replicated_at: Ok(Default::default()),
                     peer_instance_id: Err("no value supplied for peer_instance_id".to_string()),
@@ -93517,6 +94367,16 @@ pub mod types {
                 self.created_at = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for created_at: {e}"));
+                self
+            }
+            pub fn effective<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.effective = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for effective: {e}"));
                 self
             }
             pub fn id<T>(mut self, value: T) -> Self
@@ -93611,6 +94471,7 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     created_at: value.created_at?,
+                    effective: value.effective?,
                     id: value.id?,
                     last_replicated_at: value.last_replicated_at?,
                     peer_instance_id: value.peer_instance_id?,
@@ -93626,6 +94487,7 @@ pub mod types {
             fn from(value: super::SubscriptionResponse) -> Self {
                 Self {
                     created_at: Ok(value.created_at),
+                    effective: Ok(value.effective),
                     id: Ok(value.id),
                     last_replicated_at: Ok(value.last_replicated_at),
                     peer_instance_id: Ok(value.peer_instance_id),
@@ -94633,21 +95495,30 @@ pub mod types {
         #[derive(Clone, Debug)]
         pub struct SystemStats {
             active_peers: ::std::result::Result<i64, ::std::string::String>,
+            max_upload_bytes: ::std::result::Result<i64, ::std::string::String>,
             pending_sync_tasks: ::std::result::Result<i64, ::std::string::String>,
             proxy_artifact_count: ::std::result::Result<i64, ::std::string::String>,
             proxy_download_count:
                 ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             proxy_storage_bytes: ::std::result::Result<i64, ::std::string::String>,
+            quota_help_url: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+            storage_quota: ::std::result::Result<super::StorageQuotaStatus, ::std::string::String>,
             total_artifacts: ::std::result::Result<i64, ::std::string::String>,
             total_downloads: ::std::result::Result<i64, ::std::string::String>,
             total_repositories: ::std::result::Result<i64, ::std::string::String>,
             total_storage_bytes: ::std::result::Result<i64, ::std::string::String>,
             total_users: ::std::result::Result<i64, ::std::string::String>,
+            transfer_quota:
+                ::std::result::Result<super::TransferQuotaStatus, ::std::string::String>,
         }
         impl ::std::default::Default for SystemStats {
             fn default() -> Self {
                 Self {
                     active_peers: Err("no value supplied for active_peers".to_string()),
+                    max_upload_bytes: Err("no value supplied for max_upload_bytes".to_string()),
                     pending_sync_tasks: Err("no value supplied for pending_sync_tasks".to_string()),
                     proxy_artifact_count: Err(
                         "no value supplied for proxy_artifact_count".to_string()
@@ -94656,6 +95527,8 @@ pub mod types {
                     proxy_storage_bytes: Err(
                         "no value supplied for proxy_storage_bytes".to_string()
                     ),
+                    quota_help_url: Ok(Default::default()),
+                    storage_quota: Err("no value supplied for storage_quota".to_string()),
                     total_artifacts: Err("no value supplied for total_artifacts".to_string()),
                     total_downloads: Err("no value supplied for total_downloads".to_string()),
                     total_repositories: Err("no value supplied for total_repositories".to_string()),
@@ -94663,6 +95536,7 @@ pub mod types {
                         "no value supplied for total_storage_bytes".to_string()
                     ),
                     total_users: Err("no value supplied for total_users".to_string()),
+                    transfer_quota: Err("no value supplied for transfer_quota".to_string()),
                 }
             }
         }
@@ -94675,6 +95549,16 @@ pub mod types {
                 self.active_peers = value
                     .try_into()
                     .map_err(|e| format!("error converting supplied value for active_peers: {e}"));
+                self
+            }
+            pub fn max_upload_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.max_upload_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for max_upload_bytes: {e}")
+                });
                 self
             }
             pub fn pending_sync_tasks<T>(mut self, value: T) -> Self
@@ -94715,6 +95599,26 @@ pub mod types {
                 self.proxy_storage_bytes = value.try_into().map_err(|e| {
                     format!("error converting supplied value for proxy_storage_bytes: {e}")
                 });
+                self
+            }
+            pub fn quota_help_url<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quota_help_url = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for quota_help_url: {e}")
+                });
+                self
+            }
+            pub fn storage_quota<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::StorageQuotaStatus>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.storage_quota = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for storage_quota: {e}"));
                 self
             }
             pub fn total_artifacts<T>(mut self, value: T) -> Self
@@ -94767,6 +95671,16 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for total_users: {e}"));
                 self
             }
+            pub fn transfer_quota<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TransferQuotaStatus>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.transfer_quota = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for transfer_quota: {e}")
+                });
+                self
+            }
         }
         impl ::std::convert::TryFrom<SystemStats> for super::SystemStats {
             type Error = super::error::ConversionError;
@@ -94775,15 +95689,19 @@ pub mod types {
             ) -> ::std::result::Result<Self, super::error::ConversionError> {
                 Ok(Self {
                     active_peers: value.active_peers?,
+                    max_upload_bytes: value.max_upload_bytes?,
                     pending_sync_tasks: value.pending_sync_tasks?,
                     proxy_artifact_count: value.proxy_artifact_count?,
                     proxy_download_count: value.proxy_download_count?,
                     proxy_storage_bytes: value.proxy_storage_bytes?,
+                    quota_help_url: value.quota_help_url?,
+                    storage_quota: value.storage_quota?,
                     total_artifacts: value.total_artifacts?,
                     total_downloads: value.total_downloads?,
                     total_repositories: value.total_repositories?,
                     total_storage_bytes: value.total_storage_bytes?,
                     total_users: value.total_users?,
+                    transfer_quota: value.transfer_quota?,
                 })
             }
         }
@@ -94791,15 +95709,19 @@ pub mod types {
             fn from(value: super::SystemStats) -> Self {
                 Self {
                     active_peers: Ok(value.active_peers),
+                    max_upload_bytes: Ok(value.max_upload_bytes),
                     pending_sync_tasks: Ok(value.pending_sync_tasks),
                     proxy_artifact_count: Ok(value.proxy_artifact_count),
                     proxy_download_count: Ok(value.proxy_download_count),
                     proxy_storage_bytes: Ok(value.proxy_storage_bytes),
+                    quota_help_url: Ok(value.quota_help_url),
+                    storage_quota: Ok(value.storage_quota),
                     total_artifacts: Ok(value.total_artifacts),
                     total_downloads: Ok(value.total_downloads),
                     total_repositories: Ok(value.total_repositories),
                     total_storage_bytes: Ok(value.total_storage_bytes),
                     total_users: Ok(value.total_users),
+                    transfer_quota: Ok(value.transfer_quota),
                 }
             }
         }
@@ -96280,6 +97202,173 @@ pub mod types {
                 Self {
                     code: Ok(value.code),
                     totp_token: Ok(value.totp_token),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
+        pub struct TransferQuotaStatus {
+            enabled: ::std::result::Result<bool, ::std::string::String>,
+            grace_percent: ::std::result::Result<i32, ::std::string::String>,
+            hard_limit_bytes:
+                ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            percent: ::std::result::Result<::std::option::Option<f64>, ::std::string::String>,
+            period_end: ::std::result::Result<::std::string::String, ::std::string::String>,
+            period_start: ::std::result::Result<::std::string::String, ::std::string::String>,
+            quota_bytes: ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
+            state: ::std::result::Result<super::TransferState, ::std::string::String>,
+            used_bytes: ::std::result::Result<i64, ::std::string::String>,
+            warn_percent: ::std::result::Result<i32, ::std::string::String>,
+        }
+        impl ::std::default::Default for TransferQuotaStatus {
+            fn default() -> Self {
+                Self {
+                    enabled: Err("no value supplied for enabled".to_string()),
+                    grace_percent: Err("no value supplied for grace_percent".to_string()),
+                    hard_limit_bytes: Ok(Default::default()),
+                    percent: Ok(Default::default()),
+                    period_end: Err("no value supplied for period_end".to_string()),
+                    period_start: Err("no value supplied for period_start".to_string()),
+                    quota_bytes: Ok(Default::default()),
+                    state: Err("no value supplied for state".to_string()),
+                    used_bytes: Err("no value supplied for used_bytes".to_string()),
+                    warn_percent: Err("no value supplied for warn_percent".to_string()),
+                }
+            }
+        }
+        impl TransferQuotaStatus {
+            pub fn enabled<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<bool>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.enabled = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for enabled: {e}"));
+                self
+            }
+            pub fn grace_percent<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.grace_percent = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for grace_percent: {e}"));
+                self
+            }
+            pub fn hard_limit_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.hard_limit_bytes = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for hard_limit_bytes: {e}")
+                });
+                self
+            }
+            pub fn percent<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<f64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.percent = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for percent: {e}"));
+                self
+            }
+            pub fn period_end<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.period_end = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for period_end: {e}"));
+                self
+            }
+            pub fn period_start<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::string::String>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.period_start = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for period_start: {e}"));
+                self
+            }
+            pub fn quota_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<i64>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.quota_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for quota_bytes: {e}"));
+                self
+            }
+            pub fn state<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<super::TransferState>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.state = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for state: {e}"));
+                self
+            }
+            pub fn used_bytes<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i64>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.used_bytes = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for used_bytes: {e}"));
+                self
+            }
+            pub fn warn_percent<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<i32>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.warn_percent = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for warn_percent: {e}"));
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<TransferQuotaStatus> for super::TransferQuotaStatus {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: TransferQuotaStatus,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    enabled: value.enabled?,
+                    grace_percent: value.grace_percent?,
+                    hard_limit_bytes: value.hard_limit_bytes?,
+                    percent: value.percent?,
+                    period_end: value.period_end?,
+                    period_start: value.period_start?,
+                    quota_bytes: value.quota_bytes?,
+                    state: value.state?,
+                    used_bytes: value.used_bytes?,
+                    warn_percent: value.warn_percent?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::TransferQuotaStatus> for TransferQuotaStatus {
+            fn from(value: super::TransferQuotaStatus) -> Self {
+                Self {
+                    enabled: Ok(value.enabled),
+                    grace_percent: Ok(value.grace_percent),
+                    hard_limit_bytes: Ok(value.hard_limit_bytes),
+                    percent: Ok(value.percent),
+                    period_end: Ok(value.period_end),
+                    period_start: Ok(value.period_start),
+                    quota_bytes: Ok(value.quota_bytes),
+                    state: Ok(value.state),
+                    used_bytes: Ok(value.used_bytes),
+                    warn_percent: Ok(value.warn_percent),
                 }
             }
         }
@@ -103089,7 +104178,7 @@ pub mod types {
     }
 }
 #[derive(Clone, Debug)]
-#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. The one `/api/v1` route that shares this contract is the repository download route, `GET /api/v1/repositories/{key}/download/{path}`: it serves the same bytes as the format endpoints, so it accepts the API token as the Basic password and answers an anonymous request on a non-public repository with `401` and a `WWW-Authenticate` challenge, like they do. Every other `/api/v1/*` route refuses the Basic-with-token fallback.\n\nVersion: 1.11.11"]
+#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. The one `/api/v1` route that shares this contract is the repository download route, `GET /api/v1/repositories/{key}/download/{path}`: it serves the same bytes as the format endpoints, so it accepts the API token as the Basic password and answers an anonymous request on a non-public repository with `401` and a `WWW-Authenticate` challenge, like they do. Every other `/api/v1/*` route refuses the Basic-with-token fallback.\n\nVersion: 1.11.14"]
 pub struct Client {
     pub(crate) baseurl: String,
     pub(crate) client: reqwest::Client,
@@ -103127,7 +104216,7 @@ impl Client {
 }
 impl ClientInfo<()> for Client {
     fn api_version() -> &'static str {
-        "1.11.11"
+        "1.11.14"
     }
     fn baseurl(&self) -> &str {
         self.baseurl.as_str()
@@ -104896,7 +105985,7 @@ pub trait ClientRepositoriesExt {
     fn set_conda_allowlist(&self) -> builder::SetCondaAllowlist<'_>;
     #[doc = "Remove the package allowlist of a virtual conda repository\n\nSends a `DELETE` request to `/api/v1/repositories/{key}/allowlist`\n\nArguments:\n- `key`: Repository key\n```ignore\nlet response = client.delete_conda_allowlist()\n    .key(key)\n    .send()\n    .await;\n```"]
     fn delete_conda_allowlist(&self) -> builder::DeleteCondaAllowlist<'_>;
-    #[doc = "List artifacts in repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts`\n\nArguments:\n- `key`: Repository key\n- `count`: Total-count mode for keyset-paged listings (#2520, #2519).\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\nexact; otherwise the keyset-paged listings report a cheap lower bound\n(rows seen so far, +1 when another page exists) and `has_more` is the\nauthoritative \"is there a next page\" signal.\n- `cursor`: Opaque keyset cursor (#2520, #2519, #2518). Pass the `next_cursor`\nvalue from the previous response to fetch the next page; `page` is\nignored while a cursor is present. Supported by the flat artifact\nlisting of hosted/local, virtual, and remote repositories (#2518,\n#2519), by `group_by=docker_tag`, and by `group_by=maven_component`\non remote repositories; other listing modes ignore it.\n- `group_by`: Server-side artifact grouping.\n\nSupported values:\n- `maven_component`: Maven/Gradle artifacts are grouped by\n  groupId, artifactId, and version.  Individual files (jar, pom,\n  checksums) appear in the `artifact_files` array of each component.\n- `docker_tag`: Docker/OCI artifacts are grouped by (image, tag),\n  with `total_size_bytes` summed across the manifest config and\n  referenced layer blobs.  The grouped rows are returned in the\n  `docker_tags` array.\n- `page`\n- `path_prefix`\n- `per_page`\n- `q`\n```ignore\nlet response = client.list_artifacts()\n    .key(key)\n    .count(count)\n    .cursor(cursor)\n    .group_by(group_by)\n    .page(page)\n    .path_prefix(path_prefix)\n    .per_page(per_page)\n    .q(q)\n    .send()\n    .await;\n```"]
+    #[doc = "List artifacts in repository\n\nSends a `GET` request to `/api/v1/repositories/{key}/artifacts`\n\nArguments:\n- `key`: Repository key\n- `count`: Total-count mode for keyset-paged listings (#2520, #2519, #5255).\n`count=exact` runs a dedicated COUNT query so `pagination.total` is\nexact. `count=lower_bound` skips it: `pagination.total` is then exact\nonly on the last page reached by `page=N` (and on an empty page, which\nalways counts), and otherwise a lower bound (rows seen so far, +1 when\nanother page exists). Without the parameter, the flat listings\n(hosted, virtual, remote) are exact on `page=N` requests and\n`lower_bound` on `cursor` requests, and the grouped listings\n(`group_by`) are `lower_bound`.\nThe response's `total_is_exact` says which one you got; `has_more` is\nthe authoritative \"is there a next page\" signal either way, so walk\npages until it is false rather than up to a lower-bound `total_pages`.\n- `cursor`: Opaque keyset cursor (#2520, #2519, #2518). Pass the `next_cursor`\nvalue from the previous response to fetch the next page; `page` is\nignored while a cursor is present. Supported by the flat artifact\nlisting of hosted/local, virtual, and remote repositories (#2518,\n#2519), by `group_by=docker_tag`, and by `group_by=maven_component`\non remote repositories; other listing modes ignore it.\n- `group_by`: Server-side artifact grouping.\n\nSupported values:\n- `maven_component`: Maven/Gradle artifacts are grouped by\n  groupId, artifactId, and version.  Individual files (jar, pom,\n  checksums) appear in the `artifact_files` array of each component.\n- `docker_tag`: Docker/OCI artifacts are grouped by (image, tag),\n  with `total_size_bytes` summed across the manifest config and\n  referenced layer blobs.  The grouped rows are returned in the\n  `docker_tags` array.\n- `page`\n- `path_prefix`\n- `per_page`\n- `q`\n```ignore\nlet response = client.list_artifacts()\n    .key(key)\n    .count(count)\n    .cursor(cursor)\n    .group_by(group_by)\n    .page(page)\n    .path_prefix(path_prefix)\n    .per_page(per_page)\n    .q(q)\n    .send()\n    .await;\n```"]
     fn list_artifacts(&self) -> builder::ListArtifacts<'_>;
     #[doc = "Report which of the given artifacts the repository does not already hold\n\nSends a `POST` request to `/api/v1/repositories/{key}/artifacts-missing`\n\nArguments:\n- `key`: Repository key\n- `body`\n```ignore\nlet response = client.missing_artifacts()\n    .key(key)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn missing_artifacts(&self) -> builder::MissingArtifacts<'_>;
@@ -105705,10 +106794,15 @@ impl ClientSsoExt for Client {
 pub trait ClientSystemExt {
     #[doc = "Return runtime configuration\n\nReachable without authentication so frontends can discover pre-login\naffordances (upload limits, guest access, available login providers). The\nsecurity-posture fields (scanner/permission/plugin-signing/storage\nconfiguration, and whether the admin break-glass login exists) are returned\n**only to authenticated admins**; for anonymous and non-admin callers they\nare omitted so the instance's defensive configuration cannot be\nfingerprinted by an unauthenticated attacker.\n\nSends a `GET` request to `/api/v1/system/config`\n\n```ignore\nlet response = client.get_system_config()\n    .send()\n    .await;\n```"]
     fn get_system_config(&self) -> builder::GetSystemConfig<'_>;
+    #[doc = "Instance quota usage: storage, this month's download transfer, the upload\nsize limit and the help link. Any authenticated user may read it, so the\nweb UI can warn every user before an upload or a download is refused; an\nanonymous caller gets `401` (and, with guest access disabled, the guest\nguard answers before this handler runs)\n\nSends a `GET` request to `/api/v1/system/quota`\n\n```ignore\nlet response = client.get_system_quota()\n    .send()\n    .await;\n```"]
+    fn get_system_quota(&self) -> builder::GetSystemQuota<'_>;
 }
 impl ClientSystemExt for Client {
     fn get_system_config(&self) -> builder::GetSystemConfig<'_> {
         builder::GetSystemConfig::new(self)
+    }
+    fn get_system_quota(&self) -> builder::GetSystemQuota<'_> {
+        builder::GetSystemQuota::new(self)
     }
 }
 #[doc = "Crash reporting and telemetry"]
@@ -140292,6 +141386,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => crate::raw::parse_response(response).await,
+                400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
@@ -140912,6 +142007,48 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => crate::raw::parse_response(response).await,
+                _ => Err(Error::from_response(response).await),
+            }
+        }
+    }
+    #[doc = "Builder for [`ClientSystemExt::get_system_quota`]\n\n[`ClientSystemExt::get_system_quota`]: super::ClientSystemExt::get_system_quota"]
+    #[derive(Debug, Clone)]
+    pub struct GetSystemQuota<'a> {
+        client: &'a super::Client,
+    }
+    impl<'a> GetSystemQuota<'a> {
+        pub fn new(client: &'a super::Client) -> Self {
+            Self { client: client }
+        }
+        #[doc = "Sends a `GET` request to `/api/v1/system/quota`"]
+        pub async fn send(self) -> Result<ResponseValue<types::QuotaOverview>, Error> {
+            let Self { client } = self;
+            let url = format!("{}/api/v1/system/quota", client.baseurl,);
+            let mut header_map = ::reqwest::header::HeaderMap::with_capacity(1usize);
+            header_map.append(
+                ::reqwest::header::HeaderName::from_static("api-version"),
+                ::reqwest::header::HeaderValue::from_static(super::Client::api_version()),
+            );
+            #[allow(unused_mut)]
+            let mut request = client
+                .client
+                .get(url)
+                .header(
+                    ::reqwest::header::ACCEPT,
+                    ::reqwest::header::HeaderValue::from_static("application/json"),
+                )
+                .headers(header_map)
+                .build()?;
+            let info = OperationInfo {
+                operation_id: "get_system_quota",
+            };
+            client.pre::<()>(&mut request, &info).await?;
+            let result = client.exec(request, &info).await;
+            client.post::<()>(&result, &info).await?;
+            let response = result?;
+            match response.status().as_u16() {
+                200u16 => crate::raw::parse_response(response).await,
+                401u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
         }

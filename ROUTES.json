@@ -1,5 +1,5 @@
 {
-  "backend_version": "1.11.11",
+  "backend_version": "1.11.14",
   "routes": [
     {"method": "POST", "path": "/alpine/{repo_key}/upload", "handler": "alpine"},
     {"method": "GET", "path": "/alpine/{repo_key}/{branch}/keys/{APK_SIGNING_KEY_FILENAME}", "handler": "alpine"},
@@ -514,6 +514,7 @@
     {"method": "PUT", "path": "/api/v1/sync-policies/{id}", "handler": "sync_policies"},
     {"method": "POST", "path": "/api/v1/sync-policies/{id}/toggle", "handler": "sync_policies"},
     {"method": "GET", "path": "/api/v1/system/config", "handler": "system_config"},
+    {"method": "GET", "path": "/api/v1/system/quota", "handler": "system_config"},
     {"method": "GET", "path": "/api/v1/tree", "handler": "tree"},
     {"method": "GET", "path": "/api/v1/tree/content", "handler": "tree"},
     {"method": "POST", "path": "/api/v1/uploads", "handler": "upload"},
@@ -791,6 +792,7 @@
     {"method": "GET", "path": "/puppet/{repo_key}/v3/files/{file_path}", "handler": "puppet"},
     {"method": "GET", "path": "/puppet/{repo_key}/v3/modules/{owner_name}", "handler": "puppet"},
     {"method": "GET", "path": "/puppet/{repo_key}/v3/modules/{owner_name}/releases", "handler": "puppet"},
+    {"method": "GET", "path": "/puppet/{repo_key}/v3/releases", "handler": "puppet"},
     {"method": "POST", "path": "/puppet/{repo_key}/v3/releases", "handler": "puppet"},
     {"method": "GET", "path": "/puppet/{repo_key}/v3/releases/{owner_name_version}", "handler": "puppet"},
     {"method": "POST", "path": "/pypi/{repo_key}", "handler": "pypi"},
