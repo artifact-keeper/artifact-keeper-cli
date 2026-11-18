@@ -18,6 +18,7 @@ const ROOT_ORDER: &[&str] = &[
     "api",
     "pkg",
     "agent",
+    "mcp",
     "setup",
     "doctor",
     "config",
@@ -543,6 +544,16 @@ pub enum Command {
         command: commands::agent::AgentCommand,
     },
 
+    /// Manage MCP Registry repositories: namespace proofs, a Remote registry's catalog
+    /// and approvals, its sync and seed jobs, and server health
+    #[command(
+        after_help = "Examples:\n  ak mcp pending\n  ak mcp catalog list --repo mcp-official --queue\n  ak mcp catalog approve --repo mcp-official <id> --reason \"Vetted\"\n  ak mcp catalog bulk-approve --repo mcp-official 'io.github.acme/*' --dry-run\n  ak mcp seed start --repo mcp-official io.github.acme/weather@1.2.0 --wait\n  ak mcp sync start --repo mcp-official --wait\n  ak mcp health --repo mcp-local com.acme/weather 1.2.0\n  ak mcp namespace-proof create com.acme --method dns\n\nPublishing servers is mcp-publisher's job: it speaks the registry's /mcp/<repo>/v0.1 API."
+    )]
+    Mcp {
+        #[command(subcommand)]
+        command: commands::mcp::McpCommand,
+    },
+
     /// Manage CLI configuration
     #[command(
         after_help = "Examples:\n  ak config list\n  ak config get default_instance\n  ak config set default_instance prod"
@@ -790,6 +801,7 @@ impl Cli {
             Command::Api(args) => commands::api::execute(args, &global).await,
             Command::Pkg(args) => commands::pkg::execute(args, &global).await,
             Command::Agent { command } => command.execute(&global).await,
+            Command::Mcp { command } => command.execute(&global).await,
             Command::Registry => {
                 crate::registry::print_dump();
                 Ok(())

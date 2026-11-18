@@ -161,6 +161,7 @@ Core
   ak api           Send any HTTP request to the instance, with its auth and TLS settings
   ak pkg           Publish packages and use format APIs without the format's own client
   ak agent         Publish and install AI coding-agent plugins (Claude Code, Cursor, Codex, Copilot)
+  ak mcp           MCP Registry repositories: catalog approvals, sync and seed, server health
   ak setup         Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more
   ak doctor        Diagnose configuration and connectivity issues. Exits 1 if a check fails
   ak config        Get/set CLI configuration values
@@ -257,6 +258,35 @@ The follow-up commands run when the agent's CLI is on `PATH`, and are printed
 otherwise. `--path DIR` installs to `DIR/<slug>` and runs nothing. Claude Code can
 also read the repository itself, with no `ak`:
 `claude plugin marketplace add https://<host>/agentplugins/<repo>/claude-marketplace.json`.
+
+## MCP Registries
+
+An MCP Registry repository (`--pkg-format mcp`, server 1.12 or newer) serves the
+MCP registry API at `/mcp/<repo>/v0.1`. Publishers use `mcp-publisher` against it,
+and clients read it directly. `ak mcp` is the management side:
+
+```bash
+# A Local registry whose servers' packages resolve in this instance's npm and OCI repositories
+ak repo create mcp-local --pkg-format mcp --repo-type local \
+  --mcp-package-repo npm=npm-local,oci=docker-local --mcp-namespace-allow com.acme
+ak mcp health --repo mcp-local com.acme/weather 1.2.0
+
+# A Remote registry: an allowlist filled from its upstream
+ak repo create mcp-official --pkg-format mcp --repo-type remote \
+  --upstream-url https://registry.modelcontextprotocol.io
+ak mcp sync start --repo mcp-official --wait
+ak mcp pending
+ak mcp catalog list --repo mcp-official --queue
+ak mcp catalog approve --repo mcp-official <id> --reason "Vetted" --yes
+ak mcp catalog bulk-approve --repo mcp-official 'io.github.acme/*' --dry-run
+ak mcp seed start --repo mcp-official io.github.acme/weather@1.2.0 --yes --wait
+
+# Evidence that a domain's owner controls a namespace (instance administrators)
+ak mcp namespace-proof create com.acme --method dns
+ak mcp namespace-proof verify <id>
+```
+
+Approvals, blocks, pins, seeds and bulk decisions take `--yes`, as deletes do.
 
 ## Output Formats
 

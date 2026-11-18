@@ -136,6 +136,34 @@ pub static CLASS_EXCLUSIONS: &[ClassExclusion] = &[
                  sends. A command per format GET would be a wrapper that adds nothing",
     },
     ClassExclusion {
+        name: "mcp-publish",
+        methods: &[],
+        prefixes: &[
+            "/mcp/{repo_key}/v0.1/auth",
+            "/mcp/{repo_key}/v0.1/publish",
+            "/mcp/{repo_key}/v0.1/validate",
+            "/mcp/{repo_key}/v0/auth",
+            "/mcp/{repo_key}/v0/publish",
+            "/mcp/{repo_key}/v0/validate",
+        ],
+        except: &[],
+        reason: "The MCP registry protocol's login, validate and publish, which \
+                 `mcp-publisher` speaks. Publishing MCP servers stays with mcp-publisher: \
+                 `ak mcp` is the management API under /api/v1 (#317). `ak api` sends any of \
+                 these as it is",
+    },
+    ClassExclusion {
+        name: "mcp-server-writes",
+        methods: &["POST", "PUT", "PATCH", "DELETE"],
+        prefixes: &["/mcp/{repo_key}/v0.1/servers", "/mcp/{repo_key}/v0/servers"],
+        except: &[],
+        reason: "Writes to one server or version on the registry's own v0.1 API: status, an \
+                 administrator's edit, soft delete and purge, MCPB bundle uploads, declared \
+                 capabilities and probe requests. They belong to the publishing side that \
+                 mcp-publisher and the registry's clients use; `ak mcp` keeps to the \
+                 management API under /api/v1 (#317), and `ak api` sends any of these as it is",
+    },
+    ClassExclusion {
         name: "oci-blob-upload",
         methods: &[],
         prefixes: &["/v2/{name}/blobs/uploads"],
@@ -297,6 +325,9 @@ const PEER_OCI_REPLICATION: &str = "The receiving end of peer replication: anoth
                                     images with `ak pkg oci` or docker over /v2";
 const WASM_PASSTHROUGH: &str = "A WASM plugin defines what this does, so `ak api` is the \
                                 right interface";
+const MCP_INTROSPECTION_WORKER: &str = "The queue of the separate `ak-mcp-introspector` worker, \
+                                        which claims a job and reports its result with a token \
+                                        scoped `mcp:introspect`. A person never sends these";
 
 const BANNER_FIELDS: &[&str] = &[
     "title",
@@ -327,6 +358,9 @@ macro_rules! repo_body_fields {
             "index_upstream_url",
             "is_public",
             "key",
+            "mcp_namespace_allow",
+            "mcp_package_policy",
+            "mcp_package_repos",
             "name",
             "npm_allow_unscoped",
             "npm_allowed_name_patterns",
@@ -3908,6 +3942,171 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/quality/issues/{id}/suppress",
         "quality-gate unsuppress",
         &[],
+    ),
+    // ---- mcp: MCP Registry repositories ----
+    covered(
+        "GET",
+        "/api/v1/admin/mcp/namespace-proofs",
+        "mcp namespace-proof list",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/mcp/namespace-proofs",
+        "mcp namespace-proof create",
+        &["method", "namespace"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/mcp/namespace-proofs/{id}",
+        "mcp namespace-proof show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/mcp/namespace-proofs/{id}/verify",
+        "mcp namespace-proof verify",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/admin/mcp/namespace-proofs/{id}",
+        "mcp namespace-proof delete",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/mcp/catalog",
+        "mcp catalog list",
+        &[
+            "cursor",
+            "limit",
+            "namespace",
+            "queue",
+            "requested",
+            "search",
+            "status",
+        ],
+    ),
+    // A name with one slash goes split, any other URL-encoded.
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/mcp/catalog/servers/{ns}/{name}",
+        "mcp catalog show",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/mcp/catalog/servers/{ns}",
+        "mcp catalog show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/catalog/{id}/{decision}",
+        "mcp catalog approve",
+        &["reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/catalog/{id}/{decision}",
+        "mcp catalog block",
+        &["reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/catalog/{id}/{decision}",
+        "mcp catalog reopen",
+        &["reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/catalog/{id}/request-approval",
+        "mcp catalog request-approval",
+        &["note"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/catalog/bulk-approve",
+        "mcp catalog bulk-approve",
+        &["dryRun", "includeReview", "pattern", "reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/catalog/bulk-block",
+        "mcp catalog bulk-block",
+        &["dryRun", "pattern", "reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/catalog/bulk-decide",
+        "mcp catalog bulk-decide",
+        &["action", "ids", "reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/catalog/pins",
+        "mcp catalog pin",
+        &["name", "reason", "version"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/sync",
+        "mcp sync start",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/mcp/sync",
+        "mcp sync status",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/mcp/sync",
+        "mcp sync start",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/mcp/seed",
+        "mcp seed start",
+        &["reason", "servers"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/mcp/seed/{job_id}",
+        "mcp seed status",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/mcp/seed/{job_id}",
+        "mcp seed start",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/mcp/servers/{ns}/{name}/versions/{version}/health",
+        "mcp health",
+        &["include_deleted"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/mcp/servers/{name}/versions/{version}/health",
+        "mcp health",
+        &["include_deleted"],
+    ),
+    covered("GET", "/api/v1/mcp/pending-summary", "mcp pending", &[]),
+    excluded(
+        "POST",
+        "/api/v1/mcp/introspection/jobs/claim",
+        MCP_INTROSPECTION_WORKER,
+    ),
+    excluded(
+        "POST",
+        "/api/v1/mcp/introspection/jobs/{id}/complete",
+        MCP_INTROSPECTION_WORKER,
     ),
     // ---- repo-token ----
     covered(
