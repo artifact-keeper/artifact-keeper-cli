@@ -55,6 +55,8 @@ struct Arg {
     required: bool,
     kind: String,
     values: Vec<String>,
+    /// `--flag=value` only: a value after a space would be the next argument.
+    require_equals: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -118,6 +120,7 @@ fn registry() -> (Vec<Line>, Vec<Leaf>) {
                     required: a["required"].as_bool().unwrap_or(false),
                     kind: a["kind"].as_str().unwrap_or("string").to_string(),
                     values: strings(&a["values"]),
+                    require_equals: a["require_equals"].as_bool().unwrap_or(false),
                 })
                 .collect(),
         })
@@ -579,6 +582,7 @@ fn argv(arg: &Arg, value: &str) -> Vec<String> {
     match (&arg.long, arg.kind.as_str()) {
         (_, _) if arg.positional => vec![value.to_string()],
         (Some(long), "flag") => vec![format!("--{long}")],
+        (Some(long), _) if arg.require_equals => vec![format!("--{long}={value}")],
         (Some(long), _) => vec![format!("--{long}"), value.to_string()],
         (None, _) => Vec::new(),
     }

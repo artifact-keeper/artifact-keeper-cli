@@ -30,9 +30,9 @@ pub enum QuarantineCommand {
         #[arg(long)]
         reason: Option<String>,
 
-        /// OCI images: the manifest digest (sha256:<hex>) this is meant for. If the tag
-        /// has moved to another image since, that one is held instead and the answer
-        /// names both (needs a 1.12 server)
+        /// OCI images: the manifest digest (sha256:<hex>) this is meant for. The action
+        /// stays on that image even if the tag has moved to another one since: the new
+        /// image isn't changed, and the answer names both (needs a 1.12 server)
         #[arg(long, value_name = "DIGEST")]
         expected_digest: Option<String>,
 
@@ -77,9 +77,9 @@ pub enum QuarantineCommand {
         #[arg(long)]
         reason: Option<String>,
 
-        /// OCI images: the manifest digest (sha256:<hex>) this is meant for. If the tag
-        /// has moved to another image since, that one is held instead and the answer
-        /// names both (needs a 1.12 server)
+        /// OCI images: the manifest digest (sha256:<hex>) this is meant for. The action
+        /// stays on that image even if the tag has moved to another one since: the new
+        /// image isn't changed, and the answer names both (needs a 1.12 server)
         #[arg(long, value_name = "DIGEST")]
         expected_digest: Option<String>,
 
@@ -190,13 +190,13 @@ async fn hold(
     emit_mutation_raw(
         raw.as_deref(),
         &action,
-        &action.artifact_id.to_string(),
+        &acted_on(&action).to_string(),
         &format!(
-            "Quarantined artifact {} (status: {}). {}{}",
-            action.artifact_id,
+            "Quarantined artifact {}{} (status: {}). {}",
+            acted_on(&action),
+            held_digest(&action),
             action.new_status,
             action.message,
-            moved_note(&action)
         ),
         global,
     );
@@ -389,13 +389,13 @@ async fn reject(
     emit_mutation_raw(
         raw.as_deref(),
         &action,
-        &action.artifact_id.to_string(),
+        &acted_on(&action).to_string(),
         &format!(
-            "Rejected artifact {} (status: {}). {}{}",
-            action.artifact_id,
+            "Rejected artifact {}{} (status: {}). {}",
+            acted_on(&action),
+            held_digest(&action),
             action.new_status,
             action.message,
-            moved_note(&action)
         ),
         global,
     );
@@ -412,15 +412,21 @@ async fn refuse_digest_before_1_12(digest: &Option<String>, global: &GlobalArgs)
     Ok(())
 }
 
-/// What a 1.12 server says about an OCI tag that moved: the digest it acted on.
-fn moved_note(action: &artifact_keeper_sdk::types::QuarantineActionResponse) -> String {
-    match (&action.held_digest, &action.moved_to_digest) {
-        (Some(held), Some(moved)) => {
-            format!(" The tag now names {moved}; the hold is on {held}.")
-        }
-        (Some(held), None) => format!(" Digest: {held}."),
-        _ => String::new(),
-    }
+/// The artifact the action landed on. When an OCI tag moved before it landed, a 1.12
+/// server acts on the row of the image the tag named when read, `held_artifact_id`,
+/// not on the tag's row, so that's the ID to print and to pipe to `release`. The
+/// server's message already says the tag moved.
+fn acted_on(action: &artifact_keeper_sdk::types::QuarantineActionResponse) -> uuid::Uuid {
+    action.held_artifact_id.unwrap_or(action.artifact_id)
+}
+
+/// ` (sha256:...)`, the digest the action landed on, when the server names one.
+fn held_digest(action: &artifact_keeper_sdk::types::QuarantineActionResponse) -> String {
+    action
+        .held_digest
+        .as_deref()
+        .map(|digest| format!(" ({digest})"))
+        .unwrap_or_default()
 }
 
 fn format_status_detail(item: &serde_json::Value) -> String {

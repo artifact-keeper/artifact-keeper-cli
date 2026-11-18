@@ -685,6 +685,7 @@ fn coverage_and_the_uncataloged_policy_are_read_and_set() {
             "set",
             &repo,
             "warn",
+            "--yes",
         ],
     );
     assert_eq!(set["uncataloged_policy"], "warn", "{set}");
@@ -699,8 +700,7 @@ fn coverage_and_the_uncataloged_policy_are_read_and_set() {
             "security",
             "update",
             &repo,
-            "--instance-locked",
-            "false",
+            "--instance-locked=false",
         ],
     );
     assert_eq!(unlocked["instance_locked"], false, "{unlocked}");

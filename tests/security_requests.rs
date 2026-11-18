@@ -13,6 +13,7 @@ use serde_json::{Value, json};
 const ID: &str = "00000000-0000-0000-0000-000000000011";
 const REPO: &str = "00000000-0000-0000-0000-000000000022";
 const AT: &str = "2026-01-15T12:00:00Z";
+const HELD: &str = "00000000-0000-0000-0000-000000000033";
 
 /// A mock server whose `/health` reports `version`.
 async fn on(version: &str) -> Mocked {
@@ -195,6 +196,18 @@ async fn unacknowledge_names_the_repository() {
     ]);
     let (query, _) = mocked.last("DELETE").await;
     assert_eq!(query, vec![("repository_id".into(), REPO.into())]);
+
+    let mut left = finding();
+    left["is_acknowledged"] = json!(false);
+    left["acknowledgements_left_effective"] = json!(2);
+    let mocked = on("1.12.1").await;
+    mocked.respond("DELETE", &route, 200, left).await;
+    let output = mocked.ak(&[
+        "scan", "finding", "revoke", ID, "--yes", "--format", "table",
+    ]);
+    assert!(output.status.success(), "{output:?}");
+    let stderr = unwrapped(&output.stderr);
+    assert!(stderr.contains("2 other decisions"), "{stderr}");
 }
 
 #[tokio::test]
@@ -364,7 +377,15 @@ async fn the_uncataloged_policy_is_set_and_the_new_score_shown() {
         )
         .await;
     assert_eq!(
-        mocked.json(&["scan", "security", "uncataloged-policy", "set", "r", "warn"]),
+        mocked.json(&[
+            "scan",
+            "security",
+            "uncataloged-policy",
+            "set",
+            "r",
+            "warn",
+            "--yes"
+        ]),
         body
     );
     let (_, sent) = mocked.last("PUT").await;
@@ -377,6 +398,7 @@ async fn the_uncataloged_policy_is_set_and_the_new_score_shown() {
         "set",
         "r",
         "warn",
+        "--yes",
         "--format",
         "table",
     ]);
@@ -384,6 +406,43 @@ async fn the_uncataloged_policy_is_set_and_the_new_score_shown() {
     assert!(stderr.contains("is now warn"), "{stderr}");
     assert!(stderr.contains("status incomplete"), "{stderr}");
     assert!(stderr.contains("50%, 3 of 4 artifacts scanned"), "{stderr}");
+}
+
+/// Warn lets an artifact no scanner could read count as assessed: a security
+/// decision, so `--yes` is the only consent.
+#[tokio::test]
+async fn the_uncataloged_policy_needs_yes() {
+    let mocked = on("1.12.1").await;
+    let output = mocked.ak(&["scan", "security", "uncataloged-policy", "set", "r", "warn"]);
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(unwrapped(&output.stderr).contains("--yes"));
+    assert!(paths(&mocked).await.is_empty());
+}
+
+/// `--instance-locked` takes its value only after `=`, so a repository key after it
+/// isn't read as the value.
+#[tokio::test]
+async fn instance_locked_does_not_swallow_the_repository() {
+    let mocked = on("1.12.1").await;
+    mocked
+        .respond(
+            "PUT",
+            "/api/v1/repositories/npm-proxy/age-gate",
+            200,
+            json!({"repository_key": "npm-proxy", "enabled": true, "min_age_days": 3,
+                   "mode": "upstream", "instance_locked": true}),
+        )
+        .await;
+    mocked.json(&[
+        "age-gate",
+        "set",
+        "--min-age-days",
+        "3",
+        "--instance-locked",
+        "npm-proxy",
+    ]);
+    let (_, body) = mocked.last("PUT").await;
+    assert_eq!(body["instance_locked"], true);
 }
 
 #[tokio::test]
@@ -398,14 +457,7 @@ async fn security_update_hands_the_proxy_policy_back() {
     mocked
         .respond("PUT", "/api/v1/repositories/r/security", 200, config)
         .await;
-    mocked.json(&[
-        "scan",
-        "security",
-        "update",
-        "r",
-        "--instance-locked",
-        "false",
-    ]);
+    mocked.json(&["scan", "security", "update", "r", "--instance-locked=false"]);
     let (_, body) = mocked.last("PUT").await;
     assert_eq!(body, json!({"instance_locked": false}));
 }
@@ -853,8 +905,7 @@ async fn age_gate_set_hands_the_policy_back() {
         "npm-proxy",
         "--min-age-days",
         "3",
-        "--instance-locked",
-        "false",
+        "--instance-locked=false",
         "--format",
         "table",
     ]);
@@ -869,9 +920,13 @@ async fn age_gate_set_hands_the_policy_back() {
 #[tokio::test]
 async fn quarantine_names_the_digest_it_means() {
     let mocked = on("1.12.1").await;
+    // The tag moved from sha256:aaa to sha256:bbb before the hold landed: the server
+    // held the old image's row, {HELD}, and left the new one alone.
     let action = json!({
-        "artifact_id": ID, "new_status": "quarantined", "message": "held",
-        "held_digest": "sha256:bbb", "moved_to_digest": "sha256:bbb"
+        "artifact_id": ID, "new_status": "quarantined",
+        "message": "The tag moved to sha256:bbb before the action landed",
+        "held_artifact_id": HELD, "held_digest": "sha256:aaa",
+        "moved_to_digest": "sha256:bbb"
     });
     mocked
         .respond(
@@ -904,11 +959,31 @@ async fn quarantine_names_the_digest_it_means() {
         "table",
     ]);
     assert!(output.status.success(), "{output:?}");
-    assert!(unwrapped(&output.stderr).contains("the hold is on sha256:bbb"));
+    let stderr = unwrapped(&output.stderr);
+    assert!(
+        stderr.contains(&format!("Quarantined artifact {HELD} (sha256:aaa)")),
+        "{stderr}"
+    );
+    assert!(!stderr.contains(&format!("artifact {ID}")), "{stderr}");
     let (_, body) = mocked.last("POST").await;
     assert_eq!(body["expected_digest"], "sha256:aaa");
 
-    mocked.json(&[
+    // Quiet prints the ID that was held, so piping it to `release` frees that image.
+    let quiet = mocked.ak(&[
+        "quarantine",
+        "hold",
+        ID,
+        "--reason",
+        "r",
+        "--expected-digest",
+        "sha256:aaa",
+        "--yes",
+        "--format",
+        "quiet",
+    ]);
+    assert_eq!(String::from_utf8_lossy(&quiet.stdout).trim(), HELD);
+
+    let shown = mocked.json(&[
         "quarantine",
         "reject",
         ID,
@@ -916,8 +991,21 @@ async fn quarantine_names_the_digest_it_means() {
         "sha256:aaa",
         "--yes",
     ]);
+    assert_eq!(shown["held_artifact_id"], HELD);
+    assert_eq!(shown["held_digest"], "sha256:aaa");
     let (_, body) = mocked.last("POST").await;
     assert_eq!(body["expected_digest"], "sha256:aaa");
+    let quiet = mocked.ak(&[
+        "quarantine",
+        "reject",
+        ID,
+        "--expected-digest",
+        "sha256:aaa",
+        "--yes",
+        "--format",
+        "quiet",
+    ]);
+    assert_eq!(String::from_utf8_lossy(&quiet.stdout).trim(), HELD);
 }
 
 #[tokio::test]

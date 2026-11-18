@@ -530,10 +530,17 @@ pub enum ScanSecurityCommand {
         #[arg(long)]
         proxy_scan_action: Option<String>,
 
-        /// Instance administrators only: false hands the proxy scan policy back to the
-        /// repository's administrators, true keeps it an instance decision. An instance
-        /// administrator's update locks it unless this says false. Needs a 1.12 server
-        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        /// Instance administrators only: keep the proxy scan policy an instance decision,
+        /// or --instance-locked=false to hand it back to the repository's
+        /// administrators. An instance administrator's update locks it unless this says
+        /// false. Needs a 1.12 server
+        #[arg(
+            long,
+            num_args = 0..=1,
+            require_equals = true,
+            default_missing_value = "true",
+            value_name = "BOOL"
+        )]
         instance_locked: Option<bool>,
     },
 
@@ -556,6 +563,10 @@ pub enum UncatalogedPolicyCommand {
         /// still reported but counts as assessed
         #[arg(value_parser = ["fail", "warn"])]
         policy: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
     },
 }
 
@@ -839,9 +850,11 @@ impl ScanCommand {
                     .await
                 }
                 ScanSecurityCommand::UncatalogedPolicy { command } => match command {
-                    UncatalogedPolicyCommand::Set { repo_key, policy } => {
-                        set_uncataloged_policy(&repo_key, &policy, global).await
-                    }
+                    UncatalogedPolicyCommand::Set {
+                        repo_key,
+                        policy,
+                        yes,
+                    } => set_uncataloged_policy(&repo_key, &policy, yes, global).await,
                 },
             },
             Self::Proxy { command } => match command {
@@ -1540,14 +1553,22 @@ async fn revoke_finding(
 
     spinner.finish_and_clear();
 
+    let mut human = format!(
+        "Acknowledgment revoked for finding {}.",
+        short_id(&finding.id)
+    );
+    if let Some(left) = finding.acknowledgements_left_effective.filter(|n| *n > 0) {
+        human.push_str(&format!(
+            " {left} other decision{} on this finding still apply: copies in repositories \
+             this credential doesn't cover, or decisions for every repository.",
+            if left == 1 { "" } else { "s" }
+        ));
+    }
     emit_mutation_raw(
         raw.as_deref(),
         &finding,
         &finding.id.to_string(),
-        &format!(
-            "Acknowledgment revoked for finding {}.",
-            short_id(&finding.id)
-        ),
+        &human,
         global,
     );
 
@@ -2581,10 +2602,31 @@ async fn list_proxy_blocked(
     Ok(())
 }
 
-async fn set_uncataloged_policy(repo_key: &str, policy: &str, global: &GlobalArgs) -> Result<()> {
+async fn set_uncataloged_policy(
+    repo_key: &str,
+    policy: &str,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
     let uncataloged_policy = policy
         .parse::<artifact_keeper_sdk::types::UncatalogedPolicy>()
         .map_err(|_| AkError::Usage(format!("Invalid uncataloged policy: {policy}")))?;
+
+    // A security decision either way: warn lets an artifact no scanner could read
+    // count as assessed, and fail can take a rated repository's grade away.
+    let prompt = match uncataloged_policy {
+        artifact_keeper_sdk::types::UncatalogedPolicy::Warn => format!(
+            "Set '{repo_key}' to warn on uncataloged artifacts? Artifacts no scanner could \
+             catalog then count as assessed, and the repository can be rated."
+        ),
+        artifact_keeper_sdk::types::UncatalogedPolicy::Fail => format!(
+            "Set '{repo_key}' to fail on uncataloged artifacts? They keep the repository from \
+             rated."
+        ),
+    };
+    if !confirm_action(&prompt, yes, global.no_input)? {
+        return Ok(());
+    }
 
     let client = client_for(global)?;
     let spinner = crate::output::spinner("Setting the uncataloged policy...");

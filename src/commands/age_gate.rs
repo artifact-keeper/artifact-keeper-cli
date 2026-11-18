@@ -40,10 +40,16 @@ pub enum AgeGateCommand {
         #[arg(long)]
         mode: Option<String>,
 
-        /// Instance administrators only: false hands the policy back to the
-        /// repository's administrators, true locks it. An instance administrator's
+        /// Instance administrators only: lock the policy, or --instance-locked=false to
+        /// hand it back to the repository's administrators. An instance administrator's
         /// update locks it unless this says false. Needs a 1.12 server
-        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        #[arg(
+            long,
+            num_args = 0..=1,
+            require_equals = true,
+            default_missing_value = "true",
+            value_name = "BOOL"
+        )]
         instance_locked: Option<bool>,
     },
 
