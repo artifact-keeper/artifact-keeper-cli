@@ -7,9 +7,10 @@
 //!
 //! It parses the source with `syn` and evaluates just enough of it: `let` and
 //! assignment, `if` and `match` (every branch counts, so a route behind a config
-//! switch or a cargo feature is still a route), calls to router functions, and
-//! `format!` with inline string arguments. Anything mounted that it can't resolve
-//! is an error, not a silently shorter list.
+//! switch or a cargo feature is still a route), `for` over a list of strings,
+//! calls to router functions and to closures, and `format!` with inline string
+//! arguments. Anything mounted that it can't resolve is an error, not a silently
+//! shorter list.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fs;
@@ -94,12 +95,16 @@ enum Val {
     Router(Vec<Route>),
     Method(Vec<String>),
     Str(String),
+    /// A slice or array of string literals, such as `const V: &[&str] = &["a", "b"]`.
+    List(Vec<String>),
+    Closure(Box<syn::ExprClosure>),
     Unknown(String),
 }
 
 #[derive(Default)]
 struct Extractor {
-    /// Handler module name to its parsed file.
+    /// Handler module name to its parsed file. A child module, such as
+    /// `handlers/repositories/delete_job.rs`, is `repositories/delete_job`.
     modules: HashMap<String, syn::File>,
     unresolved: BTreeSet<String>,
 }
@@ -271,7 +276,7 @@ impl Extractor {
                         .nth(1)
                         .map(String::as_str)
                         .unwrap_or("");
-                    self.find_const(owner, name)
+                    self.find_const(&self.resolve_module(module, owner), name)
                         .or_else(|| self.find_const(&format!("formats/{owner}"), name))
                         .or_else(|| self.find_const_anywhere(name))
                         .unwrap_or_else(|| Val::Unknown(e.to_token_stream().to_string()))
@@ -302,10 +307,82 @@ impl Extractor {
                 let bodies = e.arms.iter().map(|a| BranchBody::Expr(&a.body)).collect();
                 self.branches(bodies, env, module, depth)
             }
+            syn::Expr::Array(e) => {
+                let mut items = Vec::new();
+                for item in &e.elems {
+                    match self.expr(item, env, module, depth) {
+                        Val::Str(s) => items.push(s),
+                        _ => return Val::Unknown(e.to_token_stream().to_string()),
+                    }
+                }
+                Val::List(items)
+            }
+            syn::Expr::Closure(e) => Val::Closure(Box::new(e.clone())),
+            syn::Expr::ForLoop(e) => self.for_loop(e, env, module, depth),
             syn::Expr::Call(e) => self.call(e, env, module, depth),
             syn::Expr::MethodCall(e) => self.method_call(e, env, module, depth),
             other => Val::Unknown(other.to_token_stream().to_string()),
         }
+    }
+
+    /// `for x in LIST { .. }`: the body once per item, in order, on the same
+    /// variables, so `router = router.route(..)` inside it adds up.
+    ///
+    /// A loop over something else is an error if its body mounts anything,
+    /// since skipping it would drop routes without a word.
+    fn for_loop(&mut self, e: &syn::ExprForLoop, env: &mut Env, module: &str, depth: usize) -> Val {
+        let iterable = self.expr(&e.expr, env, module, depth);
+        let var = match &*e.pat {
+            syn::Pat::Ident(p) => Some(p.ident.to_string()),
+            _ => None,
+        };
+        match (iterable, var) {
+            (Val::List(items), Some(var)) => {
+                let shadowed = env.get(&var).cloned();
+                for item in items {
+                    env.insert(var.clone(), Val::Str(item));
+                    self.block(&e.body, env, module, depth);
+                }
+                match shadowed {
+                    Some(value) => env.insert(var, value),
+                    None => env.remove(&var),
+                };
+            }
+            (iterable, _) => {
+                let body = e.body.to_token_stream().to_string();
+                if ["route", "nest", "merge"].iter().any(|m| body.contains(m)) {
+                    self.unresolved.insert(format!(
+                        "{module}: for {} in {iterable:?}",
+                        e.pat.to_token_stream()
+                    ));
+                }
+            }
+        }
+        Val::Unknown("for".to_string())
+    }
+
+    /// Call a closure held in a variable: its body, with the arguments bound to its
+    /// parameters, on a copy of the caller's variables (which is where a closure
+    /// written in the same function finds what it captured).
+    fn call_closure(
+        &mut self,
+        closure: &syn::ExprClosure,
+        args: Vec<Val>,
+        env: &Env,
+        module: &str,
+        depth: usize,
+    ) -> Val {
+        let mut scope = env.clone();
+        for (input, value) in closure.inputs.iter().zip(args) {
+            let pat = match input {
+                syn::Pat::Type(t) => &*t.pat,
+                other => other,
+            };
+            if let syn::Pat::Ident(p) = pat {
+                scope.insert(p.ident.to_string(), value);
+            }
+        }
+        self.expr(&closure.body, &mut scope, module, depth + 1)
     }
 
     /// `format!` with a literal, inline arguments and positional `{}` arguments.
@@ -334,6 +411,15 @@ impl Extractor {
                 text = text.replace(&format!("{{{name}}}"), s);
             }
         }
+        // What's left inline can be a constant, such as `format!("/x{HOLDS_PATH}")`.
+        for name in inline_names(&text) {
+            if let Some(Val::Str(s)) = self
+                .find_const(module, &name)
+                .or_else(|| self.find_const_anywhere(&name))
+            {
+                text = text.replace(&format!("{{{name}}}"), &s);
+            }
+        }
         Val::Str(text)
     }
 
@@ -345,14 +431,29 @@ impl Extractor {
             if c.ident != name {
                 return None;
             }
-            match &*c.expr {
-                syn::Expr::Lit(syn::ExprLit {
-                    lit: syn::Lit::Str(s),
-                    ..
-                }) => Some(Val::Str(s.value())),
-                _ => None,
-            }
+            const_value(&c.expr)
         })
+    }
+
+    /// The module a call or path names as `owner::`, seen from `module`: `self` is
+    /// `module`, `super` its parent, and a child module of `module` wins over a
+    /// handler module of the same name.
+    fn resolve_module(&self, module: &str, owner: &str) -> String {
+        match owner {
+            "self" => module.to_string(),
+            "super" => match module.rsplit_once('/') {
+                Some((parent, _)) => parent.to_string(),
+                None => module.to_string(),
+            },
+            _ => {
+                let child = format!("{module}/{owner}");
+                if self.modules.contains_key(&child) {
+                    child
+                } else {
+                    owner.to_string()
+                }
+            }
+        }
     }
 
     /// A constant named through a path this walk doesn't parse, such as a format's
@@ -381,12 +482,7 @@ impl Extractor {
             return Val::Router(Vec::new());
         }
         let target = if segments.len() >= 2 {
-            let m = segments[segments.len() - 2].as_str();
-            if m == "self" || m == "super" {
-                module.to_string()
-            } else {
-                m.to_string()
-            }
+            self.resolve_module(module, &segments[segments.len() - 2])
         } else {
             module.to_string()
         };
@@ -395,6 +491,11 @@ impl Extractor {
             .iter()
             .map(|a| self.expr(a, env, module, depth))
             .collect();
+        if segments.len() == 1
+            && let Some(Val::Closure(closure)) = env.get(name).cloned()
+        {
+            return self.call_closure(&closure, args, env, module, depth);
+        }
         match self.call_fn(&target, name, args, depth) {
             Some(value) => value,
             None => Val::Unknown(segments.join("::")),
@@ -479,6 +580,43 @@ impl Extractor {
     }
 }
 
+/// The `{name}` placeholders in a format string, in order.
+fn inline_names(text: &str) -> Vec<String> {
+    let mut names = Vec::new();
+    let mut rest = text;
+    while let Some(start) = rest.find('{') {
+        rest = &rest[start + 1..];
+        let Some(end) = rest.find('}') else { break };
+        let name = &rest[..end];
+        if !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            names.push(name.to_string());
+        }
+        rest = &rest[end + 1..];
+    }
+    names
+}
+
+/// A `const`'s value: a string literal, or a slice or array of them.
+fn const_value(expr: &syn::Expr) -> Option<Val> {
+    match expr {
+        syn::Expr::Lit(syn::ExprLit {
+            lit: syn::Lit::Str(s),
+            ..
+        }) => Some(Val::Str(s.value())),
+        syn::Expr::Reference(r) => const_value(&r.expr),
+        syn::Expr::Array(a) => a
+            .elems
+            .iter()
+            .map(|item| match const_value(item)? {
+                Val::Str(s) => Some(s),
+                _ => None,
+            })
+            .collect::<Option<Vec<_>>>()
+            .map(Val::List),
+        _ => None,
+    }
+}
+
 enum BranchBody<'a> {
     Block(&'a syn::Block),
     Expr(&'a syn::Expr),
@@ -493,6 +631,32 @@ fn parse(path: &Path) -> Result<syn::File> {
     let text =
         fs::read_to_string(path).with_context(|| format!("Failed to read {}", path.display()))?;
     syn::parse_file(&text).with_context(|| format!("Failed to parse {}", path.display()))
+}
+
+/// The handler modules under `dir`, named by their path from `handlers`: `x.rs`
+/// or `x/mod.rs` is `x`, and a child module in `x/` is `x/child`.
+fn handler_files(dir: &Path, prefix: &str, files: &mut Vec<(String, PathBuf)>) -> Result<()> {
+    let mut entries: Vec<PathBuf> = fs::read_dir(dir)
+        .with_context(|| format!("Failed to read {}", dir.display()))?
+        .map(|entry| entry.map(|e| e.path()))
+        .collect::<std::io::Result<_>>()?;
+    entries.sort();
+    for path in entries {
+        let name = |stem: &std::ffi::OsStr| format!("{prefix}{}", stem.to_string_lossy());
+        if path.extension().is_some_and(|e| e == "rs") {
+            let stem = path.file_stem().unwrap_or_default();
+            if stem != "mod" || prefix.is_empty() {
+                files.push((name(stem), path.clone()));
+            }
+        } else if path.is_dir() {
+            let module = name(path.file_name().unwrap_or_default());
+            if path.join("mod.rs").exists() {
+                files.push((module.clone(), path.join("mod.rs")));
+            }
+            handler_files(&path, &format!("{module}/"), files)?;
+        }
+    }
+    Ok(())
 }
 
 /// Read the route table from a checkout of the backend.
@@ -518,16 +682,7 @@ pub fn extract(backend: &Path) -> Result<RouteTable> {
         }
     }
     let mut files: Vec<(String, PathBuf)> = Vec::new();
-    for entry in fs::read_dir(api.join("handlers"))? {
-        let path = entry?.path();
-        if path.extension().is_some_and(|e| e == "rs") {
-            let stem = path.file_stem().unwrap_or_default().to_string_lossy();
-            files.push((stem.to_string(), path.clone()));
-        } else if path.join("mod.rs").exists() {
-            let stem = path.file_name().unwrap_or_default().to_string_lossy();
-            files.push((stem.to_string(), path.join("mod.rs")));
-        }
-    }
+    handler_files(&api.join("handlers"), "", &mut files)?;
     for (name, path) in files {
         x.modules.insert(name, parse(&path)?);
     }
@@ -767,6 +922,97 @@ mod tests {
                 .any(|g| g.contains("nope") || g.contains("only-test")),
             "{got:#?}"
         );
+    }
+
+    #[test]
+    fn it_reads_a_child_module_of_a_handler() {
+        let dir = sample(
+            r#"pub fn create_router(state: S) -> Router {
+                Router::new().nest("/api/v1/jobs", handlers::h::jobs())
+            }"#,
+            r#"mod job;
+            pub fn jobs() -> Router<S> { job::router() }
+            fn more() -> Router<S> { Router::new().route(ROOT, post(b)) }
+            const ROOT: &str = "/root";"#,
+        );
+        fs::create_dir_all(dir.0.join("backend/src/api/handlers/h")).unwrap();
+        fs::write(
+            dir.0.join("backend/src/api/handlers/h/job.rs"),
+            r#"pub fn router() -> Router<S> {
+                Router::new().route("/:id", get(a)).merge(super::more())
+            }"#,
+        )
+        .unwrap();
+        let table = extract(&dir.0).unwrap();
+        let got = keys(&table);
+        assert!(got.iter().any(|g| g == "GET /api/v1/jobs/{id}"), "{got:#?}");
+        assert!(
+            got.iter().any(|g| g == "POST /api/v1/jobs/root"),
+            "{got:#?}"
+        );
+        let child = table.routes.iter().find(|r| r.path == "/api/v1/jobs/{id}");
+        assert_eq!(child.unwrap().handler, "h/job");
+    }
+
+    #[test]
+    fn it_runs_a_for_loop_over_a_constant_slice() {
+        let dir = sample(
+            r#"pub fn create_router(state: S) -> Router {
+                Router::new().nest(handlers::h::MOUNT, handlers::h::router())
+            }"#,
+            r#"pub const MOUNT: &str = "/mcp";
+            pub const VERSIONS: &[&str] = &["v0.1", "v0"];
+            const HOLDS: &str = "/x/holds";
+            pub fn router() -> Router<S> {
+                let mut read = Router::new();
+                for v in VERSIONS {
+                    let p = |tail: &str| format!("/:repo/{v}{tail}");
+                    read = read.route(&p("/servers"), get(a)).merge(extra(v));
+                    for spelling in ["/:ns", "/:ns/:name"] {
+                        read = read.route(&format!("/:repo/{v}/s{spelling}{HOLDS}"), get(a));
+                    }
+                }
+                read.layer(l)
+            }
+            fn extra(api: &str) -> Router<S> {
+                let p = |tail: &str| format!("/:repo/{api}{tail}");
+                Router::new().route(&p("/ping"), get(a))
+            }"#,
+        );
+        let mut got = keys(&extract(&dir.0).unwrap());
+        got.sort();
+        let mut want: Vec<String> = ["v0", "v0.1"]
+            .iter()
+            .flat_map(|v| {
+                [
+                    format!("GET /mcp/{{repo}}/{v}/ping"),
+                    format!("GET /mcp/{{repo}}/{v}/s/{{ns}}/x/holds"),
+                    format!("GET /mcp/{{repo}}/{v}/s/{{ns}}/{{name}}/x/holds"),
+                    format!("GET /mcp/{{repo}}/{v}/servers"),
+                ]
+            })
+            .collect();
+        want.sort();
+        assert_eq!(got, want);
+    }
+
+    #[test]
+    fn a_for_loop_it_cannot_evaluate_is_an_error_when_it_mounts_routes() {
+        let dir = sample(
+            r#"pub fn create_router(state: S) -> Router {
+                let mut r = Router::new();
+                for v in state.versions() {
+                    r = r.route(&format!("/{v}/x"), get(a));
+                }
+                for n in 0..3 { log(n); }
+                r
+            }"#,
+            "",
+        );
+        let err = extract(&dir.0).unwrap_err().to_string();
+        assert!(err.contains("Couldn't resolve"), "{err}");
+        assert!(err.contains("for v in"), "{err}");
+        assert!(!err.contains("for n in"), "{err}");
     }
 
     #[test]

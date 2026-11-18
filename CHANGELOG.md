@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `ak sso providers --public` works without being logged in. The public provider list doesn't need credentials, but the command refused to run without them (#311).
+- The SDK generator and the route walker work on API 1.12.1. Generation no longer panics on an operation that answers both with a body and without one, or emits code that doesn't compile for an optional nullable header. The walker reads a handler's child modules, routes built in a `for` loop over a list of strings, and constants inside `format!`, so `ROUTES.json` now has the MCP registry routes under `/mcp` (and the real Alpine signing-key path); a loop it can't evaluate is an error rather than a shorter table. `/mcp` and `/agentplugins` count as package-format wire routes in the coverage gate (#312).
 
 ## [1.11.0] - 2026-11-15
 
