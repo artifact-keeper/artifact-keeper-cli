@@ -541,3 +541,109 @@ async fn rebuild_without_wait_says_it_was_queued() {
     assert!(requests[0].url.query().is_none(), "{:?}", requests[0].url);
     assert!(one_line(&output).contains("next tick"), "{output:?}");
 }
+
+#[tokio::test]
+async fn a_seed_body_the_type_doesnt_fit_still_ends_the_wait() {
+    let server = server_on("1.12.1").await;
+    // No `summary` or `created_at`: the SDK's type doesn't fit, the job is still done.
+    let job = json!({"job_id": JOB, "repository_key": "r", "status": "completed",
+                     "items": [{"path": "gone.jar", "state": "failed", "reason": "404"}]});
+    seeding(&server, job).await;
+    let output = ak(
+        &server,
+        &["repo", "cache", "seed", "status", "r", JOB, "--wait"],
+    );
+    assert_eq!(output.status.code(), Some(7), "{output:?}");
+    assert!(one_line(&output).contains("gone.jar: 404"), "{output:?}");
+    let printed: Value = serde_json::from_slice(&output.stdout).expect("JSON output");
+    assert_eq!(printed["status"], "completed");
+}
+
+#[tokio::test]
+async fn an_unknown_seed_status_ends_the_wait_at_once() {
+    let server = server_on("1.12.1").await;
+    seeding(&server, seed_job("paused", json!([]))).await;
+    let started = std::time::Instant::now();
+    let output = ak(
+        &server,
+        &["repo", "cache", "seed", "status", "r", JOB, "--wait"],
+    );
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
+    assert!(one_line(&output).contains("'paused'"), "{output:?}");
+    assert!(started.elapsed() < std::time::Duration::from_secs(10));
+}
+
+/// The poll backs off: a few looks in a few seconds, not one a second.
+#[tokio::test]
+async fn seed_wait_backs_off_between_looks() {
+    let server = server_on("1.12.1").await;
+    seeding(&server, seed_job("running", json!([]))).await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "cache",
+            "seed",
+            "status",
+            "r",
+            JOB,
+            "--wait",
+            "--wait-timeout",
+            "4",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
+    let polls = sent(&server, "GET")
+        .await
+        .iter()
+        .filter(|r| r.url.path().contains("/cache/seed/"))
+        .count();
+    assert!((2..=5).contains(&polls), "{polls} polls");
+}
+
+/// With --wait the server holds the request open for the build, so the client waits
+/// longer than its usual 30 seconds, and says what a timeout means.
+#[tokio::test]
+async fn a_rebuild_wait_that_times_out_says_the_build_may_still_finish() {
+    let server = server_on("1.12.1").await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/repositories/r/rpm/repodata/rebuild"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(json!({"root": "el9", "status": "built"}))
+                .set_delay(std::time::Duration::from_secs(4)),
+        )
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "rpm",
+            "repodata",
+            "rebuild",
+            "r",
+            "--root",
+            "el9",
+            "--wait",
+            "--wait-timeout",
+            "1",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(3), "{output:?}");
+    let stderr = one_line(&output);
+    assert!(
+        stderr.contains("may still finish")
+            && stderr.contains("ak repo rpm repodata rebuild r --root el9 --wait"),
+        "{stderr}"
+    );
+
+    // A wait longer than the client's usual 30 seconds is allowed for.
+    let output = ak(
+        &server,
+        &[
+            "repo", "rpm", "repodata", "rebuild", "r", "--root", "el9", "--wait",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+}
