@@ -245,7 +245,7 @@ pub async fn execute(command: PluginsCommand, global: &GlobalArgs) -> Result<()>
             bundle::validate_slug(&slug).map_err(AkError::Usage)?;
             bundle::validate_version(&version).map_err(AkError::Usage)?;
             let path = artifact_path(&slug, &version);
-            crate::commands::artifact::delete(&repo, &path, yes, global).await
+            crate::commands::artifact::delete(&repo, &path, false, yes, global).await
         }
     }
 }

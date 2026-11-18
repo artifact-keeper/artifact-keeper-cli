@@ -308,6 +308,23 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
                    "curation_default_action": "allow", "created_at": at, "updated_at": at}),
         ),
         (
+            "POST",
+            "/api/v1/repositories/{key}/cache/seed",
+            202,
+            json!({"job_id": UUID, "repository_key": "r", "kind": "paths", "status": "pending",
+                   "total_items": 1, "duplicates_ignored": 0, "concurrency": 4,
+                   "status_url": "x"}),
+        ),
+        (
+            "GET",
+            "/api/v1/repositories/{key}/cache/seed/{job_id}",
+            200,
+            json!({"job_id": UUID, "repository_key": "r", "kind": "paths", "status": "completed",
+                   "concurrency": 4, "total_items": 0, "created_at": at, "items": [],
+                   "summary": {"pending": 0, "cached": 0, "already_cached": 0, "refused": 0,
+                               "failed": 0, "cached_bytes": 0}}),
+        ),
+        (
             "GET",
             "/api/v1/admin/telemetry/settings",
             200,
@@ -541,6 +558,7 @@ fn candidates(rig: &Rig, arg: &Arg) -> Vec<String> {
         "bitmap" => &["1,2", "3"],
         "aws" => &["{\"region\":\"r\"}"],
         "recipients" => &["a@example.com"],
+        "cap" => &["7", "2K"],
         _ => &[],
     };
     out.extend(specific.iter().map(|v| v.to_string()));
@@ -777,7 +795,12 @@ fn hints(home: &std::path::Path, line: &Line) -> Hints {
         // `--wait` follows the job the DELETE answered with.
         ("repo delete", "GET", _) => (vec![("wait", String::new())], vec![]),
         // The curation fields go in the PATCH that follows the create.
-        ("repo create", "PATCH", _) => (vec![("curation_enabled", "true".to_string())], vec![]),
+        ("repo create", "PATCH", _) => (
+            vec![("curation_default_action", "review".to_string())],
+            vec![],
+        ),
+        // `--wait` follows the job the POST answered with.
+        ("repo cache seed start", "GET", _) => (vec![("wait", String::new())], vec![]),
         ("artifact push", _, p) if p.contains("/uploads") => {
             (vec![], vec![("AK_CHUNKED_THRESHOLD", "1")])
         }

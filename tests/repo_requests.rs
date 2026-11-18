@@ -887,6 +887,292 @@ async fn a_curation_source_is_refused_on_1_11_before_anything_changes() {
     }
 }
 
+// ---- #313: 1.12 repository settings ----
+
+#[tokio::test]
+async fn create_sends_the_1_12_settings_and_links_the_release_repository_after() {
+    let server = server_on("1.12.1").await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/repositories"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(repository()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/r"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(repository()))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "create",
+            "r",
+            "--pkg-format",
+            "rpm",
+            "--repo-type",
+            "remote",
+            "--upstream-url",
+            "https://mirror.example.com/el9",
+            "--quarantine-enabled",
+            "true",
+            "--quarantine-duration-minutes",
+            "90",
+            "--virtual-metadata-partial",
+            "false",
+            "--upstream-mode",
+            "cache_only",
+            "--egress-proxy-mode",
+            "explicit",
+            "--egress-proxy-url",
+            "http://proxy.example.com:3128",
+            "--egress-no-proxy",
+            "internal.example.com",
+            "--repodata-mode",
+            "on_request",
+            "--virtual-member-fallback",
+            "strict",
+            "--release-repository-key",
+            "release",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+    let requests = server.received_requests().await.expect("recorded");
+    let body = |verb: &str| -> Value {
+        let request = requests
+            .iter()
+            .find(|r| r.method.as_str() == verb)
+            .expect("request");
+        serde_json::from_slice(&request.body).expect("JSON body")
+    };
+    let created = body("POST");
+    assert_eq!(created["quarantine_enabled"], true);
+    assert_eq!(created["quarantine_duration_minutes"], 90);
+    assert_eq!(created["virtual_metadata_partial"], false);
+    assert_eq!(created["upstream_mode"], "cache_only");
+    assert_eq!(
+        created["egress_proxy"],
+        json!({"mode": "explicit", "proxy_url": "http://proxy.example.com:3128",
+               "no_proxy": "internal.example.com"})
+    );
+    assert_eq!(created["repodata_mode"], "on_request");
+    assert_eq!(created["virtual_member_fallback"], "strict");
+    // The server refuses a release repository on create (#5324).
+    assert!(created.get("release_repository_key").is_none(), "{created}");
+    assert_eq!(body("PATCH"), json!({"release_repository_key": "release"}));
+}
+
+#[tokio::test]
+async fn create_reads_the_egress_proxy_url_from_stdin() {
+    let server = accepting("POST", "/api/v1/repositories").await;
+    let dir = TempDir::new().expect("temp dir");
+    std::fs::write(
+        dir.path().join("config.toml"),
+        format!(
+            "default_instance = \"t\"\n[instances.t]\nurl = \"{}\"\napi_version = \"v1\"\n",
+            server.uri()
+        ),
+    )
+    .expect("write config");
+    let output = Command::cargo_bin("ak")
+        .expect("ak binary")
+        .env_remove("AK_FORMAT")
+        .env("AK_CONFIG_DIR", dir.path())
+        .env("AK_TOKEN", "t")
+        .env("AK_CREDENTIAL_STORE", "file")
+        .args([
+            "--no-input",
+            "repo",
+            "create",
+            "r",
+            "--pkg-format",
+            "npm",
+            "--repo-type",
+            "remote",
+            "--upstream-url",
+            "https://registry.example.com",
+            "--egress-proxy-mode",
+            "explicit",
+            "--egress-proxy-url-stdin",
+        ])
+        .write_stdin("http://u:secret@proxy.example.com:3128\n")
+        .output()
+        .expect("run ak");
+    assert!(output.status.success(), "{output:?}");
+    let body = sent_body(&server).await;
+    assert_eq!(
+        body["egress_proxy"]["proxy_url"],
+        "http://u:secret@proxy.example.com:3128"
+    );
+}
+
+#[tokio::test]
+async fn an_egress_proxy_url_needs_a_mode() {
+    let server = MockServer::start().await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "create",
+            "r",
+            "--pkg-format",
+            "npm",
+            "--egress-proxy-url",
+            "http://proxy.example.com",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(server.received_requests().await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn create_with_only_default_follow_ups_sends_one_request() {
+    let server = accepting("POST", "/api/v1/repositories").await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "create",
+            "r",
+            "--pkg-format",
+            "rpm",
+            "--curation-enabled",
+            "false",
+            "--curation-default-action",
+            "allow",
+            "--release-repository-key",
+            "",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+    let requests = server.received_requests().await.expect("recorded");
+    assert_eq!(requests.len(), 1, "{requests:?}");
+}
+
+#[tokio::test]
+async fn update_sends_the_1_12_settings() {
+    let server = server_on("1.12.1").await;
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/r"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(repository()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "update",
+            "r",
+            "--repodata-mode",
+            "precomputed",
+            "--virtual-member-fallback",
+            "available",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        sent_body(&server).await,
+        json!({"repodata_mode": "precomputed", "virtual_member_fallback": "available"})
+    );
+}
+
+#[tokio::test]
+async fn the_1_12_settings_are_refused_on_1_11_before_anything_changes() {
+    let create = |extra: &[&'static str]| {
+        let mut args = vec!["repo", "create", "r", "--pkg-format", "rpm"];
+        args.extend_from_slice(extra);
+        args
+    };
+    for (args, flag) in [
+        (
+            create(&["--quarantine-enabled", "true"]),
+            "--quarantine-enabled",
+        ),
+        (
+            create(&["--quarantine-duration-minutes", "5"]),
+            "--quarantine-duration-minutes",
+        ),
+        (
+            create(&["--virtual-metadata-partial", "true"]),
+            "--virtual-metadata-partial",
+        ),
+        (create(&["--upstream-mode", "online"]), "--upstream-mode"),
+        (
+            create(&["--egress-proxy-mode", "direct"]),
+            "--egress-proxy-mode",
+        ),
+        (
+            create(&["--repodata-mode", "precomputed"]),
+            "--repodata-mode",
+        ),
+        (
+            create(&["--virtual-member-fallback", "strict"]),
+            "--virtual-member-fallback",
+        ),
+        (
+            vec!["repo", "update", "r", "--repodata-mode", "on_request"],
+            "--repodata-mode",
+        ),
+        (
+            vec!["repo", "update", "r", "--virtual-member-fallback", "strict"],
+            "--virtual-member-fallback",
+        ),
+    ] {
+        let server = server_on("1.11.14").await;
+        let output = ak(&server, &args);
+        assert_eq!(output.status.code(), Some(6), "{args:?}: {output:?}");
+        let stderr = one_line(&output);
+        assert!(
+            stderr.contains(&format!("{flag} needs a server on 1.12"))
+                && stderr.contains("1.11.14"),
+            "{stderr}"
+        );
+        let requests = server.received_requests().await.expect("recorded");
+        assert!(
+            requests.iter().all(|r| r.url.path() == "/health"),
+            "{requests:?}"
+        );
+    }
+}
+
+/// 1.11 takes these on update, and `repo create` sends them in the update that
+/// follows, so they need no 1.12 server.
+#[tokio::test]
+async fn a_release_repository_on_create_goes_through_on_1_11() {
+    let server = server_on("1.11.14").await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/repositories"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(staging()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/r"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(staging()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "create",
+            "r",
+            "--pkg-format",
+            "rpm",
+            "--repo-type",
+            "staging",
+            "--release-repository-key",
+            "release",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+}
+
 #[tokio::test]
 async fn the_left_behind_warning_is_one_line_and_quiet_leaves_out_the_server_text() {
     let mut ended = job("completed_with_errors");

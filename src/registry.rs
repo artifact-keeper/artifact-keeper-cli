@@ -201,6 +201,19 @@ pub static FIELD_OPT_OUTS: &[FieldOptOut] = &[
     },
     FieldOptOut {
         method: "POST",
+        path: "/api/v1/repositories",
+        field: "release_repository_key",
+        reason: CURATION_AFTER_CREATE,
+    },
+    FieldOptOut {
+        method: "POST",
+        path: "/api/v1/repositories/{key}/cache/seed",
+        field: "kind",
+        reason: "1.12 implements only the `paths` manifest and answers 400 to the others, so \
+                 `repo cache seed start` always sends it. A flag comes with the next kind",
+    },
+    FieldOptOut {
+        method: "POST",
         path: "/api/v1/admin/settings",
         field: "max_upload_size_bytes",
         reason: "Read-only: the server takes only the value in force (MAX_UPLOAD_SIZE). \
@@ -254,8 +267,9 @@ pub static FIELD_OPT_OUTS: &[FieldOptOut] = &[
 ];
 
 const CURATION_AFTER_CREATE: &str = "The server refuses anything but the default on create \
-                                     (#5324). `repo create --curation-enabled` and \
-                                     `--curation-default-action` send it in the PATCH that \
+                                     (#5324). `repo create --curation-enabled`, \
+                                     `--curation-default-action` and \
+                                     `--release-repository-key` send it in the PATCH that \
                                      follows the create";
 
 const CLI_CLIENT: &str = "`ak auth login --sso` always sends `client=cli`, the one value there \
@@ -277,6 +291,10 @@ const DEVICE_APPROVAL: &str = "The `/device` page sends these from a person's br
                                side a CLI plays. `ak api` can still send them";
 const DEVICE_PAGE: &str = "The device approval page and its assets: HTML, CSS and script for \
                            a browser, not an API";
+const PEER_OCI_REPLICATION: &str = "The receiving end of peer replication: another \
+                                    instance's sync worker pushes an OCI image here, blob by \
+                                    blob and then its manifest, by digest. A person pushes \
+                                    images with `ak pkg oci` or docker over /v2";
 const WASM_PASSTHROUGH: &str = "A WASM plugin defines what this does, so `ak api` is the \
                                 right interface";
 
@@ -320,9 +338,11 @@ macro_rules! repo_body_fields {
             "pypi_upstream_index_path",
             "quota_bytes",
             "repodata_depth",
+            "repodata_mode",
             "trusted_gpg_key",
             "upstream_url",
             "versioning_enabled",
+            "virtual_member_fallback",
             "visibility",
             $($field),*
         ]
@@ -528,21 +548,30 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/repositories",
         "repo create",
         repo_body_fields!(
+            "egress_proxy",
             "format",
             "format_key",
             "member_repos",
+            "quarantine_duration_minutes",
+            "quarantine_enabled",
             "repo_type",
             "storage_backend",
             "upstream_auth_type",
+            "upstream_mode",
             "upstream_password",
-            "upstream_username"
+            "upstream_username",
+            "virtual_metadata_partial"
         ),
     ),
     covered(
         "PATCH",
         "/api/v1/repositories/{key}",
         "repo create",
-        &["curation_default_action", "curation_enabled"],
+        &[
+            "curation_default_action",
+            "curation_enabled",
+            "release_repository_key",
+        ],
     ),
     covered("GET", "/api/v1/repositories/{key}", "repo show", &[]),
     covered(
@@ -757,6 +786,84 @@ pub static COMMANDS: &[Op] = &[
         "repo storage-gc",
         &["dry_run"],
     ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/proxy-cache-cap",
+        "repo proxy-cache-cap show",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/repositories/{key}/proxy-cache-cap",
+        "repo proxy-cache-cap set",
+        &["cap_bytes"],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/repositories/{key}/proxy-cache-cap",
+        "repo proxy-cache-cap clear",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/on-upstream-not-found",
+        "repo on-upstream-not-found show",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/repositories/{key}/on-upstream-not-found",
+        "repo on-upstream-not-found set",
+        &["on_upstream_not_found"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/stale-if-error-grace",
+        "repo stale-if-error-grace show",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/repositories/{key}/stale-if-error-grace",
+        "repo stale-if-error-grace set",
+        &["stale_if_error_grace_seconds"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/upstream-mode",
+        "repo upstream-mode show",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/repositories/{key}/upstream-mode",
+        "repo upstream-mode set",
+        &["upstream_mode"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/cache/seed",
+        "repo cache seed start",
+        &["content", "options"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/cache/seed/{job_id}",
+        "repo cache seed status",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/cache/seed/{job_id}",
+        "repo cache seed start",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/rpm/repodata/rebuild",
+        "repo rpm repodata rebuild",
+        &["root", "wait"],
+    ),
     // ---- artifacts ----
     covered(
         "GET",
@@ -869,7 +976,7 @@ pub static COMMANDS: &[Op] = &[
         "DELETE",
         "/api/v1/repositories/{key}/artifacts/{path}",
         "artifact delete",
-        &[],
+        &["permanent"],
     ),
     covered(
         "DELETE",
@@ -4601,6 +4708,16 @@ pub static COMMANDS: &[Op] = &[
     excluded("GET", "/device", DEVICE_PAGE),
     excluded("GET", "/device/app.css", DEVICE_PAGE),
     excluded("GET", "/device/app.js", DEVICE_PAGE),
+    excluded(
+        "PUT",
+        "/api/v1/repositories/{key}/oci/blobs/{digest}",
+        PEER_OCI_REPLICATION,
+    ),
+    excluded(
+        "PUT",
+        "/api/v1/repositories/{key}/oci/manifests/{digest}",
+        PEER_OCI_REPLICATION,
+    ),
     excluded("ANY", "/ext/{format_key}/{repo_key}", WASM_PASSTHROUGH),
     excluded(
         "ANY",

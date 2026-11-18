@@ -752,3 +752,96 @@ async fn list_and_search_send_every_filter() {
     }
     assert!(!search.contains_key("query"));
 }
+// ---- #313: delete --permanent ----
+
+impl Fixture {
+    async fn on(version: &str) -> Self {
+        let fixture = Self::new().await;
+        fixture
+            .answer(
+                "GET",
+                "/health",
+                ResponseTemplate::new(200).set_body_json(json!({"version": version})),
+            )
+            .await;
+        fixture
+    }
+}
+
+#[tokio::test]
+async fn permanent_delete_asks_the_server_to_purge_the_trash_too() {
+    let fx = Fixture::on("1.12.1").await;
+    fx.answer(
+        "DELETE",
+        "/api/v1/repositories/r/artifacts/b.txt",
+        ResponseTemplate::new(200),
+    )
+    .await;
+    let output = fx.ak(&[
+        "--format",
+        "json",
+        "artifact",
+        "delete",
+        "r",
+        "b.txt",
+        "--permanent",
+        "--yes",
+    ]);
+    assert!(output.status.success(), "{output:?}");
+    let requests = fx.requests().await;
+    let delete = requests
+        .iter()
+        .find(|r| r.method.as_str() == "DELETE")
+        .expect("a DELETE");
+    assert_eq!(delete.url.query(), Some("permanent=true"));
+    let printed: Value = serde_json::from_slice(&output.stdout).expect("JSON output");
+    assert_eq!(printed["status"], "purged");
+}
+
+#[tokio::test]
+async fn a_plain_delete_sends_no_permanent() {
+    let fx = Fixture::new().await;
+    fx.answer(
+        "DELETE",
+        "/api/v1/repositories/r/artifacts/a.txt",
+        ResponseTemplate::new(200),
+    )
+    .await;
+    let output = fx.ak(&["artifact", "delete", "r", "a.txt", "--yes"]);
+    assert!(output.status.success(), "{output:?}");
+    let requests = fx.requests().await;
+    assert_eq!(requests.len(), 1, "{requests:?}");
+    assert_eq!(requests[0].url.query(), None);
+}
+
+#[tokio::test]
+async fn permanent_delete_needs_yes_without_a_terminal() {
+    let fx = Fixture::on("1.12.1").await;
+    let output = fx.ak(&["artifact", "delete", "r", "a.txt", "--permanent"]);
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(
+        fx.requests()
+            .await
+            .iter()
+            .all(|r| r.method.as_str() != "DELETE")
+    );
+}
+
+/// A 1.11 server would take the query and only move the artifact to the trash.
+#[tokio::test]
+async fn permanent_delete_is_refused_on_1_11_before_anything_changes() {
+    let fx = Fixture::on("1.11.14").await;
+    let output = fx.ak(&["artifact", "delete", "r", "a.txt", "--permanent", "--yes"]);
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("--permanent needs a server on 1.12") && stderr.contains("1.11.14"),
+        "{stderr}"
+    );
+    assert!(
+        fx.requests()
+            .await
+            .iter()
+            .all(|r| r.url.path() == "/health")
+    );
+}

@@ -10,7 +10,9 @@ use super::helpers::{
     raw_json_call, read_inline_or_file, refuse_flags_before, resolve_secret, sdk_err,
 };
 use super::repo_settings::{
-    self, AllowlistCommand, EgressProxyCommand, NpmScopePolicyCommand, UpstreamFilterCommand,
+    self, AllowlistCommand, CacheSeedCommand, EgressProxyCommand, NpmScopePolicyCommand,
+    OnUpstreamNotFoundCommand, ProxyCacheCapCommand, RpmCommand, StaleIfErrorGraceCommand,
+    UpstreamFilterCommand, UpstreamModeCommand,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -138,6 +140,9 @@ pub enum RepoCommand {
         /// the repository is created, like --curation-enabled
         #[arg(long = "curation-default-action", value_parser = ["allow", "review"])]
         curation_default_action: Option<String>,
+
+        #[command(flatten)]
+        born: Box<CreateOnlyArgs>,
 
         #[command(flatten)]
         settings: RepoSettingsArgs,
@@ -295,6 +300,37 @@ pub enum RepoCommand {
     NpmScopePolicy {
         #[command(subcommand)]
         command: NpmScopePolicyCommand,
+    },
+
+    /// Manage the size cap of a remote repository's proxy cache (1.12)
+    ProxyCacheCap {
+        #[command(subcommand)]
+        command: ProxyCacheCapCommand,
+    },
+
+    /// Manage what a remote repository does when its upstream drops a cached path (1.12)
+    OnUpstreamNotFound {
+        #[command(subcommand)]
+        command: OnUpstreamNotFoundCommand,
+    },
+
+    /// Manage how long a remote repository serves stale copies while its upstream
+    /// is down (1.12)
+    StaleIfErrorGrace {
+        #[command(subcommand)]
+        command: StaleIfErrorGraceCommand,
+    },
+
+    /// Manage whether a remote repository may contact its upstream (1.12)
+    UpstreamMode {
+        #[command(subcommand)]
+        command: UpstreamModeCommand,
+    },
+
+    /// Hosted RPM repositories (1.12)
+    Rpm {
+        #[command(subcommand)]
+        command: RpmCommand,
     },
 
     /// Show what this server's repositories support
@@ -481,6 +517,120 @@ pub struct RepoSettingsArgs {
     /// Cross-origin OCI Bearer token realms to trust, comma separated ("" clears them on update)
     #[arg(long = "oci-trusted-bearer-realms", value_delimiter = ',')]
     oci_trusted_bearer_realms: Option<Vec<String>>,
+
+    /// Local RPM repositories: precomputed (built in the background) or
+    /// on_request repodata. Needs a 1.12 server
+    #[arg(long = "repodata-mode", value_parser = ["precomputed", "on_request"])]
+    repodata_mode: Option<String>,
+
+    /// Virtual repositories: whether a download may fall back to a lower-priority
+    /// member while a higher one is down, available or strict. Needs a 1.12 server
+    #[arg(long = "virtual-member-fallback", value_parser = ["available", "strict"])]
+    virtual_member_fallback: Option<String>,
+}
+
+/// Settings `repo create` takes that `repo update` has under another name or
+/// not at all. A 1.12 server stores them before any job can pick the repository up.
+#[derive(Args, Debug, Default)]
+pub struct CreateOnlyArgs {
+    /// Hold uploaded artifacts until scanned, from the first upload (true/false).
+    /// Needs a 1.12 server
+    #[arg(long = "quarantine-enabled")]
+    quarantine_enabled: Option<bool>,
+
+    /// Quarantine hold duration in minutes. Needs a 1.12 server
+    #[arg(long = "quarantine-duration-minutes")]
+    quarantine_duration_minutes: Option<i64>,
+
+    /// Virtual repositories: serve a partial merge when a member's metadata can't
+    /// be read (true/false). Needs a 1.12 server
+    #[arg(long = "virtual-metadata-partial")]
+    virtual_metadata_partial: Option<bool>,
+
+    /// Remote repositories: online, or cache_only to never contact the upstream.
+    /// Needs a 1.12 server
+    #[arg(long = "upstream-mode", value_parser = ["online", "cache_only"])]
+    upstream_mode: Option<String>,
+
+    /// Remote repositories: the outbound proxy to reach the upstream through,
+    /// inherit, direct or explicit. Needs a 1.12 server
+    #[arg(long = "egress-proxy-mode", value_parser = ["inherit", "direct", "explicit"])]
+    egress_proxy_mode: Option<String>,
+
+    /// Proxy URL for --egress-proxy-mode explicit. Prefer --egress-proxy-url-stdin
+    /// if it holds credentials
+    #[arg(long = "egress-proxy-url", requires = "egress_proxy_mode")]
+    egress_proxy_url: Option<String>,
+
+    /// Read the egress proxy URL from stdin
+    #[arg(
+        long = "egress-proxy-url-stdin",
+        requires = "egress_proxy_mode",
+        conflicts_with_all = ["egress_proxy_url", "upstream_password_stdin"]
+    )]
+    egress_proxy_url_stdin: bool,
+
+    /// Comma-separated hosts, domain suffixes or CIDRs that bypass the egress proxy
+    #[arg(long = "egress-no-proxy", requires = "egress_proxy_mode")]
+    egress_no_proxy: Option<String>,
+
+    /// Staging repositories: the release repository to link to, by key. Set right
+    /// after the repository is created, which is when the server takes it
+    #[arg(long = "release-repository-key")]
+    release_repository_key: Option<String>,
+}
+
+impl CreateOnlyArgs {
+    /// The flags given that a server before 1.12 would accept on create and drop.
+    /// `--release-repository-key` goes in the update that follows, which 1.11 takes.
+    fn new_in_1_12(&self) -> Vec<&'static str> {
+        [
+            ("--quarantine-enabled", self.quarantine_enabled.is_some()),
+            (
+                "--quarantine-duration-minutes",
+                self.quarantine_duration_minutes.is_some(),
+            ),
+            (
+                "--virtual-metadata-partial",
+                self.virtual_metadata_partial.is_some(),
+            ),
+            ("--upstream-mode", self.upstream_mode.is_some()),
+            ("--egress-proxy-mode", self.egress_proxy_mode.is_some()),
+        ]
+        .into_iter()
+        .filter_map(|(flag, given)| given.then_some(flag))
+        .collect()
+    }
+
+    /// The egress proxy the repository is born with.
+    fn egress_proxy(
+        &mut self,
+        no_input: bool,
+    ) -> Result<Option<artifact_keeper_sdk::types::EgressProxyRequest>> {
+        let Some(mode) = self.egress_proxy_mode.take() else {
+            return Ok(None);
+        };
+        if self
+            .egress_proxy_url
+            .as_deref()
+            .is_some_and(|url| url.contains('@'))
+        {
+            eprintln!(
+                "warning: a URL with credentials on the command line ends up in shell history \
+                 and process listings; prefer --egress-proxy-url-stdin"
+            );
+        }
+        let proxy_url = if self.egress_proxy_url_stdin {
+            resolve_secret(None, true, "--egress-proxy-url", None, no_input)?
+        } else {
+            self.egress_proxy_url.take()
+        };
+        Ok(Some(artifact_keeper_sdk::types::EgressProxyRequest {
+            mode,
+            proxy_url,
+            no_proxy: self.egress_no_proxy.take(),
+        }))
+    }
 }
 
 /// A create or update request: the fields given, plus the ones from
@@ -509,12 +659,15 @@ macro_rules! with_settings {
             npm_virtual_isolate_hosted_names: $settings.npm_virtual_isolate_hosted_names,
             oci_trusted_bearer_realms: list_flag($settings.oci_trusted_bearer_realms),
             curation_source_repository_key: $settings.curation_source,
-            // New in 1.12, with no flags yet.
+            repodata_mode: parse_choice($settings.repodata_mode, "--repodata-mode")?,
+            virtual_member_fallback: parse_choice(
+                $settings.virtual_member_fallback,
+                "--virtual-member-fallback",
+            )?,
+            // New in 1.12, with no flags yet: `ak mcp` brings them.
             mcp_namespace_allow: None,
             mcp_package_policy: None,
             mcp_package_repos: None,
-            repodata_mode: None,
-            virtual_member_fallback: None,
         }
     };
 }
@@ -522,11 +675,32 @@ macro_rules! with_settings {
 impl RepoSettingsArgs {
     /// The flags given that a server before 1.12 would accept and drop.
     fn new_in_1_12(&self) -> Vec<&'static str> {
-        [("--curation-source", self.curation_source.is_some())]
-            .into_iter()
-            .filter_map(|(flag, given)| given.then_some(flag))
-            .collect()
+        [
+            ("--curation-source", self.curation_source.is_some()),
+            ("--repodata-mode", self.repodata_mode.is_some()),
+            (
+                "--virtual-member-fallback",
+                self.virtual_member_fallback.is_some(),
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(flag, given)| given.then_some(flag))
+        .collect()
     }
+}
+
+/// One of a flag's choices, as the API's type for it.
+fn parse_choice<T>(value: Option<String>, flag: &str) -> Result<Option<T>>
+where
+    T: std::str::FromStr,
+    T::Err: std::fmt::Display,
+{
+    value
+        .map(|v| {
+            v.parse()
+                .map_err(|e| AkError::Usage(format!("Invalid {flag}: {e}")).into())
+        })
+        .transpose()
 }
 
 /// A list flag's values, with `""` meaning an empty list.
@@ -680,6 +854,12 @@ pub enum CacheCommand {
         /// Artifact path to evict from the proxy cache
         path: String,
     },
+
+    /// Fetch a list of paths into the cache ahead of use (1.12)
+    Seed {
+        #[command(subcommand)]
+        command: CacheSeedCommand,
+    },
 }
 
 /// PEP 708 PyPI `tracks` declaration management.
@@ -759,9 +939,12 @@ impl RepoCommand {
                 upstream_password_stdin,
                 curation_enabled,
                 curation_default_action,
+                mut born,
                 settings,
             } => {
-                refuse_flags_before(&settings.new_in_1_12(), (1, 12), global).await?;
+                let mut new_in_1_12 = born.new_in_1_12();
+                new_in_1_12.extend(settings.new_in_1_12());
+                refuse_flags_before(&new_in_1_12, (1, 12), global).await?;
                 let upstream_password = resolve_secret(
                     upstream_password,
                     upstream_password_stdin,
@@ -778,18 +961,18 @@ impl RepoCommand {
                     .as_deref()
                     .map(|v| parse_json_arg(v, "--debian"))
                     .transpose()?;
+                let egress_proxy = born.egress_proxy(global.no_input)?;
                 let body = with_settings!(CreateRepositoryRequest, settings, debian, {
-                    // The server refuses these on create (#5324): `curation` sets
-                    // them once the repository exists.
+                    // The server refuses these on create (#5324): the update that
+                    // follows sets them once the repository exists.
                     curation_default_action: None,
                     curation_enabled: None,
-                    // New in 1.12, with no flags yet.
-                    egress_proxy: None,
-                    quarantine_duration_minutes: None,
-                    quarantine_enabled: None,
                     release_repository_key: None,
-                    upstream_mode: None,
-                    virtual_metadata_partial: None,
+                    egress_proxy,
+                    quarantine_duration_minutes: born.quarantine_duration_minutes,
+                    quarantine_enabled: born.quarantine_enabled,
+                    upstream_mode: parse_choice(born.upstream_mode, "--upstream-mode")?,
+                    virtual_metadata_partial: born.virtual_metadata_partial,
                     name: name.unwrap_or_else(|| key.clone()),
                     key,
                     format: pkg_format,
@@ -810,13 +993,16 @@ impl RepoCommand {
                     upstream_username,
                     upstream_password,
                 });
-                let curation = (curation_enabled.is_some() || curation_default_action.is_some())
-                    .then(|| artifact_keeper_sdk::types::UpdateRepositoryRequest {
+                create_repo(
+                    body,
+                    after_create(
                         curation_enabled,
                         curation_default_action,
-                        ..Default::default()
-                    });
-                create_repo(body, curation, global).await
+                        born.release_repository_key,
+                    ),
+                    global,
+                )
+                .await
             }
             Self::Delete {
                 key,
@@ -914,6 +1100,7 @@ impl RepoCommand {
                 CacheCommand::Invalidate { key, path } => {
                     invalidate_cache(&key, &path, global).await
                 }
+                CacheCommand::Seed { command } => command.execute(global).await,
             },
             Self::PypiTracks { command } => match command {
                 PypiTracksCommand::List { key } => list_pypi_tracks(&key, global).await,
@@ -960,6 +1147,11 @@ impl RepoCommand {
             Self::UpstreamFilter { command } => command.execute(global).await,
             Self::EgressProxy { command } => command.execute(global).await,
             Self::NpmScopePolicy { command } => command.execute(global).await,
+            Self::ProxyCacheCap { command } => command.execute(global).await,
+            Self::OnUpstreamNotFound { command } => command.execute(global).await,
+            Self::StaleIfErrorGrace { command } => command.execute(global).await,
+            Self::UpstreamMode { command } => command.execute(global).await,
+            Self::Rpm { command } => command.execute(global).await,
             Self::Capabilities => repo_settings::capabilities(global).await,
             Self::Storage {
                 key,
@@ -1205,11 +1397,56 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
-/// Create a repository, then set the curation fields, which the server takes only
-/// on an update (#5324). A failed update leaves the repository created, and says so.
+/// What `repo create` sets in an update once the repository exists, because the
+/// server refuses it on create (#5324). When every value given is what a new
+/// repository has anyway, there's nothing to update.
+fn after_create(
+    curation_enabled: Option<bool>,
+    curation_default_action: Option<String>,
+    release_repository_key: Option<String>,
+) -> Option<(
+    artifact_keeper_sdk::types::UpdateRepositoryRequest,
+    Vec<&'static str>,
+)> {
+    let anything = curation_enabled == Some(true)
+        || curation_default_action
+            .as_deref()
+            .is_some_and(|a| a != "allow")
+        || release_repository_key
+            .as_deref()
+            .is_some_and(|k| !k.is_empty());
+    let flags: Vec<&'static str> = [
+        ("--curation-enabled", curation_enabled.is_some()),
+        (
+            "--curation-default-action",
+            curation_default_action.is_some(),
+        ),
+        ("--release-repository-key", release_repository_key.is_some()),
+    ]
+    .into_iter()
+    .filter_map(|(flag, given)| given.then_some(flag))
+    .collect();
+    anything.then(|| {
+        (
+            artifact_keeper_sdk::types::UpdateRepositoryRequest {
+                curation_enabled,
+                curation_default_action,
+                release_repository_key,
+                ..Default::default()
+            },
+            flags,
+        )
+    })
+}
+
+/// Create a repository, then set what [`after_create`] holds back. A failed update
+/// leaves the repository created, and says so.
 async fn create_repo(
     body: artifact_keeper_sdk::types::CreateRepositoryRequest,
-    curation: Option<artifact_keeper_sdk::types::UpdateRepositoryRequest>,
+    after: Option<(
+        artifact_keeper_sdk::types::UpdateRepositoryRequest,
+        Vec<&'static str>,
+    )>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -1217,19 +1454,20 @@ async fn create_repo(
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.create_repository().body(body).send()).await;
     let resp = resp.map_err(|e| crate::commands::helpers::sdk_err("create repository", e))?;
-    let (resp, raw) = match curation {
+    let (resp, raw) = match after {
         None => (resp.into_inner(), raw),
-        Some(curation) => {
+        Some((update, flags)) => {
             let key = resp.key.clone();
             let (updated, raw) = artifact_keeper_sdk::raw::capture(
-                client.update_repository().key(&key).body(curation).send(),
+                client.update_repository().key(&key).body(update).send(),
             )
             .await;
             let updated = updated.map_err(|e| {
                 crate::commands::helpers::classified(
                     format!(
-                        "Created repository '{key}', but failed to set its curation: {e}. Set \
-                         it with `ak repo update {key}`"
+                        "Created repository '{key}', but failed to set {}: {e}. Set it with \
+                         `ak repo update {key}`",
+                        flags.join(", ")
                     ),
                     &e,
                 )
