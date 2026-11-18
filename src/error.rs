@@ -43,6 +43,18 @@ pub enum AkError {
     )]
     Forbidden(String),
 
+    /// A 403 that the browser (device) session's scopes explain.
+    #[error("Permission denied: {message}")]
+    #[diagnostic(
+        code(ak::forbidden),
+        help(
+            "You're signed in with a browser session, which holds only the scopes it was \
+             approved for: {scopes}. Run `ak auth login --password` for a session with your \
+             account's full access, or use an API token that has the scope."
+        )
+    )]
+    ScopedSession { message: String, scopes: String },
+
     #[error("Not found: {0}")]
     #[diagnostic(code(ak::not_found))]
     NotFound(String),
@@ -193,7 +205,9 @@ impl AkError {
             | Self::NoTerminal
             | Self::ConfirmationRefused(_) => EXIT_USAGE,
             Self::NetworkError(_) => EXIT_NETWORK,
-            Self::NotAuthenticated(_) | Self::Forbidden(_) => EXIT_AUTH,
+            Self::NotAuthenticated(_) | Self::Forbidden(_) | Self::ScopedSession { .. } => {
+                EXIT_AUTH
+            }
             Self::NotFound(_) => EXIT_NOT_FOUND,
             Self::ServerError(_) | Self::UnsupportedServer(_) => EXIT_SERVER,
             Self::ReportedFailure(_) | Self::PromotionBlocked(_) => EXIT_REPORTED_FAILURE,

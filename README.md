@@ -103,35 +103,50 @@ ak artifact pull my-repo org/pkg/1.0/pkg-1.0.jar
 ak setup auto
 ```
 
-### Headless and SSO login
+### Browser, headless and SSO login
 
-Requires Artifact Keeper backend 1.12.0 or newer.
+Requires Artifact Keeper backend 1.12.0 or newer with `DEVICE_AUTH_ENABLED=true`.
 
-On a host without a browser, or when the instance uses SSO, sign in with the
-device authorization grant (RFC 8628) instead of a password:
+At a terminal, `ak auth login` signs in through the browser when the server
+offers it (the device authorization grant, RFC 8628). It prints a verification
+URL and a short code and opens the browser. Approve the request there, or on
+any other device where you are signed in to Artifact Keeper. The CLI polls at
+the server's interval, honours `slow_down`, and stores the returned access and
+refresh tokens through the same credential store as a password login. Tokens
+are never printed.
+
+A bare `ak auth login` asks for every scope the device grant gives a
+non-admin: `read:artifacts`, `write:artifacts`, `read:repositories`,
+`write:repositories` and `read:users`, so pushing works. The session never
+carries `*`, `admin` or the admin-only scopes (deleting, promoting, `ak admin`
+and the like): for those, use `ak auth login --password` or an API token. When
+the server refuses a browser session for scope, the error says so.
 
 ```bash
-ak auth login --oidc-device
+ak auth login                  # browser sign-in, if the server offers it
+ak auth login --password       # username and password instead
+ak auth login --device         # browser sign-in, also without a terminal
 ```
 
-The CLI prints a verification URL and a short code. Open the URL on any device
-where you are already signed in to Artifact Keeper, enter the code, and approve
-the request. The CLI polls at the server's interval, honours `slow_down`, and
-stores the returned access and refresh tokens through the same credential store
-as a password login. Tokens are never printed.
+- `--password` signs in with a username and password, as `ak auth login` did
+  before 1.12. `--token` and `--token-stdin` take an API token.
+- `--device` asks for browser sign-in even without a terminal, or with
+  `--no-input`, for a headless host: approve the code from another device.
+  `--oidc-device`, its old name, still works.
+- `--scope <SCOPE>` requests specific AK scopes, repeatable or comma-separated,
+  and implies `--device`. `--device` without it asks only for
+  `read:artifacts`, the least a headless host needs. `*`, `admin` and OIDC
+  scopes (`openid`, `profile`, `email`) are refused: this is a plain Artifact
+  Keeper grant, not an OIDC device flow.
+- Without a terminal, with `--no-input`, or on a server that doesn't offer
+  device sign-in (1.11, or `DEVICE_AUTH_ENABLED` off), `ak auth login` asks for
+  a password or a token as before.
+- `--no-input` never opens a browser and never prompts. Set `AK_NO_BROWSER=1`
+  to suppress the browser launch without disabling prompts.
 
-- `--scope <SCOPE>` requests specific AK scopes, repeatable or comma-separated
-  (default: `read:artifacts`). `*`, `admin` and OIDC scopes (`openid`,
-  `profile`, `email`) are refused: this is a plain Artifact Keeper grant, not
-  an OIDC device flow.
-- `--no-input` keeps the flow fully non-interactive; it never opens a browser
-  and never prompts. Set `AK_NO_BROWSER=1` to suppress the browser launch
-  without disabling prompts.
-- `--device` is an alias for `--oidc-device`.
-
-The server must have `DEVICE_AUTH_ENABLED=true`; otherwise, or on an older
-backend, the command reports that device authorization isn't available. Use `ak auth logout` to clear the
-stored credential.
+With `--device` on a server without it, the command reports that device
+authorization isn't available. Use `ak auth logout` to clear the stored
+credential.
 
 ## Commands
 

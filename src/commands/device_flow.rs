@@ -30,6 +30,18 @@ pub(crate) const DEVICE_GRANT_TYPE: &str = "urn:ietf:params:oauth:grant-type:dev
 /// the backend's `DEFAULT_DEVICE_SCOPE`.
 pub(crate) const DEFAULT_SCOPE: &str = "read:artifacts";
 
+/// What a bare `ak auth login` asks for when it signs in through the browser by
+/// default: every scope the device grant gives a non-admin, so pushing works. That's
+/// the backend's `ALLOWED_SCOPES` without `*`, `admin` and `ADMIN_ONLY_SCOPES`
+/// (`approval_scope_ceiling`). Admin-only work needs a password login or a token.
+pub(crate) const DEFAULT_LOGIN_SCOPES: &[&str] = &[
+    "read:artifacts",
+    "write:artifacts",
+    "read:repositories",
+    "write:repositories",
+    "read:users",
+];
+
 /// Unregistered public-client identifier. RFC 8628 §3.1 requires the same
 /// value on the authorization request and every token poll.
 pub(crate) const CLIENT_ID: &str = "ak-cli";
@@ -508,7 +520,7 @@ pub(crate) async fn poll_for_tokens(
             PollResult::Denied => {
                 return Err(AkError::NotAuthenticated(
                     "the device authorization request was denied; run `ak auth login \
-                     --oidc-device` again if this was a mistake"
+                     --device` again if this was a mistake"
                         .into(),
                 )
                 .into());
@@ -516,7 +528,7 @@ pub(crate) async fn poll_for_tokens(
             PollResult::Expired => {
                 return Err(AkError::NotAuthenticated(
                     "the device code expired before it was approved; run `ak auth login \
-                     --oidc-device` again"
+                     --device` again"
                         .into(),
                 )
                 .into());
@@ -524,7 +536,7 @@ pub(crate) async fn poll_for_tokens(
             PollResult::InvalidGrant => {
                 return Err(AkError::NotAuthenticated(
                     "the device code is invalid, was issued to another client, or has already \
-                     been used; run `ak auth login --oidc-device` again"
+                     been used; run `ak auth login --device` again"
                         .into(),
                 )
                 .into());
@@ -563,7 +575,7 @@ pub(crate) async fn poll_for_tokens(
 fn timed_out(policy: &PollPolicy) -> miette::Report {
     AkError::NotAuthenticated(format!(
         "timed out after {} seconds waiting for the device authorization to be approved; run \
-         `ak auth login --oidc-device` again",
+         `ak auth login --device` again",
         policy.deadline.as_secs().max(1)
     ))
     .into()

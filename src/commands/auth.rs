@@ -1,4 +1,4 @@
-use artifact_keeper_sdk::{ClientAuthExt, ClientSsoExt, ClientUsersExt};
+use artifact_keeper_sdk::{ClientAuthExt, ClientSsoExt, ClientSystemExt, ClientUsersExt};
 use clap::Subcommand;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use miette::{IntoDiagnostic, Result};
@@ -23,23 +23,37 @@ pub struct LoginArgs {
     url: Option<String>,
 
     /// Skip interactive prompt and go straight to token authentication
-    #[arg(long, conflicts_with_all = ["oidc_device", "sso", "username"])]
+    #[arg(long, conflicts_with_all = ["device", "password", "sso", "username"])]
     token: bool,
 
     /// Read the token from stdin rather than asking for it
-    #[arg(long, conflicts_with_all = ["token", "oidc_device", "sso", "username", "totp_code_stdin"])]
+    #[arg(long, conflicts_with_all = ["token", "device", "password", "sso", "username", "totp_code_stdin"])]
     token_stdin: bool,
 
-    /// Sign in with the RFC 8628 device authorization grant instead of
-    /// prompting for a password or token. Prints a verification URL and a
-    /// short user code, then polls until the user approves it. Works
-    /// headlessly and with SSO-backed instances. Requires backend 1.12.0+.
-    #[arg(long = "oidc-device", visible_alias = "device", conflicts_with_all = ["sso", "username"])]
-    oidc_device: bool,
+    /// Sign in with the RFC 8628 device authorization grant: print a verification
+    /// URL and a short code, open the browser if there's one, and wait for the
+    /// approval. Works headlessly and with SSO-backed instances. Needs server 1.12.
+    /// At a terminal this is already the default when the server offers it
+    #[arg(
+        long = "device",
+        alias = "oidc-device",
+        conflicts_with_all = ["password", "sso", "username"]
+    )]
+    device: bool,
 
-    /// AK scopes to request with --oidc-device (repeatable, or
-    /// comma-separated). Defaults to `read:artifacts`.
-    #[arg(long, value_delimiter = ',', requires = "oidc_device")]
+    /// Sign in with a username and password, even where the server offers browser
+    /// sign-in, which `ak auth login` at a terminal would otherwise use
+    #[arg(long, conflicts_with_all = ["device", "sso"])]
+    password: bool,
+
+    /// AK scopes to request with device sign-in (repeatable, or comma-separated).
+    /// Implies --device. `--device` alone asks for `read:artifacts`, and a bare login
+    /// at a terminal for every non-admin scope
+    #[arg(
+        long,
+        value_delimiter = ',',
+        conflicts_with_all = ["password", "sso", "token", "token_stdin", "username"]
+    )]
     scope: Vec<String>,
 
     /// Sign in through an SSO provider, as `ldap:<id>`, `oidc:<id>` or `saml:<id>`.
@@ -83,7 +97,8 @@ pub struct LoginArgs {
 pub enum AuthCommand {
     /// Log in to an Artifact Keeper instance. The session is stored and never printed
     #[command(
-        after_help = "Examples:\n  ak auth login\n  ak auth login --username alice --password-stdin < secret-file\n  ak auth login --token-stdin < token-file\n  ak auth login --sso ldap:<provider-id> --username alice\n  ak auth login --sso oidc:<provider-id>"
+        long_about = "Log in to an Artifact Keeper instance. The session is stored and never printed.\n\nAt a terminal, on a server that offers browser sign-in (device authorization, 1.12), this prints a code, opens the browser and waits for you to approve it there. That session can read and write artifacts and repositories; admin-only work needs --password or an API token. Pass --password for a username and password instead, or --token for an API token. Without a terminal, or on a server without browser sign-in, it asks for a password or a token as before.",
+        after_help = "Examples:\n  ak auth login\n  ak auth login --password\n  ak auth login --device --scope read:artifacts,write:artifacts\n  ak auth login --username alice --password-stdin < secret-file\n  ak auth login --token-stdin < token-file\n  ak auth login --sso ldap:<provider-id> --username alice\n  ak auth login --sso oidc:<provider-id>"
     )]
     Login(Box<LoginArgs>),
 
@@ -361,8 +376,21 @@ fn save_new_instance(target: &LoginTarget) -> Result<()> {
 
 async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
     let target = resolve_login_target(args.url.as_deref(), global)?;
-    if args.oidc_device {
-        crate::commands::device_flow::login(&target.name, &target.instance, &args.scope, global)
+    let at_terminal = std::io::IsTerminal::is_terminal(&std::io::stdin());
+    let device = match login_method(args, global.no_input, at_terminal) {
+        LoginMethod::Device => true,
+        LoginMethod::Other => false,
+        LoginMethod::DeviceIfOffered => {
+            let offered = server_offers_device_login(&target.instance).await;
+            if offered {
+                eprintln!("{}\n", default_device_notice(&target.name));
+            }
+            offered
+        }
+    };
+    if device {
+        let scopes = device_scopes(args);
+        crate::commands::device_flow::login(&target.name, &target.instance, &scopes, global)
             .await?;
     } else {
         login_to(&target.name, &target.instance, args, global).await?;
@@ -371,6 +399,122 @@ async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
         save_new_instance(&target)?;
     }
     Ok(())
+}
+
+/// The scopes a device login asks for. A bare login asks for the non-admin ceiling,
+/// so pushing works. `--device` and `--scope` keep to what's asked for, and
+/// `read:artifacts` if nothing is: a headless host gets the least unless asked.
+fn device_scopes(args: &LoginArgs) -> Vec<String> {
+    if args.device || !args.scope.is_empty() {
+        return args.scope.clone();
+    }
+    crate::commands::device_flow::DEFAULT_LOGIN_SCOPES
+        .iter()
+        .map(|scope| scope.to_string())
+        .collect()
+}
+
+/// What a bare `ak auth login` says before it signs in through the browser.
+fn default_device_notice(instance_name: &str) -> String {
+    format!(
+        "Signing in to '{instance_name}' in the browser, to read and write artifacts and \
+         repositories ({}). Admin-only work, such as deleting, promoting or `ak admin`, needs \
+         `ak auth login --password` or an API token.",
+        crate::commands::device_flow::DEFAULT_LOGIN_SCOPES.join(" ")
+    )
+}
+
+/// A 403 to a session from the browser (device) sign-in, explained: the session holds
+/// only the scopes it was approved for, so a refusal for scope, or for admin to an
+/// admin account, is the session's doing and not the account's. Other failures, and
+/// any credential that isn't such a session, pass through unchanged.
+pub(crate) fn explain_scoped_session(
+    error: miette::Report,
+    instance: Option<&str>,
+) -> miette::Report {
+    let message = match error.downcast_ref::<AkError>().or_else(|| {
+        error
+            .chain()
+            .find_map(|cause| cause.downcast_ref::<AkError>())
+    }) {
+        Some(AkError::Forbidden(message)) => message.clone(),
+        _ => return error,
+    };
+    // A token in AK_TOKEN is used ahead of a login, and isn't one.
+    if std::env::var_os("AK_TOKEN").is_some() {
+        return error;
+    }
+    let claims = AppConfig::load().ok().and_then(|config| {
+        let (name, _) = config.resolve_instance(instance).ok()?;
+        let credential = get_credential(name).ok()?;
+        super::helpers::decode_jwt_claims(&credential.access_token)
+    });
+    match claims.and_then(|claims| scoped_session_refusal(&message, &claims)) {
+        Some(scopes) => AkError::ScopedSession { message, scopes }.into(),
+        None => error,
+    }
+}
+
+/// The session's scopes, if `message` is a refusal that its scope list explains.
+fn scoped_session_refusal(message: &str, claims: &serde_json::Value) -> Option<String> {
+    let scopes: Vec<&str> = claims
+        .get("scopes")?
+        .as_array()?
+        .iter()
+        .filter_map(|scope| scope.as_str())
+        .collect();
+    let is_admin = claims.get("is_admin").and_then(|v| v.as_bool()) == Some(true);
+    let for_scope = message.contains("does not have required scope");
+    let for_admin = is_admin && message.contains("Admin access required");
+    (for_scope || for_admin).then(|| scopes.join(" "))
+}
+
+/// How a login was asked for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LoginMethod {
+    /// `--device` or `--scope`.
+    Device,
+    /// A bare `ak auth login` at a terminal: the device grant if the server offers
+    /// it, and the old menu if not.
+    DeviceIfOffered,
+    /// Whatever the other flags say, or the old menu.
+    Other,
+}
+
+/// Device sign-in is the default only at a terminal with nothing else asked for: no
+/// password, token or SSO flag, and prompts allowed. Without a terminal, `ak auth
+/// login` does what it always did, so scripts don't change.
+fn login_method(args: &LoginArgs, no_input: bool, at_terminal: bool) -> LoginMethod {
+    if args.device || !args.scope.is_empty() {
+        return LoginMethod::Device;
+    }
+    let chose_another = args.password
+        || args.token
+        || args.token_stdin
+        || args.sso.is_some()
+        || args.username.is_some();
+    if chose_another || no_input || !at_terminal {
+        return LoginMethod::Other;
+    }
+    LoginMethod::DeviceIfOffered
+}
+
+/// Whether the server says device sign-in is on (`AuthConfig.device_authorization_enabled`,
+/// new in 1.12). Anything else, a 1.11 server that doesn't send it, an error or a
+/// slow answer, means no, and the login goes the old way.
+async fn server_offers_device_login(instance: &InstanceConfig) -> bool {
+    let Ok(client) = anon_client(&instance.url) else {
+        return false;
+    };
+    let config = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        client.get_system_config().send(),
+    )
+    .await;
+    matches!(
+        config,
+        Ok(Ok(config)) if config.auth.device_authorization_enabled == Some(true)
+    )
 }
 
 async fn login_to(
@@ -393,7 +537,7 @@ async fn login_to(
         )?;
         return store_token(instance_name, instance, token).await;
     }
-    if args.username.is_some() {
+    if args.username.is_some() || (args.password && !global.no_input) {
         return login_with_password(instance_name, instance, args, global).await;
     }
 
@@ -436,10 +580,6 @@ async fn login_to(
     }
 }
 
-/// Sign in with the server's RFC 8628 device authorization grant.
-///
-/// `--no-input` is not an error here: the flow never prompts. It prints the
-/// verification URL and user code, and the user approves on a second device.
 async fn login_with_token(instance_name: &str, instance: &InstanceConfig) -> Result<()> {
     eprintln!(
         "Paste your API token for '{instance_name}' ({}):",
@@ -1372,7 +1512,7 @@ mod tests {
     // ---- wiremock handler tests ----
 
     use wiremock::matchers::{body_string_contains, method, path};
-    use wiremock::{Mock, ResponseTemplate};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
 
@@ -1588,11 +1728,12 @@ mod tests {
     }
 
     #[test]
-    fn parse_login_oidc_device() {
-        match parse_auth(&["auth", "login", "--oidc-device"]) {
+    fn parse_login_device() {
+        match parse_auth(&["auth", "login", "--device"]) {
             AuthCommand::Login(args) => {
-                assert!(args.oidc_device);
+                assert!(args.device);
                 assert!(!args.token);
+                assert!(!args.password);
                 assert!(args.scope.is_empty());
             }
             _ => panic!("expected Login"),
@@ -1600,9 +1741,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_login_device_alias() {
-        match parse_auth(&["auth", "login", "--device"]) {
-            AuthCommand::Login(args) => assert!(args.oidc_device),
+    fn parse_login_oidc_device_is_still_accepted() {
+        match parse_auth(&["auth", "login", "--oidc-device"]) {
+            AuthCommand::Login(args) => assert!(args.device),
             _ => panic!("expected Login"),
         }
     }
@@ -1612,14 +1753,14 @@ mod tests {
         match parse_auth(&[
             "auth",
             "login",
-            "--oidc-device",
+            "--device",
             "--scope",
             "read:artifacts,write:artifacts",
             "--scope",
             "delete:artifacts",
         ]) {
             AuthCommand::Login(args) => {
-                assert!(args.oidc_device);
+                assert!(args.device);
                 assert_eq!(
                     args.scope,
                     vec!["read:artifacts", "write:artifacts", "delete:artifacts"]
@@ -1631,12 +1772,223 @@ mod tests {
 
     #[test]
     fn parse_login_token_and_device_conflict() {
-        assert!(TestCli::try_parse_from(["auth", "login", "--token", "--oidc-device"]).is_err());
+        assert!(TestCli::try_parse_from(["auth", "login", "--token", "--device"]).is_err());
     }
 
     #[test]
-    fn parse_login_scope_requires_device() {
-        assert!(TestCli::try_parse_from(["auth", "login", "--scope", "read:artifacts"]).is_err());
+    fn parse_login_password_conflicts_with_device_token_and_scope() {
+        for other in [
+            &["--device"][..],
+            &["--token"],
+            &["--scope", "read:artifacts"],
+        ] {
+            let mut argv = vec!["auth", "login", "--password"];
+            argv.extend_from_slice(other);
+            assert!(TestCli::try_parse_from(argv).is_err(), "{other:?}");
+        }
+    }
+
+    fn login_args(argv: &[&str]) -> LoginArgs {
+        let mut full = vec!["auth", "login"];
+        full.extend_from_slice(argv);
+        match parse_auth(&full) {
+            AuthCommand::Login(args) => *args,
+            _ => panic!("expected Login"),
+        }
+    }
+
+    #[test]
+    fn a_bare_login_at_a_terminal_asks_the_server_about_device_sign_in() {
+        assert_eq!(
+            login_method(&login_args(&[]), false, true),
+            LoginMethod::DeviceIfOffered
+        );
+    }
+
+    #[test]
+    fn without_a_terminal_or_with_no_input_a_bare_login_is_unchanged() {
+        assert_eq!(
+            login_method(&login_args(&[]), false, false),
+            LoginMethod::Other
+        );
+        assert_eq!(
+            login_method(&login_args(&[]), true, true),
+            LoginMethod::Other
+        );
+    }
+
+    #[test]
+    fn any_other_method_flag_skips_device_sign_in() {
+        for argv in [
+            &["--password"][..],
+            &["--token"],
+            &["--token-stdin"],
+            &["--username", "alice"],
+            &["--sso", "oidc:00000000-0000-4000-8000-000000000001"],
+        ] {
+            assert_eq!(
+                login_method(&login_args(argv), false, true),
+                LoginMethod::Other,
+                "{argv:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn device_and_scope_ask_for_device_sign_in_anywhere() {
+        for argv in [&["--device"][..], &["--scope", "write:artifacts"]] {
+            assert_eq!(
+                login_method(&login_args(argv), true, false),
+                LoginMethod::Device,
+                "{argv:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_bare_login_asks_for_the_non_admin_ceiling() {
+        let scopes = device_scopes(&login_args(&[]));
+        for scope in ["read:artifacts", "write:artifacts", "write:repositories"] {
+            assert!(scopes.iter().any(|s| s == scope), "{scope}: {scopes:?}");
+        }
+        // Never what the device grant refuses, nor what only an admin can grant.
+        for refused in [
+            "*",
+            "admin",
+            "delete:artifacts",
+            "delete:repositories",
+            "promote:artifacts",
+            "trigger:sync",
+            "write:users",
+            "write:findings",
+            "mcp:introspect",
+        ] {
+            assert!(!scopes.iter().any(|s| s == refused), "{refused}");
+        }
+        assert!(crate::commands::device_flow::normalize_scopes(&scopes).is_ok());
+    }
+
+    #[test]
+    fn device_and_scope_keep_to_what_is_asked_for() {
+        // `--device` alone: the device flow's own default, read:artifacts.
+        assert!(device_scopes(&login_args(&["--device"])).is_empty());
+        assert_eq!(
+            device_scopes(&login_args(&["--scope", "read:artifacts"])),
+            vec!["read:artifacts"]
+        );
+    }
+
+    #[test]
+    fn the_default_notice_names_the_scopes_and_the_way_to_full_access() {
+        let notice = default_device_notice("prod");
+        assert!(notice.contains("write:artifacts"), "{notice}");
+        assert!(notice.contains("ak auth login --password"), "{notice}");
+    }
+
+    #[test]
+    fn a_scope_refusal_to_a_device_session_is_explained() {
+        let claims = serde_json::json!({
+            "is_admin": false,
+            "scopes": ["read:artifacts", "write:artifacts"],
+        });
+        assert_eq!(
+            scoped_session_refusal(
+                "Failed to delete artifact: 403 Forbidden: Token does not have required \
+                 scope: delete",
+                &claims
+            )
+            .as_deref(),
+            Some("read:artifacts write:artifacts")
+        );
+        // A non-admin's account can't do admin work whatever the session.
+        assert_eq!(
+            scoped_session_refusal("403 Forbidden: Admin access required", &claims),
+            None
+        );
+    }
+
+    #[test]
+    fn an_admin_refused_admin_work_on_a_device_session_is_explained() {
+        let claims = serde_json::json!({ "is_admin": true, "scopes": ["read:artifacts"] });
+        assert_eq!(
+            scoped_session_refusal("403 Forbidden: Admin access required", &claims).as_deref(),
+            Some("read:artifacts")
+        );
+    }
+
+    #[test]
+    fn a_password_session_is_not_explained() {
+        // No `scopes` claim: action-unrestricted.
+        let claims = serde_json::json!({ "is_admin": true });
+        assert_eq!(
+            scoped_session_refusal("403 Forbidden: Admin access required", &claims),
+            None
+        );
+    }
+
+    async fn config_server(auth: serde_json::Value) -> (MockServer, InstanceConfig) {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v1/system/config"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "max_upload_size_bytes": 1,
+                "demo_mode": false,
+                "guest_access_enabled": false,
+                "auth": auth,
+            })))
+            .mount(&server)
+            .await;
+        let instance = InstanceConfig {
+            url: server.uri(),
+            api_version: "v1".into(),
+            allow_insecure_http: false,
+        };
+        (server, instance)
+    }
+
+    fn auth_config(device: Option<bool>) -> serde_json::Value {
+        let mut auth = serde_json::json!({
+            "ldap_enabled": false,
+            "local_login_enabled": true,
+            "oidc_enabled": false,
+            "silent_sso_enabled": false,
+            "sso_enabled": false,
+        });
+        if let Some(device) = device {
+            auth["device_authorization_enabled"] = device.into();
+        }
+        auth
+    }
+
+    #[tokio::test]
+    async fn a_server_advertising_device_authorization_offers_it() {
+        let (_server, instance) = config_server(auth_config(Some(true))).await;
+        assert!(server_offers_device_login(&instance).await);
+    }
+
+    #[tokio::test]
+    async fn a_server_with_it_off_or_a_1_11_server_does_not() {
+        let (_server, instance) = config_server(auth_config(Some(false))).await;
+        assert!(!server_offers_device_login(&instance).await);
+        // 1.11 doesn't send the field at all.
+        let (_server, instance) = config_server(auth_config(None)).await;
+        assert!(!server_offers_device_login(&instance).await);
+    }
+
+    #[tokio::test]
+    async fn a_server_that_fails_the_config_request_does_not() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/api/v1/system/config"))
+            .respond_with(ResponseTemplate::new(500))
+            .mount(&server)
+            .await;
+        let instance = InstanceConfig {
+            url: server.uri(),
+            api_version: "v1".into(),
+            allow_insecure_http: false,
+        };
+        assert!(!server_offers_device_login(&instance).await);
     }
 
     #[test]
