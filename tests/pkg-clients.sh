@@ -39,14 +39,6 @@ export ADMIN_PASSWORD
 
 ak() { "$AK_BIN" "$@"; }
 
-# Whether the backend has what's new in 1.11, for the checks of what isn't on 1.10.
-is_1_11() {
-  curl -s "$BASE/health" | python3 -I -c '
-import json, sys
-major, minor = json.load(sys.stdin)["version"].split(".")[:2]
-sys.exit(0 if (int(major), int(minor)) >= (1, 11) else 1)'
-}
-
 # box <image> <dir> <script>: run a shell script in a container, with <dir> at /w and the
 # credentials in its environment.
 BOX_N=0
@@ -291,7 +283,6 @@ A
 }
 
 check_pacman() {
-  is_1_11 || { echo "needs 1.11"; return 0; }
   local d; d="$(fresh pacman)"
   REPO="$(new_repo pacman pacman)" || return 1
   box docker.io/library/archlinux:base-devel "$d" '
@@ -338,32 +329,22 @@ P' || return 1
   local api_token
   api_token="$(ak --format json auth token create --description "conda-$RUN_ID" --scope write:artifacts --expires-in 1 |
     python3 -I -c 'import json,sys;print(json.load(sys.stdin)["token"])')" || return 1
-  # 1.10 has only one of the two URL forms, and no withdrawal.
-  local form=t-conda
-  is_1_11 || form=conda-t
-  AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken-1.0.$RUN_ID-0.tar.bz2" --subdir noarch --token-in-url "$form" || return 1
-  if is_1_11; then
-    AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken2-1.0.$RUN_ID-0.tar.bz2" --token-in-url conda-t || return 1
-  else
-    AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken2-1.0.$RUN_ID-0.tar.bz2" --subdir noarch --token-in-url conda-t || return 1
-  fi
+  # Both URL forms take the token.
+  AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken-1.0.$RUN_ID-0.tar.bz2" --subdir noarch --token-in-url t-conda || return 1
+  AK_TOKEN="$api_token" ak pkg conda publish "$REPO" "$d/aktoken2-1.0.$RUN_ID-0.tar.bz2" --token-in-url conda-t || return 1
   # An attestation has to be a signed bundle, which is out of reach here, so this shows
   # only that it reaches the handler: the server reads it, and refuses it for what it is.
   local refused
   refused="$(ak pkg conda attest "$REPO" noarch "akdemo-1.0.$RUN_ID-0.tar.bz2" '{}' 2>&1)" && return 1
   case "$refused" in *404*) echo "$refused"; return 1 ;; esac
   # A withdrawn package isn't offered any more.
-  local gone=""
-  if is_1_11; then
-    gone=1
-    ak pkg conda publish "$REPO" "$d/akgone-1.0.$RUN_ID-0.tar.bz2" --subdir noarch || return 1
-    ak pkg conda withdraw "$REPO" noarch "akgone-1.0.$RUN_ID-0.tar.bz2" --reason test --yes || return 1
-  fi
+  ak pkg conda publish "$REPO" "$d/akgone-1.0.$RUN_ID-0.tar.bz2" --subdir noarch || return 1
+  ak pkg conda withdraw "$REPO" noarch "akgone-1.0.$RUN_ID-0.tar.bz2" --reason test --yes || return 1
   box docker.io/mambaorg/micromamba:1.5-bookworm-slim "$d" '
     export MAMBA_ROOT_PREFIX=/tmp/m
     micromamba create -q -y -n e --override-channels -c "$BASE/conda/$REPO" akdemo aktoken aktoken2 >/dev/null
     for n in akdemo aktoken aktoken2; do test "$(cat /tmp/m/envs/e/share/$n/value)" = 41; done
-    if [ -n "'"$gone"'" ] && micromamba create -q -y -n g --override-channels -c "$BASE/conda/$REPO" akgone >/dev/null 2>&1; then
+    if micromamba create -q -y -n g --override-channels -c "$BASE/conda/$REPO" akgone >/dev/null 2>&1; then
       echo "a withdrawn package installed"; exit 1
     fi'
 }
@@ -562,7 +543,6 @@ check_bazel() {
 module(name = "akdemo", version = "1.0.0")
 M
   printf '{"url":"https://example.com/none.tgz","integrity":"sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="}' >"$d/source.json"
-  is_1_11 || { echo "publishing needs 1.11"; return 0; }
   ak pkg bazel publish "$REPO" akdemo 1.0.0 "$d/MODULE.bazel" "$d/source.json" || return 1
   box gcr.io/bazel-public/bazel:7.4.1 "$d" '
     export HOME=/tmp/h; mkdir -p $HOME /tmp/use; cd /tmp/use
@@ -674,7 +654,6 @@ P' || return 1
     conan install --requires=akdemo/1.0 -r ak 2>&1 | tail -3
     p="$(conan cache path "akdemo/1.0:$(python -I -c "print(open(\"/w/ids\").read().split()[1])")")"
     test "$(cat "$p/share/value")" = 41' || return 1
-  is_1_11 || return 0
   ak pkg conan remove "$REPO" akdemo/1.0 --revision "$rrev" --all-packages --yes >/dev/null || return 1
   ak pkg conan remove "$REPO" akdemo/1.0 --revision "$rrev" --yes >/dev/null || return 1
 }

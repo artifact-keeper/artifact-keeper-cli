@@ -752,5 +752,3 @@ async fn list_and_search_send_every_filter() {
     }
     assert!(!search.contains_key("query"));
 }
-
-// ---- a server before 1.11 ----

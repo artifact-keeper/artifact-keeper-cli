@@ -660,14 +660,14 @@ fn build(leaf: &Leaf, chosen: &[(Arg, String)]) -> Vec<String> {
     args
 }
 
-/// Arguments and environment a line needs that placeholders won't find.
-fn hints(
-    home: &std::path::Path,
-    line: &Line,
-) -> (
+/// Arguments by id, and environment variables.
+type Hints = (
     Vec<(&'static str, String)>,
     Vec<(&'static str, &'static str)>,
-) {
+);
+
+/// Arguments and environment a line needs that placeholders won't find.
+fn hints(home: &std::path::Path, line: &Line) -> Hints {
     let id = || UUID.to_string();
     match (
         line.command.as_str(),

@@ -83,6 +83,7 @@ fn crc32(data: &[u8]) -> u32 {
     !crc
 }
 
+#[allow(dead_code)]
 pub fn crate_file(dir: &Path, name: &str, version: &str, extra_manifest: &str) -> PathBuf {
     let manifest = format!(
         "[package]\nname = \"{name}\"\nversion = \"{version}\"\nlicense = \"MIT\"\n{extra_manifest}"
@@ -96,6 +97,7 @@ pub fn crate_file(dir: &Path, name: &str, version: &str, extra_manifest: &str) -
     )
 }
 
+#[allow(dead_code)]
 pub fn npm_tarball(dir: &Path, name: &str, version: &str) -> PathBuf {
     let manifest = format!("{{\"name\":\"{name}\",\"version\":\"{version}\"}}");
     let short = name.rsplit('/').next().unwrap_or(name);

@@ -760,45 +760,36 @@ mod tests {
 
     #[test]
     fn server_support_allows_current_and_previous_minor() {
-        assert_eq!(
-            server_support("1.11.10", "1.11.10"),
-            ServerSupport::Supported
-        );
-        assert_eq!(
-            server_support("1.11.0", "1.11.10"),
-            ServerSupport::Supported
-        );
-        assert_eq!(
-            server_support("1.11.99", "1.11.10"),
-            ServerSupport::Supported
-        );
-        assert_eq!(
-            server_support("1.10.2", "1.11.10"),
-            ServerSupport::Supported
-        );
-        assert_eq!(
-            server_support("v1.10.2", "1.11.10"),
-            ServerSupport::Supported
-        );
+        for server in [
+            "1.12.1", "1.12.0", "1.12.99", "1.11.0", "1.11.11", "v1.11.11",
+        ] {
+            assert_eq!(
+                server_support(server, "1.12.1"),
+                ServerSupport::Supported,
+                "{server}"
+            );
+        }
     }
 
     #[test]
     fn server_support_flags_old_servers() {
-        assert_eq!(server_support("1.9.1", "1.11.10"), ServerSupport::TooOld);
-        assert_eq!(server_support("0.11.0", "1.11.10"), ServerSupport::TooOld);
+        assert_eq!(server_support("1.10.2", "1.12.1"), ServerSupport::TooOld);
+        assert_eq!(server_support("v1.10.2", "1.12.1"), ServerSupport::TooOld);
+        assert_eq!(server_support("1.9.1", "1.12.1"), ServerSupport::TooOld);
+        assert_eq!(server_support("0.12.0", "1.12.1"), ServerSupport::TooOld);
         assert_eq!(server_support("1.99.0", "2.0.0"), ServerSupport::TooOld);
     }
 
     #[test]
     fn server_support_flags_new_servers() {
-        assert_eq!(server_support("1.12.0", "1.11.10"), ServerSupport::TooNew);
-        assert_eq!(server_support("2.0.0", "1.11.10"), ServerSupport::TooNew);
+        assert_eq!(server_support("1.13.0", "1.12.1"), ServerSupport::TooNew);
+        assert_eq!(server_support("2.0.0", "1.12.1"), ServerSupport::TooNew);
     }
 
     #[test]
     fn server_support_unknown_on_unparseable_version() {
-        assert_eq!(server_support("dev", "1.11.10"), ServerSupport::Unknown);
-        assert_eq!(server_support("", "1.11.10"), ServerSupport::Unknown);
+        assert_eq!(server_support("dev", "1.12.1"), ServerSupport::Unknown);
+        assert_eq!(server_support("", "1.12.1"), ServerSupport::Unknown);
     }
 
     #[test]
