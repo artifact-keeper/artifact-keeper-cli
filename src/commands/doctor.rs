@@ -183,7 +183,7 @@ fn pluralize<'a>(count: u32, singular: &'a str, plural: &'a str) -> &'a str {
 fn build_diag_client(
     instance: &InstanceConfig,
 ) -> std::result::Result<artifact_keeper_sdk::Client, String> {
-    let builder = reqwest::ClientBuilder::new()
+    let builder = crate::transport::client_builder()
         .connect_timeout(DIAG_CONNECT_TIMEOUT)
         .timeout(DIAG_REQUEST_TIMEOUT);
     let http_client = crate::transport::apply_custom_ca(builder)
@@ -208,7 +208,7 @@ fn build_diag_client_with_auth(
         HeaderValue::from_str(&auth_value).map_err(|e| e.to_string())?,
     );
 
-    let builder = reqwest::ClientBuilder::new()
+    let builder = crate::transport::client_builder()
         .default_headers(headers)
         .redirect(super::client::redirect_policy())
         .connect_timeout(DIAG_CONNECT_TIMEOUT)
@@ -271,7 +271,7 @@ async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagRe
 pub(super) async fn fetch_server_version(
     instance: &InstanceConfig,
 ) -> std::result::Result<String, String> {
-    let builder = reqwest::ClientBuilder::new()
+    let builder = crate::transport::client_builder()
         .connect_timeout(DIAG_CONNECT_TIMEOUT)
         .timeout(DIAG_REQUEST_TIMEOUT);
     let http = crate::transport::apply_custom_ca(builder)
