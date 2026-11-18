@@ -561,6 +561,31 @@ async fn wait_reports_a_failed_job_with_its_reason() {
 }
 
 #[tokio::test]
+async fn wait_takes_a_job_that_left_objects_behind_as_done_with_a_warning() {
+    let server = deleting(ResponseTemplate::new(202).set_body_json(job("pending"))).await;
+    let mut ended = job("completed_with_errors");
+    ended["failed_items"] = json!(2);
+    ended["error_summary"] = json!("2 objects not deleted: a/b\u{1b}[31m, c/d");
+    job_answers(&server, ResponseTemplate::new(200).set_body_json(ended)).await;
+
+    let output = ak(
+        &server,
+        &["--format", "json", "repo", "delete", "r", "--yes", "--wait"],
+    );
+    assert!(output.status.success(), "{output:?}");
+    let printed: Value = serde_json::from_slice(&output.stdout).expect("JSON output");
+    assert_eq!(printed["status"], "completed_with_errors");
+    let stderr = one_line(&output);
+    assert!(
+        stderr.contains("Warning") && stderr.contains("2 of its stored objects"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("2 objects not deleted: a/b"), "{stderr}");
+    // The server's words reach a terminal, without its escape sequences.
+    assert!(!stderr.contains('\u{1b}'), "{stderr}");
+}
+
+#[tokio::test]
 async fn wait_gives_up_at_the_timeout_and_says_the_job_is_still_running() {
     let server = deleting(ResponseTemplate::new(202).set_body_json(job("pending"))).await;
     job_answers(

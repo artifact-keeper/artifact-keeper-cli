@@ -1352,7 +1352,9 @@ async fn deletion_accepted(
 const MAX_POLL_FAILURES: u32 = 5;
 
 /// Poll a repository deletion job until it ends, returning its last body. A job
-/// that ends in anything but `completed` is an error.
+/// that ends `completed_with_errors` deleted the repository but left stored objects
+/// behind, which storage GC retries: that's a warning, not a failure. Any other end
+/// but `completed` is an error.
 async fn wait_for_deletion(
     key: &str,
     job_id: uuid::Uuid,
@@ -1397,6 +1399,11 @@ async fn wait_for_deletion(
                         spinner.finish_and_clear();
                         return Ok(bytes.to_vec());
                     }
+                    Some("completed_with_errors") => {
+                        spinner.finish_and_clear();
+                        eprintln!("{}", left_behind(key, job_id, &job));
+                        return Ok(bytes.to_vec());
+                    }
                     Some(status @ ("failed" | "cancelled")) => {
                         spinner.finish_and_clear();
                         let reason = job["error_summary"].as_str().unwrap_or("no reason given");
@@ -1432,6 +1439,21 @@ async fn wait_for_deletion(
         }
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
     }
+}
+
+/// The warning for a deletion job that ended `completed_with_errors`.
+fn left_behind(key: &str, job_id: uuid::Uuid, job: &serde_json::Value) -> String {
+    let failed = job["failed_items"]
+        .as_i64()
+        .map_or("Some".to_string(), |n| n.to_string());
+    let mut warning = format!(
+        "Warning: repository '{key}' is deleted (job {job_id}), but {failed} of its stored \
+         objects couldn't be deleted. Storage garbage collection retries them."
+    );
+    if let Some(summary) = job["error_summary"].as_str() {
+        warning.push_str(&format!(" {}", output::sanitize_terminal(summary)));
+    }
+    warning
 }
 
 async fn browse_repo(key: &str, global: &GlobalArgs) -> Result<()> {
