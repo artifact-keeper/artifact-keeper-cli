@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A staging repository can be set up for a curation sync on 1.12, which syncs only a staging repository with curation enabled and a source and refused every other with `409 Conflict`. `ak repo create` and `ak repo update` take `--curation-source <remote-key>` (`""` removes it on update), and `ak repo create` now takes `--curation-enabled` and `--curation-default-action`, which it sets in an update right after the create because the server refuses them on create. `--curation-default-action` takes `allow` or `review`, the two values the server accepts. `--curation-source` needs a 1.12 server and is refused on 1.11 before anything changes (#310).
 - `ak sso providers --public` works without being logged in. The public provider list doesn't need credentials, but the command refused to run without them (#311).
 - The SDK generator and the route walker work on API 1.12.1. Generation no longer panics on an operation that answers both with a body and without one, or emits code that doesn't compile for an optional nullable header. The walker reads a handler's child modules, routes built in a `for` loop over a list of strings, and constants inside `format!`, so `ROUTES.json` now has the MCP registry routes under `/mcp` (and the real Alpine signing-key path); a loop it can't evaluate is an error rather than a shorter table. `/mcp` and `/agentplugins` count as package-format wire routes in the coverage gate (#312).
 

@@ -624,7 +624,7 @@ async fn create_defaults_the_name_to_the_key() {
     assert!(output.status.success(), "{output:?}");
 }
 
-// ---- a server before 1.11 ----
+// ---- version checks ----
 
 async fn server_on(version: &str) -> MockServer {
     let server = MockServer::start().await;
@@ -687,4 +687,177 @@ async fn a_404_from_a_current_server_keeps_its_message() {
     let output = ak(&server, &["repo", "allowlist", "get", "k"]);
     assert_eq!(output.status.code(), Some(5), "{output:?}");
     assert!(one_line(&output).contains("no such repo"));
+}
+
+// ---- #310: curation ----
+
+fn staging() -> Value {
+    let mut repo = repository();
+    repo["repo_type"] = json!("staging");
+    repo
+}
+
+#[tokio::test]
+async fn create_links_a_source_and_then_sets_curation() {
+    let server = server_on("1.12.1").await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/repositories"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(staging()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let mut enabled = staging();
+    enabled["curation_enabled"] = json!(true);
+    enabled["curation_default_action"] = json!("review");
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/r"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(enabled))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let output = ak(
+        &server,
+        &[
+            "--format",
+            "json",
+            "repo",
+            "create",
+            "r",
+            "--pkg-format",
+            "rpm",
+            "--repo-type",
+            "staging",
+            "--curation-source",
+            "upstream",
+            "--curation-enabled",
+            "true",
+            "--curation-default-action",
+            "review",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+    let requests = server.received_requests().await.expect("recorded");
+    let body = |verb: &str| -> Value {
+        let request = requests
+            .iter()
+            .find(|r| r.method.as_str() == verb)
+            .expect("request");
+        serde_json::from_slice(&request.body).expect("JSON body")
+    };
+    let created = body("POST");
+    assert_eq!(created["curation_source_repository_key"], "upstream");
+    // The server refuses these on create, so they wait for the PATCH.
+    assert!(created.get("curation_enabled").is_none(), "{created}");
+    assert!(
+        created.get("curation_default_action").is_none(),
+        "{created}"
+    );
+    assert_eq!(
+        body("PATCH"),
+        json!({"curation_enabled": true, "curation_default_action": "review"})
+    );
+    // What it prints is the repository as the PATCH left it.
+    let printed: Value = serde_json::from_slice(&output.stdout).expect("JSON output");
+    assert_eq!(printed["curation_enabled"], true);
+}
+
+#[tokio::test]
+async fn create_without_curation_flags_sends_one_request() {
+    let server = accepting("POST", "/api/v1/repositories").await;
+    let output = ak(&server, &["repo", "create", "r", "--pkg-format", "rpm"]);
+    assert!(output.status.success(), "{output:?}");
+    let requests = server.received_requests().await.expect("recorded");
+    assert_eq!(requests.len(), 1, "{requests:?}");
+}
+
+#[tokio::test]
+async fn a_failed_curation_update_says_the_repository_was_created() {
+    let server = accepting("POST", "/api/v1/repositories").await;
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/r"))
+        .respond_with(
+            ResponseTemplate::new(400).set_body_json(json!({"message": "curation is broken"})),
+        )
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "create",
+            "r",
+            "--pkg-format",
+            "rpm",
+            "--curation-enabled",
+            "true",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
+    let stderr = one_line(&output);
+    assert!(
+        stderr.contains("Created repository 'r'")
+            && stderr.contains("curation is broken")
+            && stderr.contains("ak repo update r"),
+        "{stderr}"
+    );
+}
+
+#[tokio::test]
+async fn curation_default_action_takes_only_what_the_server_does() {
+    let server = MockServer::start().await;
+    let output = ak(
+        &server,
+        &["repo", "update", "r", "--curation-default-action", "block"],
+    );
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(server.received_requests().await.unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn update_removes_a_source_with_an_empty_key() {
+    let server = server_on("1.12.1").await;
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/r"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(staging()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(&server, &["repo", "update", "r", "--curation-source", ""]);
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        sent_body(&server).await,
+        json!({"curation_source_repository_key": ""})
+    );
+}
+
+#[tokio::test]
+async fn a_curation_source_is_refused_on_1_11_before_anything_changes() {
+    for command in [
+        vec![
+            "repo",
+            "create",
+            "r",
+            "--pkg-format",
+            "rpm",
+            "--curation-source",
+            "s",
+        ],
+        vec!["repo", "update", "r", "--curation-source", "s"],
+    ] {
+        let server = server_on("1.11.14").await;
+        let output = ak(&server, &command);
+        assert_eq!(output.status.code(), Some(6), "{output:?}");
+        let stderr = one_line(&output);
+        assert!(
+            stderr.contains("--curation-source needs a server on 1.12")
+                && stderr.contains("1.11.14"),
+            "{stderr}"
+        );
+        let requests = server.received_requests().await.expect("recorded");
+        assert!(
+            requests.iter().all(|r| r.url.path() == "/health"),
+            "{requests:?}"
+        );
+    }
 }
