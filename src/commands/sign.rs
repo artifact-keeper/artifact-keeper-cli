@@ -553,6 +553,14 @@ impl TrustAttestationCommand {
                 signature,
                 issuer_name,
             } => {
+                if issuer_public_key == "@-" && signature == "@-" {
+                    return Err(AkError::Usage(
+                        "--issuer-public-key and --signature can't both read stdin (@-). Give \
+                         one of them as @file or as the text."
+                            .into(),
+                    )
+                    .into());
+                }
                 let issuer_public_key = text_arg(&issuer_public_key, "--issuer-public-key")?;
                 let signature = text_arg(&signature, "--signature")?;
                 verify_trust_attestation(&id, issuer_public_key, signature, issuer_name, global)
@@ -1985,6 +1993,23 @@ mod tests {
             _ => panic!("expected trust-attestation verify"),
         }
         assert!(try_parse(&["test", "key", "trust-attestation", "verify", NIL_UUID]).is_err());
+    }
+
+    #[tokio::test]
+    async fn verify_refuses_stdin_for_both_the_key_and_the_signature() {
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let cmd = TrustAttestationCommand::Verify {
+            id: NIL_UUID.into(),
+            issuer_public_key: "@-".into(),
+            signature: "@-".into(),
+            issuer_name: None,
+        };
+        let err = cmd.execute(&global).await.unwrap_err();
+        assert!(
+            matches!(err.downcast_ref::<AkError>(), Some(AkError::Usage(_))),
+            "{err:?}"
+        );
+        assert!(err.to_string().contains("can't both read stdin"), "{err}");
     }
 
     #[tokio::test]

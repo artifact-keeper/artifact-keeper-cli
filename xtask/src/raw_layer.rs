@@ -103,7 +103,7 @@ const OPT_OUTS: &[(&str, &str, &str)] = &[
     ),
     (
         "device_flow.rs",
-        "login_with_policy",
+        "finish",
         "Reads the user to check the login, and prints no body",
     ),
     (

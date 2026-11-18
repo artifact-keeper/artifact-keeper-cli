@@ -106,11 +106,11 @@ pub enum GroupMembersCommand {
 
         /// Most members to list (server default 50, at most 200)
         #[arg(long)]
-        limit: Option<i32>,
+        limit: Option<u32>,
 
         /// Members to skip
         #[arg(long)]
-        offset: Option<i32>,
+        offset: Option<u32>,
     },
 }
 
@@ -281,8 +281,8 @@ async fn show_group(
 
 async fn list_members(
     id: &str,
-    limit: Option<i32>,
-    offset: Option<i32>,
+    limit: Option<u32>,
+    offset: Option<u32>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -887,6 +887,12 @@ mod tests {
             }
             _ => panic!("expected Members List"),
         }
+    }
+
+    #[test]
+    fn members_list_refuses_a_negative_page() {
+        assert!(try_parse(&["group", "members", "list", NIL_UUID, "--limit", "-1"]).is_err());
+        assert!(try_parse(&["group", "members", "list", NIL_UUID, "--offset", "-5"]).is_err());
     }
 
     #[tokio::test]

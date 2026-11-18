@@ -140,7 +140,9 @@ ak auth login --device         # browser sign-in, also without a terminal
   Keeper grant, not an OIDC device flow.
 - Without a terminal, with `--no-input`, or on a server that doesn't offer
   device sign-in (1.11, or `DEVICE_AUTH_ENABLED` off), `ak auth login` asks for
-  a password or a token as before.
+  a password or a token as before. It also falls back to that prompt, with a
+  note, when the server can't start a browser sign-in (rate-limited,
+  unavailable, or a proxy in the way); `--device` fails there instead.
 - `--no-input` never opens a browser and never prompts. Set `AK_NO_BROWSER=1`
   to suppress the browser launch without disabling prompts.
 
