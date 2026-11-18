@@ -194,6 +194,13 @@ pub static FIELD_OPT_OUTS: &[FieldOptOut] = &[
     },
     FieldOptOut {
         method: "POST",
+        path: "/api/v1/admin/config/import",
+        field: "mode",
+        reason: "The subcommand sets it: `admin config plan` sends `plan` and `admin config \
+                 apply` sends `apply`, after a plan for its prompt",
+    },
+    FieldOptOut {
+        method: "POST",
         path: "/api/v1/admin/settings",
         field: "max_upload_size_bytes",
         reason: "Read-only: the server takes only the value in force (MAX_UPLOAD_SIZE). \
@@ -1258,6 +1265,7 @@ pub static COMMANDS: &[Op] = &[
             "name",
             "provider_type",
             "static_jwks",
+            "token_ttl_secs",
         ],
     ),
     covered(
@@ -1278,6 +1286,7 @@ pub static COMMANDS: &[Op] = &[
             "name",
             "provider_type",
             "static_jwks",
+            "token_ttl_secs",
         ],
     ),
     covered(
@@ -2105,6 +2114,7 @@ pub static COMMANDS: &[Op] = &[
         "admin downloads list",
         &[
             "artifact_id",
+            "downloader",
             "user_id",
             "ip",
             "from",
@@ -2121,6 +2131,7 @@ pub static COMMANDS: &[Op] = &[
         "admin downloads by-ip",
         &[
             "artifact_id",
+            "downloader",
             "source",
             "repository_id",
             "user_id",
@@ -2136,6 +2147,7 @@ pub static COMMANDS: &[Op] = &[
         "admin downloads by-user",
         &[
             "artifact_id",
+            "downloader",
             "source",
             "repository_id",
             "ip",
@@ -2380,7 +2392,11 @@ pub static COMMANDS: &[Op] = &[
         "PATCH",
         "/api/v1/admin/settings/system",
         "admin settings system update",
-        &["guest_access_enabled"],
+        &[
+            "guest_access_enabled",
+            "hidden_nav_items",
+            "upstream_jobs_paused",
+        ],
     ),
     covered(
         "GET",
@@ -2441,6 +2457,37 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/admin/trash/{id}/restore",
         "admin trash restore",
         &[],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/admin/trash/{id}",
+        "admin trash purge",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/repositories/{key}/backfill-debian",
+        "admin repo backfill-debian",
+        &["dry_run", "limit", "after"],
+    ),
+    // ---- config as code ----
+    covered(
+        "GET",
+        "/api/v1/admin/config/export",
+        "admin config export",
+        &["repositories"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/config/import",
+        "admin config plan",
+        &["document", "secrets", "prune"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/admin/config/import",
+        "admin config apply",
+        &["document", "secrets", "prune"],
     ),
     covered(
         "POST",
@@ -2610,6 +2657,12 @@ pub static COMMANDS: &[Op] = &[
         "PUT",
         "/api/v1/instances/{id}/proxy/{path}",
         "admin instance proxy put",
+        &[],
+    ),
+    covered(
+        "PATCH",
+        "/api/v1/instances/{id}/proxy/{path}",
+        "admin instance proxy patch",
         &[],
     ),
     covered(
@@ -3328,7 +3381,7 @@ pub static COMMANDS: &[Op] = &[
         "GET",
         "/api/v1/packages/{id}/versions",
         "catalog versions",
-        &[],
+        &["repository_key"],
     ),
     // ---- peer ----
     covered(
@@ -3765,6 +3818,7 @@ pub static COMMANDS: &[Op] = &[
     ),
     // ---- system ----
     covered("GET", "/api/v1/system/config", "system config", &[]),
+    covered("GET", "/api/v1/system/quota", "system quota", &[]),
     // ---- pkg: package-format helpers ----
     covered("POST", "/pypi/{repo_key}", "pkg pypi publish", &[]),
     covered("POST", "/pypi/{repo_key}/pypi", "pkg pypi xmlrpc", &[]),

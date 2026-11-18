@@ -8,7 +8,7 @@ use super::PageArgs;
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for;
 use crate::commands::helpers::{
-    confirm_action, emit_mutation_raw, new_table, parse_uuid, print_page_info, sdk_err,
+    confirm_action, emit_mutation_raw, new_table, or_since, parse_uuid, print_page_info, sdk_err,
 };
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -27,6 +27,18 @@ pub enum TrashCommand {
     /// Put a soft-deleted artifact back. The server refuses if its path has been
     /// taken or its object is gone, and for OCI and proxy-cache content
     Restore {
+        /// Artifact ID, from `ak admin trash list`
+        id: String,
+
+        /// Skip confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
+
+    /// Delete a soft-deleted artifact for good, without waiting for storage garbage
+    /// collection, which frees its path for a new upload. The stored object stays while
+    /// anything else references it. The server refuses OCI manifests and blobs
+    Purge {
         /// Artifact ID, from `ak admin trash list`
         id: String,
 
@@ -144,6 +156,44 @@ impl TrashCommand {
                     &format!(
                         "Restored '{}' in repository '{}' (ID: {}).",
                         restored.path, restored.repository_key, restored.id
+                    ),
+                    global,
+                );
+            }
+            Self::Purge { id, yes } => {
+                let artifact_id = parse_uuid(&id, "artifact")?;
+                if !confirm_action(
+                    &format!(
+                        "Permanently delete artifact {artifact_id} from the trash? It can't be \
+                         restored afterwards"
+                    ),
+                    yes,
+                    global.no_input,
+                )? {
+                    return Ok(());
+                }
+                let spinner = output::spinner("Purging artifact...");
+                let (resp, raw) = artifact_keeper_sdk::raw::capture(
+                    client.purge_trashed_artifact().id(artifact_id).send(),
+                )
+                .await;
+                spinner.finish_and_clear();
+                let purged = or_since((1, 12), resp, "purge artifact", "admin trash purge", global)
+                    .await?
+                    .into_inner();
+                let storage = if purged.storage_reclaimed {
+                    format!("freed {}", format_bytes(purged.size_bytes))
+                } else {
+                    "its stored object is still referenced, so storage GC frees it later"
+                        .to_string()
+                };
+                emit_mutation_raw(
+                    raw.as_deref(),
+                    &purged,
+                    &purged.id.to_string(),
+                    &format!(
+                        "Purged '{}' in repository '{}' (ID: {}): {storage}.",
+                        purged.path, purged.repository_key, purged.id
                     ),
                     global,
                 );

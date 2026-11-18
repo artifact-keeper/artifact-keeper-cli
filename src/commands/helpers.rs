@@ -749,16 +749,57 @@ pub async fn raw_json_call(
     action: &str,
     global: &GlobalArgs,
 ) -> Result<Vec<u8>> {
-    let (base_url, auth_header) = crate::commands::client::resolve_base_url_and_auth(global)?;
-    let mut url = reqwest::Url::parse(&base_url)
-        .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
+    raw_json_call_with_query(method, segments, &[], body, action, global)
+        .await
+        .map_err(|failure| match failure {
+            RawFailure::Status(status, text) => {
+                raw_err(&format!("Failed to {action}"), status, &text).into()
+            }
+            RawFailure::Other(report) => report,
+        })
+}
+
+/// How a [`raw_json_call_with_query`] failed: an answer that wasn't a success, for
+/// the caller to word ([`since_raw`] for a route new in a minor), or anything else.
+pub enum RawFailure {
+    Status(reqwest::StatusCode, String),
+    Other(miette::Report),
+}
+
+/// [`raw_json_call`] with a query string, which hands back a failed answer's status
+/// and body rather than an error.
+pub async fn raw_json_call_with_query(
+    method: reqwest::Method,
+    segments: &[&str],
+    query: &[(&str, String)],
+    body: Option<&serde_json::Value>,
+    action: &str,
+    global: &GlobalArgs,
+) -> std::result::Result<Vec<u8>, RawFailure> {
+    let other = |e: AkError| RawFailure::Other(e.into());
+    let (base_url, auth_header) =
+        crate::commands::client::resolve_base_url_and_auth(global).map_err(RawFailure::Other)?;
+    let mut url = reqwest::Url::parse(&base_url).map_err(|e| {
+        other(AkError::ConfigError(format!(
+            "Invalid instance URL {base_url}: {e}"
+        )))
+    })?;
     url.path_segments_mut()
-        .map_err(|_| AkError::ConfigError(format!("Invalid instance URL: {base_url}")))?
+        .map_err(|_| {
+            other(AkError::ConfigError(format!(
+                "Invalid instance URL: {base_url}"
+            )))
+        })?
         .pop_if_empty()
         .extend(["api", "v1"])
         .extend(segments);
+    if !query.is_empty() {
+        url.query_pairs_mut()
+            .extend_pairs(query.iter().map(|(k, v)| (*k, v.as_str())));
+    }
 
-    let mut request = crate::commands::client::raw_http_client()?
+    let mut request = crate::commands::client::raw_http_client()
+        .map_err(RawFailure::Other)?
         .request(method, url)
         .header(reqwest::header::AUTHORIZATION, auth_header);
     if let Some(body) = body {
@@ -767,17 +808,17 @@ pub async fn raw_json_call(
     let response = request
         .send()
         .await
-        .map_err(|e| AkError::NetworkError(format!("Failed to {action}: {e}")))?;
+        .map_err(|e| other(network_err(action, e)))?;
 
     let status = response.status();
     if !status.is_success() {
         let text = response.text().await.unwrap_or_default();
-        return Err(raw_err(&format!("Failed to {action}"), status, &text).into());
+        return Err(RawFailure::Status(status, text));
     }
     let bytes = response
         .bytes()
         .await
-        .map_err(|e| AkError::NetworkError(format!("Failed to {action}: {e}")))?;
+        .map_err(|e| other(network_err(action, e)))?;
     Ok(bytes.to_vec())
 }
 

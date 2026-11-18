@@ -12,12 +12,14 @@ use crate::output::{self, OutputFormat, format_bytes};
 
 mod audit;
 mod blast_radius;
+mod config_doc;
 mod diag;
 mod downloads;
 mod holds;
 mod npm_feed;
 mod plugin_install;
 mod proxy_scan_verdict;
+mod repo_ops;
 mod runtime_settings;
 mod security;
 mod storage_ops;
@@ -201,10 +203,22 @@ pub enum AdminCommand {
     /// and Gradle repositories only
     ReindexStorage(storage_ops::ReindexStorageArgs),
 
-    /// List and restore soft-deleted artifacts
+    /// List, restore and purge soft-deleted artifacts
     Trash {
         #[command(subcommand)]
         command: trash::TrashCommand,
+    },
+
+    /// Export, compare and apply the repositories and their settings as one document
+    Config {
+        #[command(subcommand)]
+        command: config_doc::ConfigCommand,
+    },
+
+    /// Repair one repository's records
+    Repo {
+        #[command(subcommand)]
+        command: repo_ops::RepoCommand,
     },
 
     /// Storage operator commands
@@ -764,6 +778,11 @@ pub enum CiOidcCommand {
 
         #[command(flatten)]
         keys: CiOidcKeyArgs,
+
+        /// Lifetime of the tokens the provider mints, in seconds (the server's default
+        /// is 900, at most 3600). Needs a 1.12 server
+        #[arg(long)]
+        token_ttl_secs: Option<i32>,
     },
     /// Show a CI OIDC provider
     Get {
@@ -797,6 +816,11 @@ pub enum CiOidcCommand {
 
         #[command(flatten)]
         keys: CiOidcKeyArgs,
+
+        /// Lifetime of the tokens the provider mints, in seconds (the server's default
+        /// is 900, at most 3600). Needs a 1.12 server
+        #[arg(long)]
+        token_ttl_secs: Option<i32>,
     },
     /// Delete a CI OIDC provider
     Delete {
@@ -1047,6 +1071,18 @@ pub enum ProxyCommand {
 
         /// Sub-path to proxy
         path: String,
+    },
+    /// Proxy a PATCH request. Needs a 1.12 server
+    Patch {
+        /// Remote instance ID
+        id: String,
+
+        /// Sub-path to proxy
+        path: String,
+
+        /// Request body
+        #[arg(long)]
+        body: Option<String>,
     },
 }
 
@@ -1300,6 +1336,7 @@ impl AdminCommand {
                     provider_type,
                     enabled,
                     keys,
+                    token_ttl_secs,
                 } => {
                     create_ci_oidc_provider(
                         &name,
@@ -1308,6 +1345,7 @@ impl AdminCommand {
                         provider_type.as_deref(),
                         enabled,
                         keys,
+                        token_ttl_secs,
                         global,
                     )
                     .await
@@ -1321,6 +1359,7 @@ impl AdminCommand {
                     provider_type,
                     enabled,
                     keys,
+                    token_ttl_secs,
                 } => {
                     update_ci_oidc_provider(
                         &id,
@@ -1330,6 +1369,7 @@ impl AdminCommand {
                         provider_type.as_deref(),
                         enabled,
                         keys,
+                        token_ttl_secs,
                         global,
                     )
                     .await
@@ -1427,6 +1467,8 @@ impl AdminCommand {
             Self::StorageScrub { command } => command.execute(global).await,
             Self::ReindexStorage(args) => storage_ops::reindex_storage(args, global).await,
             Self::Trash { command } => command.execute(global).await,
+            Self::Config { command } => command.execute(global).await,
+            Self::Repo { command } => command.execute(global).await,
             Self::Storage { command } => command.execute(global).await,
             Self::Diag { command } => command.execute(global).await,
             Self::Rescan { limit } => rescan_for_inventory(limit, global).await,
@@ -1451,6 +1493,9 @@ impl AdminCommand {
                     }
                     ProxyCommand::Delete { id, path } => {
                         proxy_request(&id, "DELETE", &path, None, global).await
+                    }
+                    ProxyCommand::Patch { id, path, body } => {
+                        proxy_request(&id, "PATCH", &path, body, global).await
                     }
                 },
             },
@@ -4067,6 +4112,14 @@ async fn execute_backup(backup_id: &str, global: &GlobalArgs) -> Result<()> {
 
 // ---- CI OIDC providers ----
 
+/// A 1.11 server would drop `token_ttl_secs` and answer 200.
+async fn refuse_token_ttl_before_1_12(ttl: Option<i32>, global: &GlobalArgs) -> Result<()> {
+    if ttl.is_none() {
+        return Ok(());
+    }
+    super::helpers::refuse_flags_before(&["--token-ttl-secs"], (1, 12), global).await
+}
+
 fn provider_json(p: &artifact_keeper_sdk::types::CiOidcProviderResponse) -> serde_json::Value {
     serde_json::json!({
         "id": p.id.to_string(),
@@ -4076,6 +4129,7 @@ fn provider_json(p: &artifact_keeper_sdk::types::CiOidcProviderResponse) -> serd
         "provider_type": p.provider_type,
         "is_enabled": p.is_enabled,
         "mapping_count": p.mapping_count,
+        "token_ttl_secs": p.token_ttl_secs,
         "created_at": p.created_at.to_rfc3339(),
         "updated_at": p.updated_at.to_rfc3339(),
     })
@@ -4089,8 +4143,18 @@ fn provider_table(p: &artifact_keeper_sdk::types::CiOidcProviderResponse) -> Str
          Audience:      {}\n\
          Provider Type: {}\n\
          Enabled:       {}\n\
-         Mappings:      {}",
-        p.id, p.name, p.issuer_url, p.audience, p.provider_type, p.is_enabled, p.mapping_count,
+         Mappings:      {}\n\
+         Token TTL:     {}",
+        p.id,
+        p.name,
+        p.issuer_url,
+        p.audience,
+        p.provider_type,
+        p.is_enabled,
+        p.mapping_count,
+        p.token_ttl_secs
+            .map(|secs| format!("{secs}s"))
+            .unwrap_or_else(|| "-".into()),
     )
 }
 
@@ -4162,6 +4226,7 @@ async fn get_ci_oidc_provider(provider_id: &str, global: &GlobalArgs) -> Result<
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn create_ci_oidc_provider(
     name: &str,
     issuer_url: &str,
@@ -4169,9 +4234,11 @@ async fn create_ci_oidc_provider(
     provider_type: Option<&str>,
     enabled: bool,
     keys: CiOidcKeyArgs,
+    token_ttl_secs: Option<i32>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let (key_source, static_jwks) = keys.resolve()?;
+    refuse_token_ttl_before_1_12(token_ttl_secs, global).await?;
     let client = client_for(global)?;
     let spinner = output::spinner("Creating CI OIDC provider...");
 
@@ -4183,7 +4250,7 @@ async fn create_ci_oidc_provider(
         is_enabled: enabled.then_some(true),
         key_source,
         static_jwks,
-        token_ttl_secs: None,
+        token_ttl_secs,
     };
 
     let (p, raw) =
@@ -4210,9 +4277,11 @@ async fn update_ci_oidc_provider(
     provider_type: Option<&str>,
     enabled: Option<bool>,
     keys: CiOidcKeyArgs,
+    token_ttl_secs: Option<i32>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let (key_source, static_jwks) = keys.resolve()?;
+    refuse_token_ttl_before_1_12(token_ttl_secs, global).await?;
     let client = client_for(global)?;
     let id = parse_uuid(provider_id, "provider")?;
     let spinner = output::spinner("Updating CI OIDC provider...");
@@ -4225,7 +4294,7 @@ async fn update_ci_oidc_provider(
         is_enabled: enabled,
         key_source,
         static_jwks,
-        token_ttl_secs: None,
+        token_ttl_secs,
     };
 
     let (p, raw) =
@@ -5019,6 +5088,29 @@ async fn proxy_request(
             .await
             .map_err(|e| sdk_err("proxy request", e))?
             .status(),
+        // A 1.11 server has no PATCH here, and answers 405.
+        "PATCH" => match client
+            .proxy_patch()
+            .id(id)
+            .path(path)
+            .body(body.unwrap_or_default())
+            .send()
+            .await
+        {
+            Ok(resp) => resp.status(),
+            Err(e) => {
+                spinner.finish_and_clear();
+                return Err(super::helpers::since_any_status(
+                    (1, 12),
+                    e,
+                    "proxy request",
+                    "admin instance proxy patch",
+                    global,
+                )
+                .await
+                .into());
+            }
+        },
         other => {
             return Err(
                 crate::error::AkError::Usage(format!("Unsupported proxy method: {other}")).into(),
