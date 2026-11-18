@@ -202,6 +202,11 @@ pub enum CatalogCommand {
         /// Why, for the audit log
         #[arg(long)]
         reason: Option<String>,
+
+        /// Accepted and ignored: reopening asks nothing. Scripts that pass --yes to
+        /// every decision keep working
+        #[arg(long, short = 'y', hide = true)]
+        yes: bool,
     },
 
     /// Ask the repository's administrators to approve a name
@@ -460,9 +465,9 @@ impl CatalogCommand {
                 reason,
                 yes,
             } => decide(&repo, &id, Decision::Block, reason, yes, global).await,
-            Self::Reopen { repo, id, reason } => {
-                decide(&repo, &id, Decision::Reopen, reason, true, global).await
-            }
+            Self::Reopen {
+                repo, id, reason, ..
+            } => decide(&repo, &id, Decision::Reopen, reason, true, global).await,
             Self::RequestApproval { repo, id, note } => {
                 request_approval(&repo, &id, note, global).await
             }
@@ -589,6 +594,32 @@ fn opt(value: Option<&str>) -> String {
 fn split_name(server: &str) -> Option<(&str, &str)> {
     let (ns, name) = server.split_once('/')?;
     (!ns.is_empty() && !name.is_empty() && !name.contains('/')).then_some((ns, name))
+}
+
+/// Refuse a server name or version the request path can't carry as given: the
+/// generated client doesn't escape `%`, and an empty, `.` or `..` segment would
+/// reach another route.
+fn check_path_parts(server: &str, version: Option<&str>) -> Result<()> {
+    let bad = |part: &str| part.is_empty() || part == "." || part == ".." || part.contains('%');
+    let parts: Vec<&str> = match split_name(server) {
+        Some((ns, name)) => vec![ns, name],
+        None => vec![server],
+    };
+    if parts.iter().any(|p| bad(p)) {
+        return Err(AkError::Usage(format!(
+            "'{server}' isn't a server name ak can send: a namespace or name can't be empty, \
+             '.' or '..', or contain '%'"
+        ))
+        .into());
+    }
+    if let Some(version) = version.filter(|v| bad(v)) {
+        return Err(AkError::Usage(format!(
+            "'{version}' isn't a version ak can send: it can't be empty, '.' or '..', or \
+             contain '%'"
+        ))
+        .into());
+    }
+    Ok(())
 }
 
 /// `NAME@VERSION`, split at the last `@`.
@@ -1047,6 +1078,7 @@ fn server_detail(item: &CatalogItem) -> String {
 }
 
 async fn show_server(repo: &str, server: &str, global: &GlobalArgs) -> Result<()> {
+    check_path_parts(server, None)?;
     let spinner = output::spinner("Fetching the server...");
     let (item, raw) = match split_name(server) {
         Some((ns, name)) => get_server_split(repo, ns, name, global).await?,
@@ -1592,6 +1624,20 @@ fn sync_outcome(s: &Map<String, Value>, repo: &str) -> Result<()> {
 
 async fn start_sync(repo: &str, wait: Option<u64>, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
+    // With --wait, how the last pass ended, so the wait can tell this pass's end
+    // from it.
+    let before = match wait {
+        Some(_) => {
+            let (resp, raw) = capture(client.mcp_remote_sync_status().key(repo).send()).await;
+            or_since(V1_12, resp, "read sync status", "mcp sync start", global).await?;
+            let state: Value = raw
+                .as_deref()
+                .and_then(|b| serde_json::from_slice(b).ok())
+                .unwrap_or_default();
+            Some(state.get("lastFinishedAt").cloned().unwrap_or(Value::Null))
+        }
+        None => None,
+    };
     let spinner = output::spinner("Starting a sync...");
     let (resp, raw) = capture(client.mcp_remote_trigger_sync().key(repo).send()).await;
     let accepted = or_since(V1_12, resp, "start a sync", "mcp sync start", global)
@@ -1610,12 +1656,12 @@ async fn start_sync(repo: &str, wait: Option<u64>, global: &GlobalArgs) -> Resul
         );
         return Ok(());
     };
-    follow_sync(repo, timeout, global).await
+    follow_sync(repo, before, timeout, global).await
 }
 
 async fn sync_status(repo: &str, wait: Option<u64>, global: &GlobalArgs) -> Result<()> {
     if let Some(timeout) = wait {
-        return follow_sync(repo, timeout, global).await;
+        return follow_sync(repo, None, timeout, global).await;
     }
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching sync status...");
@@ -1628,10 +1674,59 @@ async fn sync_status(repo: &str, wait: Option<u64>, global: &GlobalArgs) -> Resu
     Ok(())
 }
 
-/// Poll `GET .../mcp/sync` until no pass holds the lock, print how it ended, and fail
-/// if it recorded an error.
-async fn follow_sync(repo: &str, timeout: u64, global: &GlobalArgs) -> Result<()> {
+/// How long `--wait` waits, after the lock is free, for the pass it follows to
+/// record how it ended. The server lets go of the lock before it records a failure.
+const SYNC_RECORD_GRACE: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// What `--wait` knows about the pass it follows.
+#[derive(Default)]
+struct SyncWatch {
+    /// `lastFinishedAt` before the pass: once a pass is known to run, the state
+    /// that ends the wait has to have moved past it. `None` until then.
+    before: Option<Value>,
+    /// When the lock was first seen free with nothing new recorded.
+    idle_since: Option<std::time::Instant>,
+    /// The wait ended at the grace limit with nothing new recorded.
+    stale: bool,
+}
+
+/// One look at the sync state: still running, or done.
+fn sync_step(watch: &mut SyncWatch, state: &Value, now: std::time::Instant) -> bool {
+    let finished = state.get("lastFinishedAt").cloned().unwrap_or(Value::Null);
+    if state["running"].as_bool() == Some(true) {
+        watch.before.get_or_insert(finished);
+        watch.idle_since = None;
+        return false;
+    }
+    let Some(before) = &watch.before else {
+        // Never seen a pass and none running: the state is the last pass's.
+        return true;
+    };
+    if finished != *before && !finished.is_null() {
+        return true;
+    }
+    let idle = *watch.idle_since.get_or_insert(now);
+    if now.duration_since(idle) >= SYNC_RECORD_GRACE {
+        watch.stale = true;
+        return true;
+    }
+    false
+}
+
+/// Poll `GET .../mcp/sync` until the pass ends and records how, print that, and fail
+/// if it recorded an error. `before` is `lastFinishedAt` from before a pass was
+/// started, if this command started one.
+async fn follow_sync(
+    repo: &str,
+    before: Option<Value>,
+    timeout: u64,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
+    let watch = std::cell::RefCell::new(SyncWatch {
+        before,
+        ..SyncWatch::default()
+    });
     let bytes = poll_job(
         &format!("Syncing '{repo}'..."),
         &format!("the sync of '{repo}'"),
@@ -1640,12 +1735,16 @@ async fn follow_sync(repo: &str, timeout: u64, global: &GlobalArgs) -> Result<()
         || async {
             let (resp, raw) = capture(client.mcp_remote_sync_status().key(repo).send()).await;
             match resp {
-                Ok(state) => {
-                    if state.get("running").and_then(Value::as_bool) == Some(true) {
-                        Ok(Polled::Running)
+                Ok(_) => {
+                    let bytes = raw.unwrap_or_default();
+                    let state: Value = serde_json::from_slice(&bytes).unwrap_or_default();
+                    let done =
+                        sync_step(&mut watch.borrow_mut(), &state, std::time::Instant::now());
+                    Ok(if done {
+                        Polled::Done(bytes)
                     } else {
-                        Ok(Polled::Done(raw.unwrap_or_default()))
-                    }
+                        Polled::Running
+                    })
                 }
                 Err(e) if e.status().is_some_and(|s| s.is_client_error()) => {
                     Err(
@@ -1661,6 +1760,12 @@ async fn follow_sync(repo: &str, timeout: u64, global: &GlobalArgs) -> Result<()
     .await?;
     let state: Map<String, Value> = serde_json::from_slice(&bytes).unwrap_or_default();
     print_sync(&state, Some(&bytes), global);
+    if watch.borrow().stale {
+        return Err(reported_failure(&format!(
+            "The sync of '{repo}' ended without recording how: the state shown is from an \
+             earlier pass. Check it: ak mcp sync status --repo {repo}"
+        )));
+    }
     sync_outcome(&state, repo)
 }
 
@@ -1943,6 +2048,7 @@ async fn health(
     include_deleted: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
+    check_path_parts(server, Some(version))?;
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching server health...");
     let (resp, raw) = match split_name(server) {
@@ -2081,6 +2187,79 @@ mod tests {
         assert!(format!("{:?}", seed_outcome(&job).unwrap_err()).contains("a/b@1"));
         let job = serde_json::json!({"jobId": "j", "status": "failed", "error": "x", "items": []});
         assert!(seed_outcome(&job).is_err());
+    }
+
+    #[test]
+    fn a_sync_wait_ends_only_when_the_pass_is_recorded() {
+        let t0 = std::time::Instant::now();
+        let old = serde_json::json!({"running": false, "lastFinishedAt": "2026-01-01T00:00:00Z"});
+        let new = serde_json::json!({"running": false, "lastFinishedAt": "2026-01-01T00:05:00Z"});
+        let running =
+            serde_json::json!({"running": true, "lastFinishedAt": "2026-01-01T00:00:00Z"});
+
+        // Started here: the lock is free before the failure is recorded.
+        let mut watch = SyncWatch {
+            before: Some(old["lastFinishedAt"].clone()),
+            ..SyncWatch::default()
+        };
+        assert!(!sync_step(&mut watch, &old, t0));
+        assert!(!sync_step(
+            &mut watch,
+            &old,
+            t0 + std::time::Duration::from_secs(5)
+        ));
+        assert!(sync_step(
+            &mut watch,
+            &new,
+            t0 + std::time::Duration::from_secs(6)
+        ));
+        assert!(!watch.stale);
+
+        // Nothing recorded within the grace: done, but stale.
+        let mut watch = SyncWatch {
+            before: Some(old["lastFinishedAt"].clone()),
+            ..SyncWatch::default()
+        };
+        assert!(!sync_step(&mut watch, &old, t0));
+        assert!(sync_step(&mut watch, &old, t0 + SYNC_RECORD_GRACE));
+        assert!(watch.stale);
+
+        // `status --wait` on an idle repository ends at once.
+        let mut watch = SyncWatch::default();
+        assert!(sync_step(&mut watch, &old, t0));
+        assert!(!watch.stale);
+
+        // `status --wait` during a pass takes the state it saw running as the baseline.
+        let mut watch = SyncWatch::default();
+        assert!(!sync_step(&mut watch, &running, t0));
+        assert!(!sync_step(&mut watch, &old, t0));
+        assert!(sync_step(&mut watch, &new, t0));
+
+        // A first pass: nothing finished before, and still nothing recorded.
+        let mut watch = SyncWatch {
+            before: Some(Value::Null),
+            ..SyncWatch::default()
+        };
+        assert!(!sync_step(
+            &mut watch,
+            &serde_json::json!({"running": false}),
+            t0
+        ));
+    }
+
+    #[test]
+    fn a_path_part_that_would_reach_another_route_is_refused() {
+        assert!(check_path_parts("io.github.acme/weather", Some("1.2.0")).is_ok());
+        assert!(check_path_parts("weather", Some("1.2.0")).is_ok());
+        for server in ["../x", "com.acme/..", "./x", "com.acme/w%2Fx", "..", "."] {
+            assert!(check_path_parts(server, None).is_err(), "{server}");
+        }
+        for version in ["", ".", "..", "1%2F0"] {
+            assert!(
+                check_path_parts("com.acme/w", Some(version)).is_err(),
+                "{version}"
+            );
+        }
     }
 
     #[test]
