@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Regenerated the SDK from the API 1.12.1 spec, the first published 1.12 (there is no 1.12.0 spec), adding the 64 operations and the fields new since 1.11.11. `ROUTES.json` is read from backend 1.12.1, and the fields 1.12.1 requires but 1.11 servers don't send are generated as optional, so a 1.11 server still works (#294, #302, #308).
+
 ### Fixed
 
 - `ak sso providers --public` works without being logged in. The public provider list doesn't need credentials, but the command refused to run without them (#311).
