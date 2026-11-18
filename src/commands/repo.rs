@@ -1415,28 +1415,32 @@ fn after_create(
         || release_repository_key
             .as_deref()
             .is_some_and(|k| !k.is_empty());
-    let flags: Vec<&'static str> = [
-        ("--curation-enabled", curation_enabled.is_some()),
+    if !anything {
+        return None;
+    }
+    let update = artifact_keeper_sdk::types::UpdateRepositoryRequest {
+        curation_enabled,
+        curation_default_action,
+        release_repository_key,
+        ..Default::default()
+    };
+    // The flags behind the fields this update carries, read off the update itself,
+    // so a failure names exactly what wasn't set.
+    let flags = [
+        ("--curation-enabled", update.curation_enabled.is_some()),
         (
             "--curation-default-action",
-            curation_default_action.is_some(),
+            update.curation_default_action.is_some(),
         ),
-        ("--release-repository-key", release_repository_key.is_some()),
+        (
+            "--release-repository-key",
+            update.release_repository_key.is_some(),
+        ),
     ]
     .into_iter()
-    .filter_map(|(flag, given)| given.then_some(flag))
+    .filter_map(|(flag, sent)| sent.then_some(flag))
     .collect();
-    anything.then(|| {
-        (
-            artifact_keeper_sdk::types::UpdateRepositoryRequest {
-                curation_enabled,
-                curation_default_action,
-                release_repository_key,
-                ..Default::default()
-            },
-            flags,
-        )
-    })
+    Some((update, flags))
 }
 
 /// Create a repository, then set what [`after_create`] holds back. A failed update
@@ -1589,6 +1593,9 @@ async fn deletion_accepted(
 /// Consecutive failed polls `--wait` puts up with before giving up on a job.
 const MAX_POLL_FAILURES: u32 = 5;
 
+/// The longest `--wait` sleeps between two looks at a job.
+const POLL_MAX_INTERVAL: std::time::Duration = std::time::Duration::from_secs(8);
+
 /// One look at a background job, for [`poll_job`].
 pub(super) enum Polled {
     /// It ended well enough: its last body.
@@ -1617,6 +1624,8 @@ where
     let spinner = output::spinner(running);
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
     let mut failures = 0;
+    // A second between the first looks, growing to POLL_MAX_INTERVAL for a long job.
+    let mut interval = std::time::Duration::from_secs(1);
 
     loop {
         match poll().await {
@@ -1652,7 +1661,9 @@ where
             ))
             .into());
         }
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        let left = deadline.saturating_duration_since(std::time::Instant::now());
+        tokio::time::sleep(interval.min(left)).await;
+        interval = (interval * 3 / 2).min(POLL_MAX_INTERVAL);
     }
 }
 

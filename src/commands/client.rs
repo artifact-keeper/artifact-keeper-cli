@@ -272,6 +272,17 @@ pub fn client_for_slow(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Clien
     )
 }
 
+/// [`client_for`] with a request timeout of the caller's choosing, for a request
+/// the server itself holds open for a known time.
+pub fn client_for_timeout(
+    global: &GlobalArgs,
+    timeout: Duration,
+) -> Result<artifact_keeper_sdk::Client> {
+    let config = AppConfig::load()?;
+    let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    build_client_with_timeout(name, instance, None, timeout, redirect_policy())
+}
+
 /// Resolve instance and return the base URL and Bearer auth header value.
 ///
 /// Used by chunked upload which makes raw HTTP calls outside the SDK.

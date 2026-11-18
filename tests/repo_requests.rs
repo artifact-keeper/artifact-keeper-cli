@@ -1215,3 +1215,44 @@ async fn the_left_behind_warning_is_one_line_and_quiet_leaves_out_the_server_tex
     assert!(stderr.contains("2 of its stored objects"), "{stderr}");
     assert!(!stderr.contains("a/b"), "{stderr}");
 }
+
+#[tokio::test]
+async fn a_failed_follow_up_names_only_the_flags_it_carried() {
+    let server = accepting("POST", "/api/v1/repositories").await;
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/r"))
+        .respond_with(ResponseTemplate::new(400).set_body_json(json!({"message": "no"})))
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "create",
+            "r",
+            "--pkg-format",
+            "rpm",
+            "--release-repository-key",
+            "release",
+        ],
+    );
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
+    // miette may wrap the message inside the flag name.
+    let stderr = one_line(&output).replace("- ", "-");
+    assert!(
+        stderr.contains("failed to set --release-repository-key:"),
+        "{stderr}"
+    );
+    assert!(!stderr.contains("--curation"), "{stderr}");
+    let patch = server
+        .received_requests()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|r| r.method.as_str() == "PATCH")
+        .expect("PATCH");
+    assert_eq!(
+        serde_json::from_slice::<Value>(&patch.body).unwrap(),
+        json!({"release_repository_key": "release"})
+    );
+}

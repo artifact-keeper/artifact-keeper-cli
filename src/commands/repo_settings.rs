@@ -325,6 +325,11 @@ pub enum RpmRepodataCommand {
         /// this call
         #[arg(long)]
         wait: bool,
+
+        /// How long --wait waits, in seconds. The server may wait up to 300s for a
+        /// build another replica is running, then build for up to 120s
+        #[arg(long = "wait-timeout", default_value = "450", requires = "wait")]
+        wait_timeout: u64,
     },
 }
 
@@ -1084,9 +1089,7 @@ impl CacheSeedCommand {
             } => {
                 let (job, raw) = if wait {
                     let bytes = wait_for_seed(&key, job_id, wait_timeout, global).await?;
-                    let job = serde_json::from_slice::<types::CacheSeedJobResponse>(&bytes)
-                        .map_err(|e| AkError::ServerError(format!("Invalid seed job: {e}")))?;
-                    (job, Some(bytes))
+                    return finish_waited_seed(&bytes, global);
                 } else {
                     let client = client_for(global)?;
                     let (resp, raw) =
@@ -1212,10 +1215,52 @@ async fn seed_start(
     };
 
     let bytes = wait_for_seed(key, job_id, timeout, global).await?;
-    let job = serde_json::from_slice::<types::CacheSeedJobResponse>(&bytes)
-        .map_err(|e| AkError::ServerError(format!("Invalid seed job: {e}")))?;
-    print_seed_job(&job, Some(&bytes), global);
-    seed_outcome(&job, true)
+    finish_waited_seed(&bytes, global)
+}
+
+/// Print a seed job `--wait` followed to its end, and fail as [`seed_outcome`] says.
+/// A body the SDK's type doesn't fit is still the job: it's printed as sent and
+/// judged by its `status` and failed items.
+fn finish_waited_seed(bytes: &[u8], global: &GlobalArgs) -> Result<()> {
+    if let Ok(job) = serde_json::from_slice::<types::CacheSeedJobResponse>(bytes) {
+        print_seed_job(&job, Some(bytes), global);
+        return seed_outcome(&job, true);
+    }
+    let job: serde_json::Value = serde_json::from_slice(bytes).unwrap_or_default();
+    let status = job["status"].as_str().unwrap_or("unknown");
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{status}");
+    } else {
+        let text = format!(
+            "Job:        {}\nRepository: {}\nStatus:     {status}",
+            job["job_id"].as_str().unwrap_or("-"),
+            job["repository_key"].as_str().unwrap_or("-"),
+        );
+        println!(
+            "{}",
+            render_raw(Some(bytes), &job, &global.format, Some(text))
+        );
+    }
+    if status == "failed" {
+        let reason = job["error_summary"].as_str().unwrap_or("no reason given");
+        return Err(
+            AkError::ReportedFailure(format!("The seed job failed: {}", one_line(reason))).into(),
+        );
+    }
+    let failed: Vec<String> = job["items"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|item| item["state"] == "failed")
+        .map(|item| {
+            format!(
+                "{}: {}",
+                output::sanitize_terminal(item["path"].as_str().unwrap_or("-")),
+                one_line(item["reason"].as_str().unwrap_or_default())
+            )
+        })
+        .collect();
+    super::helpers::fail_on_errors("The seed", &failed)
 }
 
 /// Follow a seed job until it's `completed` or `failed`, returning its last body.
@@ -1247,16 +1292,27 @@ async fn wait_for_seed(
                     .await
                     .into());
                 }
+                // Read from the body as sent, so a 2xx body the SDK's type
+                // doesn't fit still counts.
+                Err(e) if e.status().is_some_and(|s| s.is_success()) => raw,
                 Err(_) => None,
             };
             let Some(bytes) = bytes else {
                 return Ok(Polled::Unreadable);
             };
             let job: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_default();
-            Ok(match job["status"].as_str() {
-                Some("completed" | "failed") => Polled::Done(bytes),
-                _ => Polled::Running,
-            })
+            match job["status"].as_str() {
+                Some("completed" | "failed") => Ok(Polled::Done(bytes)),
+                Some("pending" | "running") => Ok(Polled::Running),
+                Some(other) => Err(AkError::ServerError(format!(
+                    "Seed job {job_id} for '{key}' is '{}', a status ak doesn't know, so \
+                     --wait can't tell when it ends. Check it with: ak repo cache seed status \
+                     {key} {job_id}",
+                    one_line(other)
+                ))
+                .into()),
+                None => Ok(Polled::Unreadable),
+            }
         },
     )
     .await
@@ -1341,9 +1397,23 @@ impl RpmCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Repodata {
-                command: RpmRepodataCommand::Rebuild { key, root, wait },
+                command:
+                    RpmRepodataCommand::Rebuild {
+                        key,
+                        root,
+                        wait,
+                        wait_timeout,
+                    },
             } => {
-                let client = client_for(global)?;
+                // With --wait the server holds the request open for the build.
+                let client = if wait {
+                    super::client::client_for_timeout(
+                        global,
+                        std::time::Duration::from_secs(wait_timeout),
+                    )?
+                } else {
+                    client_for(global)?
+                };
                 let mut req = client.rebuild_repodata().key(&key);
                 if let Some(root) = &root {
                     req = req.root(root);
@@ -1355,6 +1425,21 @@ impl RpmCommand {
                 let (resp, raw) = capture(req.send()).await;
                 if let Some(spinner) = spinner {
                     spinner.finish_and_clear();
+                }
+                if let Err(artifact_keeper_sdk::Error::Communication(e)) = &resp
+                    && e.is_timeout()
+                {
+                    let root_flag = root
+                        .as_deref()
+                        .map(|r| format!(" --root {r}"))
+                        .unwrap_or_default();
+                    return Err(AkError::NetworkError(format!(
+                        "No answer from the repodata build of '{key}' after {wait_timeout}s. The \
+                         build may still finish on the server. Callers that wait together share \
+                         one build, so to wait for it again: ak repo rpm repodata rebuild \
+                         {key}{root_flag} --wait"
+                    ))
+                    .into());
                 }
                 let resp = or_since(
                     V1_12,
