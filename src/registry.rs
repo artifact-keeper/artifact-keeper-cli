@@ -491,6 +491,12 @@ pub static COMMANDS: &[Op] = &[
     covered("DELETE", "/api/v1/repositories/{key}", "repo delete", &[]),
     covered(
         "GET",
+        "/api/v1/repository-deletions/{id}",
+        "repo delete",
+        &[],
+    ),
+    covered(
+        "GET",
         "/api/v1/repositories/{key}/members",
         "repo members list",
         &[],

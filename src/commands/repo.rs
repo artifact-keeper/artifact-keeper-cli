@@ -7,7 +7,7 @@ use miette::{IntoDiagnostic, Result};
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::{
     PromptResult, confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg,
-    raw_err, raw_json_call, read_inline_or_file, refuse_flags_before, resolve_secret, sdk_err,
+    raw_json_call, read_inline_or_file, refuse_flags_before, resolve_secret, sdk_err,
 };
 use super::repo_settings::{
     self, AllowlistCommand, EgressProxyCommand, NpmScopePolicyCommand, UpstreamFilterCommand,
@@ -1361,33 +1361,25 @@ async fn wait_for_deletion(
     timeout_secs: u64,
     global: &GlobalArgs,
 ) -> Result<Vec<u8>> {
-    let (base_url, auth_header) = super::client::resolve_base_url_and_auth(global)?;
-    let url = format!(
-        "{}/api/v1/repository-deletions/{job_id}",
-        base_url.trim_end_matches('/')
-    );
-    let http = super::client::raw_http_client()?;
+    let client = client_for(global)?;
     let spinner = output::spinner(&format!("Deleting '{key}'..."));
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
     let mut failures = 0;
 
     loop {
-        let response = http
-            .get(&url)
-            .header(reqwest::header::AUTHORIZATION, &auth_header)
-            .send()
-            .await;
-        let polled = match response {
-            Ok(r) if r.status().is_success() => r.bytes().await.ok(),
-            Ok(r) if r.status().is_client_error() => {
+        let (result, raw) =
+            artifact_keeper_sdk::raw::capture(client.get_repository_deletion().id(job_id).send())
+                .await;
+        // The job is read from the body as sent, so a 2xx body the SDK's type
+        // doesn't fit still counts.
+        let polled = match result {
+            Ok(_) => raw,
+            Err(e) if e.status().is_some_and(|s| s.is_client_error()) => {
                 spinner.finish_and_clear();
-                let status = r.status();
-                let text = r.text().await.unwrap_or_default();
-                return Err(
-                    raw_err(&format!("Follow deletion job {job_id}"), status, &text).into(),
-                );
+                return Err(sdk_err(&format!("follow deletion job {job_id}"), e).into());
             }
-            _ => None,
+            Err(e) if e.status().is_some_and(|s| s.is_success()) => raw,
+            Err(_) => None,
         };
 
         match polled {
@@ -1397,12 +1389,12 @@ async fn wait_for_deletion(
                 match job["status"].as_str() {
                     Some("completed") => {
                         spinner.finish_and_clear();
-                        return Ok(bytes.to_vec());
+                        return Ok(bytes);
                     }
                     Some("completed_with_errors") => {
                         spinner.finish_and_clear();
                         eprintln!("{}", left_behind(key, job_id, &job));
-                        return Ok(bytes.to_vec());
+                        return Ok(bytes);
                     }
                     Some(status @ ("failed" | "cancelled")) => {
                         spinner.finish_and_clear();

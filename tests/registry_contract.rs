@@ -260,6 +260,18 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
                    "retention_days": 1, "audit_retention_days": 1, "backup_retention_count": 1,
                    "edge_stale_threshold_minutes": 1}),
         ),
+        (
+            "DELETE",
+            "/api/v1/repositories/{key}",
+            202,
+            json!({"id": UUID, "status": "pending"}),
+        ),
+        (
+            "GET",
+            "/api/v1/repository-deletions/{id}",
+            200,
+            json!({"id": UUID, "status": "completed"}),
+        ),
         // `repo create` reads the key it sends its curation PATCH to.
         (
             "POST",
@@ -702,6 +714,8 @@ fn hints(
             ],
             vec![],
         ),
+        // `--wait` follows the job the DELETE answered with.
+        ("repo delete", "GET", _) => (vec![("wait", String::new())], vec![]),
         // The curation fields go in the PATCH that follows the create.
         ("repo create", "PATCH", _) => (vec![("curation_enabled", "true".to_string())], vec![]),
         ("artifact push", _, p) if p.contains("/uploads") => {
