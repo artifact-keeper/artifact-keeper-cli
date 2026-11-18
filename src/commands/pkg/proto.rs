@@ -13,7 +13,7 @@ use serde_json::{Value, json};
 
 use super::wire::{Reply, Wire, emit};
 use crate::cli::GlobalArgs;
-use crate::commands::helpers::read_inline_or_file;
+use crate::commands::helpers::{Minor, read_inline_or_file};
 use crate::error::AkError;
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -26,8 +26,16 @@ pub enum Rpc {
     CreateModules,
     GetModules,
     GetResources,
+    /// v1beta1's Download
     Download,
+    /// v1beta1's Upload, which `publish` sends
     Upload,
+    /// v1's Download (server 1.12 or newer)
+    DownloadV1,
+    /// v1's Upload (server 1.12 or newer)
+    UploadV1,
+    /// The owner service's GetOwners (server 1.12 or newer)
+    GetOwners,
 }
 
 impl Rpc {
@@ -47,6 +55,17 @@ impl Rpc {
             Rpc::GetResources => ("buf.registry.module.v1.ResourceService", "GetResources"),
             Rpc::Download => ("buf.registry.module.v1beta1.DownloadService", "Download"),
             Rpc::Upload => ("buf.registry.module.v1beta1.UploadService", "Upload"),
+            Rpc::DownloadV1 => ("buf.registry.module.v1.DownloadService", "Download"),
+            Rpc::UploadV1 => ("buf.registry.module.v1.UploadService", "Upload"),
+            Rpc::GetOwners => ("buf.registry.owner.v1.OwnerService", "GetOwners"),
+        }
+    }
+
+    /// The server minor that brought the RPC, for one an older server doesn't have.
+    fn since(self) -> Option<Minor> {
+        match self {
+            Rpc::DownloadV1 | Rpc::UploadV1 | Rpc::GetOwners => Some((1, 12)),
+            _ => None,
         }
     }
 }
@@ -93,15 +112,27 @@ Examples:
     },
 }
 
-async fn rpc(wire: &Wire, repo: &str, which: Rpc, body: &Value) -> Result<Reply> {
+async fn rpc(
+    wire: &Wire,
+    repo: &str,
+    which: Rpc,
+    body: &Value,
+    global: &GlobalArgs,
+) -> Result<Reply> {
     let (service, method) = which.path();
-    wire.send(
-        &format!("call {method}"),
-        wire.request(Method::POST, wire.url(&["proto", repo, service, method]))
-            .header("Connect-Protocol-Version", "1")
-            .json(body),
-    )
-    .await
+    let action = format!("call {method}");
+    let request = wire
+        .request(Method::POST, wire.url(&["proto", repo, service, method]))
+        .header("Connect-Protocol-Version", "1")
+        .json(body);
+    match which.since() {
+        // A server without the route answers 404, which reads as a missing module.
+        Some(minor) => {
+            wire.send_since(minor, &action, "pkg proto call", global, request)
+                .await
+        }
+        None => wire.send(&action, request).await,
+    }
 }
 
 pub async fn execute(command: ProtoCommand, global: &GlobalArgs) -> Result<()> {
@@ -115,7 +146,7 @@ pub async fn execute(command: ProtoCommand, global: &GlobalArgs) -> Result<()> {
             label,
         } => {
             let body = upload_request(&module, &files, root.as_deref(), &label)?;
-            let reply = rpc(&wire, &repo, Rpc::Upload, &body).await?;
+            let reply = rpc(&wire, &repo, Rpc::Upload, &body, global).await?;
             emit(
                 &reply,
                 &module,
@@ -136,7 +167,7 @@ pub async fn execute(command: ProtoCommand, global: &GlobalArgs) -> Result<()> {
                 }
                 None => json!({}),
             };
-            let reply = rpc(&wire, &repo, which, &body).await?;
+            let reply = rpc(&wire, &repo, which, &body, global).await?;
             println!("{}", String::from_utf8_lossy(&reply.body).trim());
         }
     }
@@ -199,5 +230,27 @@ mod tests {
         assert_eq!(content["files"][0]["path"], "a.proto");
         assert_eq!(content["files"][0]["content"], "YWJj");
         assert!(upload_request("nomodule", &[], None, &[]).is_err());
+    }
+
+    #[test]
+    fn only_the_rpcs_new_in_1_12_are_guarded() {
+        assert_eq!(
+            Rpc::UploadV1.path(),
+            ("buf.registry.module.v1.UploadService", "Upload")
+        );
+        assert_eq!(
+            Rpc::DownloadV1.path(),
+            ("buf.registry.module.v1.DownloadService", "Download")
+        );
+        assert_eq!(
+            Rpc::GetOwners.path(),
+            ("buf.registry.owner.v1.OwnerService", "GetOwners")
+        );
+        for new in [Rpc::UploadV1, Rpc::DownloadV1, Rpc::GetOwners] {
+            assert_eq!(new.since(), Some((1, 12)));
+        }
+        for old in [Rpc::Upload, Rpc::Download, Rpc::GetModules] {
+            assert_eq!(old.since(), None);
+        }
     }
 }
