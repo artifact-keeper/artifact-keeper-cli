@@ -4469,6 +4469,7 @@ fn describe_arg(arg: &clap::Arg) -> serde_json::Value {
         "required": arg.is_required_set(),
         "kind": kind,
         "values": values,
+        "require_equals": arg.is_require_equals_set(),
     })
 }
 
