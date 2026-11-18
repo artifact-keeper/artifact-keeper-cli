@@ -60,6 +60,73 @@ fn guest_access_can_be_changed_and_put_back() {
 
 #[test]
 #[ignore = "requires E2E backend"]
+fn system_settings_can_be_changed_and_put_back() {
+    let env = common::TestEnv::setup();
+    let before = run(&env, &["admin", "settings", "show"]);
+    let retention = before["retention_days"].as_i64().unwrap();
+    let changed = if retention < 36_500 { retention + 1 } else { 1 };
+
+    let after = run(
+        &env,
+        &[
+            "admin",
+            "settings",
+            "update",
+            "--json",
+            &format!(r#"{{"retention_days":{changed}}}"#),
+        ],
+    );
+    assert_eq!(after["retention_days"], changed, "{after}");
+    assert_eq!(
+        after["backup_retention_count"], before["backup_retention_count"],
+        "{after}"
+    );
+    let shown = run(&env, &["admin", "settings", "show"]);
+    assert_eq!(shown["retention_days"], changed, "{shown}");
+
+    // The body `show` printed goes back as it is, read-only fields and all.
+    let put_back = run(
+        &env,
+        &["admin", "settings", "update", "--json", &before.to_string()],
+    );
+    assert_eq!(put_back["retention_days"], retention, "{put_back}");
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn system_settings_update_refuses_what_the_server_would_not_apply() {
+    let env = common::TestEnv::setup();
+    let before = run(&env, &["admin", "settings", "show"]);
+    let upload = before["max_upload_size_bytes"].as_i64().unwrap();
+    for (json, expected) in [
+        (r#"{"retention_dayz":1}"#.to_string(), "retention_dayz"),
+        (
+            r#"{"allow_anonymous_download":true}"#.to_string(),
+            "--guest-access",
+        ),
+        (
+            format!(r#"{{"max_upload_size_bytes":{}}}"#, upload + 1),
+            "MAX_UPLOAD_SIZE",
+        ),
+    ] {
+        let output = env
+            .ak_cmd()
+            .args(["admin", "settings", "update", "--json", &json])
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(2), "{json}: {output:?}");
+        let stderr = String::from_utf8_lossy(&output.stderr)
+            .replace('│', " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(stderr.contains(expected), "{json}: {stderr}");
+    }
+    assert_eq!(run(&env, &["admin", "settings", "show"]), before);
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
 fn token_policy_set_keeps_what_it_does_not_name() {
     let env = common::TestEnv::setup();
     let before = run(&env, &["admin", "settings", "token-policy", "show"]);

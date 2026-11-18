@@ -3254,18 +3254,157 @@ async fn show_settings(global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+/// The settings `POST /api/v1/admin/settings` changes.
+const WRITABLE_SETTINGS: &[&str] = &[
+    "retention_days",
+    "audit_retention_days",
+    "backup_retention_count",
+    "edge_stale_threshold_minutes",
+];
+
+/// Settings the server reports but doesn't take, and why. Each may be given only with
+/// the value in force, as in a `settings show` body sent back, and changes nothing.
+const READ_ONLY_SETTINGS: &[(&str, &str)] = &[
+    (
+        "max_upload_size_bytes",
+        "the upload limit is the server's MAX_UPLOAD_SIZE environment variable",
+    ),
+    (
+        "storage_backend",
+        "it's the server's STORAGE_BACKEND environment variable",
+    ),
+    (
+        "storage_path",
+        "it's the server's STORAGE_PATH environment variable",
+    ),
+    (
+        "environment",
+        "it's the server's ENVIRONMENT environment variable",
+    ),
+    (
+        "allow_anonymous_download",
+        "nothing ever enforced it, and 1.12 removed it. Anonymous access is \
+         `ak admin settings system update --guest-access`",
+    ),
+];
+
+/// What `settings update --json` changes: the writable fields it gives, after
+/// refusing a field the server doesn't have or wouldn't apply. The server would
+/// drop an unknown field and answer 200, so `ak` would report a change that never
+/// happened.
+fn settings_change(
+    given: &serde_json::Value,
+    current: &serde_json::Value,
+) -> Result<serde_json::Map<String, serde_json::Value>> {
+    use crate::error::AkError;
+    let given = given
+        .as_object()
+        .ok_or_else(|| AkError::Usage("--json must be a JSON object".to_string()))?;
+    let unknown: Vec<&str> = given
+        .keys()
+        .map(String::as_str)
+        .filter(|k| {
+            !WRITABLE_SETTINGS.contains(k) && !READ_ONLY_SETTINGS.iter().any(|(r, _)| r == k)
+        })
+        .collect();
+    if !unknown.is_empty() {
+        return Err(AkError::Usage(format!(
+            "--json: unknown setting{} {}. The settings are {}. Nothing was changed.",
+            if unknown.len() == 1 { "" } else { "s" },
+            unknown.join(", "),
+            WRITABLE_SETTINGS.join(", "),
+        ))
+        .into());
+    }
+    for (key, reason) in READ_ONLY_SETTINGS {
+        let Some(value) = given.get(*key) else {
+            continue;
+        };
+        let in_force = current.get(*key);
+        if in_force != Some(value) {
+            let in_force = in_force.map_or("not reported by this server".to_string(), |v| {
+                format!("in force: {v}")
+            });
+            return Err(AkError::Usage(format!(
+                "--json: {key} can't be changed here: {reason} ({in_force}). Nothing was changed."
+            ))
+            .into());
+        }
+    }
+    let change: serde_json::Map<String, serde_json::Value> = given
+        .iter()
+        .filter(|(k, _)| WRITABLE_SETTINGS.contains(&k.as_str()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    if change.is_empty() {
+        return Err(AkError::Usage(format!(
+            "--json changes nothing: give one of {}",
+            WRITABLE_SETTINGS.join(", ")
+        ))
+        .into());
+    }
+    // The types the server takes, checked before anything is sent.
+    serde_json::from_value::<artifact_keeper_sdk::types::UpdateSystemSettingsRequest>(
+        serde_json::Value::Object(change.clone()),
+    )
+    .map_err(|e| AkError::Usage(format!("--json: {e}")))?;
+    Ok(change)
+}
+
+/// `ak admin settings update`. A 1.12 server takes the fields that change. A 1.11
+/// server takes only the whole `SystemSettings`, so `ak` sends what's in force with
+/// the change applied. Its `GET` body is what tells them apart: only 1.11 reports
+/// `allow_anonymous_download`.
 async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
+    let given: serde_json::Value = serde_json::from_str(json_str)
+        .map_err(|e| crate::error::AkError::Usage(format!("Invalid settings JSON: {e}")))?;
     let client = client_for(global)?;
-
-    let body: artifact_keeper_sdk::types::UpdateSystemSettingsRequest =
-        serde_json::from_str(json_str)
-            .map_err(|e| crate::error::AkError::Usage(format!("Invalid settings JSON: {e}")))?;
-
     let spinner = output::spinner("Updating settings...");
 
-    let (settings, raw) =
-        artifact_keeper_sdk::raw::capture(client.update_settings().body(body).send()).await;
-    let settings = settings.map_err(|e| sdk_err("update settings", e))?;
+    let (current, current_raw) =
+        artifact_keeper_sdk::raw::capture(client.get_settings().send()).await;
+    current.map_err(|e| sdk_err("read the settings in force", e))?;
+    let current: serde_json::Value =
+        serde_json::from_slice(current_raw.as_deref().unwrap_or_default())
+            .map_err(|e| super::helpers::bad_response("read the settings in force", e))?;
+    let change = match settings_change(&given, &current) {
+        Ok(change) => change,
+        Err(e) => {
+            spinner.finish_and_clear();
+            return Err(e);
+        }
+    };
+
+    let (settings, raw) = if current.get("allow_anonymous_download").is_some() {
+        let mut full = current.clone();
+        for (key, value) in &change {
+            full[key] = value.clone();
+        }
+        let bytes = super::helpers::raw_json_call(
+            reqwest::Method::POST,
+            &["admin", "settings"],
+            Some(&full),
+            "update settings",
+            global,
+        )
+        .await?;
+        let settings: artifact_keeper_sdk::types::SystemSettings =
+            serde_json::from_slice(&bytes)
+                .map_err(|e| super::helpers::bad_response("update settings", e))?;
+        (settings, Some(bytes))
+    } else {
+        let body: artifact_keeper_sdk::types::UpdateSystemSettingsRequest =
+            serde_json::from_value(serde_json::Value::Object(change.clone()))
+                .map_err(|e| crate::error::AkError::Usage(format!("--json: {e}")))?;
+        let (settings, raw) =
+            artifact_keeper_sdk::raw::capture(client.update_settings().body(body).send()).await;
+        (
+            settings
+                .map_err(|e| sdk_err("update settings", e))?
+                .into_inner(),
+            raw,
+        )
+    };
 
     spinner.finish_and_clear();
 
@@ -3282,7 +3421,12 @@ async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
             output::render_raw(raw.as_deref(), &info, &global.format, None)
         );
     } else {
-        eprintln!("Settings updated.");
+        let after = serde_json::to_value(&settings).unwrap_or_default();
+        let changed: Vec<String> = change
+            .keys()
+            .map(|key| format!("{key} {} -> {}", current[key], after[key]))
+            .collect();
+        eprintln!("Settings updated: {}.", changed.join(", "));
     }
 
     Ok(())
@@ -7201,33 +7345,6 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
         let result = show_settings(&global).await;
-        assert!(result.is_ok());
-        crate::test_utils::teardown_env();
-    }
-
-    #[tokio::test]
-    async fn handler_update_settings() {
-        let (server, tmp) = crate::test_utils::mock_setup().await;
-        let _guard = crate::test_utils::setup_env(&tmp);
-
-        Mock::given(method("POST"))
-            .and(path("/api/v1/admin/settings"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-                "allow_anonymous_download": true,
-                "audit_retention_days": 60,
-                "backup_retention_count": 3,
-                "edge_stale_threshold_minutes": 15,
-                "max_upload_size_bytes": 536870912_i64,
-                "retention_days": 180,
-                "storage_backend": "filesystem",
-                "storage_path": "/data/artifacts"
-            })))
-            .mount(&server)
-            .await;
-
-        let global = crate::test_utils::test_global(OutputFormat::Json);
-        let json_str = r#"{"allow_anonymous_download":true,"audit_retention_days":60,"backup_retention_count":3,"edge_stale_threshold_minutes":15,"max_upload_size_bytes":536870912,"retention_days":180,"storage_backend":"filesystem","storage_path":"/data/artifacts"}"#;
-        let result = update_settings(json_str, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
