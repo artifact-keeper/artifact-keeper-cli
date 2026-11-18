@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `ak sso providers --public` works without being logged in. The public provider list doesn't need credentials, but the command refused to run without them (#311).
+
 ## [1.11.0] - 2026-11-15
 
 The CLI minor version now tracks the server API minor it's generated from. This
