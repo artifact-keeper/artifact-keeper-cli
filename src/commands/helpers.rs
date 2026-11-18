@@ -717,6 +717,47 @@ pub fn print_page_info(page: i32, total_pages: i32, total: i64, label: &str) {
     }
 }
 
+/// Send a request over raw HTTP and return the body of a success response, for
+/// what the SDK can't do: send a `null`, or keep a body its spec doesn't describe.
+pub async fn raw_json_call(
+    method: reqwest::Method,
+    segments: &[&str],
+    body: Option<&serde_json::Value>,
+    action: &str,
+    global: &GlobalArgs,
+) -> Result<Vec<u8>> {
+    let (base_url, auth_header) = crate::commands::client::resolve_base_url_and_auth(global)?;
+    let mut url = reqwest::Url::parse(&base_url)
+        .map_err(|e| AkError::ConfigError(format!("Invalid instance URL {base_url}: {e}")))?;
+    url.path_segments_mut()
+        .map_err(|_| AkError::ConfigError(format!("Invalid instance URL: {base_url}")))?
+        .pop_if_empty()
+        .extend(["api", "v1"])
+        .extend(segments);
+
+    let mut request = crate::commands::client::raw_http_client()?
+        .request(method, url)
+        .header(reqwest::header::AUTHORIZATION, auth_header);
+    if let Some(body) = body {
+        request = request.json(body);
+    }
+    let response = request
+        .send()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Failed to {action}: {e}")))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        let text = response.text().await.unwrap_or_default();
+        return Err(raw_err(&format!("Failed to {action}"), status, &text).into());
+    }
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| AkError::NetworkError(format!("Failed to {action}: {e}")))?;
+    Ok(bytes.to_vec())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

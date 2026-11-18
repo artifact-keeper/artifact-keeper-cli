@@ -683,3 +683,195 @@ async fn the_operator_commands_stay_out_of_the_help_but_have_their_own() {
     let diag = ak(&server, &["admin", "diag", "--help"]).await;
     assert!(String::from_utf8_lossy(&diag.stdout).contains("heap-profile"));
 }
+
+// ---- #301: admin settings update ----
+
+/// `GET /api/v1/admin/settings` as 1.12 answers it.
+fn settings_1_12() -> Value {
+    json!({
+        "storage_backend": "filesystem", "storage_path": "/data", "environment": "test",
+        "max_upload_size_bytes": 10_737_418_240_i64, "retention_days": 365,
+        "audit_retention_days": 0, "backup_retention_count": 10,
+        "edge_stale_threshold_minutes": 5
+    })
+}
+
+/// The same as 1.11 answers it, with the field 1.12 removed.
+fn settings_1_11() -> Value {
+    let mut settings = settings_1_12();
+    settings["allow_anonymous_download"] = json!(false);
+    settings
+}
+
+async fn settings_server(current: Value) -> MockServer {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/v1/admin/settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(current))
+        .mount(&server)
+        .await;
+    server
+}
+
+async fn posted(server: &MockServer) -> Vec<Value> {
+    server
+        .received_requests()
+        .await
+        .unwrap()
+        .iter()
+        .filter(|r| r.method.as_str() == "POST")
+        .map(|r| serde_json::from_slice(&r.body).expect("JSON body"))
+        .collect()
+}
+
+fn one_line(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr)
+        .replace('│', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+#[tokio::test]
+async fn settings_update_sends_only_the_change_to_1_12() {
+    let server = settings_server(settings_1_12()).await;
+    let mut after = settings_1_12();
+    after["retention_days"] = json!(30);
+    Mock::given(method("POST"))
+        .and(path("/api/v1/admin/settings"))
+        .and(body_json(json!({"retention_days": 30})))
+        .respond_with(ResponseTemplate::new(200).set_body_json(after))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "--format",
+            "table",
+            "admin",
+            "settings",
+            "update",
+            "--json",
+            r#"{"retention_days":30}"#,
+        ],
+    )
+    .await;
+    assert!(output.status.success(), "{output:?}");
+    assert!(
+        one_line(&output).contains("retention_days 365 -> 30"),
+        "{output:?}"
+    );
+}
+
+#[tokio::test]
+async fn settings_update_sends_the_whole_body_to_1_11() {
+    let server = settings_server(settings_1_11()).await;
+    let mut full = settings_1_11();
+    full["audit_retention_days"] = json!(90);
+    Mock::given(method("POST"))
+        .and(path("/api/v1/admin/settings"))
+        .and(body_json(full.clone()))
+        .respond_with(ResponseTemplate::new(200).set_body_json(full))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "--format",
+            "json",
+            "admin",
+            "settings",
+            "update",
+            "--json",
+            r#"{"audit_retention_days":90}"#,
+        ],
+    )
+    .await;
+    assert!(output.status.success(), "{output:?}");
+    let printed: Value = serde_json::from_slice(&output.stdout).expect("JSON output");
+    assert_eq!(printed["audit_retention_days"], 90);
+}
+
+#[tokio::test]
+async fn settings_update_takes_a_show_body_sent_back() {
+    let server = settings_server(settings_1_12()).await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/admin/settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(settings_1_12()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let mut body = settings_1_12();
+    body["backup_retention_count"] = json!(3);
+    let output = ak(
+        &server,
+        &["admin", "settings", "update", "--json", &body.to_string()],
+    )
+    .await;
+    assert!(output.status.success(), "{output:?}");
+    // The read-only fields, unchanged, aren't sent.
+    assert_eq!(
+        posted(&server).await,
+        vec![json!({"retention_days": 365, "audit_retention_days": 0,
+                    "backup_retention_count": 3, "edge_stale_threshold_minutes": 5})]
+    );
+}
+
+#[tokio::test]
+async fn settings_update_refuses_what_the_server_would_not_apply() {
+    let cases: &[(Value, &str, &[&str])] = &[
+        (
+            settings_1_12(),
+            r#"{"retention_dayz":1,"colour":"red","audit_retention_days":1}"#,
+            &[
+                "unknown settings retention_dayz, colour",
+                "Nothing was changed",
+            ],
+        ),
+        (
+            settings_1_12(),
+            r#"{"allow_anonymous_download":true}"#,
+            &[
+                "allow_anonymous_download can't be changed",
+                "--guest-access",
+            ],
+        ),
+        (
+            settings_1_11(),
+            r#"{"allow_anonymous_download":true}"#,
+            &[
+                "allow_anonymous_download can't be changed",
+                "--guest-access",
+            ],
+        ),
+        (
+            settings_1_12(),
+            r#"{"max_upload_size_bytes":1}"#,
+            &[
+                "max_upload_size_bytes can't be changed",
+                "MAX_UPLOAD_SIZE",
+                "10737418240",
+            ],
+        ),
+        (
+            settings_1_11(),
+            r#"{"storage_path":"/elsewhere"}"#,
+            &["storage_path can't be changed", "STORAGE_PATH"],
+        ),
+        (settings_1_12(), r#"{}"#, &["changes nothing"]),
+        (settings_1_12(), r#"[1]"#, &["must be a JSON object"]),
+        (settings_1_12(), r#"{"retention_days":"a"}"#, &["--json"]),
+    ];
+    for (current, json, expected) in cases {
+        let server = settings_server(current.clone()).await;
+        let output = ak(&server, &["admin", "settings", "update", "--json", json]).await;
+        assert_eq!(output.status.code(), Some(2), "{json}: {output:?}");
+        let stderr = one_line(&output);
+        for needle in *expected {
+            assert!(stderr.contains(needle), "{json}: {stderr}");
+        }
+        assert!(posted(&server).await.is_empty(), "{json} was sent");
+    }
+}

@@ -192,6 +192,14 @@ pub static FIELD_OPT_OUTS: &[FieldOptOut] = &[
         field: "curation_default_action",
         reason: CURATION_AFTER_CREATE,
     },
+    FieldOptOut {
+        method: "POST",
+        path: "/api/v1/admin/settings",
+        field: "max_upload_size_bytes",
+        reason: "Read-only: the server takes only the value in force (MAX_UPLOAD_SIZE). \
+                 `admin settings update` refuses a change before sending, and leaves out the \
+                 unchanged value",
+    },
 ];
 
 const CURATION_AFTER_CREATE: &str = "The server refuses anything but the default on create \
@@ -2416,15 +2424,10 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/admin/settings",
         "admin settings update",
         &[
-            "allow_anonymous_download",
             "audit_retention_days",
             "backup_retention_count",
             "edge_stale_threshold_minutes",
-            "environment",
-            "max_upload_size_bytes",
             "retention_days",
-            "storage_backend",
-            "storage_path",
         ],
     ),
     covered(

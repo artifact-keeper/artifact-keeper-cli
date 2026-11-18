@@ -256,9 +256,9 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
             "GET",
             "/api/v1/admin/settings",
             200,
-            json!({"storage_backend": "x", "storage_path": "x", "allow_anonymous_download": true,
-                   "max_upload_size_bytes": 1, "retention_days": 1, "audit_retention_days": 1,
-                   "backup_retention_count": 1, "edge_stale_threshold_minutes": 1}),
+            json!({"storage_backend": "x", "storage_path": "x", "max_upload_size_bytes": 1,
+                   "retention_days": 1, "audit_retention_days": 1, "backup_retention_count": 1,
+                   "edge_stale_threshold_minutes": 1}),
         ),
         // `repo create` reads the key it sends its curation PATCH to.
         (
@@ -490,16 +490,12 @@ fn candidates(rig: &Rig, arg: &Arg) -> Vec<String> {
             "00000000-0000-0000-0000-00000000000a,00000000-0000-0000-0000-00000000000b".to_string(),
         );
     }
-    // `admin settings update` parses the whole of `SystemSettings`, so no fragment of
-    // it would do. The second body differs in every field.
-    let first_settings = "{\"storage_backend\":\"a\",\"storage_path\":\"a\",\
-        \"allow_anonymous_download\":true,\"max_upload_size_bytes\":1,\"retention_days\":1,\
-        \"audit_retention_days\":1,\"backup_retention_count\":1,\
-        \"edge_stale_threshold_minutes\":1,\"environment\":\"a\"}";
-    let second_settings = "{\"storage_backend\":\"b\",\"storage_path\":\"b\",\
-        \"allow_anonymous_download\":false,\"max_upload_size_bytes\":2,\"retention_days\":2,\
-        \"audit_retention_days\":2,\"backup_retention_count\":2,\
-        \"edge_stale_threshold_minutes\":2,\"environment\":\"b\"}";
+    // `admin settings update` refuses a body that changes nothing. The second body
+    // differs in every field it can change.
+    let first_settings = "{\"retention_days\":1,\"audit_retention_days\":1,\
+        \"backup_retention_count\":1,\"edge_stale_threshold_minutes\":1}";
+    let second_settings = "{\"retention_days\":2,\"audit_retention_days\":2,\
+        \"backup_retention_count\":2,\"edge_stale_threshold_minutes\":2}";
     if name == "json" {
         out.push(first_settings.to_string());
         out.push(second_settings.to_string());
