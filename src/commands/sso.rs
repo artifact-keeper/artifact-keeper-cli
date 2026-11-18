@@ -8,7 +8,7 @@ use clap::Subcommand;
 use miette::Result;
 use serde_json::Value;
 
-use super::client::client_for;
+use super::client::{client_for, client_for_public};
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, parse_uuid,
     read_inline_or_file, resolve_secret, sdk_err, short_id,
@@ -1243,7 +1243,11 @@ async fn update_saml(id: &str, body: UpdateSamlConfigRequest, global: &GlobalArg
 }
 
 async fn list_enabled_providers(public: bool, global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
+    let client = if public {
+        client_for_public(global)?
+    } else {
+        client_for(global)?
+    };
     let spinner = output::spinner("Fetching enabled SSO providers...");
 
     let (providers, raw) = if public {
@@ -2856,6 +2860,62 @@ mod tests {
         let result = list_enabled_providers(true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_enabled_providers_public_without_credentials() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        unsafe {
+            std::env::remove_var("AK_TOKEN");
+            std::env::set_var("AK_CREDENTIAL_STORE", "file");
+        }
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/auth/sso/providers"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(json!([provider_info_json("azure", "saml")])),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_enabled_providers(true, &global).await;
+        crate::test_utils::teardown_env();
+        unsafe {
+            std::env::remove_var("AK_CREDENTIAL_STORE");
+        }
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn handler_list_enabled_providers_admin_requires_credentials() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        unsafe {
+            std::env::remove_var("AK_TOKEN");
+            std::env::set_var("AK_CREDENTIAL_STORE", "file");
+        }
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/admin/sso/providers"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(json!([provider_info_json("okta", "oidc")])),
+            )
+            .expect(0)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_enabled_providers(false, &global).await;
+        crate::test_utils::teardown_env();
+        unsafe {
+            std::env::remove_var("AK_CREDENTIAL_STORE");
+        }
+        assert!(result.is_err());
     }
 
     #[tokio::test]
