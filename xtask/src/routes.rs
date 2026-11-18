@@ -325,8 +325,9 @@ impl Extractor {
         }
     }
 
-    /// `for x in LIST { .. }`: the body once per item, in order, on the same
-    /// variables, so `router = router.route(..)` inside it adds up.
+    /// `for x in LIST { .. }`: the body once per item, in order. An assignment to a
+    /// variable from outside the loop, such as `router = router.route(..)`, adds up
+    /// across the items; the loop variable and a `let` in the body end with it.
     ///
     /// A loop over something else is an error if its body mounts anything,
     /// since skipping it would drop routes without a word.
@@ -338,19 +339,20 @@ impl Extractor {
         };
         match (iterable, var) {
             (Val::List(items), Some(var)) => {
-                let shadowed = env.get(&var).cloned();
+                let declared = let_names(&e.body);
                 for item in items {
-                    env.insert(var.clone(), Val::Str(item));
-                    self.block(&e.body, env, module, depth);
+                    let mut scope = env.clone();
+                    scope.insert(var.clone(), Val::Str(item));
+                    self.block(&e.body, &mut scope, module, depth);
+                    for (name, value) in scope {
+                        if name != var && !declared.contains(&name) && env.contains_key(&name) {
+                            env.insert(name, value);
+                        }
+                    }
                 }
-                match shadowed {
-                    Some(value) => env.insert(var, value),
-                    None => env.remove(&var),
-                };
             }
             (iterable, _) => {
-                let body = e.body.to_token_stream().to_string();
-                if ["route", "nest", "merge"].iter().any(|m| body.contains(m)) {
+                if mounts_routes(e.body.to_token_stream()) {
                     self.unresolved.insert(format!(
                         "{module}: for {} in {iterable:?}",
                         e.pat.to_token_stream()
@@ -419,6 +421,23 @@ impl Extractor {
             {
                 text = text.replace(&format!("{{{name}}}"), &s);
             }
+        }
+        // A constant it couldn't find would stay as `{NAME}` and read as a path
+        // parameter, so the route would be in the table under the wrong path.
+        let missing: Vec<String> = inline_names(&text)
+            .into_iter()
+            .filter(|name| is_const_name(name))
+            .collect();
+        if !missing.is_empty() {
+            self.unresolved.insert(format!(
+                "{module}: format! {text:?} uses {}, which isn't a constant it can find",
+                missing
+                    .iter()
+                    .map(|n| format!("{{{n}}}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+            return Val::Unknown(mac.to_token_stream().to_string());
         }
         Val::Str(text)
     }
@@ -578,6 +597,73 @@ impl Extractor {
             },
         }
     }
+}
+
+/// Router methods that add a route or a handler. A loop whose body calls one of these
+/// can't be skipped.
+const MOUNT_METHODS: &[&str] = &[
+    "route",
+    "route_service",
+    "nest",
+    "nest_service",
+    "merge",
+    "fallback",
+    "fallback_service",
+];
+
+/// Does this code call a method in [`MOUNT_METHODS`]? A method call is `.` and then
+/// the name, so `router` or `self.routes` doesn't count and `.fallback(..)` does.
+fn mounts_routes(tokens: proc_macro2::TokenStream) -> bool {
+    let mut after_dot = false;
+    for token in tokens {
+        match token {
+            proc_macro2::TokenTree::Group(g) => {
+                if mounts_routes(g.stream()) {
+                    return true;
+                }
+                after_dot = false;
+            }
+            proc_macro2::TokenTree::Punct(p) => after_dot = p.as_char() == '.',
+            proc_macro2::TokenTree::Ident(i) => {
+                if after_dot && MOUNT_METHODS.iter().any(|m| i == m) {
+                    return true;
+                }
+                after_dot = false;
+            }
+            proc_macro2::TokenTree::Literal(_) => after_dot = false,
+        }
+    }
+    false
+}
+
+/// The names a block's own `let` statements bind. They shadow, rather than change,
+/// a variable of the same name outside the block.
+fn let_names(block: &syn::Block) -> BTreeSet<String> {
+    block
+        .stmts
+        .iter()
+        .filter_map(|stmt| {
+            let syn::Stmt::Local(local) = stmt else {
+                return None;
+            };
+            match &local.pat {
+                syn::Pat::Ident(p) => Some(p.ident.to_string()),
+                syn::Pat::Type(t) => match &*t.pat {
+                    syn::Pat::Ident(p) => Some(p.ident.to_string()),
+                    _ => None,
+                },
+                _ => None,
+            }
+        })
+        .collect()
+}
+
+/// A placeholder named like a constant: `{HOLDS_PATH}`, not `{v}`.
+fn is_const_name(name: &str) -> bool {
+    name.chars().any(|c| c.is_ascii_uppercase())
+        && name
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
 }
 
 /// The `{name}` placeholders in a format string, in order.
@@ -1013,6 +1099,108 @@ mod tests {
         assert!(err.contains("Couldn't resolve"), "{err}");
         assert!(err.contains("for v in"), "{err}");
         assert!(!err.contains("for n in"), "{err}");
+    }
+
+    #[test]
+    fn a_for_loop_body_that_only_sets_a_fallback_still_counts_as_mounting() {
+        let dir = sample(
+            r#"pub fn create_router(state: S) -> Router {
+                let mut r = Router::new().route("/x", get(a));
+                for v in state.versions() {
+                    r = r.fallback(not_found);
+                }
+                for n in 0..3 {
+                    let router_name = n;
+                    log(router_name, merged, routes);
+                }
+                r
+            }"#,
+            "",
+        );
+        let err = extract(&dir.0).unwrap_err().to_string();
+        assert!(err.contains("for v in"), "{err}");
+        assert!(!err.contains("for n in"), "{err}");
+    }
+
+    #[test]
+    fn mounts_routes_looks_for_method_calls_not_substrings() {
+        let calls = |code: &str| mounts_routes(code.parse().unwrap());
+        assert!(calls("r = r.route(\"/a\", get(x));"));
+        assert!(calls("r = r.fallback(h);"));
+        assert!(calls("{ if y { r = r.nest_service(\"/s\", svc); } }"));
+        assert!(!calls(
+            "let router = make(); log(router, routes, merge_count);"
+        ));
+        assert!(!calls("x.routed(); route(a);"));
+    }
+
+    #[test]
+    fn a_let_in_a_for_loop_body_ends_with_the_loop() {
+        let dir = sample(
+            r#"pub fn create_router(state: S) -> Router {
+                let p = |tail: &str| format!("/outer{tail}");
+                let mut r = Router::new();
+                for v in ["a", "b"] {
+                    let p = |tail: &str| format!("/{v}{tail}");
+                    let only_inside = "/gone";
+                    r = r.route(&p("/in"), get(a));
+                }
+                let v = "/v";
+                r.route(&p("/after"), get(a)).route(v, post(a))
+            }"#,
+            "",
+        );
+        let mut got = keys(&extract(&dir.0).unwrap());
+        got.sort();
+        assert_eq!(
+            got,
+            ["GET /a/in", "GET /b/in", "GET /outer/after", "POST /v"],
+            "{got:#?}"
+        );
+    }
+
+    #[test]
+    fn a_let_in_a_for_loop_body_is_not_visible_after_it() {
+        let dir = sample(
+            r#"pub fn create_router(state: S) -> Router {
+                let mut r = Router::new();
+                for v in ["a"] {
+                    let inner = "/inner";
+                    r = r.route(&format!("/{v}"), get(a));
+                }
+                r.route(inner, get(a))
+            }"#,
+            "",
+        );
+        let err = extract(&dir.0).unwrap_err().to_string();
+        assert!(err.contains("Couldn't resolve"), "{err}");
+        assert!(err.contains("inner"), "{err}");
+    }
+
+    #[test]
+    fn a_constant_placeholder_it_cannot_find_is_an_error() {
+        let dir = sample(
+            r#"pub fn create_router(state: S) -> Router {
+                Router::new()
+                    .route(&format!("/x{FOUND}"), get(a))
+                    .route(&format!("/y{MISSING_PATH}"), get(a))
+            }
+            const FOUND: &str = "/found";"#,
+            "",
+        );
+        let err = extract(&dir.0).unwrap_err().to_string();
+        assert!(err.contains("Couldn't resolve"), "{err}");
+        assert!(err.contains("{MISSING_PATH}"), "{err}");
+        assert!(!err.contains("FOUND}"), "{err}");
+    }
+
+    #[test]
+    fn is_const_name_is_upper_snake_case() {
+        assert!(is_const_name("HOLDS_PATH"));
+        assert!(is_const_name("V2"));
+        assert!(!is_const_name("v"));
+        assert!(!is_const_name("repo_key"));
+        assert!(!is_const_name("_1"));
     }
 
     #[test]
