@@ -886,3 +886,46 @@ async fn a_curation_source_is_refused_on_1_11_before_anything_changes() {
         );
     }
 }
+
+#[tokio::test]
+async fn the_left_behind_warning_is_one_line_and_quiet_leaves_out_the_server_text() {
+    let mut ended = job("completed_with_errors");
+    ended["failed_items"] = json!(2);
+    ended["error_summary"] = json!("2 objects not deleted:\na/b\nc/d");
+
+    let server = deleting(ResponseTemplate::new(202).set_body_json(job("pending"))).await;
+    job_answers(
+        &server,
+        ResponseTemplate::new(200).set_body_json(ended.clone()),
+    )
+    .await;
+    let output = ak(
+        &server,
+        &[
+            "--format", "table", "repo", "delete", "r", "--yes", "--wait",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let warning: Vec<&str> = stderr.lines().filter(|l| l.contains("Warning")).collect();
+    assert_eq!(warning.len(), 1, "{stderr}");
+    assert!(
+        warning[0].contains("2 objects not deleted: a/b c/d"),
+        "{stderr}"
+    );
+
+    let server = deleting(ResponseTemplate::new(202).set_body_json(job("pending"))).await;
+    job_answers(&server, ResponseTemplate::new(200).set_body_json(ended)).await;
+    let output = ak(
+        &server,
+        &[
+            "--format", "quiet", "repo", "delete", "r", "--yes", "--wait",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), JOB);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(stderr.trim().lines().count(), 1, "{stderr}");
+    assert!(stderr.contains("2 of its stored objects"), "{stderr}");
+    assert!(!stderr.contains("a/b"), "{stderr}");
+}
