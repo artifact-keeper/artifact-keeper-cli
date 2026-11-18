@@ -12,7 +12,13 @@ mod transport;
 async fn main() -> ExitCode {
     quiet_exit_on_closed_pipe();
     let cli = cli::Cli::parse_args();
-    match cli.execute().await.map_err(explain_no_terminal) {
+    let instance = cli.instance.clone().filter(|name| !name.is_empty());
+    let result = cli
+        .execute()
+        .await
+        .map_err(explain_no_terminal)
+        .map_err(|e| commands::auth::explain_scoped_session(e, instance.as_deref()));
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         // The reader has what it wanted, as with `ak repo list | head -1`.
         Err(e) if is_broken_pipe(&e) => ExitCode::SUCCESS,
@@ -183,6 +189,13 @@ mod exit_code_tests {
             (AkError::NetworkError("x".into()), 3),
             (AkError::NotAuthenticated("x".into()), 4),
             (AkError::Forbidden("x".into()), 4),
+            (
+                AkError::ScopedSession {
+                    message: "x".into(),
+                    scopes: "read:artifacts".into(),
+                },
+                4,
+            ),
             (AkError::NotFound("x".into()), 5),
             (AkError::ServerError("x".into()), 6),
             (AkError::UnsupportedServer("x".into()), 6),

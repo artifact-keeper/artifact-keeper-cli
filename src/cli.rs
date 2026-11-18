@@ -276,7 +276,7 @@ pub enum Command {
 
     /// Authenticate with an Artifact Keeper instance
     #[command(
-        after_help = "Examples:\n  ak auth login\n  ak auth login https://registry.company.com\n  ak auth login --token\n  ak auth login --oidc-device\n  ak auth login --oidc-device --scope read:artifacts,write:artifacts\n  ak auth whoami\n  ak auth refresh\n  ak auth token revoke <id>\n  ak auth setup-status\n  ak auth logout"
+        after_help = "Examples:\n  ak auth login\n  ak auth login https://registry.company.com\n  ak auth login --token\n  ak auth login --password\n  ak auth login --device --scope read:artifacts,write:artifacts\n  ak auth whoami\n  ak auth refresh\n  ak auth token revoke <id>\n  ak auth setup-status\n  ak auth logout"
     )]
     Auth {
         #[command(subcommand)]

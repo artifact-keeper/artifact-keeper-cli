@@ -187,13 +187,18 @@ pub fn emit_mutation<T: Serialize>(value: &T, id: &str, human: &str, global: &Gl
 /// the token isn't a JWT with one. Only for telling a user when their own token
 /// runs out: the server is what decides whether a token is good.
 pub fn decode_jwt_expiry(token: &str) -> Option<i64> {
+    decode_jwt_claims(token)?.get("exp")?.as_i64()
+}
+
+/// The claims of a JWT, read without verifying the signature, or `None` if the
+/// token isn't one. Only for explaining things to the user about their own token.
+pub fn decode_jwt_claims(token: &str) -> Option<serde_json::Value> {
     use base64::Engine;
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 
     let payload = token.split('.').nth(1)?;
     let bytes = URL_SAFE_NO_PAD.decode(payload).ok()?;
-    let json: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
-    json.get("exp")?.as_i64()
+    serde_json::from_slice(&bytes).ok()
 }
 
 /// [`emit_mutation`] for a response captured with
