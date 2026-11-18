@@ -132,12 +132,17 @@ fn write_credentials(config_dir: &std::path::Path, token: &str) {
 }
 
 /// Test environment with temp config dir and pre-authenticated CLI.
+///
+/// Each E2E test binary includes this module and uses some of it, so what one binary
+/// leaves unused isn't dead.
+#[allow(dead_code)]
 pub struct TestEnv {
     pub url: String,
     pub token: String,
     pub config_dir: tempfile::TempDir,
 }
 
+#[allow(dead_code)]
 impl TestEnv {
     /// Create a test environment: write config pointing at the E2E backend,
     /// reuse the cached admin token, and return a ready-to-use env.
