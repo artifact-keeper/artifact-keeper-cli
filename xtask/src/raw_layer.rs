@@ -67,6 +67,11 @@ const OPT_OUTS: &[(&str, &str, &str)] = &[
     ),
     (
         "auth.rs",
+        "server_offers_device_login",
+        "Reads one flag of the system config to pick the login method, and prints nothing",
+    ),
+    (
+        "auth.rs",
         "refresh",
         "The body holds session tokens, which are stored and never printed",
     ),

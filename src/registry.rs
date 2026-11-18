@@ -200,6 +200,50 @@ pub static FIELD_OPT_OUTS: &[FieldOptOut] = &[
                  `admin settings update` refuses a change before sending, and leaves out the \
                  unchanged value",
     },
+    FieldOptOut {
+        method: "GET",
+        path: "/api/v1/auth/sso/oidc/{id}/login",
+        field: "client",
+        reason: CLI_CLIENT,
+    },
+    FieldOptOut {
+        method: "GET",
+        path: "/api/v1/auth/sso/saml/{id}/login",
+        field: "client",
+        reason: CLI_CLIENT,
+    },
+    FieldOptOut {
+        method: "POST",
+        path: "/api/v1/auth/device/code",
+        field: "client_id",
+        reason: DEVICE_CLIENT_ID,
+    },
+    FieldOptOut {
+        method: "POST",
+        path: "/api/v1/auth/device/code",
+        field: "scopes",
+        reason: "The JSON-only array form of `scope`. `auth login --scope` sends the form \
+                 field RFC 8628 defines",
+    },
+    FieldOptOut {
+        method: "POST",
+        path: "/api/v1/auth/device/token",
+        field: "client_id",
+        reason: DEVICE_CLIENT_ID,
+    },
+    FieldOptOut {
+        method: "POST",
+        path: "/api/v1/auth/device/token",
+        field: "device_code",
+        reason: "The code the server sent back from /device/code, which `auth login` polls \
+                 with. Nothing a person types",
+    },
+    FieldOptOut {
+        method: "POST",
+        path: "/api/v1/auth/device/token",
+        field: "grant_type",
+        reason: "Always the RFC 8628 device grant type",
+    },
 ];
 
 const CURATION_AFTER_CREATE: &str = "The server refuses anything but the default on create \
@@ -207,11 +251,25 @@ const CURATION_AFTER_CREATE: &str = "The server refuses anything but the default
                                      `--curation-default-action` send it in the PATCH that \
                                      follows the create";
 
+const CLI_CLIENT: &str = "`ak auth login --sso` always sends `client=cli`, the one value there \
+                          is, so the login ends on a page showing the code for the CLI. \
+                          Without it the login is the web UI's, which a CLI can't finish";
+const DEVICE_CLIENT_ID: &str = "Always `ak-cli`. The server doesn't register clients, and RFC \
+                                8628 wants the same value on every request of a flow";
+
 const IDP_CALLBACK: &str = "An identity provider sends a browser here with a code or an \
                             assertion. A CLI never starts this request";
 const AGENT_PLUGINS_TOKEN_URL: &str = "The same document with a token in the URL, for an \
                                        agent that can't send an Authorization header. ak sends \
                                        the header, so it uses the route without /t/{token}";
+const DEVICE_APPROVAL: &str = "The `/device` page sends these from a person's browser session, \
+                               after showing them the scopes asked for, the client's IP \
+                               address and the request's age (RFC 8628 section 5.4). A \
+                               command would approve a code typed in from somewhere else \
+                               without any of that, and `ak auth login --device` is the \
+                               side a CLI plays. `ak api` can still send them";
+const DEVICE_PAGE: &str = "The device approval page and its assets: HTML, CSS and script for \
+                           a browser, not an API";
 const WASM_PASSTHROUGH: &str = "A WASM plugin defines what this does, so `ak api` is the \
                                 right interface";
 
@@ -336,6 +394,8 @@ pub static COMMANDS: &[Op] = &[
         "auth sso-exchange",
         &["code"],
     ),
+    covered("POST", "/api/v1/auth/device/code", "auth login", &["scope"]),
+    covered("POST", "/api/v1/auth/device/token", "auth login", &[]),
     // ---- totp ----
     covered("POST", "/api/v1/auth/totp/setup", "totp setup", &[]),
     covered("POST", "/api/v1/auth/totp/enable", "totp enable", &["code"]),
@@ -1148,6 +1208,12 @@ pub static COMMANDS: &[Op] = &[
     covered("POST", "/api/v1/admin/sso/ldap/{id}/test", "sso test", &[]),
     covered("GET", "/api/v1/admin/sso/providers", "sso providers", &[]),
     covered("GET", "/api/v1/auth/sso/providers", "sso providers", &[]),
+    covered(
+        "POST",
+        "/api/v1/admin/sso/oidc/{provider_id}/groups",
+        "sso oidc groups create",
+        &["name"],
+    ),
     // ---- permissions ----
     covered(
         "GET",
@@ -2001,6 +2067,28 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/signing/keys/{key_id}/rotate",
         "sign key rotate",
         &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/signing/keys/{key_id}/trust-attestation",
+        "sign key trust-attestation show",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/signing/keys/{key_id}/trust-attestation/challenge",
+        "sign key trust-attestation challenge",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/signing/keys/{key_id}/trust-attestation/verify",
+        "sign key trust-attestation verify",
+        &[
+            "issuer_name",
+            "issuer_public_key_armored",
+            "signature_armored",
+        ],
     ),
     covered(
         "GET",
@@ -3089,6 +3177,12 @@ pub static COMMANDS: &[Op] = &[
         "group update",
         &["description", "name"],
     ),
+    covered(
+        "GET",
+        "/api/v1/groups/{id}/members",
+        "group members list",
+        &["member_limit", "member_offset"],
+    ),
     // ---- import ----
     covered(
         "GET",
@@ -3703,7 +3797,7 @@ pub static COMMANDS: &[Op] = &[
         "POST",
         "/api/v1/service-accounts/repo-selector/preview",
         "service-account preview-selector",
-        &["repo_selector"],
+        &["repo_selector", "service_account_id"],
     ),
     covered(
         "GET",
@@ -3722,12 +3816,19 @@ pub static COMMANDS: &[Op] = &[
             "repo_selector",
             "repository_ids",
             "scopes",
+            "token",
         ],
     ),
     covered(
         "GET",
         "/api/v1/service-accounts/{id}/tokens",
         "service-account token list",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/service-accounts/{id}/tokens/{token_id}/scope-analysis",
+        "service-account token scope-analysis",
         &[],
     ),
     covered(
@@ -4432,6 +4533,20 @@ pub static COMMANDS: &[Op] = &[
     excluded("GET", "/api/v1/auth/sso/oidc/{id}/callback", IDP_CALLBACK),
     excluded("GET", "/api/v1/auth/sso/oidc/callback", IDP_CALLBACK),
     excluded("POST", "/api/v1/auth/sso/saml/{id}/acs", IDP_CALLBACK),
+    excluded(
+        "GET",
+        "/api/v1/auth/sso/complete",
+        "The page a browser lands on after an SSO login the web UI started, which \
+         redeems the code with the browser's binding cookie. A login `ak auth login --sso` \
+         starts sends `client=cli` and ends on a page showing the code instead, which \
+         `ak auth login` or `ak auth sso-exchange` redeems",
+    ),
+    excluded("POST", "/api/v1/auth/device/verify", DEVICE_APPROVAL),
+    excluded("POST", "/api/v1/auth/device/approve", DEVICE_APPROVAL),
+    excluded("POST", "/api/v1/auth/device/deny", DEVICE_APPROVAL),
+    excluded("GET", "/device", DEVICE_PAGE),
+    excluded("GET", "/device/app.css", DEVICE_PAGE),
+    excluded("GET", "/device/app.js", DEVICE_PAGE),
     excluded("ANY", "/ext/{format_key}/{repo_key}", WASM_PASSTHROUGH),
     excluded(
         "ANY",

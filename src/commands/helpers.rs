@@ -372,7 +372,6 @@ pub async fn since_raw(
 
 /// [`since`] for a route whose last segment an older server takes for an `{id}`: it
 /// answers 400 "UUID parsing failed", not 404.
-#[allow(dead_code)] // For the routes new in 1.12, which come in their own changes.
 pub async fn since_any_status(
     minor: Minor,
     error: artifact_keeper_sdk::Error,

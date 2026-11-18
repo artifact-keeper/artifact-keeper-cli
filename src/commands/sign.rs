@@ -9,7 +9,8 @@ use serde_json::Value;
 use super::client::client_for;
 use super::helpers::{
     confirm_action, emit_mutation_raw, new_table, parse_optional_uuid, parse_uuid,
-    resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id, sdk_err, short_id,
+    read_inline_or_file, resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id, sdk_err,
+    short_id, since,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -119,6 +120,51 @@ pub enum SignKeyCommand {
         /// Signing key ID
         id: String,
     },
+
+    /// Link a key to an external OpenPGP issuer key, such as a root key on a hardware
+    /// token, with a signature over the key. Needs server 1.12
+    #[command(subcommand)]
+    TrustAttestation(TrustAttestationCommand),
+}
+
+#[derive(Subcommand)]
+pub enum TrustAttestationCommand {
+    /// Show the key's stored trust attestation, if it has one
+    Show {
+        /// Signing key ID
+        id: String,
+    },
+
+    /// Print the payload to sign with the issuer key. In table output, stdout is the
+    /// payload exactly, ready for `gpg --armor --detach-sign`
+    #[command(
+        after_help = "Example:\n  ak sign key trust-attestation challenge <id> > payload\n  gpg --armor --detach-sign --local-user <issuer> payload\n  gpg --armor --export <issuer> > issuer.asc\n  ak sign key trust-attestation verify <id> --issuer-public-key @issuer.asc --signature @payload.asc"
+    )]
+    Challenge {
+        /// Signing key ID
+        id: String,
+    },
+
+    /// Send the issuer's signature over the payload. The server checks it and stores
+    /// the attestation. A valid signature isn't a trust decision: the server doesn't
+    /// pin issuers to trust anchors
+    Verify {
+        /// Signing key ID
+        id: String,
+
+        /// The issuer's armored OpenPGP public key: the text, @file or @- for stdin
+        #[arg(long, value_name = "KEY")]
+        issuer_public_key: String,
+
+        /// The armored detached signature over the challenge payload: the text,
+        /// @file or @- for stdin
+        #[arg(long, value_name = "SIGNATURE")]
+        signature: String,
+
+        /// A name for the issuer, to show with the attestation
+        #[arg(long)]
+        issuer_name: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -196,6 +242,7 @@ impl SignKeyCommand {
             Self::Revoke { id, yes } => revoke_key(&id, yes, global).await,
             Self::Rotate { id, yes } => rotate_key(&id, yes, global).await,
             Self::Export { id } => export_key(&id, global).await,
+            Self::TrustAttestation(cmd) => cmd.execute(global).await,
         }
     }
 }
@@ -488,6 +535,223 @@ async fn export_key(id: &str, global: &GlobalArgs) -> Result<()> {
     })?;
     print!("{pem}");
 
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Trust attestation handlers
+// ---------------------------------------------------------------------------
+
+impl TrustAttestationCommand {
+    pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
+        match self {
+            Self::Show { id } => show_trust_attestation(&id, global).await,
+            Self::Challenge { id } => trust_attestation_challenge(&id, global).await,
+            Self::Verify {
+                id,
+                issuer_public_key,
+                signature,
+                issuer_name,
+            } => {
+                let issuer_public_key = text_arg(&issuer_public_key, "--issuer-public-key")?;
+                let signature = text_arg(&signature, "--signature")?;
+                verify_trust_attestation(&id, issuer_public_key, signature, issuer_name, global)
+                    .await
+            }
+        }
+    }
+}
+
+fn text_arg(value: &str, flag: &str) -> Result<String> {
+    let bytes = read_inline_or_file(value, flag)?;
+    String::from_utf8(bytes)
+        .map_err(|_| AkError::Usage(format!("{flag}: the text isn't UTF-8")).into())
+}
+
+/// The error for a trust attestation route, which a 1.11 server doesn't have.
+async fn attestation_err(
+    error: artifact_keeper_sdk::Error,
+    action: &str,
+    command: &str,
+    global: &GlobalArgs,
+) -> miette::Report {
+    since((1, 12), error, action, command, global).await.into()
+}
+
+async fn show_trust_attestation(id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let key_id = parse_uuid(id, "signing key")?;
+
+    let spinner = output::spinner("Fetching trust attestation...");
+    let (attestation, raw) =
+        capture(client.get_key_trust_attestation().key_id(key_id).send()).await;
+    spinner.finish_and_clear();
+
+    // The server answers `null` for a key with no attestation, which the SDK's type
+    // can't hold.
+    let no_attestation = raw
+        .as_deref()
+        .is_some_and(|body| body.trim_ascii() == b"null");
+    let attestation = match attestation {
+        Ok(attestation) => Some(attestation.into_inner()),
+        Err(_) if no_attestation => None,
+        Err(e) => {
+            return Err(attestation_err(
+                e,
+                "get trust attestation",
+                "sign key trust-attestation show",
+                global,
+            )
+            .await);
+        }
+    };
+
+    let Some(a) = attestation else {
+        match global.format {
+            OutputFormat::Json | OutputFormat::Yaml => {
+                println!(
+                    "{}",
+                    output::render_raw(raw.as_deref(), &Value::Null, &global.format, None)
+                );
+            }
+            OutputFormat::Quiet => {}
+            OutputFormat::Table => eprintln!("Signing key {id} has no trust attestation."),
+        }
+        return Ok(());
+    };
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        println!("{}", a.id);
+        return Ok(());
+    }
+
+    let table_str = format!(
+        "ID:            {}\n\
+         Signing Key:   {}\n\
+         Issuer:        {}\n\
+         Fingerprint:   {}\n\
+         Signature:     {}\n\
+         Status:        {}\n\
+         Verified:      {}\n\
+         Created:       {}",
+        a.id,
+        a.signing_key_id,
+        a.issuer_name.as_deref().unwrap_or("-"),
+        a.issuer_fingerprint,
+        a.signature_type,
+        a.verification_status,
+        a.verified_at
+            .map(|d| d.format("%Y-%m-%d %H:%M:%S UTC").to_string())
+            .unwrap_or_else(|| "-".into()),
+        a.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
+    );
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &a, &global.format, Some(table_str))
+    );
+    Ok(())
+}
+
+async fn trust_attestation_challenge(id: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let key_id = parse_uuid(id, "signing key")?;
+
+    let spinner = output::spinner("Fetching attestation challenge...");
+    let (challenge, raw) = capture(
+        client
+            .get_key_trust_attestation_challenge()
+            .key_id(key_id)
+            .send(),
+    )
+    .await;
+    spinner.finish_and_clear();
+    let challenge = match challenge {
+        Ok(challenge) => challenge.into_inner(),
+        Err(e) => {
+            return Err(attestation_err(
+                e,
+                "get trust attestation challenge",
+                "sign key trust-attestation challenge",
+                global,
+            )
+            .await);
+        }
+    };
+
+    match global.format {
+        OutputFormat::Json | OutputFormat::Yaml => {
+            println!(
+                "{}",
+                output::render_raw(raw.as_deref(), &challenge, &global.format, None)
+            );
+        }
+        // The payload exactly, with nothing added: a signature over anything else
+        // doesn't verify.
+        OutputFormat::Table | OutputFormat::Quiet => {
+            if matches!(global.format, OutputFormat::Table) {
+                eprintln!(
+                    "Sign this payload for key {} ({} {}, fingerprint {}) with the issuer \
+                     key, as an armored detached signature.",
+                    challenge.signing_key_id,
+                    challenge.key_type,
+                    challenge.algorithm,
+                    challenge.key_fingerprint.as_deref().unwrap_or("-"),
+                );
+            }
+            print!("{}", challenge.payload);
+        }
+    }
+    Ok(())
+}
+
+async fn verify_trust_attestation(
+    id: &str,
+    issuer_public_key_armored: String,
+    signature_armored: String,
+    issuer_name: Option<String>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let key_id = parse_uuid(id, "signing key")?;
+
+    let body = artifact_keeper_sdk::types::VerifyTrustAttestationPayload {
+        issuer_public_key_armored,
+        signature_armored,
+        issuer_name,
+    };
+    let spinner = output::spinner("Verifying trust attestation...");
+    let (attestation, raw) = capture(
+        client
+            .verify_key_trust_attestation()
+            .key_id(key_id)
+            .body(body)
+            .send(),
+    )
+    .await;
+    spinner.finish_and_clear();
+    let a = match attestation {
+        Ok(a) => a.into_inner(),
+        Err(e) => {
+            return Err(attestation_err(
+                e,
+                "verify trust attestation",
+                "sign key trust-attestation verify",
+                global,
+            )
+            .await);
+        }
+    };
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &a,
+        &a.id.to_string(),
+        &format!(
+            "Trust attestation stored for key {}: {} by issuer {}.",
+            a.signing_key_id, a.verification_status, a.issuer_fingerprint
+        ),
+        global,
+    );
     Ok(())
 }
 
@@ -1658,5 +1922,208 @@ mod tests {
         let output = crate::output::render(&data, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("sign_key_list_json", parsed);
+    }
+
+    // ---- trust attestation (1.12) ----
+
+    fn attestation_json() -> serde_json::Value {
+        serde_json::json!({
+            "id": NIL_UUID,
+            "signing_key_id": NIL_UUID,
+            "issuer_public_key_armored": "-----BEGIN PGP PUBLIC KEY BLOCK-----",
+            "issuer_fingerprint": "ABCD1234",
+            "issuer_name": "root",
+            "payload": "payload",
+            "signature_armored": "-----BEGIN PGP SIGNATURE-----",
+            "signature_type": "openpgp-detached",
+            "verification_status": "signature_valid",
+            "created_at": "2026-11-18T00:00:00Z",
+            "verified_at": "2026-11-18T00:00:00Z"
+        })
+    }
+
+    async fn health(server: &wiremock::MockServer, version: &str) {
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "version": version })),
+            )
+            .mount(server)
+            .await;
+    }
+
+    #[test]
+    fn parse_trust_attestation_verify() {
+        match parse(&[
+            "test",
+            "key",
+            "trust-attestation",
+            "verify",
+            NIL_UUID,
+            "--issuer-public-key",
+            "@issuer.asc",
+            "--signature",
+            "@payload.asc",
+            "--issuer-name",
+            "root",
+        ])
+        .command
+        {
+            SignCommand::Key(SignKeyCommand::TrustAttestation(
+                TrustAttestationCommand::Verify {
+                    id,
+                    issuer_public_key,
+                    signature,
+                    issuer_name,
+                },
+            )) => {
+                assert_eq!(id, NIL_UUID);
+                assert_eq!(issuer_public_key, "@issuer.asc");
+                assert_eq!(signature, "@payload.asc");
+                assert_eq!(issuer_name.as_deref(), Some("root"));
+            }
+            _ => panic!("expected trust-attestation verify"),
+        }
+        assert!(try_parse(&["test", "key", "trust-attestation", "verify", NIL_UUID]).is_err());
+    }
+
+    #[tokio::test]
+    async fn handler_show_trust_attestation() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        Mock::given(method("GET"))
+            .and(path(format!(
+                "/api/v1/signing/keys/{NIL_UUID}/trust-attestation"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(attestation_json()))
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        for format in [OutputFormat::Json, OutputFormat::Table] {
+            let global = crate::test_utils::test_global(format);
+            let result = show_trust_attestation(NIL_UUID, &global).await;
+            assert!(result.is_ok(), "{result:?}");
+        }
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_show_trust_attestation_none_is_not_an_error() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        Mock::given(method("GET"))
+            .and(path(format!(
+                "/api/v1/signing/keys/{NIL_UUID}/trust-attestation"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_string("null"))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = show_trust_attestation(NIL_UUID, &global).await;
+        assert!(result.is_ok(), "{result:?}");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_trust_attestation_challenge() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        Mock::given(method("GET"))
+            .and(path(format!(
+                "/api/v1/signing/keys/{NIL_UUID}/trust-attestation/challenge"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "signing_key_id": NIL_UUID,
+                "payload": "artifact-keeper-signing-key-attestation\n",
+                "key_public_key_armored": "-----BEGIN PGP PUBLIC KEY BLOCK-----",
+                "key_type": "gpg",
+                "algorithm": "rsa4096",
+                "key_fingerprint": "ABCD"
+            })))
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        for format in [OutputFormat::Json, OutputFormat::Quiet] {
+            let global = crate::test_utils::test_global(format);
+            let result = trust_attestation_challenge(NIL_UUID, &global).await;
+            assert!(result.is_ok(), "{result:?}");
+        }
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_verify_trust_attestation_sends_the_signature() {
+        use wiremock::matchers::body_json;
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        Mock::given(method("POST"))
+            .and(path(format!(
+                "/api/v1/signing/keys/{NIL_UUID}/trust-attestation/verify"
+            )))
+            .and(body_json(serde_json::json!({
+                "issuer_public_key_armored": "KEY",
+                "signature_armored": "SIG",
+                "issuer_name": "root"
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(attestation_json()))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let result = verify_trust_attestation(
+            NIL_UUID,
+            "KEY".into(),
+            "SIG".into(),
+            Some("root".into()),
+            &global,
+        )
+        .await;
+        assert!(result.is_ok(), "{result:?}");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn trust_attestation_on_1_11_says_it_needs_1_12() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.11.14").await;
+        Mock::given(path_regex("/trust-attestation"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let errors = [
+            (
+                "show",
+                show_trust_attestation(NIL_UUID, &global).await.unwrap_err(),
+            ),
+            (
+                "challenge",
+                trust_attestation_challenge(NIL_UUID, &global)
+                    .await
+                    .unwrap_err(),
+            ),
+            (
+                "verify",
+                verify_trust_attestation(NIL_UUID, "K".into(), "S".into(), None, &global)
+                    .await
+                    .unwrap_err(),
+            ),
+        ];
+        for (leaf, err) in errors {
+            let err = err.to_string();
+            assert!(
+                err.contains(&format!(
+                    "`ak sign key trust-attestation {leaf}` needs a server on 1.12"
+                )),
+                "{err}"
+            );
+        }
+        crate::test_utils::teardown_env();
     }
 }
