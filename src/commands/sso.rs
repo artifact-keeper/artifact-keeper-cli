@@ -11,7 +11,7 @@ use serde_json::Value;
 use super::client::{client_for, client_for_public};
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, parse_uuid,
-    read_inline_or_file, resolve_secret, sdk_err, short_id,
+    read_inline_or_file, resolve_secret, sdk_err, short_id, since,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -93,6 +93,31 @@ pub enum SsoCommand {
         /// Query the public (unauthenticated) discovery endpoint instead
         #[arg(long)]
         public: bool,
+    },
+
+    /// What's particular to OIDC providers
+    #[command(subcommand)]
+    Oidc(SsoOidcCommand),
+}
+
+#[derive(Subcommand)]
+pub enum SsoOidcCommand {
+    /// The groups an OIDC provider's group mapping manages
+    #[command(subcommand)]
+    Groups(SsoOidcGroupsCommand),
+}
+
+#[derive(Subcommand)]
+pub enum SsoOidcGroupsCommand {
+    /// Create the group an OIDC group claim maps to before anyone from it signs in,
+    /// so it can be given permissions first. The provider's group mapping has to be
+    /// on. Needs server 1.12
+    Create {
+        /// OIDC provider ID
+        provider: String,
+
+        /// The group's name, as the identity provider sends it in the groups claim
+        name: String,
     },
 }
 
@@ -600,6 +625,9 @@ impl SsoCommand {
             }
             Self::Update { command } => command.execute(global).await, // Box<SsoUpdateCommand> derefs to call execute
             Self::Providers { public } => list_enabled_providers(public, global).await,
+            Self::Oidc(SsoOidcCommand::Groups(SsoOidcGroupsCommand::Create { provider, name })) => {
+                preprovision_oidc_group(&provider, &name, global).await
+            }
         }
     }
 }
@@ -1237,6 +1265,51 @@ async fn update_saml(id: &str, body: UpdateSamlConfigRequest, global: &GlobalArg
         &p,
         &p.id.to_string(),
         &format!("SAML provider '{}' updated (ID: {}).", p.name, p.id),
+        global,
+    );
+    Ok(())
+}
+
+async fn preprovision_oidc_group(provider: &str, name: &str, global: &GlobalArgs) -> Result<()> {
+    let provider_id = parse_uuid(provider, "provider")?;
+    let client = client_for(global)?;
+    let spinner = output::spinner("Creating OIDC group...");
+
+    let body = artifact_keeper_sdk::types::PreprovisionOidcGroupRequest {
+        name: name.to_string(),
+    };
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .preprovision_oidc_group()
+            .provider_id(provider_id)
+            .body(body)
+            .send(),
+    )
+    .await;
+    spinner.finish_and_clear();
+    let group = match resp {
+        Ok(group) => group.into_inner(),
+        Err(e) => {
+            return Err(since(
+                (1, 12),
+                e,
+                "create OIDC group",
+                "sso oidc groups create",
+                global,
+            )
+            .await
+            .into());
+        }
+    };
+
+    emit_mutation_raw(
+        raw.as_deref(),
+        &group,
+        &group.id.to_string(),
+        &format!(
+            "Group '{}' created for OIDC provider {} (ID: {}).",
+            group.name, group.external_provider_id, group.id
+        ),
         global,
     );
     Ok(())
@@ -2951,5 +3024,86 @@ mod tests {
         let output = crate::output::render(&data, &OutputFormat::Json, None);
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("sso_oidc_json", parsed);
+    }
+
+    // ---- OIDC group pre-provisioning (1.12) ----
+
+    const PROVIDER: &str = "00000000-0000-4000-8000-000000000001";
+
+    #[test]
+    fn parse_oidc_groups_create() {
+        match parse(&[
+            "test",
+            "oidc",
+            "groups",
+            "create",
+            PROVIDER,
+            "platform-admins",
+        ])
+        .command
+        {
+            SsoCommand::Oidc(SsoOidcCommand::Groups(SsoOidcGroupsCommand::Create {
+                provider,
+                name,
+            })) => {
+                assert_eq!(provider, PROVIDER);
+                assert_eq!(name, "platform-admins");
+            }
+            _ => panic!("expected oidc groups create"),
+        }
+    }
+
+    #[tokio::test]
+    async fn handler_preprovision_oidc_group_sends_the_name() {
+        use wiremock::matchers::body_json;
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/admin/sso/oidc/{PROVIDER}/groups")))
+            .and(body_json(serde_json::json!({ "name": "platform-admins" })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "id": PROVIDER,
+                "name": "platform-admins",
+                "external_source": "oidc",
+                "external_provider_id": PROVIDER
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = preprovision_oidc_group(PROVIDER, "platform-admins", &global).await;
+        assert!(result.is_ok(), "{result:?}");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_preprovision_oidc_group_on_1_11_says_it_needs_1_12() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({ "version": "1.11.14" })),
+            )
+            .mount(&server)
+            .await;
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/admin/sso/oidc/{PROVIDER}/groups")))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let err = preprovision_oidc_group(PROVIDER, "platform-admins", &global)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("`ak sso oidc groups create` needs a server on 1.12"),
+            "{err}"
+        );
+        crate::test_utils::teardown_env();
     }
 }

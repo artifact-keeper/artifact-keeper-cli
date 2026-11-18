@@ -3,7 +3,10 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{confirm_action, emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    confirm_action, emit_mutation_raw, new_table, parse_uuid, refuse_flags_before, resolve_secret,
+    sdk_err, short_id, since_any_status,
+};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
@@ -68,6 +71,12 @@ pub enum ServiceAccountCommand {
         /// Repo selector as a JSON object (e.g. '{"formats":["npm"]}')
         #[arg(long)]
         selector: String,
+
+        /// The service account the token is for. The preview then also lists the
+        /// virtual repositories' members that the account couldn't read through
+        /// them. Needs server 1.12
+        #[arg(long)]
+        service_account_id: Option<String>,
     },
 }
 
@@ -106,6 +115,26 @@ pub enum TokenCommand {
         /// Description
         #[arg(long)]
         description: Option<String>,
+
+        /// Use this token rather than one the server makes up, so the secret can
+        /// live in an external store: 8 hex digits, `_`, 32 hex digits. Prefer
+        /// --token-stdin. Needs server 1.12
+        #[arg(long)]
+        token: Option<String>,
+
+        /// Read the token to use from stdin. Needs server 1.12
+        #[arg(long, conflicts_with = "token")]
+        token_stdin: bool,
+    },
+
+    /// Which members of virtual repositories a token can't reach, and why. Needs
+    /// server 1.12
+    ScopeAnalysis {
+        /// Service account ID
+        account: String,
+
+        /// Token ID
+        token: String,
     },
 
     /// Revoke a service account token
@@ -147,7 +176,10 @@ impl ServiceAccountCommand {
             }
             Self::Delete { id, yes } => delete_account(&id, yes, global).await,
             Self::Token { command } => command.execute(global).await,
-            Self::PreviewSelector { selector } => preview_selector(&selector, global).await,
+            Self::PreviewSelector {
+                selector,
+                service_account_id,
+            } => preview_selector(&selector, service_account_id.as_deref(), global).await,
         }
     }
 }
@@ -164,7 +196,10 @@ impl TokenCommand {
                 repository_ids,
                 repo_selector,
                 description,
+                token,
+                token_stdin,
             } => {
+                let token = resolve_secret(token, token_stdin, "--token", None, global.no_input)?;
                 create_token(
                     &account,
                     &name,
@@ -173,9 +208,13 @@ impl TokenCommand {
                     &repository_ids,
                     repo_selector.as_deref(),
                     description.as_deref(),
+                    token,
                     global,
                 )
                 .await
+            }
+            Self::ScopeAnalysis { account, token } => {
+                scope_analysis(&account, &token, global).await
             }
             Self::Revoke {
                 account,
@@ -541,10 +580,16 @@ async fn create_token(
     repository_ids: &[String],
     repo_selector: Option<&str>,
     description: Option<&str>,
+    token: Option<String>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
     let account_id = parse_uuid(account, "service account")?;
+    if token.is_some() {
+        // A 1.11 server would ignore it and make up a token, and the one the
+        // external store holds would never work.
+        refuse_flags_before(&["--token"], (1, 12), global).await?;
+    }
 
     let repo_ids = if repository_ids.is_empty() {
         None
@@ -570,7 +615,7 @@ async fn create_token(
         repository_ids: repo_ids,
         repo_selector: selector,
         description: description.map(|s| s.to_string()),
-        token: None,
+        token,
     };
 
     let (resp, raw) =
@@ -643,15 +688,27 @@ async fn revoke_token(
     Ok(())
 }
 
-async fn preview_selector(selector: &str, global: &GlobalArgs) -> Result<()> {
+async fn preview_selector(
+    selector: &str,
+    service_account_id: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let client = client_for(global)?;
     let repo_selector = parse_json_object(selector, "repo selector")?;
+    let service_account_id = match service_account_id {
+        Some(id) => {
+            let id = parse_uuid(id, "service account")?;
+            refuse_flags_before(&["--service-account-id"], (1, 12), global).await?;
+            Some(id)
+        }
+        None => None,
+    };
 
     let spinner = output::spinner("Evaluating selector...");
 
     let body = artifact_keeper_sdk::types::PreviewRepoSelectorRequest {
         repo_selector,
-        service_account_id: None,
+        service_account_id,
     };
 
     let (resp, raw) =
@@ -694,6 +751,82 @@ async fn preview_selector(selector: &str, global: &GlobalArgs) -> Result<()> {
     );
 
     eprintln!("{} repositories matched.", resp.total);
+    if !resp.unreachable.is_empty() {
+        eprintln!("Out of the account's reach through a virtual repository:");
+        for v in &resp.unreachable {
+            for m in &v.members {
+                eprintln!("  {} via {} ({})", m.repo_key, v.virtual_repo_key, m.reason);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn scope_analysis(account: &str, token: &str, global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let account_id = parse_uuid(account, "service account")?;
+    let token_id = parse_uuid(token, "token")?;
+
+    let spinner = output::spinner("Analysing token scope...");
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .token_scope_analysis()
+            .id(account_id)
+            .token_id(token_id)
+            .send(),
+    )
+    .await;
+    spinner.finish_and_clear();
+    let resp = match resp {
+        Ok(resp) => resp.into_inner(),
+        Err(e) => {
+            return Err(since_any_status(
+                (1, 12),
+                e,
+                "analyse token scope",
+                "service-account token scope-analysis",
+                global,
+            )
+            .await
+            .into());
+        }
+    };
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for v in &resp.unreachable {
+            for m in &v.members {
+                println!("{}", m.repo_key);
+            }
+        }
+        return Ok(());
+    }
+
+    let table_str = {
+        let mut table = new_table(vec!["VIRTUAL", "MEMBER", "REASON"]);
+        for v in &resp.unreachable {
+            for m in &v.members {
+                table.add_row(vec![
+                    v.virtual_repo_key.clone(),
+                    m.repo_key.clone(),
+                    m.reason.to_string(),
+                ]);
+            }
+        }
+        table.to_string()
+    };
+    let table_str = if resp.unreachable.is_empty() {
+        "Every member of every virtual repository the token can see is in reach.".to_string()
+    } else {
+        table_str
+    };
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &resp, &global.format, Some(table_str))
+    );
+    if let Some(error) = &resp.scope_error {
+        eprintln!("The token's repository scope is broken: {error}.");
+    }
 
     Ok(())
 }
@@ -905,7 +1038,7 @@ mod tests {
             "--selector",
             "{\"formats\":[\"npm\"]}",
         ]);
-        if let ServiceAccountCommand::PreviewSelector { selector } = cli.command {
+        if let ServiceAccountCommand::PreviewSelector { selector, .. } = cli.command {
             assert_eq!(selector, "{\"formats\":[\"npm\"]}");
         } else {
             panic!("expected PreviewSelector");
@@ -1156,9 +1289,19 @@ mod tests {
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
         let scopes = vec!["read".to_string()];
         assert!(
-            create_token(SA_ID, "deploy", &scopes, None, &[], None, None, &global)
-                .await
-                .is_ok()
+            create_token(
+                SA_ID,
+                "deploy",
+                &scopes,
+                None,
+                &[],
+                None,
+                None,
+                None,
+                &global
+            )
+            .await
+            .is_ok()
         );
         crate::test_utils::teardown_env();
     }
@@ -1201,10 +1344,237 @@ mod tests {
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
         assert!(
-            preview_selector("{\"formats\":[\"npm\"]}", &global)
+            preview_selector("{\"formats\":[\"npm\"]}", None, &global)
                 .await
                 .is_ok()
         );
         crate::test_utils::teardown_env();
+    }
+
+    // ---- 1.12: chosen token, preview for an account, scope analysis ----
+
+    async fn health(server: &wiremock::MockServer, version: &str) {
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "version": version })))
+            .mount(server)
+            .await;
+    }
+
+    const CHOSEN: &str = "0123abcd_0123456789abcdef0123456789abcdef";
+
+    #[tokio::test]
+    async fn handler_token_create_sends_the_chosen_token() {
+        use wiremock::matchers::body_partial_json;
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.12.1").await;
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/service-accounts/{SA_ID}/tokens")))
+            .and(body_partial_json(json!({ "token": CHOSEN })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "id": TOK_ID,
+                "name": "deploy",
+                "token": CHOSEN,
+                "policy_applied": false
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let scopes = vec!["read".to_string()];
+        let result = create_token(
+            SA_ID,
+            "deploy",
+            &scopes,
+            None,
+            &[],
+            None,
+            None,
+            Some(CHOSEN.to_string()),
+            &global,
+        )
+        .await;
+        assert!(result.is_ok(), "{result:?}");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_token_create_refuses_a_chosen_token_on_1_11() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.11.14").await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(500))
+            .expect(0)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        let scopes = vec!["read".to_string()];
+        let err = create_token(
+            SA_ID,
+            "deploy",
+            &scopes,
+            None,
+            &[],
+            None,
+            None,
+            Some(CHOSEN.to_string()),
+            &global,
+        )
+        .await
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("--token needs a server on 1.12"), "{err}");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_preview_selector_sends_the_account() {
+        use wiremock::matchers::body_partial_json;
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.12.1").await;
+
+        Mock::given(method("POST"))
+            .and(path("/api/v1/service-accounts/repo-selector/preview"))
+            .and(body_partial_json(json!({ "service_account_id": SA_ID })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "matched_repositories": [],
+                "total": 0_i64,
+                "unreachable": [{
+                    "virtual_repo_key": "npm-all",
+                    "members": [{ "repo_key": "npm-private", "reason": "no_grant" }]
+                }]
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let result = preview_selector("{\"formats\":[\"npm\"]}", Some(SA_ID), &global).await;
+        assert!(result.is_ok(), "{result:?}");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_preview_selector_refuses_the_account_on_1_11() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.11.14").await;
+        Mock::given(method("POST"))
+            .respond_with(ResponseTemplate::new(500))
+            .expect(0)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let err = preview_selector("{}", Some(SA_ID), &global)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("--service-account-id needs a server on 1.12"),
+            "{err}"
+        );
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_scope_analysis() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!(
+                "/api/v1/service-accounts/{SA_ID}/tokens/{TOK_ID}/scope-analysis"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "unreachable": [{
+                    "virtual_repo_key": "npm-all",
+                    "members": [{ "repo_key": "npm-private", "reason": "out_of_token_scope" }]
+                }],
+                "unreachable_member_count": 1,
+                "scope_error": null
+            })))
+            .expect(3)
+            .mount(&server)
+            .await;
+
+        for format in [OutputFormat::Json, OutputFormat::Table, OutputFormat::Quiet] {
+            let global = crate::test_utils::test_global(format);
+            let result = scope_analysis(SA_ID, TOK_ID, &global).await;
+            assert!(result.is_ok(), "{result:?}");
+        }
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_scope_analysis_on_1_11_says_it_needs_1_12() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.11.14").await;
+        Mock::given(method("GET"))
+            .and(path(format!(
+                "/api/v1/service-accounts/{SA_ID}/tokens/{TOK_ID}/scope-analysis"
+            )))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let err = scope_analysis(SA_ID, TOK_ID, &global)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("`ak service-account token scope-analysis` needs a server on 1.12"),
+            "{err}"
+        );
+        crate::test_utils::teardown_env();
+    }
+
+    #[test]
+    fn parse_token_create_with_a_chosen_token() {
+        let cli = parse(&[
+            "test",
+            "token",
+            "create",
+            SA_ID,
+            "deploy",
+            "--scope",
+            "read",
+            "--token-stdin",
+        ]);
+        match cli.command {
+            ServiceAccountCommand::Token {
+                command:
+                    TokenCommand::Create {
+                        token_stdin, token, ..
+                    },
+            } => {
+                assert!(token_stdin);
+                assert!(token.is_none());
+            }
+            _ => panic!("expected token create"),
+        }
+        assert!(
+            try_parse(&[
+                "test",
+                "token",
+                "create",
+                SA_ID,
+                "deploy",
+                "--scope",
+                "read",
+                "--token",
+                "x",
+                "--token-stdin",
+            ])
+            .is_err()
+        );
     }
 }

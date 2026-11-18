@@ -201,7 +201,17 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
             "GET",
             "/health",
             200,
-            json!({"status": "healthy", "version": "1.12.1", "checks": {}}),
+            // The pinned server, so a guard against a 1.11 server lets a 1.12 flag through.
+            json!({"status": "healthy", "version": include_str!("../API_VERSION").trim(),
+                   "checks": {}}),
+        ),
+        (
+            "POST",
+            "/api/v1/auth/device/code",
+            200,
+            json!({"device_code": "d", "user_code": "BCDF-GHJK",
+                   "verification_uri": "http://localhost/device", "expires_in": 60,
+                   "interval": 1}),
         ),
         (
             "GET",
@@ -687,6 +697,9 @@ fn hints(home: &std::path::Path, line: &Line) -> Hints {
         }
         ("auth login", _, p) if p.contains("/sso/saml/") => {
             (vec![("sso", format!("saml:{UUID}"))], vec![])
+        }
+        ("auth login", _, p) if p.starts_with("/api/v1/auth/device/") => {
+            (vec![("device", String::new())], vec![])
         }
         ("auth login", _, "/api/v1/auth/login") => (
             vec![

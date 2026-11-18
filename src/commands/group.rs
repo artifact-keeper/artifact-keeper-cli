@@ -5,7 +5,7 @@ use miette::Result;
 use super::client::client_for;
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, print_page_info,
-    sdk_err, short_id,
+    sdk_err, short_id, since_any_status,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -91,6 +91,27 @@ pub enum GroupCommand {
         /// User ID to remove
         user: String,
     },
+
+    /// A group's members
+    #[command(subcommand)]
+    Members(GroupMembersCommand),
+}
+
+#[derive(Subcommand)]
+pub enum GroupMembersCommand {
+    /// List a group's members, a page at a time. Needs server 1.12
+    List {
+        /// Group ID
+        group: String,
+
+        /// Most members to list (server default 50, at most 200)
+        #[arg(long)]
+        limit: Option<i32>,
+
+        /// Members to skip
+        #[arg(long)]
+        offset: Option<i32>,
+    },
 }
 
 impl GroupCommand {
@@ -117,6 +138,11 @@ impl GroupCommand {
             Self::Delete { id, yes } => delete_group(&id, yes, global).await,
             Self::AddMember { group, user } => add_member(&group, &user, global).await,
             Self::RemoveMember { group, user } => remove_member(&group, &user, global).await,
+            Self::Members(GroupMembersCommand::List {
+                group,
+                limit,
+                offset,
+            }) => list_members(&group, limit, offset, global).await,
         }
     }
 }
@@ -249,6 +275,88 @@ async fn show_group(
         "{}",
         output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
     );
+
+    Ok(())
+}
+
+async fn list_members(
+    id: &str,
+    limit: Option<i32>,
+    offset: Option<i32>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let group_id = parse_uuid(id, "group")?;
+
+    let spinner = output::spinner("Fetching group members...");
+    let mut req = client.list_group_members().id(group_id);
+    if let Some(limit) = limit {
+        req = req.member_limit(limit);
+    }
+    if let Some(offset) = offset {
+        req = req.member_offset(offset);
+    }
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    spinner.finish_and_clear();
+    // A 1.11 server has POST and DELETE on this path, and answers a GET with 405.
+    let resp = match resp {
+        Ok(resp) => resp.into_inner(),
+        Err(e) => {
+            return Err(since_any_status(
+                (1, 12),
+                e,
+                "list group members",
+                "group members list",
+                global,
+            )
+            .await
+            .into());
+        }
+    };
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for m in &resp.members {
+            println!("{}", m.user_id);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = resp
+        .members
+        .iter()
+        .map(|m| {
+            serde_json::json!({
+                "user_id": m.user_id.to_string(),
+                "username": m.username,
+                "display_name": m.display_name,
+                "joined_at": m.joined_at.to_rfc3339(),
+            })
+        })
+        .collect();
+    let table_str = {
+        let mut table = new_table(vec!["USER ID", "USERNAME", "DISPLAY NAME", "JOINED"]);
+        for m in &resp.members {
+            table.add_row(vec![
+                m.user_id.to_string(),
+                m.username.clone(),
+                m.display_name.clone().unwrap_or_else(|| "-".into()),
+                m.joined_at.format("%Y-%m-%d").to_string(),
+            ]);
+        }
+        table.to_string()
+    };
+
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
+    );
+    if !output::is_machine_format(&global.format) {
+        eprintln!(
+            "{} of {} members shown.",
+            resp.members.len(),
+            resp.members_total
+        );
+    }
 
     Ok(())
 }
@@ -746,6 +854,87 @@ mod tests {
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
         let result = show_group(NIL_UUID, None, None, &global).await;
         assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    fn members_json() -> serde_json::Value {
+        json!({
+            "members": [{
+                "user_id": NIL_UUID,
+                "username": "alice",
+                "display_name": "Alice",
+                "joined_at": "2026-01-15T12:00:00Z"
+            }],
+            "members_total": 3
+        })
+    }
+
+    #[test]
+    fn parse_members_list() {
+        match parse(&[
+            "group", "members", "list", NIL_UUID, "--limit", "2", "--offset", "4",
+        ])
+        .command
+        {
+            GroupCommand::Members(GroupMembersCommand::List {
+                group,
+                limit,
+                offset,
+            }) => {
+                assert_eq!(group, NIL_UUID);
+                assert_eq!(limit, Some(2));
+                assert_eq!(offset, Some(4));
+            }
+            _ => panic!("expected Members List"),
+        }
+    }
+
+    #[tokio::test]
+    async fn handler_list_members_sends_the_page() {
+        use wiremock::matchers::query_param;
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/groups/{NIL_UUID}/members")))
+            .and(query_param("member_limit", "2"))
+            .and(query_param("member_offset", "1"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(members_json()))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let result = list_members(NIL_UUID, Some(2), Some(1), &global).await;
+        assert!(result.is_ok(), "{result:?}");
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_list_members_on_1_11_says_it_needs_1_12() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({"version": "1.11.14"})))
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path(format!("/api/v1/groups/{NIL_UUID}/members")))
+            .respond_with(ResponseTemplate::new(405))
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let err = list_members(NIL_UUID, None, None, &global)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("`ak group members list` needs a server on 1.12"),
+            "{err}"
+        );
         crate::test_utils::teardown_env();
     }
 
