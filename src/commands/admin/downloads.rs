@@ -1,7 +1,7 @@
 //! `ak admin downloads`: who downloaded what.
 
 use artifact_keeper_sdk::ClientAdminExt;
-use artifact_keeper_sdk::types::{DownloadListResponse, DownloadSource};
+use artifact_keeper_sdk::types::{DownloadListResponse, DownloadSource, DownloaderFilter};
 use clap::{Args, Subcommand, ValueEnum};
 use miette::Result;
 
@@ -9,7 +9,8 @@ use super::PageArgs;
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for;
 use crate::commands::helpers::{
-    new_table, parse_uuid, print_page_info, resolve_artifact_id, resolve_repo_id, sdk_err,
+    new_table, parse_uuid, print_page_info, refuse_flags_before, resolve_artifact_id,
+    resolve_repo_id, sdk_err,
 };
 use crate::output::{self, OutputFormat};
 
@@ -30,6 +31,26 @@ impl From<SourceArg> for DownloadSource {
     }
 }
 
+#[derive(Clone, Copy, ValueEnum)]
+pub enum DownloaderArg {
+    /// Every download
+    All,
+    /// Downloads with no login
+    Anonymous,
+    /// Downloads by a user or a token
+    Authenticated,
+}
+
+impl From<DownloaderArg> for DownloaderFilter {
+    fn from(downloader: DownloaderArg) -> Self {
+        match downloader {
+            DownloaderArg::All => DownloaderFilter::All,
+            DownloaderArg::Anonymous => DownloaderFilter::Anonymous,
+            DownloaderArg::Authenticated => DownloaderFilter::Authenticated,
+        }
+    }
+}
+
 /// Filters every download listing takes.
 #[derive(Args)]
 pub struct DownloadFilters {
@@ -44,6 +65,10 @@ pub struct DownloadFilters {
     /// Only hosted downloads or only proxy serves
     #[arg(long, value_enum)]
     source: Option<SourceArg>,
+
+    /// Only anonymous or only logged-in downloads. Needs a 1.12 server
+    #[arg(long, value_enum)]
+    downloader: Option<DownloaderArg>,
 
     /// Earliest time, RFC 3339 (2026-01-15T00:00:00Z)
     #[arg(long)]
@@ -117,6 +142,9 @@ macro_rules! apply_filters {
         if let Some(source) = $filters.source {
             $req = $req.source(DownloadSource::from(source));
         }
+        if let Some(downloader) = $filters.downloader {
+            $req = $req.downloader(DownloaderFilter::from(downloader));
+        }
         if let Some(from) = $filters.from {
             $req = $req.from(from);
         }
@@ -128,6 +156,15 @@ macro_rules! apply_filters {
 
 impl DownloadsCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
+        let filters = match &self {
+            Self::List { filters, .. }
+            | Self::ByIp { filters, .. }
+            | Self::ByUser { filters, .. } => filters,
+        };
+        // A 1.11 server ignores the filter, and would list every download.
+        if filters.downloader.is_some() {
+            refuse_flags_before(&["--downloader"], (1, 12), global).await?;
+        }
         let client = client_for(global)?;
         let spinner = output::spinner("Fetching downloads...");
         let (resp, raw) = match self {

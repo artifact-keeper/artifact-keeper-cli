@@ -11,7 +11,7 @@ use miette::Result;
 
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for;
-use crate::commands::helpers::{confirm_action, sdk_err};
+use crate::commands::helpers::{confirm_action, refuse_flags_before, sdk_err};
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
@@ -20,11 +20,33 @@ pub enum SystemCommand {
     /// Show the runtime settings and where each value comes from
     Show,
 
-    /// Change a runtime setting
+    /// Change runtime settings. Those you leave out keep their values
+    #[command(group(
+        clap::ArgGroup::new("setting")
+            .required(true)
+            .multiple(true)
+            .args(["guest_access", "hidden_nav_items", "no_hidden_nav_items", "upstream_jobs_paused"])
+    ))]
     Update {
         /// Allow anonymous access to public repositories
-        #[arg(long, action = ArgAction::Set, required = true)]
+        #[arg(long, action = ArgAction::Set)]
         guest_access: Option<bool>,
+
+        /// Hide these web UI navigation entries from every user, comma-separated, such
+        /// as /peers. Replaces the list. A hidden page stays reachable by its URL, with
+        /// the same permission checks. Needs a 1.12 server
+        #[arg(long, value_delimiter = ',', conflicts_with = "no_hidden_nav_items")]
+        hidden_nav_items: Option<Vec<String>>,
+
+        /// Show every web UI navigation entry again. Needs a 1.12 server
+        #[arg(long)]
+        no_hidden_nav_items: bool,
+
+        /// Pause (true) or resume (false) every scheduled job that contacts an upstream
+        /// on its own: curation sync, environment re-evaluation, the npm feed, peer
+        /// replication and scheduled mirrors. Needs a 1.12 server
+        #[arg(long, action = ArgAction::Set)]
+        upstream_jobs_paused: Option<bool>,
     },
 }
 
@@ -99,11 +121,34 @@ impl SystemCommand {
                 let resp = resp.map_err(|e| sdk_err("get runtime settings", e))?;
                 (resp, raw, None)
             }
-            Self::Update { guest_access } => {
+            Self::Update {
+                guest_access,
+                hidden_nav_items,
+                no_hidden_nav_items,
+                upstream_jobs_paused,
+            } => {
+                let hidden_nav_items = match (hidden_nav_items, no_hidden_nav_items) {
+                    (_, true) => Some(Vec::new()),
+                    (items, false) => items,
+                };
+                // A 1.11 server refuses the whole body with a 422 that names the
+                // field, not the version.
+                let mut newer = Vec::new();
+                if hidden_nav_items.is_some() {
+                    newer.push(if no_hidden_nav_items {
+                        "--no-hidden-nav-items"
+                    } else {
+                        "--hidden-nav-items"
+                    });
+                }
+                if upstream_jobs_paused.is_some() {
+                    newer.push("--upstream-jobs-paused");
+                }
+                refuse_flags_before(&newer, (1, 12), global).await?;
                 let body = UpdateRuntimeSettingsRequest {
                     guest_access_enabled: guest_access,
-                    hidden_nav_items: None,
-                    upstream_jobs_paused: None,
+                    hidden_nav_items,
+                    upstream_jobs_paused,
                 };
                 let (resp, raw) = artifact_keeper_sdk::raw::capture(
                     client.update_runtime_settings().body(body).send(),
@@ -121,7 +166,7 @@ impl SystemCommand {
         if let (Some(done), OutputFormat::Table) = (done, &global.format) {
             eprintln!("{done}");
         }
-        let table = format!(
+        let mut table = format!(
             "Guest access:   {}\n\
              Source:         {}\n\
              Editable:       {}\n\
@@ -134,6 +179,28 @@ impl SystemCommand {
                 .map(|v| v.to_string())
                 .unwrap_or_else(|| "-".into()),
         );
+        // A 1.11 server has neither.
+        if let Some(paused) = settings.upstream_jobs_paused {
+            table.push_str(&format!(
+                "\n\nUpstream jobs paused: {paused}\n\
+                 Source:               {}\n\
+                 Stored value:         {}\n\
+                 Hidden nav items:     {}",
+                settings
+                    .upstream_jobs_paused_source
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "-".into()),
+                settings
+                    .upstream_jobs_paused_stored
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "-".into()),
+                if settings.hidden_nav_items.is_empty() {
+                    "none".to_string()
+                } else {
+                    settings.hidden_nav_items.join(", ")
+                },
+            ));
+        }
         println!(
             "{}",
             output::render_raw(raw.as_deref(), &settings, &global.format, Some(table))

@@ -48,6 +48,10 @@ pub enum PackagesCommand {
     Versions {
         /// Package ID
         id: String,
+
+        /// Only the versions in this repository, by key. Needs a 1.12 server
+        #[arg(long)]
+        repository_key: Option<String>,
     },
 
     /// Browse a repository's artifact tree (or fetch a file with --content)
@@ -103,7 +107,9 @@ impl PackagesCommand {
                 .await
             }
             Self::Show { id, repo } => show_package(&id, repo.as_deref(), global).await,
-            Self::Versions { id } => list_versions(&id, global).await,
+            Self::Versions { id, repository_key } => {
+                list_versions(&id, repository_key, global).await
+            }
             Self::Tree {
                 repo,
                 path,
@@ -258,15 +264,25 @@ async fn show_package(id: &str, repo: Option<&str>, global: &GlobalArgs) -> Resu
     Ok(())
 }
 
-async fn list_versions(id: &str, global: &GlobalArgs) -> Result<()> {
+async fn list_versions(
+    id: &str,
+    repository_key: Option<String>,
+    global: &GlobalArgs,
+) -> Result<()> {
     let package_id = parse_uuid(id, "package")?;
+    // A 1.11 server ignores it, and would list every repository's versions.
+    if repository_key.is_some() {
+        super::helpers::refuse_flags_before(&["--repository-key"], (1, 12), global).await?;
+    }
 
     let client = client_for_optional_auth(global)?;
     let spinner = output::spinner("Fetching package versions...");
 
-    let (resp, raw) =
-        artifact_keeper_sdk::raw::capture(client.get_package_versions().id(package_id).send())
-            .await;
+    let mut req = client.get_package_versions().id(package_id);
+    if let Some(key) = repository_key {
+        req = req.repository_key(key);
+    }
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
     let resp = resp.map_err(|e| sdk_err("get package versions", e))?;
 
     spinner.finish_and_clear();
@@ -611,7 +627,7 @@ mod tests {
     fn parse_versions() {
         let cli = parse(&["test", "versions", "some-id"]);
         match cli.command {
-            PackagesCommand::Versions { id } => assert_eq!(id, "some-id"),
+            PackagesCommand::Versions { id, .. } => assert_eq!(id, "some-id"),
             _ => panic!("expected Versions"),
         }
     }
@@ -855,7 +871,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = list_versions(NIL_UUID, &global).await;
+        let result = list_versions(NIL_UUID, None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

@@ -2,8 +2,8 @@ use artifact_keeper_sdk::ClientSystemExt;
 use clap::Subcommand;
 use miette::Result;
 
-use super::client::{client_for_optional_auth, raw_http_client};
-use super::helpers::{raw_err, sdk_err};
+use super::client::{client_for, client_for_optional_auth, raw_http_client};
+use super::helpers::{or_since, raw_err, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
 use crate::config::credentials::get_credential;
@@ -18,6 +18,11 @@ pub enum SystemCommand {
     /// permission enforcement, plugin signing) are only returned to
     /// authenticated admins; for other callers they are omitted.
     Config,
+
+    /// Show the instance's storage and download transfer quotas, what is used of
+    /// each, and the upload size limit. Any logged-in user can see it. Needs a 1.12
+    /// server
+    Quota,
 
     /// Show instance health. Use `ak monitoring health`
     #[command(hide = true, alias = "info")]
@@ -46,6 +51,7 @@ impl SystemCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         match self {
             Self::Config => show_config(global).await,
+            Self::Quota => show_quota(global).await,
             Self::Health => super::monitoring::health(global).await,
             Self::Openapi => print_raw("/api/v1/openapi.json", global).await,
             Self::SwaggerUi { path: Some(path) } => {
@@ -105,6 +111,97 @@ async fn show_config(global: &GlobalArgs) -> Result<()> {
     );
 
     Ok(())
+}
+
+async fn show_quota(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching quotas...");
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(client.get_system_quota().send()).await;
+    spinner.finish_and_clear();
+    let quota = or_since((1, 12), resp, "get the quotas", "system quota", global)
+        .await?
+        .into_inner();
+    if matches!(global.format, crate::output::OutputFormat::Quiet) {
+        println!("{}", quota.storage_quota.state);
+        return Ok(());
+    }
+    println!(
+        "{}",
+        output::render_raw(
+            raw.as_deref(),
+            &quota,
+            &global.format,
+            Some(format_quota(&quota))
+        )
+    );
+    Ok(())
+}
+
+/// `used of quota (percent), state`, or `used, no quota`.
+fn quota_line(
+    used: i64,
+    quota: Option<i64>,
+    percent: Option<f64>,
+    state: &str,
+    enabled: bool,
+) -> String {
+    match (enabled, quota) {
+        (true, Some(quota)) => format!(
+            "{} of {}{}, {state}",
+            format_bytes(used),
+            format_bytes(quota),
+            percent.map(|p| format!(" ({p:.1}%)")).unwrap_or_default(),
+        ),
+        _ => format!("{} used, no quota", format_bytes(used)),
+    }
+}
+
+fn format_quota(quota: &artifact_keeper_sdk::types::QuotaOverview) -> String {
+    let storage = &quota.storage_quota;
+    let transfer = &quota.transfer_quota;
+    let max_upload = if quota.max_upload_bytes == 0 {
+        "unlimited".to_string()
+    } else {
+        format_bytes(quota.max_upload_bytes)
+    };
+    let mut text = format!(
+        "Storage:           {}\n\
+         Storage warns at:  {}%\n\
+         Transfer:          {}\n\
+         Transfer period:   {} to {}\n\
+         Transfer warns at: {}%\n\
+         Max Upload:        {}",
+        quota_line(
+            storage.used_bytes,
+            storage.quota_bytes,
+            storage.percent,
+            &storage.state.to_string(),
+            storage.enabled,
+        ),
+        storage.warn_percent,
+        quota_line(
+            transfer.used_bytes,
+            transfer.quota_bytes,
+            transfer.percent,
+            &transfer.state.to_string(),
+            transfer.enabled,
+        ),
+        transfer.period_start,
+        transfer.period_end,
+        transfer.warn_percent,
+        max_upload,
+    );
+    if let Some(limit) = transfer.hard_limit_bytes {
+        text.push_str(&format!(
+            "\nTransfer refused:  over {} (grace {}%)",
+            format_bytes(limit),
+            transfer.grace_percent
+        ));
+    }
+    if let Some(url) = &quota.quota_help_url {
+        text.push_str(&format!("\nHelp:              {url}"));
+    }
+    text
 }
 
 fn yes_no(value: bool) -> &'static str {
