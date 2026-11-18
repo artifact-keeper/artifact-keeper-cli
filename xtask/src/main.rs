@@ -41,39 +41,60 @@ const NULL_DESPITE_THE_SPEC: &[(&str, &[&str])] = &[
 /// every command touching one of these types fails on the previous minor. They
 /// are generated as `Option`. Update this list when the pin moves to a new minor:
 /// each schema's `required` in the pinned spec, minus the same in the previous
-/// minor's specs (here 1.11.11 against 1.10.0, 1.10.1 and 1.10.2).
+/// minor's specs (here 1.12.1 against 1.11.0 to 1.11.14), for the schemas
+/// each of those specs has.
 const NOT_REQUIRED_ON_PREVIOUS_MINOR: &[(&str, &[&str])] = &[
-    ("AssessmentResult", &["total_artifacts_exact"]),
-    ("CiOidcProviderResponse", &["key_source"]),
-    ("DownloadRecord", &["source"]),
+    ("AgeGateConfigResponse", &["instance_locked"]),
+    ("AgeGateReviewResponse", &["instance_locked"]),
+    ("AuthConfig", &["device_authorization_enabled"]),
+    ("CiOidcProviderResponse", &["token_ttl_secs"]),
+    ("CondaAllowlistResponse", &["scope"]),
+    (
+        "DashboardResponse",
+        &[
+            "proxy_blocked",
+            "proxy_would_block",
+            "repos_incomplete",
+            "repos_rated",
+            "repos_unrated",
+        ],
+    ),
     ("ExchangeCodeResponse", &["expires_in"]),
-    ("FindingResponse", &["finding_class"]),
-    ("FormatHandlerResponse", &["scan_on_proxy"]),
-    ("LifecyclePolicy", &["applies_to_all", "repository_ids"]),
-    ("PermissionResponse", &["conditions"]),
-    ("PermissionRow", &["conditions"]),
-    ("PolicyExecutionResult", &["proxy_cache"]),
-    ("PolicyResponse", &["predicates"]),
-    ("PromotionResponse", &["gate_results"]),
-    ("ReadyzResponse", &["dependencies"]),
-    ("RepositoryAssessment", &["artifact_count_exact"]),
+    ("FormatHandlerResponse", &["repository_types"]),
+    ("GateResponse", &["accepted_grade_status"]),
+    ("IngestExternalFindingsResponse", &["grade_status"]),
+    ("NpmUpstreamFeedStatus", &["upstream_jobs_paused"]),
+    ("PolicyResponse", &["block_uncataloged"]),
+    ("PromotionRuleResponse", &["accepted_grade_status"]),
+    ("RepoSecurityResponse", &["uncataloged_policy"]),
+    ("RepositoryCapabilities", &["rpm_repodata_mode"]),
     (
         "RepositoryResponse",
         &[
             "allow_public_with_upstream_credentials",
             "public_with_upstream_credentials",
-            "repodata_depth",
-            "repodata_depth_editable",
-            "storage_backend",
-            "upstream_url_has_credentials",
-            "visibility",
         ],
     ),
-    ("ScanResponse", &["scan_completeness"]),
-    ("ScoreResponse", &["has_uncataloged_scan"]),
-    ("SearchResultItem", &["quarantine_status"]),
-    ("SystemStats", &["proxy_download_count"]),
-    ("WebhookResponse", &["signing_mode"]),
+    ("RestoreResponse", &["excluded", "status"]),
+    ("RotateWebhookSecretResponse", &["secret"]),
+    (
+        "RuntimeSettingsResponse",
+        &[
+            "hidden_nav_items",
+            "upstream_jobs_paused",
+            "upstream_jobs_paused_source",
+        ],
+    ),
+    ("ScanConfigResponse", &["instance_locked"]),
+    ("ScanResponse", &["grade_status"]),
+    ("ScoreResponse", &["grade_status"]),
+    ("SubscriptionResponse", &["effective"]),
+    ("SystemConfigResponse", &["ui"]),
+    (
+        "SystemStats",
+        &["max_upload_bytes", "storage_quota", "transfer_quota"],
+    ),
+    ("TokenInfoResponse", &["unreachable_member_count"]),
 ];
 
 fn main() -> Result<()> {
