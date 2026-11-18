@@ -741,3 +741,347 @@ fn repo_storage_and_gc() {
         .assert()
         .success();
 }
+
+fn failure_text(assert: assert_cmd::assert::Assert) -> String {
+    String::from_utf8_lossy(&assert.get_output().stderr)
+        .split_whitespace()
+        .filter(|word| *word != "│")
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// A public local repository holding `f.bin`, for a remote one to proxy.
+fn upstream_with_file(env: &common::TestEnv, key: &str) {
+    env.ak_cmd()
+        .args(["repo", "create", key, "--pkg-format", "generic", "--public"])
+        .assert()
+        .success();
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("f.bin");
+    std::fs::write(&file, format!("content of {key}")).unwrap();
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "push",
+            key,
+            file.to_str().unwrap(),
+            "--path",
+            "f.bin",
+        ])
+        .assert()
+        .success();
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn repo_1_12_remote_settings_round_trip() {
+    if common::server_older_than(1, 12, "1.12 remote repository settings") {
+        return;
+    }
+    let env = common::TestEnv::setup();
+    let pid = std::process::id();
+    let upstream = format!("e2e-112-up-{pid}");
+    let remote = format!("e2e-112-rem-{pid}");
+    upstream_with_file(&env, &upstream);
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &remote,
+            "--pkg-format",
+            "generic",
+            "--repo-type",
+            "remote",
+            "--upstream-url",
+            &format!("http://ak-upstream:8080/api/v1/repositories/{upstream}/download"),
+            "--upstream-mode",
+            "cache_only",
+            "--egress-proxy-mode",
+            "direct",
+        ])
+        .assert()
+        .success();
+
+    // Born with them.
+    let mode = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "upstream-mode", "show", &remote])
+            .assert()
+            .success(),
+    );
+    assert_eq!(mode["upstream_mode"], "cache_only", "{mode}");
+    let proxy = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "egress-proxy", "get", &remote])
+            .assert()
+            .success(),
+    );
+    assert_eq!(proxy["mode"], "direct", "{proxy}");
+
+    let mode = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "upstream-mode", "set", &remote, "online"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(mode["upstream_mode"], "online", "{mode}");
+
+    let cap = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "proxy-cache-cap", "set", &remote, "1G"])
+            .assert()
+            .success(),
+    );
+    assert_eq!(cap["cap_bytes"], 1024 * 1024 * 1024, "{cap}");
+    let cap = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "proxy-cache-cap", "clear", &remote])
+            .assert()
+            .success(),
+    );
+    assert!(cap["cap_bytes"].is_null(), "{cap}");
+    let cap = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "proxy-cache-cap", "show", &remote])
+            .assert()
+            .success(),
+    );
+    assert!(cap["usage"]["entries"].is_i64(), "{cap}");
+
+    env.ak_cmd()
+        .args(["repo", "on-upstream-not-found", "set", &remote, "keep"])
+        .assert()
+        .success();
+    let kept = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "on-upstream-not-found", "show", &remote])
+            .assert()
+            .success(),
+    );
+    assert_eq!(kept["on_upstream_not_found"], "keep", "{kept}");
+
+    env.ak_cmd()
+        .args(["repo", "stale-if-error-grace", "set", &remote, "600"])
+        .assert()
+        .success();
+    let grace = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "stale-if-error-grace", "show", &remote])
+            .assert()
+            .success(),
+    );
+    assert_eq!(grace["override_seconds"], 600, "{grace}");
+    assert_eq!(grace["stale_if_error_grace_seconds"], 600, "{grace}");
+
+    // A seed fetches through the proxy, and --wait ends with the job.
+    let job = json_stdout(
+        env.ak_cmd()
+            .args([
+                "repo", "cache", "seed", "start", &remote, "--path", "f.bin", "--wait",
+            ])
+            .assert()
+            .success(),
+    );
+    assert_eq!(job["status"], "completed", "{job}");
+    assert_eq!(
+        job["summary"]["cached"].as_i64().unwrap()
+            + job["summary"]["already_cached"].as_i64().unwrap(),
+        1,
+        "{job}"
+    );
+    let id = job["job_id"].as_str().unwrap();
+    let again = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "cache", "seed", "status", &remote, id])
+            .assert()
+            .success(),
+    );
+    assert_eq!(again["items"][0]["path"], "f.bin", "{again}");
+
+    // A path the upstream doesn't have fails a --wait, and says which.
+    let missing = failure_text(
+        env.ak_cmd()
+            .args([
+                "repo", "cache", "seed", "start", &remote, "--path", "nope.bin", "--wait",
+            ])
+            .assert()
+            .code(7),
+    );
+    assert!(missing.contains("nope.bin"), "{missing}");
+
+    for key in [&remote, &upstream] {
+        env.ak_cmd()
+            .args(["repo", "delete", key, "--yes", "--wait"])
+            .assert()
+            .success();
+    }
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn repo_create_and_update_set_the_1_12_fields() {
+    if common::server_older_than(1, 12, "1.12 repository fields") {
+        return;
+    }
+    let env = common::TestEnv::setup();
+    let pid = std::process::id();
+    let local = format!("e2e-112-loc-{pid}");
+    let virt = format!("e2e-112-virt-{pid}");
+    let rpm = format!("e2e-112-rpm-{pid}");
+
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &local,
+            "--pkg-format",
+            "generic",
+            "--quarantine-enabled",
+            "true",
+            "--quarantine-duration-minutes",
+            "45",
+        ])
+        .assert()
+        .success();
+    let shown = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "show", &local])
+            .assert()
+            .success(),
+    );
+    assert_eq!(shown["quarantine_enabled"], true, "{shown}");
+    assert_eq!(shown["quarantine_duration_minutes"], 45, "{shown}");
+
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &virt,
+            "--pkg-format",
+            "generic",
+            "--repo-type",
+            "virtual",
+            "--member",
+            &local,
+            "--virtual-metadata-partial",
+            "true",
+            "--virtual-member-fallback",
+            "strict",
+        ])
+        .assert()
+        .success();
+    let shown = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "show", &virt])
+            .assert()
+            .success(),
+    );
+    assert_eq!(shown["virtual_metadata_partial"], true, "{shown}");
+    assert_eq!(shown["virtual_member_fallback"], "strict", "{shown}");
+    env.ak_cmd()
+        .args([
+            "repo",
+            "update",
+            &virt,
+            "--virtual-member-fallback",
+            "available",
+        ])
+        .assert()
+        .success();
+    let shown = json_stdout(
+        env.ak_cmd()
+            .args(["repo", "show", &virt])
+            .assert()
+            .success(),
+    );
+    assert_eq!(shown["virtual_member_fallback"], "available", "{shown}");
+
+    env.ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &rpm,
+            "--pkg-format",
+            "rpm",
+            "--repodata-mode",
+            "on_request",
+        ])
+        .assert()
+        .success();
+    let shown = json_stdout(env.ak_cmd().args(["repo", "show", &rpm]).assert().success());
+    assert_eq!(shown["repodata_mode"], "on_request", "{shown}");
+    env.ak_cmd()
+        .args(["repo", "update", &rpm, "--repodata-mode", "precomputed"])
+        .assert()
+        .success();
+    let shown = json_stdout(env.ak_cmd().args(["repo", "show", &rpm]).assert().success());
+    assert_eq!(shown["repodata_mode"], "precomputed", "{shown}");
+
+    // The route is there: an empty repository's 404 is the server's own.
+    let empty = failure_text(
+        env.ak_cmd()
+            .args(["repo", "rpm", "repodata", "rebuild", &rpm, "--wait"])
+            .assert()
+            .code(5),
+    );
+    assert!(empty.contains("No packages"), "{empty}");
+
+    for key in [&virt, &local, &rpm] {
+        env.ak_cmd()
+            .args(["repo", "delete", key, "--yes", "--wait"])
+            .assert()
+            .success();
+    }
+}
+
+/// 1.11 has none of these routes or fields, and would drop a field it doesn't know.
+#[test]
+#[ignore = "requires E2E backend"]
+fn repo_1_12_settings_are_refused_on_1_11() {
+    if !common::server_older_than(1, 12, "a refusal of the 1.12 repository settings") {
+        return;
+    }
+    let env = common::TestEnv::setup();
+    let key = format!("e2e-111-{}", std::process::id());
+    env.ak_cmd()
+        .args(["repo", "create", &key, "--pkg-format", "generic"])
+        .assert()
+        .success();
+
+    for args in [
+        vec!["repo", "upstream-mode", "show", &key],
+        vec!["repo", "proxy-cache-cap", "set", &key, "1G"],
+        vec!["repo", "on-upstream-not-found", "show", &key],
+        vec!["repo", "stale-if-error-grace", "show", &key],
+        vec!["repo", "cache", "seed", "start", &key, "--path", "f.bin"],
+        vec!["repo", "rpm", "repodata", "rebuild", &key],
+        vec![
+            "repo",
+            "update",
+            &key,
+            "--virtual-member-fallback",
+            "strict",
+        ],
+        vec![
+            "repo",
+            "create",
+            "e2e-111-never",
+            "--pkg-format",
+            "generic",
+            "--quarantine-enabled",
+            "true",
+        ],
+    ] {
+        let text = failure_text(env.ak_cmd().args(&args).assert().code(6));
+        assert!(text.contains("needs a server on 1.12"), "{args:?}: {text}");
+    }
+    env.ak_cmd()
+        .args(["repo", "show", "e2e-111-never"])
+        .assert()
+        .failure();
+
+    env.ak_cmd()
+        .args(["repo", "delete", &key, "--yes"])
+        .assert()
+        .success();
+}

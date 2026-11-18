@@ -915,3 +915,51 @@ fn pull_to_stdout_works_in_a_pipeline() {
         .assert()
         .success();
 }
+
+/// A permanent delete purges the trash too, so the path takes new bytes at once.
+#[test]
+#[ignore = "requires E2E backend"]
+fn artifact_delete_permanent_frees_the_path() {
+    let env = common::TestEnv::setup();
+    let pid = std::process::id();
+    let repo = format!("e2e-art-perm-{pid}");
+    let _guard = RepoGuard::create(&env, &repo, "generic");
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("p.bin");
+    write_test_file(&file, 1024);
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "push",
+            &repo,
+            file.to_str().unwrap(),
+            "--path",
+            "p.bin",
+        ])
+        .assert()
+        .success();
+
+    let delete = ["artifact", "delete", &repo, "p.bin", "--permanent", "--yes"];
+    if common::server_older_than(1, 12, "permanent artifact deletes") {
+        env.ak_cmd()
+            .args(delete)
+            .assert()
+            .code(6)
+            .stderr(predicate::str::contains("needs a server on 1.12"));
+        return;
+    }
+    env.ak_cmd().args(delete).assert().success();
+
+    write_test_file(&file, 2048);
+    env.ak_cmd()
+        .args([
+            "artifact",
+            "push",
+            &repo,
+            file.to_str().unwrap(),
+            "--path",
+            "p.bin",
+        ])
+        .assert()
+        .success();
+}

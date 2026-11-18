@@ -178,6 +178,11 @@ pub enum ArtifactCommand {
         /// Artifact path
         path: String,
 
+        /// Also purge it from the trash, so its path can be uploaded again at once.
+        /// Admins only, not on OCI repositories. Needs a 1.12 server
+        #[arg(long)]
+        permanent: bool,
+
         /// Skip confirmation prompt
         #[arg(long, short = 'y')]
         yes: bool,
@@ -485,7 +490,12 @@ impl ArtifactCommand {
                     upload_session_cancel(session_id, yes, global).await
                 }
             },
-            Self::Delete { repo, path, yes } => delete(&repo, &path, yes, global).await,
+            Self::Delete {
+                repo,
+                path,
+                permanent,
+                yes,
+            } => delete(&repo, &path, permanent, yes, global).await,
             Self::Search {
                 query,
                 repo,
@@ -1768,34 +1778,56 @@ async fn upload_session_cancel(
     Ok(())
 }
 
+/// `ak artifact delete`. `permanent` also purges it from the trash, which a 1.11
+/// server doesn't know: it would take the query and only move it to the trash.
 pub(crate) async fn delete(
     repo: &str,
     artifact_path: &str,
+    permanent: bool,
     skip_confirm: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
-    if !confirm_action(
-        &format!("Delete '{artifact_path}' from '{repo}'? This cannot be undone"),
-        skip_confirm,
-        global.no_input,
-    )? {
+    let prompt = if permanent {
+        format!(
+            "Delete '{artifact_path}' from '{repo}' and purge it from the trash? It can't be \
+             restored"
+        )
+    } else {
+        format!("Delete '{artifact_path}' from '{repo}'? This cannot be undone")
+    };
+    if permanent {
+        super::helpers::refuse_flags_before(&["--permanent"], (1, 12), global).await?;
+    }
+    if !confirm_action(&prompt, skip_confirm, global.no_input)? {
         return Ok(());
     }
 
     let client = client_for(global)?;
 
-    client
-        .delete_artifact()
-        .key(repo)
-        .path(artifact_path)
+    let mut request = client.delete_artifact().key(repo).path(artifact_path);
+    if permanent {
+        request = request.permanent(true);
+    }
+    request
         .send()
         .await
         .map_err(|e| crate::commands::helpers::sdk_err("delete artifact", e))?;
 
+    let (status, human) = if permanent {
+        (
+            "purged",
+            format!("Deleted '{artifact_path}' from '{repo}' and purged it from the trash."),
+        )
+    } else {
+        (
+            "deleted",
+            format!("Deleted '{artifact_path}' from '{repo}'."),
+        )
+    };
     emit_mutation(
-        &serde_json::json!({ "repo_key": repo, "path": artifact_path, "status": "deleted" }),
+        &serde_json::json!({ "repo_key": repo, "path": artifact_path, "status": status }),
         artifact_path,
-        &format!("Deleted '{artifact_path}' from '{repo}'."),
+        &human,
         global,
     );
     Ok(())
@@ -2588,9 +2620,16 @@ mod tests {
     #[test]
     fn parse_delete() {
         let cli = parse(&["test", "delete", "my-repo", "org/pkg/1.0/pkg.jar"]);
-        if let ArtifactCommand::Delete { repo, path, yes } = cli.command {
+        if let ArtifactCommand::Delete {
+            repo,
+            path,
+            permanent,
+            yes,
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(path, "org/pkg/1.0/pkg.jar");
+            assert!(!permanent);
             assert!(!yes);
         } else {
             panic!("Expected ArtifactCommand::Delete");
@@ -2600,7 +2639,10 @@ mod tests {
     #[test]
     fn parse_delete_with_yes() {
         let cli = parse(&["test", "delete", "my-repo", "path/to/file", "--yes"]);
-        if let ArtifactCommand::Delete { repo, path, yes } = cli.command {
+        if let ArtifactCommand::Delete {
+            repo, path, yes, ..
+        } = cli.command
+        {
             assert_eq!(repo, "my-repo");
             assert_eq!(path, "path/to/file");
             assert!(yes);
@@ -3061,7 +3103,7 @@ mod tests {
 
         // no_input=true in test_global, so no confirmation prompt
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = delete("my-repo", "path/to/file", true, &global).await;
+        let result = delete("my-repo", "path/to/file", false, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
