@@ -377,28 +377,52 @@ fn save_new_instance(target: &LoginTarget) -> Result<()> {
 async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
     let target = resolve_login_target(args.url.as_deref(), global)?;
     let at_terminal = std::io::IsTerminal::is_terminal(&std::io::stdin());
-    let device = match login_method(args, global.no_input, at_terminal) {
-        LoginMethod::Device => true,
-        LoginMethod::Other => false,
-        LoginMethod::DeviceIfOffered => {
-            let offered = server_offers_device_login(&target.instance).await;
-            if offered {
-                eprintln!("{}\n", default_device_notice(&target.name));
-            }
-            offered
+    match login_method(args, global.no_input, at_terminal) {
+        LoginMethod::Device => device_login(&target, args, global, true).await?,
+        LoginMethod::DeviceIfOffered if server_offers_device_login(&target.instance).await => {
+            eprintln!("{}\n", default_device_notice(&target.name));
+            device_login(&target, args, global, false).await?
         }
-    };
-    if device {
-        let scopes = device_scopes(args);
-        crate::commands::device_flow::login(&target.name, &target.instance, &scopes, global)
-            .await?;
-    } else {
-        login_to(&target.name, &target.instance, args, global).await?;
+        LoginMethod::DeviceIfOffered | LoginMethod::Other => {
+            login_to(&target.name, &target.instance, args, global).await?
+        }
     }
     if target.is_new {
         save_new_instance(&target)?;
     }
     Ok(())
+}
+
+/// Sign in with the device grant. If the server can't start one (a 429 or 503, a
+/// proxy that blocks the route, no answer), nothing has been shown yet: a login that
+/// chose it by default goes on to the password or token prompt, and one asked for
+/// with `--device` fails and says how to sign in another way.
+async fn device_login(
+    target: &LoginTarget,
+    args: &LoginArgs,
+    global: &GlobalArgs,
+    explicit: bool,
+) -> Result<()> {
+    use crate::commands::device_flow;
+
+    let scopes = device_scopes(args);
+    match device_flow::start(&target.name, &target.instance, &scopes).await {
+        Ok(started) => {
+            device_flow::finish(&target.name, &target.instance, started, global, None).await
+        }
+        Err(error) if !explicit => {
+            let reason = error.to_string().replace(['\n', '\r'], " ");
+            eprintln!(
+                "Browser sign-in couldn't start ({reason}). Signing in with a password or \
+                 token instead."
+            );
+            login_to(&target.name, &target.instance, args, global).await
+        }
+        Err(error) => Err(error.wrap_err(
+            "Device sign-in couldn't start. `ak auth login --password` signs in with a \
+             username and password instead, and `--token` with an API token",
+        )),
+    }
 }
 
 /// The scopes a device login asks for. A bare login asks for the non-admin ceiling,
@@ -500,14 +524,14 @@ fn login_method(args: &LoginArgs, no_input: bool, at_terminal: bool) -> LoginMet
 }
 
 /// Whether the server says device sign-in is on (`AuthConfig.device_authorization_enabled`,
-/// new in 1.12). Anything else, a 1.11 server that doesn't send it, an error or a
-/// slow answer, means no, and the login goes the old way.
+/// new in 1.12). Anything else, a 1.11 server that doesn't send it, an error or an
+/// answer slower than 3 seconds, means no, and the login goes the old way.
 async fn server_offers_device_login(instance: &InstanceConfig) -> bool {
     let Ok(client) = anon_client(&instance.url) else {
         return false;
     };
     let config = tokio::time::timeout(
-        std::time::Duration::from_secs(10),
+        std::time::Duration::from_secs(3),
         client.get_system_config().send(),
     )
     .await;
@@ -1924,6 +1948,80 @@ mod tests {
             scoped_session_refusal("403 Forbidden: Admin access required", &claims),
             None
         );
+    }
+
+    fn target_at(url: String) -> LoginTarget {
+        LoginTarget {
+            name: "t".into(),
+            instance: InstanceConfig {
+                url,
+                api_version: "v1".into(),
+                allow_insecure_http: false,
+            },
+            is_new: false,
+        }
+    }
+
+    async fn device_code_answers(status: u16) -> MockServer {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/api/v1/auth/device/code"))
+            .respond_with(
+                ResponseTemplate::new(status).set_body_json(serde_json::json!({
+                    "error": "temporarily_unavailable",
+                    "error_description": "try later"
+                })),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+        server
+    }
+
+    #[tokio::test]
+    async fn a_default_device_login_that_cant_start_falls_back_to_the_old_prompt() {
+        let server = device_code_answers(503).await;
+        let global = crate::test_utils::test_global(OutputFormat::Table);
+        // With --no-input the old prompt can't ask, so reaching it is this usage error
+        // rather than the device error.
+        let err = device_login(&target_at(server.uri()), &login_args(&[]), &global, false)
+            .await
+            .unwrap_err();
+        let shown = format!("{err:?}");
+        assert!(shown.contains("Cannot prompt for credentials"), "{shown}");
+        assert!(!shown.contains("temporarily_unavailable"), "{shown}");
+    }
+
+    #[tokio::test]
+    async fn a_default_device_login_with_no_answer_falls_back_too() {
+        // Nothing listens on a port a dropped server had.
+        let url = {
+            let server = MockServer::start().await;
+            server.uri()
+        };
+        let global = crate::test_utils::test_global(OutputFormat::Table);
+        let err = device_login(&target_at(url), &login_args(&[]), &global, false)
+            .await
+            .unwrap_err();
+        let shown = format!("{err:?}");
+        assert!(shown.contains("Cannot prompt for credentials"), "{shown}");
+    }
+
+    #[tokio::test]
+    async fn an_explicit_device_login_that_cant_start_fails_and_mentions_password() {
+        let server = device_code_answers(429).await;
+        let global = crate::test_utils::test_global(OutputFormat::Table);
+        let err = device_login(
+            &target_at(server.uri()),
+            &login_args(&["--device"]),
+            &global,
+            true,
+        )
+        .await
+        .unwrap_err();
+        let shown = format!("{err:?}");
+        assert!(shown.contains("ak auth login --password"), "{shown}");
+        assert!(shown.contains("temporarily_unavailable"), "{shown}");
     }
 
     async fn config_server(auth: serde_json::Value) -> (MockServer, InstanceConfig) {

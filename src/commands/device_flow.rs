@@ -592,16 +592,9 @@ async fn backoff(policy: &PollPolicy, failures: u32) {
     .await;
 }
 
-/// Run the full flow and store the resulting credential.
-pub(crate) async fn login(
-    instance_name: &str,
-    instance: &InstanceConfig,
-    requested_scopes: &[String],
-    global: &GlobalArgs,
-) -> Result<()> {
-    login_with_policy(instance_name, instance, requested_scopes, global, None).await
-}
-
+/// The full flow with a test's poll timing. The command runs [`start`] and
+/// [`finish`] itself, so it can fall back when the server won't start one.
+#[cfg(test)]
 async fn login_with_policy(
     instance_name: &str,
     instance: &InstanceConfig,
@@ -609,6 +602,23 @@ async fn login_with_policy(
     global: &GlobalArgs,
     policy: Option<PollPolicy>,
 ) -> Result<()> {
+    let started = start(instance_name, instance, requested_scopes).await?;
+    finish(instance_name, instance, started, global, policy).await
+}
+
+/// A device authorization the server has issued a code for, not yet shown to anyone.
+pub(crate) struct Started {
+    client: reqwest::Client,
+    code: DeviceCodeResponse,
+}
+
+/// Ask the server for a device code. Nothing has been shown to the user when this
+/// fails, so a caller can still sign in another way.
+pub(crate) async fn start(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    requested_scopes: &[String],
+) -> Result<Started> {
     // The device code is a bearer-like secret: it redeems for a refreshable
     // session. Refuse plaintext HTTP to a remote host for the same reason
     // password login does.
@@ -630,7 +640,18 @@ async fn login_with_policy(
         &scope,
     )
     .await?;
+    Ok(Started { client, code })
+}
 
+/// Show the code, wait for the approval and store the session.
+pub(crate) async fn finish(
+    instance_name: &str,
+    instance: &InstanceConfig,
+    started: Started,
+    global: &GlobalArgs,
+    policy: Option<PollPolicy>,
+) -> Result<()> {
+    let Started { client, code } = started;
     eprintln!("{}", prompt_text(&code));
     if should_open_browser(global.no_input) {
         try_open_browser(&code.verification_uri);

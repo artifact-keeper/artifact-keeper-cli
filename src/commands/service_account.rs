@@ -199,6 +199,11 @@ impl TokenCommand {
                 token,
                 token_stdin,
             } => {
+                let token_flag = if token_stdin {
+                    "--token-stdin"
+                } else {
+                    "--token"
+                };
                 let token = resolve_secret(token, token_stdin, "--token", None, global.no_input)?;
                 create_token(
                     &account,
@@ -209,6 +214,7 @@ impl TokenCommand {
                     repo_selector.as_deref(),
                     description.as_deref(),
                     token,
+                    token_flag,
                     global,
                 )
                 .await
@@ -581,6 +587,7 @@ async fn create_token(
     repo_selector: Option<&str>,
     description: Option<&str>,
     token: Option<String>,
+    token_flag: &str,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -588,7 +595,7 @@ async fn create_token(
     if token.is_some() {
         // A 1.11 server would ignore it and make up a token, and the one the
         // external store holds would never work.
-        refuse_flags_before(&["--token"], (1, 12), global).await?;
+        refuse_flags_before(&[token_flag], (1, 12), global).await?;
     }
 
     let repo_ids = if repository_ids.is_empty() {
@@ -1298,6 +1305,7 @@ mod tests {
                 None,
                 None,
                 None,
+                "--token",
                 &global
             )
             .await
@@ -1394,6 +1402,7 @@ mod tests {
             None,
             None,
             Some(CHOSEN.to_string()),
+            "--token",
             &global,
         )
         .await;
@@ -1423,12 +1432,16 @@ mod tests {
             None,
             None,
             Some(CHOSEN.to_string()),
+            "--token-stdin",
             &global,
         )
         .await
         .unwrap_err()
         .to_string();
-        assert!(err.contains("--token needs a server on 1.12"), "{err}");
+        assert!(
+            err.contains("--token-stdin needs a server on 1.12"),
+            "{err}"
+        );
         crate::test_utils::teardown_env();
     }
 
