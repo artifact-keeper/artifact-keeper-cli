@@ -5,7 +5,7 @@ use miette::{IntoDiagnostic, Result};
 
 use super::client::{anon_client, authenticated_client, build_client, client_for};
 use super::helpers::{
-    parse_json_arg, parse_uuid, raw_err, require_secret, resolve_secret, sdk_err,
+    PromptResult, parse_json_arg, parse_uuid, raw_err, require_secret, resolve_secret, sdk_err,
 };
 use crate::cli::GlobalArgs;
 use crate::config::credentials::{
@@ -427,7 +427,7 @@ async fn login_to(
         .items(methods)
         .default(0)
         .interact()
-        .into_diagnostic()?;
+        .prompt_diagnostic()?;
 
     match selection {
         0 => login_with_password(instance_name, instance, args, global).await,
@@ -448,7 +448,7 @@ async fn login_with_token(instance_name: &str, instance: &InstanceConfig) -> Res
     let token = dialoguer::Password::new()
         .with_prompt("Token")
         .interact()
-        .into_diagnostic()?;
+        .prompt_diagnostic()?;
     store_token(instance_name, instance, token).await
 }
 
@@ -500,7 +500,7 @@ fn login_credentials(args: &LoginArgs, global: &GlobalArgs) -> Result<(String, S
         None => dialoguer::Input::new()
             .with_prompt("Username")
             .interact_text()
-            .into_diagnostic()?,
+            .prompt_diagnostic()?,
     };
     let password = require_secret(
         resolve_secret(
@@ -1286,7 +1286,7 @@ async fn token_create(
             .with_prompt("Token name")
             .default(default_name)
             .interact_text()
-            .into_diagnostic()?,
+            .prompt_diagnostic()?,
     };
 
     let body = artifact_keeper_sdk::types::CreateApiTokenRequest {

@@ -636,8 +636,28 @@ fn resolve_secret_from<R: std::io::Read>(
         .with_prompt(prompt)
         .allow_empty_password(true)
         .interact()
-        .into_diagnostic()?;
+        .prompt_diagnostic()?;
     Ok(non_empty(entered))
+}
+
+/// A prompt that failed, keeping its I/O error as the `source`, where
+/// `explain_no_terminal` in `main.rs` looks for "not a terminal". dialoguer 0.12
+/// stopped reporting it as a source, and `into_diagnostic` hides the error itself,
+/// so a dialoguer error put straight into a report reads as a generic failure.
+#[derive(Debug, thiserror::Error)]
+#[error("IO error: {0}")]
+struct PromptFailed(#[source] std::io::Error);
+
+/// `into_diagnostic` for a dialoguer prompt's result. Use this rather than
+/// `into_diagnostic`, or a prompt with no terminal exits 1 rather than 2.
+pub trait PromptResult<T> {
+    fn prompt_diagnostic(self) -> Result<T>;
+}
+
+impl<T> PromptResult<T> for dialoguer::Result<T> {
+    fn prompt_diagnostic(self) -> Result<T> {
+        self.map_err(|e| PromptFailed(e.into())).into_diagnostic()
+    }
 }
 
 /// The error dialoguer gives for a prompt with no terminal to ask on.
@@ -684,7 +704,7 @@ pub fn confirm_action(prompt: &str, yes: bool, no_input: bool) -> Result<bool> {
         .with_prompt(prompt)
         .default(false)
         .interact()
-        .into_diagnostic()?;
+        .prompt_diagnostic()?;
     if !confirmed {
         eprintln!("Cancelled.");
     }

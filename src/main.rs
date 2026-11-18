@@ -221,8 +221,12 @@ mod no_terminal_tests {
 
     #[test]
     fn a_failed_prompt_is_recognised() {
-        let e = Err::<(), _>(prompt_error()).into_diagnostic().unwrap_err();
+        use commands::helpers::PromptResult;
+        let e = Err::<(), _>(prompt_error())
+            .prompt_diagnostic()
+            .unwrap_err();
         assert!(is_no_terminal(&e));
+        assert_eq!(e.to_string(), "IO error: not a terminal");
     }
 
     #[test]

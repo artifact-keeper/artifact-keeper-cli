@@ -6,8 +6,8 @@ use miette::{IntoDiagnostic, Result};
 
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, raw_err,
-    read_inline_or_file, resolve_secret, sdk_err,
+    PromptResult, confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg,
+    raw_err, read_inline_or_file, resolve_secret, sdk_err,
 };
 use super::repo_settings::{
     self, AllowlistCommand, EgressProxyCommand, NpmScopePolicyCommand, UpstreamFilterCommand,
@@ -1450,7 +1450,7 @@ async fn browse_repo(key: &str, global: &GlobalArgs) -> Result<()> {
         .with_prompt(format!("Browse artifacts in '{key}'"))
         .items(&items)
         .interact_opt()
-        .into_diagnostic()?;
+        .prompt_diagnostic()?;
 
     if let Some(idx) = selection {
         let artifact = &resp.items[idx];

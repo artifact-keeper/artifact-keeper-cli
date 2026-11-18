@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Regenerated the SDK from the API 1.12.1 spec, the first published 1.12 (there is no 1.12.0 spec), adding the 64 operations and the fields new since 1.11.11. `ROUTES.json` is read from backend 1.12.1, and the fields 1.12.1 requires but 1.11 servers don't send are generated as optional, so a 1.11 server still works (#294, #302, #308).
 - `ak` is now 1.12.0, built for API 1.12.1, and supports servers on 1.12 and 1.11. Commands still send what they sent before: the new 1.12 request fields go out unset until their flags arrive. `ak admin settings show` no longer has an Allow Anonymous Download line, which 1.12 doesn't send, and `ak admin settings update` takes only the fields 1.12 accepts (#319).
+- Updated the prompt and progress libraries together: `indicatif` 0.18, `console` 0.16 and `dialoguer` 0.12. `indicatif` 0.18 drops the unmaintained `number_prefix` (RUSTSEC-2025-0119), and with one `console` in the build, `--color never` and `NO_COLOR` keep reaching every prompt, spinner and progress bar. The unused `cliclack` dependency is gone (#161).
 
 ### Removed
 

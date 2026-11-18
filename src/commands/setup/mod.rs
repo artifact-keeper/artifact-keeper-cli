@@ -7,6 +7,7 @@ use clap::Subcommand;
 use miette::{IntoDiagnostic, Result};
 
 use super::client::authenticated_client;
+use super::helpers::PromptResult;
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 
@@ -379,7 +380,7 @@ async fn resolve_setup(
                 .with_prompt(format!("Select {format} repository"))
                 .items(&items)
                 .interact()
-                .into_diagnostic()?;
+                .prompt_diagnostic()?;
 
             repos.items[selection].key.clone()
         }
@@ -623,7 +624,7 @@ fn confirm_prompt(no_input: bool) -> Result<bool> {
         .with_prompt("Write this configuration?")
         .default(true)
         .interact()
-        .into_diagnostic()
+        .prompt_diagnostic()
 }
 
 /// Write content to a system path with `sudo install`, which creates the file
@@ -1094,7 +1095,7 @@ async fn setup_go(repo: Option<&str>, options: SetupOptions, global: &GlobalArgs
         .with_prompt("Write this to .netrc now?")
         .default(true)
         .interact()
-        .into_diagnostic()?;
+        .prompt_diagnostic()?;
 
     if write_netrc {
         let existing = read_existing(&netrc_path)?;
@@ -1235,7 +1236,7 @@ async fn setup_yum(repo: Option<&str>, options: SetupOptions, global: &GlobalArg
         .with_prompt("Write with sudo?")
         .default(false)
         .interact()
-        .into_diagnostic()?;
+        .prompt_diagnostic()?;
 
     if !proceed {
         eprintln!("Skipped. Run the command above manually.");
@@ -1298,7 +1299,7 @@ async fn setup_apt(repo: Option<&str>, options: SetupOptions, global: &GlobalArg
         .with_prompt("Write with sudo?")
         .default(false)
         .interact()
-        .into_diagnostic()?;
+        .prompt_diagnostic()?;
 
     if !proceed {
         eprintln!("Skipped. Run the commands above manually.");
