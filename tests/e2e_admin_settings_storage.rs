@@ -98,10 +98,15 @@ fn system_settings_update_refuses_what_the_server_would_not_apply() {
     let env = common::TestEnv::setup();
     let before = run(&env, &["admin", "settings", "show"]);
     let upload = before["max_upload_size_bytes"].as_i64().unwrap();
+    // 1.11 reports allow_anonymous_download, and the value in force changes
+    // nothing, so ask for the other one. 1.12 doesn't have it at all.
+    let anonymous = !before["allow_anonymous_download"]
+        .as_bool()
+        .unwrap_or(false);
     for (json, expected) in [
         (r#"{"retention_dayz":1}"#.to_string(), "retention_dayz"),
         (
-            r#"{"allow_anonymous_download":true}"#.to_string(),
+            format!(r#"{{"allow_anonymous_download":{anonymous}}}"#),
             "--guest-access",
         ),
         (

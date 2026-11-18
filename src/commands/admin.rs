@@ -3370,6 +3370,20 @@ const READ_ONLY_SETTINGS: &[(&str, &str)] = &[
     ),
 ];
 
+/// Whether two setting values are the same. Numbers compare by value, so `5.0` is
+/// the `5` a server reports.
+fn same_setting_value(a: &serde_json::Value, b: &serde_json::Value) -> bool {
+    match (a, b) {
+        (serde_json::Value::Number(x), serde_json::Value::Number(y)) => {
+            match (x.as_i64(), y.as_i64()) {
+                (Some(x), Some(y)) => x == y,
+                _ => x.as_f64().zip(y.as_f64()).is_some_and(|(x, y)| x == y),
+            }
+        }
+        _ => a == b,
+    }
+}
+
 /// What `settings update --json` changes: the writable fields it gives, after
 /// refusing a field the server doesn't have or wouldn't apply. The server would
 /// drop an unknown field and answer 200, so `ak` would report a change that never
@@ -3398,12 +3412,26 @@ fn settings_change(
         ))
         .into());
     }
+    // A null would read as "no change" on 1.12 and fail on 1.11: neither is what
+    // was asked for.
+    let nulls: Vec<&str> = given
+        .iter()
+        .filter(|(_, v)| v.is_null())
+        .map(|(k, _)| k.as_str())
+        .collect();
+    if !nulls.is_empty() {
+        return Err(AkError::Usage(format!(
+            "--json: {} can't be null: give a value. Nothing was changed.",
+            nulls.join(", ")
+        ))
+        .into());
+    }
     for (key, reason) in READ_ONLY_SETTINGS {
         let Some(value) = given.get(*key) else {
             continue;
         };
         let in_force = current.get(*key);
-        if in_force != Some(value) {
+        if !in_force.is_some_and(|v| same_setting_value(v, value)) {
             let in_force = in_force.map_or("not reported by this server".to_string(), |v| {
                 format!("in force: {v}")
             });
@@ -3433,31 +3461,32 @@ fn settings_change(
     Ok(change)
 }
 
-/// `ak admin settings update`. A 1.12 server takes the fields that change. A 1.11
-/// server takes only the whole `SystemSettings`, so `ak` sends what's in force with
-/// the change applied. Its `GET` body is what tells them apart: only 1.11 reports
-/// `allow_anonymous_download`.
-async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
-    let given: serde_json::Value = serde_json::from_str(json_str)
-        .map_err(|e| crate::error::AkError::Usage(format!("Invalid settings JSON: {e}")))?;
-    let client = client_for(global)?;
-    let spinner = output::spinner("Updating settings...");
+/// What `update_settings` sent, and what came back.
+struct SettingsUpdate {
+    current: serde_json::Value,
+    change: serde_json::Map<String, serde_json::Value>,
+    settings: artifact_keeper_sdk::types::SystemSettings,
+    raw: Option<Vec<u8>>,
+}
 
+async fn send_settings_update(
+    client: &artifact_keeper_sdk::Client,
+    given: &serde_json::Value,
+    global: &GlobalArgs,
+) -> Result<SettingsUpdate> {
     let (current, current_raw) =
         artifact_keeper_sdk::raw::capture(client.get_settings().send()).await;
     current.map_err(|e| sdk_err("read the settings in force", e))?;
     let current: serde_json::Value =
         serde_json::from_slice(current_raw.as_deref().unwrap_or_default())
             .map_err(|e| super::helpers::bad_response("read the settings in force", e))?;
-    let change = match settings_change(&given, &current) {
-        Ok(change) => change,
-        Err(e) => {
-            spinner.finish_and_clear();
-            return Err(e);
-        }
-    };
+    let change = settings_change(given, &current)?;
 
-    let (settings, raw) = if current.get("allow_anonymous_download").is_some() {
+    let takes_whole_body = match super::helpers::server_minor(global).await {
+        Some(minor) => minor < (1, 12),
+        None => current.get("allow_anonymous_download").is_some(),
+    };
+    let (settings, raw) = if takes_whole_body {
         let mut full = current.clone();
         for (key, value) in &change {
             full[key] = value.clone();
@@ -3487,8 +3516,31 @@ async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
             raw,
         )
     };
+    Ok(SettingsUpdate {
+        current,
+        change,
+        settings,
+        raw,
+    })
+}
 
+/// `ak admin settings update`. A 1.12 server takes the fields that change. A 1.11
+/// server takes only the whole `SystemSettings`, so `ak` sends what's in force with
+/// the change applied. The server's version tells them apart. When it can't be
+/// read, the `GET` body does: only 1.11 reports `allow_anonymous_download`.
+async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
+    let given: serde_json::Value = serde_json::from_str(json_str)
+        .map_err(|e| crate::error::AkError::Usage(format!("Invalid settings JSON: {e}")))?;
+    let client = client_for(global)?;
+    let spinner = output::spinner("Updating settings...");
+    let sent = send_settings_update(&client, &given, global).await;
     spinner.finish_and_clear();
+    let SettingsUpdate {
+        current,
+        change,
+        settings,
+        raw,
+    } = sent?;
 
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         let info = serde_json::json!({

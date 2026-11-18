@@ -229,6 +229,13 @@ pub async fn server_older_than(minor: Minor, global: &GlobalArgs) -> Option<Stri
     (found < minor).then_some(version)
 }
 
+/// The instance's server minor, if its version can be read. For a command that does
+/// something different on each supported minor, rather than refusing on the older.
+pub async fn server_minor(global: &GlobalArgs) -> Option<Minor> {
+    let version = read_server_version(global).await?;
+    super::doctor::major_minor(&version)
+}
+
 async fn read_server_version(global: &GlobalArgs) -> Option<String> {
     let config = crate::config::AppConfig::load().ok()?;
     let (_, instance) = config.resolve_instance(global.instance.as_deref()).ok()?;
