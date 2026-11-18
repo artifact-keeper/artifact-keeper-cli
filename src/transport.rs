@@ -95,6 +95,28 @@ pub fn apply_custom_ca(
     Ok(builder)
 }
 
+/// The `User-Agent` the CLI sends: `ak/<version> (<os>; <arch>)`, such as
+/// `ak/1.12.0 (linux; x86_64)`, so a server's access log can tell `ak` and its
+/// version apart from other clients.
+pub fn user_agent() -> &'static str {
+    static UA: OnceLock<String> = OnceLock::new();
+    UA.get_or_init(|| {
+        format!(
+            "ak/{} ({}; {})",
+            env!("CARGO_PKG_VERSION"),
+            std::env::consts::OS,
+            std::env::consts::ARCH
+        )
+    })
+}
+
+/// The starting point for every HTTP client the CLI builds, the SDK's and the
+/// raw ones alike. It sets the [`user_agent`]; apply the custom CA with
+/// [`apply_custom_ca`] before building.
+pub fn client_builder() -> reqwest::ClientBuilder {
+    reqwest::ClientBuilder::new().user_agent(user_agent())
+}
+
 /// How safe it is to send credentials to a given instance URL.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportSecurity {

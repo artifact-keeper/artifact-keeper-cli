@@ -328,7 +328,7 @@ impl App {
                 None => continue,
             };
 
-            let builder = reqwest::ClientBuilder::new()
+            let builder = crate::transport::client_builder()
                 .connect_timeout(std::time::Duration::from_secs(3))
                 .timeout(std::time::Duration::from_secs(5));
             let http_client = match crate::transport::apply_custom_ca(builder).map(|b| b.build()) {

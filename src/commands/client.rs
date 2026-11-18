@@ -159,7 +159,7 @@ fn build_client_with_timeout(
             .map_err(|e| AkError::ConfigError(format!("Invalid token: {e}")))?,
     );
 
-    let builder = reqwest::ClientBuilder::new()
+    let builder = crate::transport::client_builder()
         .default_headers(headers)
         .redirect(redirects)
         .connect_timeout(Duration::from_secs(15))
@@ -190,7 +190,7 @@ pub fn anon_client_with_headers(
     url: &str,
     headers: reqwest::header::HeaderMap,
 ) -> Result<artifact_keeper_sdk::Client> {
-    let builder = reqwest::ClientBuilder::new()
+    let builder = crate::transport::client_builder()
         .default_headers(headers)
         .redirect(redirect_policy())
         .connect_timeout(Duration::from_secs(15))
@@ -229,7 +229,7 @@ pub fn raw_download_client() -> Result<reqwest::Client> {
 /// The starting point of [`raw_http_client`], for a caller that sets its own
 /// redirect policy. Apply the custom CA before building.
 pub fn raw_http_client_builder(redirects: reqwest::redirect::Policy) -> reqwest::ClientBuilder {
-    reqwest::ClientBuilder::new()
+    crate::transport::client_builder()
         .connect_timeout(Duration::from_secs(15))
         .redirect(redirects)
 }
@@ -316,6 +316,75 @@ pub fn client_for_public(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Cli
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_agent_names_the_cli_version_os_and_arch() {
+        assert_eq!(
+            crate::transport::user_agent(),
+            format!(
+                "ak/{} ({}; {})",
+                env!("CARGO_PKG_VERSION"),
+                std::env::consts::OS,
+                std::env::consts::ARCH
+            )
+        );
+    }
+
+    /// Every way the CLI builds a client sends `User-Agent: ak/<version> (<os>; <arch>)`:
+    /// the authenticated and anonymous SDK clients, and the raw transport.
+    #[tokio::test]
+    async fn every_client_sends_the_user_agent() {
+        use artifact_keeper_sdk::ClientAuthExt;
+        use wiremock::matchers::{header, method, path};
+        use wiremock::{Mock, ResponseTemplate};
+
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        let ua = crate::transport::user_agent();
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/setup/status"))
+            .and(header("user-agent", ua))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({ "setup_required": false })),
+            )
+            .expect(3)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/raw"))
+            .and(header("user-agent", ua))
+            .respond_with(ResponseTemplate::new(204))
+            .expect(2)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let authed = client_for(&global).unwrap();
+        authed.setup_status().send().await.unwrap();
+        anon_client(&server.uri())
+            .unwrap()
+            .setup_status()
+            .send()
+            .await
+            .unwrap();
+        client_for_public(&global)
+            .unwrap()
+            .setup_status()
+            .send()
+            .await
+            .unwrap();
+
+        let raw = format!("{}/raw", server.uri());
+        for client in [raw_http_client().unwrap(), raw_download_client().unwrap()] {
+            let status = client.get(&raw).send().await.unwrap().status();
+            assert_eq!(status, 204);
+        }
+
+        crate::test_utils::teardown_env();
+        server.verify().await;
+    }
 
     fn urls(chain: &[&str]) -> Vec<Url> {
         chain.iter().map(|u| Url::parse(u).unwrap()).collect()

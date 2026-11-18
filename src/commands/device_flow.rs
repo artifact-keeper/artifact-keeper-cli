@@ -333,7 +333,7 @@ fn device_endpoint(instance: &InstanceConfig, leaf: &str) -> String {
 
 fn build_http_client() -> Result<reqwest::Client> {
     // No redirects: a 307 or 308 would resend the device code to another host.
-    let builder = reqwest::ClientBuilder::new()
+    let builder = crate::transport::client_builder()
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT)
         .redirect(reqwest::redirect::Policy::none());
