@@ -390,21 +390,22 @@ async fn backfill_debian_asks_unless_it_is_a_dry_run() {
 }
 
 #[tokio::test]
-async fn trash_purge_and_backfill_on_1_11_need_1_12() {
+async fn trash_purge_and_backfill_on_1_11_need_1_12_and_send_nothing() {
+    // The version check comes before the prompt, and before the request.
     let server = server_on("1.11.14").await;
     needs_1_12(
         &server,
         &["admin", "trash", "purge", UUID, "--yes"],
         "`ak admin trash purge` needs a server on 1.12",
-        &[&format!("DELETE /api/v1/admin/trash/{UUID}")],
+        &[],
     )
     .await;
     let server = server_on("1.11.14").await;
     needs_1_12(
         &server,
-        &["admin", "repo", "backfill-debian", "deb", "--dry-run"],
+        &["admin", "repo", "backfill-debian", "deb", "--yes"],
         "`ak admin repo backfill-debian` needs a server on 1.12",
-        &["POST /api/v1/admin/repositories/deb/backfill-debian"],
+        &[],
     )
     .await;
 }
@@ -526,6 +527,25 @@ async fn runtime_settings_send_the_new_fields() {
     let server = server_on("1.12.1").await;
     let output = ak(&server, &["admin", "settings", "system", "update"]).await;
     assert_eq!(output.status.code(), Some(2), "{output:?}");
+    // An empty list isn't how to clear it.
+    let output = ak(
+        &server,
+        &[
+            "admin",
+            "settings",
+            "system",
+            "update",
+            "--hidden-nav-items",
+            "",
+        ],
+    )
+    .await;
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(
+        one_line(&output).contains("--no-hidden-nav-items"),
+        "{output:?}"
+    );
+    assert!(sent(&server).await.is_empty());
 }
 
 fn provider() -> Value {

@@ -38,7 +38,9 @@ pub enum ConfigCommand {
     Plan(ImportArgs),
 
     /// Create the repositories a document has and this instance doesn't, and update
-    /// the settings that differ. Asks first, with what it will change
+    /// the settings that differ. Asks first, with what a plan says it will change.
+    /// The server plans again when it applies, so a change made on the instance
+    /// between the prompt and the apply is applied without being shown
     Apply {
         #[command(flatten)]
         import: ImportArgs,
@@ -61,7 +63,7 @@ pub struct ImportArgs {
     secrets_file: Option<String>,
 
     /// Also delete the repositories on this instance that the document doesn't name.
-    /// Servers up to 1.12.1 refuse it, and delete nothing
+    /// 1.12.1 servers refuse it, and delete nothing
     #[arg(long)]
     prune: bool,
 }
@@ -109,7 +111,8 @@ async fn export(
 
     match output_file.as_deref() {
         Some(path) if path != "-" => {
-            std::fs::write(path, &raw)
+            tokio::fs::write(path, &raw)
+                .await
                 .map_err(|e| AkError::Local(format!("Can't write {path}: {e}")))?;
             if !matches!(global.format, OutputFormat::Quiet) {
                 eprintln!("Exported {count} repositories to {path}.");
@@ -533,16 +536,16 @@ mod tests {
     #[test]
     fn a_bad_document_or_secrets_file_is_refused() {
         let dir = tempfile::TempDir::new().unwrap();
-        for (document, secrets, needle) in [
+        for (document, extra, needle) in [
             ("not json", None, "isn't JSON"),
             ("[1]", None, "must be a JSON object"),
             ("{}", Some("[1]"), "--secrets-file must be a JSON object"),
             ("{}", Some(r#"{"a":1}"#), "the value of a must be a string"),
         ] {
-            let err = import_body(&args(&dir, document, secrets))
+            let err = import_body(&args(&dir, document, extra))
                 .unwrap_err()
                 .to_string();
-            assert!(err.contains(needle), "{document} {secrets:?}: {err}");
+            assert!(err.contains(needle), "case {needle}: {err}");
         }
     }
 }

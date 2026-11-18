@@ -127,6 +127,17 @@ impl SystemCommand {
                 no_hidden_nav_items,
                 upstream_jobs_paused,
             } => {
+                if hidden_nav_items
+                    .as_ref()
+                    .is_some_and(|items| items.iter().any(|i| i.trim().is_empty()))
+                {
+                    return Err(AkError::Usage(
+                        "--hidden-nav-items has an empty entry. To show every entry again, use \
+                         --no-hidden-nav-items"
+                            .into(),
+                    )
+                    .into());
+                }
                 let hidden_nav_items = match (hidden_nav_items, no_hidden_nav_items) {
                     (_, true) => Some(Vec::new()),
                     (items, false) => items,

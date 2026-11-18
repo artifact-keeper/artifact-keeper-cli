@@ -49,7 +49,8 @@ pub enum PackagesCommand {
         /// Package ID
         id: String,
 
-        /// Only the versions in this repository, by key. Needs a 1.12 server
+        /// Check the package is in this repository, by key, or in a virtual repository
+        /// that includes it. The server answers 404 if it isn't. Needs a 1.12 server
         #[arg(long)]
         repository_key: Option<String>,
     },
@@ -270,7 +271,7 @@ async fn list_versions(
     global: &GlobalArgs,
 ) -> Result<()> {
     let package_id = parse_uuid(id, "package")?;
-    // A 1.11 server ignores it, and would list every repository's versions.
+    // A 1.11 server ignores it, and would answer for a package outside the repository.
     if repository_key.is_some() {
         super::helpers::refuse_flags_before(&["--repository-key"], (1, 12), global).await?;
     }
