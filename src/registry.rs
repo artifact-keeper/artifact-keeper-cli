@@ -85,6 +85,7 @@ pub struct ClassExclusion {
 /// The URL prefix of each package-format wire protocol: `format_routes` in the
 /// backend's `routes.rs`. `/v2` isn't here: OCI has its own classes.
 pub const FORMAT_PREFIXES: &[&str] = &[
+    "/agentplugins",
     "/alpine",
     "/ansible",
     "/api/cargo",
@@ -110,6 +111,7 @@ pub const FORMAT_PREFIXES: &[&str] = &[
     "/lfs",
     "/lxc",
     "/maven",
+    "/mcp",
     "/npm",
     "/nuget",
     "/pacman",

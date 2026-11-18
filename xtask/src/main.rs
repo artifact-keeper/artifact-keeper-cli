@@ -278,8 +278,14 @@ fn convert_31_to_30(spec: &mut serde_json::Value) -> Vec<String> {
     // Progenitor rejects any other request content type it does not know
     alias_xml_request_bodies(spec);
 
+    // Progenitor panics on an operation with a success body and a bodiless 2xx
+    drop_bodiless_success_beside_a_body(spec);
+
     // Progenitor panics on an operation with two different success bodies
     merge_divergent_success_bodies(spec);
+
+    // Progenitor generates `Option<Option<String>>` for these, which doesn't compile
+    strip_null_from_optional_headers(spec);
 
     // Keep responses from the previous server minor deserializable
     relax_previous_minor_fields(spec);
@@ -400,6 +406,103 @@ fn alias_xml_request_bodies(spec: &mut serde_json::Value) {
                     path
                 );
                 content.insert("text/plain".to_string(), xml);
+            }
+        }
+    }
+}
+
+/// Drop a bodiless 2xx response from an operation whose other 2xx has a body.
+///
+/// Progenitor 0.12 panics (`response_types.len() <= 1`) on an operation that
+/// answers, say, `200` with JSON and `204` with nothing, because the two are
+/// different success types. The bodied response is what a caller reads, so it
+/// stays; the bodiless status then comes back as an error carrying its status,
+/// as any undocumented response does. Returns the dropped `METHOD /path status`.
+fn drop_bodiless_success_beside_a_body(spec: &mut serde_json::Value) -> Vec<String> {
+    let mut dropped = Vec::new();
+    let Some(paths) = spec.get_mut("paths").and_then(|p| p.as_object_mut()) else {
+        return dropped;
+    };
+    for (path, methods) in paths.iter_mut() {
+        let Some(methods) = methods.as_object_mut() else {
+            continue;
+        };
+        for (method, detail) in methods.iter_mut() {
+            let Some(responses) = detail.get_mut("responses").and_then(|r| r.as_object_mut())
+            else {
+                continue;
+            };
+            let bodiless = |resp: &serde_json::Value| {
+                resp.get("content")
+                    .and_then(|c| c.as_object())
+                    .is_none_or(|c| c.is_empty())
+            };
+            let success: Vec<String> = responses
+                .keys()
+                .filter(|code| code.starts_with('2'))
+                .cloned()
+                .collect();
+            if !success.iter().any(|code| !bodiless(&responses[code])) {
+                continue;
+            }
+            for code in success {
+                if bodiless(&responses[&code]) {
+                    eprintln!(
+                        "  Dropping bodiless {code} of {} {path}: it has a success body too",
+                        method.to_uppercase()
+                    );
+                    responses.remove(&code);
+                    dropped.push(format!("{} {path} {code}", method.to_uppercase()));
+                }
+            }
+        }
+    }
+    dropped
+}
+
+/// Make optional header parameters non-nullable.
+///
+/// An optional parameter is already an `Option` in the SDK. A schema of
+/// `["string", "null"]` on top makes Progenitor generate `Option<Option<String>>`
+/// and then call `.to_string()` on the inner `Option`, which doesn't compile.
+/// Leaving a header out is the only way to send "no value", so null adds nothing.
+fn strip_null_from_optional_headers(spec: &mut serde_json::Value) {
+    let Some(paths) = spec.get_mut("paths").and_then(|p| p.as_object_mut()) else {
+        return;
+    };
+    let parameter_lists = paths
+        .values_mut()
+        .filter_map(|item| item.as_object_mut())
+        .flat_map(|item| item.iter_mut())
+        .filter_map(|(key, value)| {
+            if key == "parameters" {
+                Some(value)
+            } else if HTTP_METHODS.contains(&key.as_str()) {
+                value.get_mut("parameters")
+            } else {
+                None
+            }
+        });
+    for list in parameter_lists {
+        let Some(list) = list.as_array_mut() else {
+            continue;
+        };
+        for param in list {
+            let optional_header = param.get("in").and_then(|i| i.as_str()) == Some("header")
+                && param.get("required").and_then(|r| r.as_bool()) != Some(true);
+            if !optional_header {
+                continue;
+            }
+            let Some(schema) = param.get_mut("schema").and_then(|s| s.as_object_mut()) else {
+                continue;
+            };
+            schema.remove("nullable");
+            if let Some(types) = schema.get_mut("type").and_then(|t| t.as_array_mut()) {
+                types.retain(|t| t.as_str() != Some("null"));
+                if types.len() == 1 {
+                    let only = types[0].clone();
+                    schema.insert("type".to_string(), only);
+                }
             }
         }
     }
@@ -743,4 +846,59 @@ fn workspace_root() -> Result<PathBuf> {
         .parent()
         .expect("Cargo.toml has parent")
         .to_path_buf())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn a_bodiless_success_beside_a_body_is_dropped() {
+        let mut spec = json!({"paths": {"/claim": {"post": {
+            "operationId": "claim",
+            "responses": {
+                "200": {"content": {"application/json": {"schema": {"type": "object"}}}},
+                "204": {"description": "Nothing is due"},
+                "400": {"description": "Malformed"}
+            }
+        }}}});
+        let dropped = drop_bodiless_success_beside_a_body(&mut spec);
+        assert_eq!(dropped, ["POST /claim 204"]);
+        let responses = &spec["paths"]["/claim"]["post"]["responses"];
+        assert!(responses.get("200").is_some());
+        assert!(responses.get("204").is_none());
+        assert!(responses.get("400").is_some());
+    }
+
+    #[test]
+    fn only_bodiless_successes_are_kept() {
+        let mut spec = json!({"paths": {"/x": {"delete": {
+            "responses": {"202": {"description": "Accepted"}, "204": {"description": "Gone"}}
+        }}}});
+        let before = spec.clone();
+        assert!(drop_bodiless_success_beside_a_body(&mut spec).is_empty());
+        assert_eq!(spec, before);
+    }
+
+    #[test]
+    fn an_optional_header_loses_its_null() {
+        let mut spec = json!({"paths": {"/a/{p}": {
+            "parameters": [{"name": "Prefer", "in": "header", "schema": {"type": ["string", "null"]}}],
+            "put": {"parameters": [
+                {"name": "If-Match", "in": "header", "required": false, "schema": {"type": ["string", "null"]}},
+                {"name": "If-None-Match", "in": "header", "schema": {"type": "string", "nullable": true}},
+                {"name": "X-Must", "in": "header", "required": true, "schema": {"type": ["string", "null"]}},
+                {"name": "q", "in": "query", "schema": {"type": ["string", "null"]}}
+            ]}
+        }}});
+        strip_null_from_optional_headers(&mut spec);
+        let path = &spec["paths"]["/a/{p}"];
+        assert_eq!(path["parameters"][0]["schema"], json!({"type": "string"}));
+        let params = &path["put"]["parameters"];
+        assert_eq!(params[0]["schema"], json!({"type": "string"}));
+        assert_eq!(params[1]["schema"], json!({"type": "string"}));
+        assert_eq!(params[2]["schema"], json!({"type": ["string", "null"]}));
+        assert_eq!(params[3]["schema"], json!({"type": ["string", "null"]}));
+    }
 }
