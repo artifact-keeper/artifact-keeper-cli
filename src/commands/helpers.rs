@@ -214,12 +214,19 @@ pub fn emit_mutation_raw<T: Serialize>(
     }
 }
 
-/// The version of the instance's server, if it's known to be older than 1.11. An
+/// A server minor, `(major, minor)`: the one a guard below needs.
+///
+/// `ak` supports the server minor it's generated from and the one before it, so a
+/// guard is for what the newer minor brought: `(1, 12)` refuses a 1.12-only flag or
+/// route on a 1.11 server. Nothing older than the previous minor needs a guard.
+pub type Minor = (u64, u64);
+
+/// The version of the instance's server, if it's known to be older than `minor`. An
 /// unknown version isn't older: the server still gets to answer for itself.
-pub async fn server_before_1_11(global: &GlobalArgs) -> Option<String> {
+pub async fn server_older_than(minor: Minor, global: &GlobalArgs) -> Option<String> {
     let version = read_server_version(global).await?;
     let found = super::doctor::major_minor(&version)?;
-    (found < (1, 11)).then_some(version)
+    (found < minor).then_some(version)
 }
 
 async fn read_server_version(global: &GlobalArgs) -> Option<String> {
@@ -270,16 +277,19 @@ fn warn_unchecked(flags: &str, (major, minor, patch): (u64, u64, u64)) {
     );
 }
 
-/// Refuse flags that a server before 1.11 would accept and silently drop, before
-/// anything changes: it answers 200, so the command would report what never happened.
-pub async fn refuse_flags_before_1_11(flags: &[&str], global: &GlobalArgs) -> Result<()> {
+/// Refuse flags that a server older than `minor` would accept and silently drop,
+/// before anything changes: it answers 200, so the command would report what never
+/// happened.
+#[allow(dead_code)] // For the flags new in 1.12, which come in their own changes.
+pub async fn refuse_flags_before(flags: &[&str], minor: Minor, global: &GlobalArgs) -> Result<()> {
     if flags.is_empty() {
         return Ok(());
     }
-    match guard_flags(&flags.join(", "), (1, 11, 0), global).await {
+    let (major, minor) = minor;
+    match guard_flags(&flags.join(", "), (major, minor, 0), global).await {
         Some(version) => Err(AkError::UnsupportedServer(format!(
-            "{} needs a server on 1.11 or newer. This one is {version}, which would ignore it. \
-             Nothing was changed.",
+            "{} needs a server on {major}.{minor} or newer. This one is {version}, which would \
+             ignore it. Nothing was changed.",
             flags.join(", ")
         ))
         .into()),
@@ -287,28 +297,30 @@ pub async fn refuse_flags_before_1_11(flags: &[&str], global: &GlobalArgs) -> Re
     }
 }
 
-/// The error for a failed call to a route new in 1.11. A server without the route
+/// The error for a failed call to a route new in `minor`. A server without the route
 /// answers 404 "Repository not found", which names the wrong problem, so a 404 from
 /// an older server says what's really wrong. Any other failure is the server's own.
-pub async fn since_1_11(
+#[allow(dead_code)] // For the routes new in 1.12, which come in their own changes.
+pub async fn since(
+    minor: Minor,
     error: artifact_keeper_sdk::Error,
     action: &str,
     command: &str,
     global: &GlobalArgs,
 ) -> AkError {
     if error.status() == Some(reqwest::StatusCode::NOT_FOUND)
-        && let Some(version) = server_before_1_11(global).await
+        && let Some(version) = server_older_than(minor, global).await
     {
-        return AkError::UnsupportedServer(format!(
-            "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
-        ));
+        return needs_newer(minor, command, &version);
     }
     sdk_err(action, error)
 }
 
-/// A result with [`since_1_11`] applied to its error, for a command group whose
-/// routes are all new in 1.11.
-pub async fn or_since_1_11<T>(
+/// A result with [`since`] applied to its error, for a command group whose routes are
+/// all new in `minor`.
+#[allow(dead_code)] // For the routes new in 1.12, which come in their own changes.
+pub async fn or_since<T>(
+    minor: Minor,
     result: std::result::Result<T, artifact_keeper_sdk::Error>,
     action: &str,
     command: &str,
@@ -316,12 +328,14 @@ pub async fn or_since_1_11<T>(
 ) -> Result<T> {
     match result {
         Ok(value) => Ok(value),
-        Err(error) => Err(since_1_11(error, action, command, global).await.into()),
+        Err(error) => Err(since(minor, error, action, command, global).await.into()),
     }
 }
 
-/// [`since_1_11`] for a failed raw HTTP call.
-pub async fn since_1_11_raw(
+/// [`since`] for a failed raw HTTP call.
+#[allow(dead_code)] // For the routes new in 1.12, which come in their own changes.
+pub async fn since_raw(
+    minor: Minor,
     status: reqwest::StatusCode,
     body: &str,
     action: &str,
@@ -329,29 +343,33 @@ pub async fn since_1_11_raw(
     global: &GlobalArgs,
 ) -> AkError {
     if status == reqwest::StatusCode::NOT_FOUND
-        && let Some(version) = server_before_1_11(global).await
+        && let Some(version) = server_older_than(minor, global).await
     {
-        return AkError::UnsupportedServer(format!(
-            "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
-        ));
+        return needs_newer(minor, command, &version);
     }
     raw_err(action, status, body)
 }
 
-/// [`since_1_11`] for a route whose last segment an older server takes for an `{id}`:
-/// it answers 400 "UUID parsing failed", not 404.
-pub async fn since_1_11_any_status(
+/// [`since`] for a route whose last segment an older server takes for an `{id}`: it
+/// answers 400 "UUID parsing failed", not 404.
+#[allow(dead_code)] // For the routes new in 1.12, which come in their own changes.
+pub async fn since_any_status(
+    minor: Minor,
     error: artifact_keeper_sdk::Error,
     action: &str,
     command: &str,
     global: &GlobalArgs,
 ) -> AkError {
-    if let Some(version) = server_before_1_11(global).await {
-        return AkError::UnsupportedServer(format!(
-            "`ak {command}` needs a server on 1.11 or newer. This one is {version}."
-        ));
+    if let Some(version) = server_older_than(minor, global).await {
+        return needs_newer(minor, command, &version);
     }
     sdk_err(action, error)
+}
+
+fn needs_newer((major, minor): Minor, command: &str, version: &str) -> AkError {
+    AkError::UnsupportedServer(format!(
+        "`ak {command}` needs a server on {major}.{minor} or newer. This one is {version}."
+    ))
 }
 
 /// The bytes of a flag's value: the text itself, `@file` or `@-` for stdin.
@@ -946,5 +964,60 @@ mod tests {
         let got = resolve_secret_from(None, false, None, false, false, || &mut input).unwrap();
         assert_eq!(got, None);
         assert_eq!(input.position(), 0);
+    }
+
+    // ---- version guards ----
+
+    /// A configured instance whose `/health` reports `version`.
+    async fn server_on(version: &str) -> (wiremock::MockServer, tempfile::TempDir) {
+        use wiremock::matchers::{method, path};
+        use wiremock::{Mock, ResponseTemplate};
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "version": version })),
+            )
+            .mount(&server)
+            .await;
+        (server, tmp)
+    }
+
+    #[tokio::test]
+    async fn refuse_flags_before_names_the_minor_it_needs() {
+        let (_server, tmp) = server_on("1.11.14").await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+
+        let err = refuse_flags_before(&["--new"], (1, 12), &global)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("--new needs a server on 1.12 or newer"),
+            "{err}"
+        );
+        assert!(err.contains("This one is 1.11.14"), "{err}");
+        assert!(
+            refuse_flags_before(&["--old"], (1, 11), &global)
+                .await
+                .is_ok()
+        );
+        assert!(refuse_flags_before(&[], (1, 12), &global).await.is_ok());
+        assert_eq!(
+            server_older_than((1, 12), &global).await.as_deref(),
+            Some("1.11.14")
+        );
+        assert_eq!(server_older_than((1, 11), &global).await, None);
+        crate::test_utils::teardown_env();
+    }
+
+    #[test]
+    fn needs_newer_names_the_command_and_both_versions() {
+        let err = needs_newer((1, 12), "mcp list", "1.11.14").to_string();
+        assert!(
+            err.contains("`ak mcp list` needs a server on 1.12 or newer. This one is 1.11.14."),
+            "{err}"
+        );
     }
 }

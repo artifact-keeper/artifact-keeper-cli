@@ -9,8 +9,8 @@ use serde_json::Value;
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::resolve_optional_repo_id;
 use super::helpers::{
-    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid,
-    refuse_flags_before_1_11, resolve_secret, sdk_err, short_id, since_1_11_any_status,
+    confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_uuid, resolve_secret,
+    sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -68,8 +68,7 @@ pub enum WebhookCommand {
         #[arg(long)]
         repo: Option<String>,
 
-        /// Which signatures deliveries carry: hmac, asymmetric or both. Needs a 1.11
-        /// server
+        /// Which signatures deliveries carry: hmac, asymmetric or both
         #[arg(long)]
         signing_mode: Option<artifact_keeper_sdk::types::SigningMode>,
 
@@ -151,8 +150,8 @@ pub enum WebhookCommand {
         delivery_id: String,
     },
 
-    /// Show the public keys that verify asymmetric webhook signatures. Needs a 1.11
-    /// server, and no login
+    /// Show the public keys that verify asymmetric webhook signatures. Needs no
+    /// login
     Jwks,
 }
 
@@ -332,10 +331,6 @@ async fn create_webhook(
     global: &GlobalArgs,
 ) -> Result<()> {
     let headers = parse_headers(&options.headers)?;
-    // A 1.10 server drops this and signs with HMAC, whatever was asked for.
-    if options.signing_mode.is_some() {
-        refuse_flags_before_1_11(&["--signing-mode"], global).await?;
-    }
     let client = client_for(global)?;
     let repo_id = resolve_optional_repo_id(&client, options.repo.as_deref()).await?;
 
@@ -592,9 +587,7 @@ async fn show_jwks(global: &GlobalArgs) -> Result<()> {
         Ok(jwks) => jwks.into_inner(),
         Err(e) => {
             let action = "get the webhook signing keys";
-            return Err(since_1_11_any_status(e, action, "webhook jwks", global)
-                .await
-                .into());
+            return Err(sdk_err(action, e).into());
         }
     };
     if jwks.keys.is_empty() && !output::is_machine_format(&global.format) {
@@ -1235,7 +1228,7 @@ mod tests {
 
     fn make_test_webhook(name: &str, enabled: bool) -> WebhookResponse {
         WebhookResponse {
-            signing_mode: Some(artifact_keeper_sdk::types::SigningMode::Hmac),
+            signing_mode: artifact_keeper_sdk::types::SigningMode::Hmac,
             id: Uuid::nil(),
             name: name.to_string(),
             url: "https://ci.example.com/hook".to_string(),

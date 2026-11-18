@@ -156,9 +156,6 @@ fn alpine_publish_by_both_routes() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn pacman_publish_and_delete() {
-    if common::server_older_than(1, 11, "pacman repositories") {
-        return;
-    }
     let env = TestEnv::setup();
     let repo = Repo::new(&env, "pacman");
     let tmp = dir();

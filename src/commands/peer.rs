@@ -3819,6 +3819,7 @@ mod tests {
     fn make_subscription() -> SubscriptionResponse {
         SubscriptionResponse {
             created_at: Utc::now(),
+            effective: None,
             id: Uuid::nil(),
             last_replicated_at: None,
             peer_instance_id: Uuid::nil(),

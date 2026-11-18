@@ -169,6 +169,7 @@ async fn set_config(
         min_age_days,
         // Omitted keeps the repository's current mode.
         mode,
+        instance_locked: None,
     };
 
     let (config, raw) = artifact_keeper_sdk::raw::capture(

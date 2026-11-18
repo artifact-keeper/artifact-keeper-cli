@@ -5,7 +5,7 @@ use miette::Result;
 use super::client::client_for;
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, fail_on_errors, new_table, parse_uuid,
-    refuse_flags_before_1_11, sdk_err, short_id, since_1_11, since_1_11_any_status,
+    sdk_err, short_id,
 };
 use super::helpers::{resolve_optional_repo_id, resolve_repo_id};
 use crate::cli::GlobalArgs;
@@ -59,19 +59,16 @@ pub enum LifecycleCommand {
         #[arg(long, conflicts_with = "all_repos")]
         repo: Option<String>,
 
-        /// Apply to these repository keys or IDs, comma-separated. Needs a 1.11
-        /// server
+        /// Apply to these repository keys or IDs, comma-separated
         #[arg(long, value_delimiter = ',', conflicts_with_all = ["repo", "all_repos"])]
         repos: Vec<String>,
 
-        /// Apply to every repository. A 1.10 server refuses this for max_versions
-        /// and size_quota_bytes, which there need --repo
+        /// Apply to every repository
         #[arg(long)]
         all_repos: bool,
 
         /// Create it disabled, so nothing runs until `lifecycle update <id> --enabled`.
-        /// `lifecycle preview` still works, to see what it would delete. Needs a 1.11
-        /// server: 1.10 ignores this and would create a live policy, so it's refused
+        /// `lifecycle preview` still works, to see what it would delete
         #[arg(long)]
         disabled: bool,
 
@@ -114,12 +111,11 @@ pub enum LifecycleCommand {
         cron_schedule: Option<String>,
 
         /// Apply to exactly these repository keys or IDs, comma-separated, or to
-        /// none with an empty value (--repos ''). Needs a 1.11 server
+        /// none with an empty value (--repos '')
         #[arg(long, value_delimiter = ',')]
         repos: Option<Vec<String>>,
 
-        /// Apply to every repository (true), or stop doing so (false). Needs a 1.11
-        /// server
+        /// Apply to every repository (true), or stop doing so (false)
         #[arg(long)]
         all_repos: Option<bool>,
     },
@@ -149,7 +145,7 @@ pub enum LifecycleCommand {
         id: String,
     },
 
-    /// Add a repository to what a policy applies to. Needs a 1.11 server
+    /// Add a repository to what a policy applies to
     Attach {
         /// Policy ID
         id: String,
@@ -158,7 +154,7 @@ pub enum LifecycleCommand {
         repo: String,
     },
 
-    /// Remove a repository from what a policy applies to. Needs a 1.11 server
+    /// Remove a repository from what a policy applies to
     Detach {
         /// Policy ID
         id: String,
@@ -167,7 +163,7 @@ pub enum LifecycleCommand {
         repo: String,
     },
 
-    /// Show what this server's lifecycle API can do. Needs a 1.11 server
+    /// Show what this server's lifecycle API can do
     Capabilities,
 }
 
@@ -321,16 +317,10 @@ async fn list_policies(repo_id: Option<&str>, global: &GlobalArgs) -> Result<()>
     Ok(())
 }
 
-/// What a policy applies to. Since backend 1.11, a policy with no repository is
-/// dormant unless `applies_to_all` is set. A 1.10 server sends neither field, and
-/// there a policy with no `repository_id` is global.
+/// What a policy applies to. A policy with no repository is dormant unless
+/// `applies_to_all` is set.
 fn policy_scope(policy: &artifact_keeper_sdk::types::LifecyclePolicy) -> String {
-    let Some(applies_to_all) = policy.applies_to_all else {
-        return policy
-            .repository_id
-            .map_or_else(|| "all repositories".to_string(), |id| id.to_string());
-    };
-    if applies_to_all {
+    if policy.applies_to_all {
         return "all repositories".to_string();
     }
     if policy.repository_ids.is_empty() {
@@ -459,12 +449,8 @@ async fn create_policy(
 
     let config_map = parse_config(config)?;
     let mut repository_id = resolve_optional_repo_id(&client, repo_id).await?;
-    // A 1.10 server ignores `repository_ids`, and there a policy with no repository
-    // deletes across every repository. So several mustn't get as far as being sent,
-    // and one goes in the legacy field, which both minors honour.
-    if repos.len() > 1 {
-        refuse_flags_before_1_11(&["--repos"], global).await?;
-    }
+    // One repository goes in the single field, which the server stores as a
+    // one-element `repository_ids`.
     let mut repository_ids = resolve_repos(&client, repos).await?;
     if let [only] = repository_ids[..] {
         repository_id = Some(only);
@@ -475,15 +461,9 @@ async fn create_policy(
         .chain(repository_ids.iter().copied())
         .collect();
 
-    // A 1.10 server ignores `enabled`, and the policy it then creates is live.
-    if disabled {
-        refuse_flags_before_1_11(&["--disabled"], global).await?;
-    }
-
     let body = artifact_keeper_sdk::types::CreateLifecyclePolicyRequest {
-        // 1.11 needs this for a global policy: with no repository and no
-        // `applies_to_all`, it creates a dormant one that never deletes anything.
-        // 1.10 ignores the field, and there no repository means every repository.
+        // Needed for a global policy: with no repository and no `applies_to_all`,
+        // the server creates a dormant one that never deletes anything.
         applies_to_all: all_repos.then_some(true),
         config: config_map,
         cron_schedule: cron_schedule.map(str::to_string),
@@ -492,9 +472,6 @@ async fn create_policy(
         name: name.to_string(),
         policy_type: policy_type.to_string(),
         priority,
-        // The legacy single field, because it works on both supported minors:
-        // 1.10 ignores `repository_ids` and would create a policy for every
-        // repository, and 1.11 stores this as a one-element `repository_ids`.
         repository_id,
         repository_ids: (!repository_ids.is_empty()).then_some(repository_ids),
     };
@@ -510,8 +487,8 @@ async fn create_policy(
     let policy = resp.into_inner();
     let id = policy.id.to_string();
 
-    // The version checks can't tell if the server's version couldn't be read. A
-    // policy that isn't what was asked for mustn't stay: it can delete within a minute.
+    // A policy that isn't what was asked for mustn't stay: it can delete within a
+    // minute.
     let ignored = if !shows_scope(&policy, &wanted, all_repos) {
         Some(format!(
             "The server created this policy with the scope {}, not the one requested",
@@ -552,20 +529,14 @@ async fn create_policy(
     Ok(())
 }
 
-/// Whether a policy the server returned has the scope that was asked for. A 1.10
-/// server sends only `repository_id`, and there no repository means every repository.
+/// Whether a policy the server returned has the scope that was asked for.
 fn shows_scope(
     policy: &artifact_keeper_sdk::types::LifecyclePolicy,
     wanted: &[uuid::Uuid],
     all_repos: bool,
 ) -> bool {
-    if all_repos {
-        return policy
-            .applies_to_all
-            .unwrap_or_else(|| policy.repository_id.is_none());
-    }
-    if policy.applies_to_all == Some(true) {
-        return false;
+    if all_repos || policy.applies_to_all {
+        return all_repos && policy.applies_to_all;
     }
     let mut found: Vec<uuid::Uuid> = if policy.repository_ids.is_empty() {
         policy.repository_id.into_iter().collect()
@@ -646,14 +617,6 @@ async fn update_policy(
     }
 
     let client = client_for(global)?;
-    let mut scope_flags = Vec::new();
-    if repos.is_some() {
-        scope_flags.push("--repos");
-    }
-    if all_repos.is_some() {
-        scope_flags.push("--all-repos");
-    }
-    refuse_flags_before_1_11(&scope_flags, global).await?;
     let repository_ids = match repos {
         Some(repos) => {
             let repos: Vec<String> = repos.iter().filter(|r| !r.is_empty()).cloned().collect();
@@ -691,12 +654,11 @@ async fn update_policy(
 
     let policy = resp.into_inner();
 
-    // The version check can't tell if the server's version couldn't be read. A 1.10
-    // server ignores these fields and answers 200.
+    // A server that ignored these fields would still answer 200.
     let scope_applied = match (&wanted_ids, all_repos) {
-        (_, Some(true)) => policy.applies_to_all == Some(true),
+        (_, Some(true)) => policy.applies_to_all,
         (Some(ids), _) => shows_scope(&policy, ids, false),
-        (None, Some(false)) => policy.applies_to_all == Some(false),
+        (None, Some(false)) => !policy.applies_to_all,
         (None, None) => true,
     };
     if !scope_applied {
@@ -855,12 +817,12 @@ async fn change_scope(id: &str, repo: &str, attach: bool, global: &GlobalArgs) -
     let policy = match policy {
         Ok(policy) => policy.into_inner(),
         Err(e) => {
-            let (action, command) = if attach {
-                ("attach repository", "lifecycle attach")
+            let action = if attach {
+                "attach repository"
             } else {
-                ("detach repository", "lifecycle detach")
+                "detach repository"
             };
-            return Err(since_1_11(e, action, command, global).await.into());
+            return Err(sdk_err(action, e).into());
         }
     };
     emit_mutation_raw(
@@ -885,11 +847,7 @@ async fn capabilities(global: &GlobalArgs) -> Result<()> {
         Ok(resp) => resp.into_inner(),
         Err(e) => {
             let action = "get lifecycle capabilities";
-            return Err(
-                since_1_11_any_status(e, action, "lifecycle capabilities", global)
-                    .await
-                    .into(),
-            );
+            return Err(sdk_err(action, e).into());
         }
     };
     if matches!(global.format, OutputFormat::Quiet) {
@@ -1347,9 +1305,6 @@ mod tests {
             scope(json!({ "applies_to_all": false, "repository_ids": [ID] })),
             ID
         );
-        // A 1.10 server sends neither field.
-        assert_eq!(scope(json!({ "repository_id": null })), "all repositories");
-        assert_eq!(scope(json!({ "repository_id": ID })), ID);
     }
 
     #[tokio::test]
@@ -1445,12 +1400,6 @@ mod tests {
         for (key, field) in value.as_object().unwrap() {
             policy[key] = field.clone();
         }
-        // A 1.10 server sends neither of these.
-        for key in ["applies_to_all", "repository_ids"] {
-            if value.get(key) == Some(&json!("absent")) {
-                policy.as_object_mut().unwrap().remove(key);
-            }
-        }
         serde_json::from_value(policy).unwrap()
     }
 
@@ -1459,38 +1408,24 @@ mod tests {
         const A: &str = "00000000-0000-0000-0000-00000000000a";
         const B: &str = "00000000-0000-0000-0000-00000000000b";
         let (a, b): (uuid::Uuid, uuid::Uuid) = (A.parse().unwrap(), B.parse().unwrap());
-        let v110_global = json!({"applies_to_all": "absent", "repository_ids": "absent"});
-        let v110_one =
-            json!({"applies_to_all": "absent", "repository_ids": "absent", "repository_id": A});
-        let v111_two = json!({"applies_to_all": false, "repository_ids": [B, A]});
-        let v111_global = json!({"applies_to_all": true, "repository_ids": []});
-        let v111_dormant = json!({"applies_to_all": false, "repository_ids": []});
+        let two = json!({"applies_to_all": false, "repository_ids": [B, A]});
+        let one = json!({"applies_to_all": false, "repository_ids": [A]});
+        let global = json!({"applies_to_all": true, "repository_ids": []});
+        let dormant = json!({"applies_to_all": false, "repository_ids": []});
 
-        // The hole: --repos a,b on a 1.10 server gives a policy over everything.
-        assert!(!shows_scope(
-            &policy_of(v110_global.clone()),
-            &[a, b],
-            false
-        ));
-        assert!(!shows_scope(&policy_of(v110_global.clone()), &[a], false));
-        assert!(!shows_scope(
-            &policy_of(v111_global.clone()),
-            &[a, b],
-            false
-        ));
-        assert!(!shows_scope(&policy_of(v111_dormant.clone()), &[a], false));
-        assert!(!shows_scope(&policy_of(v111_two.clone()), &[a], false));
-        assert!(!shows_scope(&policy_of(v111_dormant), &[], true));
-        assert!(!shows_scope(&policy_of(v110_one.clone()), &[], true));
+        assert!(!shows_scope(&policy_of(global.clone()), &[a, b], false));
+        assert!(!shows_scope(&policy_of(dormant.clone()), &[a], false));
+        assert!(!shows_scope(&policy_of(two.clone()), &[a], false));
+        assert!(!shows_scope(&policy_of(dormant), &[], true));
+        assert!(!shows_scope(&policy_of(one.clone()), &[], true));
 
-        assert!(shows_scope(&policy_of(v111_two), &[a, b], false));
-        assert!(shows_scope(&policy_of(v110_one), &[a], false));
-        assert!(shows_scope(&policy_of(v111_global), &[], true));
-        assert!(shows_scope(&policy_of(v110_global), &[], true));
+        assert!(shows_scope(&policy_of(two), &[a, b], false));
+        assert!(shows_scope(&policy_of(one), &[a], false));
+        assert!(shows_scope(&policy_of(global), &[], true));
     }
 
-    /// A 1.10 server behind something that hides `/health`: the version check can't
-    /// refuse, and the server creates a policy over every repository.
+    /// A server that ignored `repository_ids` would create a policy over every
+    /// repository, which mustn't stay.
     #[tokio::test]
     async fn create_with_repos_deletes_a_policy_that_came_back_global() {
         const A: &str = "00000000-0000-0000-0000-00000000000a";
@@ -1498,14 +1433,9 @@ mod tests {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
 
-        Mock::given(method("GET"))
-            .and(path("/health"))
-            .respond_with(ResponseTemplate::new(503))
-            .mount(&server)
-            .await;
         let mut policy = lifecycle_policy_json();
-        policy.as_object_mut().unwrap().remove("applies_to_all");
-        policy.as_object_mut().unwrap().remove("repository_ids");
+        policy["applies_to_all"] = json!(true);
+        policy["repository_ids"] = json!([]);
         Mock::given(method("POST"))
             .and(path("/api/v1/admin/lifecycle"))
             .respond_with(ResponseTemplate::new(200).set_body_json(policy))
@@ -1589,14 +1519,9 @@ mod tests {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
 
-        Mock::given(method("GET"))
-            .and(path("/health"))
-            .respond_with(ResponseTemplate::new(503))
-            .mount(&server)
-            .await;
         let mut policy = lifecycle_policy_json();
-        policy.as_object_mut().unwrap().remove("applies_to_all");
-        policy.as_object_mut().unwrap().remove("repository_ids");
+        policy["applies_to_all"] = json!(false);
+        policy["repository_ids"] = json!([]);
         Mock::given(method("PATCH"))
             .respond_with(ResponseTemplate::new(200).set_body_json(policy))
             .mount(&server)
@@ -1644,12 +1569,6 @@ mod tests {
     #[tokio::test]
     async fn create_disabled_sends_enabled_false() {
         assert!(create_disabled("1.11.10", false, 1, 0).await.is_ok());
-    }
-
-    #[tokio::test]
-    async fn create_disabled_is_refused_before_1_11_with_nothing_sent() {
-        let err = create_disabled("1.10.2", true, 0, 0).await.unwrap_err();
-        assert!(err.to_string().contains("--disabled"), "{err}");
     }
 
     #[tokio::test]

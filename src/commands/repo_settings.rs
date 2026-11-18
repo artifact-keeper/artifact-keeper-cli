@@ -11,7 +11,6 @@ use miette::Result;
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::{
     confirm_action, emit_mutation_raw, new_table, read_inline_or_file, resolve_secret, sdk_err,
-    since_1_11,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -182,9 +181,7 @@ impl AllowlistCommand {
                 let resp = match resp {
                     Ok(resp) => resp,
                     Err(e) => {
-                        return Err(since_1_11(e, "get allowlist", "repo allowlist", global)
-                            .await
-                            .into());
+                        return Err(sdk_err("get allowlist", e).into());
                     }
                 };
                 println!(
@@ -222,9 +219,7 @@ impl AllowlistCommand {
                 let resp = match resp {
                     Ok(resp) => resp,
                     Err(e) => {
-                        return Err(since_1_11(e, "set allowlist", "repo allowlist", global)
-                            .await
-                            .into());
+                        return Err(sdk_err("set allowlist", e).into());
                     }
                 };
                 emit_mutation_raw(
@@ -250,9 +245,7 @@ impl AllowlistCommand {
                 let resp = match resp {
                     Ok(resp) => resp,
                     Err(e) => {
-                        return Err(since_1_11(e, "delete allowlist", "repo allowlist", global)
-                            .await
-                            .into());
+                        return Err(sdk_err("delete allowlist", e).into());
                     }
                 };
                 emit_mutation_raw(
@@ -285,7 +278,8 @@ fn allowlist_table(resp: &types::CondaAllowlistResponse) -> String {
         "Repository: {}\nEnforced:   {}\nScope:      {}\nEntries:    {}\n",
         resp.repository_key,
         yes_no(resp.enabled),
-        resp.scope,
+        resp.scope
+            .map_or_else(|| "-".to_string(), |scope| scope.to_string()),
         resp.entry_count
     );
     if let Some(error) = &resp.error {
@@ -306,14 +300,7 @@ impl UpstreamFilterCommand {
                 let resp = match resp {
                     Ok(resp) => resp,
                     Err(e) => {
-                        return Err(since_1_11(
-                            e,
-                            "get upstream filter",
-                            "repo upstream-filter",
-                            global,
-                        )
-                        .await
-                        .into());
+                        return Err(sdk_err("get upstream filter", e).into());
                     }
                 };
                 println!(
@@ -340,14 +327,7 @@ impl UpstreamFilterCommand {
                 let resp = match resp {
                     Ok(resp) => resp,
                     Err(e) => {
-                        return Err(since_1_11(
-                            e,
-                            "set upstream filter",
-                            "repo upstream-filter",
-                            global,
-                        )
-                        .await
-                        .into());
+                        return Err(sdk_err("set upstream filter", e).into());
                     }
                 };
                 emit_mutation_raw(
@@ -370,14 +350,7 @@ impl UpstreamFilterCommand {
                 let resp = match resp {
                     Ok(resp) => resp,
                     Err(e) => {
-                        return Err(since_1_11(
-                            e,
-                            "delete upstream filter",
-                            "repo upstream-filter",
-                            global,
-                        )
-                        .await
-                        .into());
+                        return Err(sdk_err("delete upstream filter", e).into());
                     }
                 };
                 emit_mutation_raw(
@@ -536,14 +509,7 @@ pub async fn capabilities(global: &GlobalArgs) -> Result<()> {
     let resp = match resp {
         Ok(resp) => resp,
         Err(e) => {
-            return Err(since_1_11(
-                e,
-                "get repository capabilities",
-                "repo capabilities",
-                global,
-            )
-            .await
-            .into());
+            return Err(sdk_err("get repository capabilities", e).into());
         }
     };
     let depth = &resp.rpm_repodata_depth;

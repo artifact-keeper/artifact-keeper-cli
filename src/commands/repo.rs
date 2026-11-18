@@ -7,7 +7,7 @@ use miette::{IntoDiagnostic, Result};
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, raw_err,
-    read_inline_or_file, refuse_flags_before_1_11, resolve_secret, sdk_err,
+    read_inline_or_file, resolve_secret, sdk_err,
 };
 use super::repo_settings::{
     self, AllowlistCommand, EgressProxyCommand, NpmScopePolicyCommand, UpstreamFilterCommand,
@@ -468,31 +468,6 @@ pub struct RepoSettingsArgs {
     oci_trusted_bearer_realms: Option<Vec<String>>,
 }
 
-impl RepoSettingsArgs {
-    /// The flags set here that a server before 1.11 silently drops.
-    fn flags_needing_1_11(&self) -> Vec<&'static str> {
-        [
-            ("--visibility", self.visibility.is_some()),
-            (
-                "--allow-public-with-upstream-credentials",
-                self.allow_public_with_upstream_credentials.is_some(),
-            ),
-            ("--repodata-depth", self.repodata_depth.is_some()),
-            (
-                "--npm-virtual-isolate-hosted-names",
-                self.npm_virtual_isolate_hosted_names.is_some(),
-            ),
-            (
-                "--oci-trusted-bearer-realms",
-                self.oci_trusted_bearer_realms.is_some(),
-            ),
-        ]
-        .into_iter()
-        .filter_map(|(flag, set)| set.then_some(flag))
-        .collect()
-    }
-}
-
 /// A create or update request: the fields given, plus the ones from
 /// [`RepoSettingsArgs`], which the two requests name the same way.
 macro_rules! with_settings {
@@ -518,6 +493,13 @@ macro_rules! with_settings {
             npm_allow_unscoped: $settings.npm_allow_unscoped,
             npm_virtual_isolate_hosted_names: $settings.npm_virtual_isolate_hosted_names,
             oci_trusted_bearer_realms: list_flag($settings.oci_trusted_bearer_realms),
+            // New in 1.12, with no flags yet.
+            curation_source_repository_key: None,
+            mcp_namespace_allow: None,
+            mcp_package_policy: None,
+            mcp_package_repos: None,
+            repodata_mode: None,
+            virtual_member_fallback: None,
         }
     };
 }
@@ -752,7 +734,6 @@ impl RepoCommand {
                 upstream_password_stdin,
                 settings,
             } => {
-                refuse_flags_before_1_11(&settings.flags_needing_1_11(), global).await?;
                 let upstream_password = resolve_secret(
                     upstream_password,
                     upstream_password_stdin,
@@ -770,6 +751,15 @@ impl RepoCommand {
                     .map(|v| parse_json_arg(v, "--debian"))
                     .transpose()?;
                 let body = with_settings!(CreateRepositoryRequest, settings, debian, {
+                    // New in 1.12, with no flags yet.
+                    curation_default_action: None,
+                    curation_enabled: None,
+                    egress_proxy: None,
+                    quarantine_duration_minutes: None,
+                    quarantine_enabled: None,
+                    release_repository_key: None,
+                    upstream_mode: None,
+                    virtual_metadata_partial: None,
                     name: name.unwrap_or_else(|| key.clone()),
                     key,
                     format: pkg_format,
@@ -826,20 +816,6 @@ impl RepoCommand {
                     .as_deref()
                     .map(|v| parse_json_arg(v, "--debian"))
                     .transpose()?;
-                let mut needs_1_11 = settings.flags_needing_1_11();
-                for (flag, set) in [
-                    ("--upstream-url", upstream_url.is_some()),
-                    (
-                        "--virtual-metadata-partial",
-                        virtual_metadata_partial.is_some(),
-                    ),
-                    ("--clear-project", clear_project),
-                ] {
-                    if set {
-                        needs_1_11.push(flag);
-                    }
-                }
-                refuse_flags_before_1_11(&needs_1_11, global).await?;
                 let clear = [
                     ("project_id", clear_project),
                     ("trusted_gpg_key", clear_trusted_gpg_key),
@@ -922,10 +898,6 @@ impl RepoCommand {
                 aws,
                 allow_public_with_upstream_credentials,
             } => {
-                if allow_public_with_upstream_credentials.is_some() {
-                    refuse_flags_before_1_11(&["--allow-public-with-upstream-credentials"], global)
-                        .await?;
-                }
                 let needs_secret = matches!(auth_type.as_str(), "basic" | "bearer");
                 let password = resolve_secret(
                     password,
@@ -1277,8 +1249,19 @@ async fn delete_repo(
 
     let client = client_for(global)?;
 
-    match client.delete_repository().key(key).send().await {
+    let (resp, raw) =
+        artifact_keeper_sdk::raw::capture(client.delete_repository().key(key).send()).await;
+    match resp {
+        // 1.12 accepts the delete with a 202 and runs it as a job. A 202 whose body
+        // didn't parse is still an accepted delete.
         Ok(_) => {
+            deletion_accepted(key, raw.as_deref().unwrap_or_default(), wait_secs, global).await
+        }
+        Err(e) if e.status() == Some(reqwest::StatusCode::ACCEPTED) => {
+            deletion_accepted(key, raw.as_deref().unwrap_or_default(), wait_secs, global).await
+        }
+        // 1.11 deletes at once and answers 200, which the 1.12 SDK doesn't expect.
+        Err(e) if e.status().is_some_and(|status| status.is_success()) => {
             emit_mutation(
                 &serde_json::json!({ "key": key, "status": "deleted" }),
                 key,
@@ -1286,12 +1269,6 @@ async fn delete_repo(
                 global,
             );
             Ok(())
-        }
-        // Backend 1.12.0 accepts the delete and runs it as a job. The SDK is
-        // generated from 1.11, where 202 isn't a documented answer, so it arrives
-        // here as an error carrying the body.
-        Err(e) if e.status() == Some(reqwest::StatusCode::ACCEPTED) => {
-            deletion_accepted(key, e.body().unwrap_or_default(), wait_secs, global).await
         }
         Err(e) => Err(sdk_err("delete repository", e).into()),
     }
@@ -2756,19 +2733,14 @@ mod tests {
         assert_eq!(storage_label(&local_repo), "1.0 KB");
     }
 
-    /// A 1.10 server doesn't send the fields 1.11 added.
+    /// A 1.11 server doesn't always send the fields 1.12 requires.
     #[test]
-    fn repo_response_parses_without_fields_new_in_1_11() {
+    fn repo_response_parses_without_fields_1_12_requires() {
         let mut repo = repo_json("r");
         let fields = repo.as_object_mut().unwrap();
         for field in [
             "allow_public_with_upstream_credentials",
             "public_with_upstream_credentials",
-            "repodata_depth",
-            "repodata_depth_editable",
-            "storage_backend",
-            "upstream_url_has_credentials",
-            "visibility",
         ] {
             fields.remove(field);
         }

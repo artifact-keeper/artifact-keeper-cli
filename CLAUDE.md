@@ -108,7 +108,7 @@ The `Coverage` CI job holds the CLI to "anything curl can do". It isn't a requir
 
 ### Version policy
 
-The first two numbers of the CLI version are the server version it's built for. The last number is the CLI's own and doesn't match the server's patch number: `ak` 1.11.0 is built from API 1.11.11. New commands may ship in CLI patch releases (1.11.x). `ak` supports servers on that minor and the one before it, and `ak doctor` warns outside that range. `API_VERSION` also sets the backend image for E2E.
+The first two numbers of the CLI version are the server version it's built for. The last number is the CLI's own and doesn't match the server's patch number: `ak` 1.12.0 is built from API 1.12.1. New commands may ship in CLI patch releases (1.12.x). `ak` supports servers on that minor and the one before it, and `ak doctor` warns outside that range. `API_VERSION` also sets the backend image for E2E.
 
 ### Key Patterns
 

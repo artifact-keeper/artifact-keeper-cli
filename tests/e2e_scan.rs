@@ -189,21 +189,11 @@ fn an_external_finding_goes_from_ingest_to_acknowledged() {
     let exact = json_of(&env, &["scan", "show", &scan, "--exact-severity", "low"]);
     assert_eq!(exact["items"], json!([]));
 
-    if common::server_older_than(1, 11, "finding_class") {
-        assert!(
-            stderr_of(
-                &env,
-                &["scan", "show", &scan, "--finding-class", "vulnerability"]
-            )
-            .contains("1.11"),
-        );
-    } else {
-        let classed = json_of(
-            &env,
-            &["scan", "show", &scan, "--finding-class", "vulnerability"],
-        );
-        assert_eq!(classed["total"], 1, "{classed}");
-    }
+    let classed = json_of(
+        &env,
+        &["scan", "show", &scan, "--finding-class", "vulnerability"],
+    );
+    assert_eq!(classed["total"], 1, "{classed}");
 
     let acknowledged = json_of(
         &env,
@@ -289,74 +279,65 @@ fn policy_flags_reach_the_server_and_an_update_keeps_the_rest() {
 
     let predicates =
         r#"{"conda":{"denied_licenses":["gpl"]},"origin":{"allowed_kinds":["hosted"]}}"#;
-    if common::server_older_than(1, 11, "policy predicates") {
-        // It would answer 200 and drop them.
-        let refused = stderr_of(
-            &env,
-            &["scan", "policy", "update", &id, "--predicates", predicates],
-        );
-        assert!(refused.contains("1.11"), "{refused}");
-    } else {
-        let with = json_of(
-            &env,
-            &["scan", "policy", "update", &id, "--predicates", predicates],
-        );
-        assert_eq!(
-            with["predicates"]["conda"]["denied_licenses"],
-            json!(["gpl"])
-        );
-        assert_eq!(
-            with["predicates"]["origin"]["allowed_kinds"],
-            json!(["hosted"])
-        );
+    let with = json_of(
+        &env,
+        &["scan", "policy", "update", &id, "--predicates", predicates],
+    );
+    assert_eq!(
+        with["predicates"]["conda"]["denied_licenses"],
+        json!(["gpl"])
+    );
+    assert_eq!(
+        with["predicates"]["origin"]["allowed_kinds"],
+        json!(["hosted"])
+    );
 
-        let kept = json_of(
-            &env,
-            &[
-                "scan",
-                "policy",
-                "update",
-                &id,
-                "--name",
-                &unique("renamed"),
-            ],
-        );
-        assert_eq!(
-            kept["predicates"]["conda"]["denied_licenses"],
-            json!(["gpl"])
-        );
+    let kept = json_of(
+        &env,
+        &[
+            "scan",
+            "policy",
+            "update",
+            &id,
+            "--name",
+            &unique("renamed"),
+        ],
+    );
+    assert_eq!(
+        kept["predicates"]["conda"]["denied_licenses"],
+        json!(["gpl"])
+    );
 
-        let name = unique("policy");
-        let created = json_of(
-            &env,
-            &[
-                "scan",
-                "policy",
-                "create",
-                &name,
-                "--max-severity",
-                "high",
-                "--repo",
-                &repo,
-                "--predicates",
-                predicates,
-            ],
-        );
-        assert_eq!(
-            created["predicates"]["conda"]["denied_licenses"],
-            json!(["gpl"])
-        );
-        env.ak_cmd()
-            .args([
-                "scan",
-                "policy",
-                "delete",
-                created["id"].as_str().unwrap(),
-                "--yes",
-            ])
-            .assert()
-            .success();
-    }
+    let name = unique("policy");
+    let created = json_of(
+        &env,
+        &[
+            "scan",
+            "policy",
+            "create",
+            &name,
+            "--max-severity",
+            "high",
+            "--repo",
+            &repo,
+            "--predicates",
+            predicates,
+        ],
+    );
+    assert_eq!(
+        created["predicates"]["conda"]["denied_licenses"],
+        json!(["gpl"])
+    );
+    env.ak_cmd()
+        .args([
+            "scan",
+            "policy",
+            "delete",
+            created["id"].as_str().unwrap(),
+            "--yes",
+        ])
+        .assert()
+        .success();
 
     assert_eq!(
         json_of(&env, &["scan", "policy", "show", &id])["id"],
@@ -444,7 +425,6 @@ fn security_update_changes_only_what_it_is_given() {
         assert_eq!(stored["proxy_scan_action"], action);
     }
 
-    // A 1.10 server would store fail_open in place of this.
     let record_only = [
         "scan",
         "security",
@@ -453,14 +433,8 @@ fn security_update_changes_only_what_it_is_given() {
         "--proxy-scan-action",
         "record_only",
     ];
-    if common::server_older_than(1, 11, "proxy_scan_action record_only") {
-        assert!(stderr_of(&env, &record_only).contains("1.11"));
-        let shown = json_of(&env, &["scan", "security", "show", &repo]);
-        assert_eq!(shown["config"]["proxy_scan_action"], "fail_open");
-    } else {
-        let action = json_of(&env, &record_only);
-        assert_eq!(action["proxy_scan_action"], "record_only");
-    }
+    let action = json_of(&env, &record_only);
+    assert_eq!(action["proxy_scan_action"], "record_only");
 }
 
 #[test]

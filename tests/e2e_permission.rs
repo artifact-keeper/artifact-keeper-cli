@@ -82,20 +82,12 @@ fn create_show_filter_update_and_delete_by_repository_key() {
         "--conditions",
         r#"{"allowed_cidrs":["10.0.0.0/8"]}"#,
     ]);
-    if common::server_older_than(1, 11, "permission conditions") {
-        // A 1.10 server would drop the condition and keep a broader grant.
-        update
-            .assert()
-            .failure()
-            .stderr(predicate::str::contains("1.11"));
-    } else {
-        let updated = json_of(&mut update);
-        assert_eq!(
-            updated["conditions"]["allowed_cidrs"],
-            serde_json::json!(["10.0.0.0/8"])
-        );
-        assert_eq!(updated["actions"], serde_json::json!(["read", "write"]));
-    }
+    let updated = json_of(&mut update);
+    assert_eq!(
+        updated["conditions"]["allowed_cidrs"],
+        serde_json::json!(["10.0.0.0/8"])
+    );
+    assert_eq!(updated["actions"], serde_json::json!(["read", "write"]));
 
     env.ak_cmd()
         .args(["permission", "delete", &id, "--yes"])

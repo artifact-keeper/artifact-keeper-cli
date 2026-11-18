@@ -571,6 +571,8 @@ async fn create_rule(
         min_health_score: checks.min_health_score,
         allowed_licenses: checks.allowed_licenses,
         require_signature: checks.require_signature,
+        // The server's default.
+        accepted_grade_status: artifact_keeper_sdk::types::AcceptedGradeStatus::Rated,
     };
 
     let (rule, raw) =
@@ -725,6 +727,7 @@ async fn update_rule(id: &str, update: RuleUpdate, global: &GlobalArgs) -> Resul
         min_health_score: update.min_health_score,
         allowed_licenses: update.allowed_licenses,
         require_signature: update.require_signature,
+        accepted_grade_status: None,
     };
 
     let (rule, raw) =
@@ -1599,7 +1602,8 @@ mod tests {
                             "source": "stg/ok",
                             "target": "rel/ok",
                             "promotion_id": NIL_UUID,
-                            "policy_violations": []
+                            "policy_violations": [],
+                            "gate_results": []
                         },
                         blocked_json("stg/refused")
                     ]

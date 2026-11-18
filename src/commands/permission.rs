@@ -5,7 +5,7 @@ use miette::Result;
 use super::client::client_for;
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg, parse_uuid,
-    print_page_info, refuse_flags_before_1_11, sdk_err,
+    print_page_info, sdk_err,
 };
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
@@ -255,18 +255,14 @@ async fn resolve_target(
     }
 }
 
-/// A `--conditions` flag as the API's type. A 1.10 server ignores conditions and would
-/// store a broader grant than was asked for, so it's refused before anything's sent.
-async fn parse_conditions(
+/// A `--conditions` flag as the API's type.
+fn parse_conditions(
     conditions: Option<&str>,
-    global: &GlobalArgs,
 ) -> Result<Option<artifact_keeper_sdk::types::PermissionConditions>> {
     let Some(conditions) = conditions else {
         return Ok(None);
     };
-    let parsed = parse_json_arg(conditions, "--conditions")?;
-    refuse_flags_before_1_11(&["--conditions"], global).await?;
-    Ok(Some(parsed))
+    Ok(Some(parse_json_arg(conditions, "--conditions")?))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -282,7 +278,7 @@ async fn update_permission(
 ) -> Result<()> {
     let perm_id = parse_uuid(id, "permission")?;
     let principal_id = parse_uuid(principal, "principal")?;
-    let conditions = parse_conditions(conditions, global).await?;
+    let conditions = parse_conditions(conditions)?;
 
     let client = client_for(global)?;
     let target_id = resolve_target(&client, target, target_type).await?;
@@ -436,7 +432,7 @@ async fn create_permission(
     global: &GlobalArgs,
 ) -> Result<()> {
     let principal_id = parse_uuid(principal, "principal")?;
-    let conditions = parse_conditions(conditions, global).await?;
+    let conditions = parse_conditions(conditions)?;
 
     let client = client_for(global)?;
     let target_id = resolve_target(&client, target, target_type).await?;

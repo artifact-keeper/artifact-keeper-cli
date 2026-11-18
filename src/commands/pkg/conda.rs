@@ -13,7 +13,7 @@ use serde_json::json;
 
 use super::wire::{Upload, Wire, emit};
 use crate::cli::GlobalArgs;
-use crate::commands::helpers::{confirm_action, read_inline_or_file, refuse_flags_before_1_11};
+use crate::commands::helpers::{confirm_action, read_inline_or_file};
 use crate::error::AkError;
 
 const CONTENT_TYPE: &str = "application/octet-stream";
@@ -80,11 +80,8 @@ Examples:
 }
 
 /// A login session is a JWT, which the server refuses in a URL. Say so, rather than
-/// show its 401. So does a server older than the rattler form, which has no such route.
-async fn check_url_token(wire: &Wire, token: Option<TokenUrl>, global: &GlobalArgs) -> Result<()> {
-    if matches!(token, Some(TokenUrl::TConda)) {
-        refuse_flags_before_1_11(&["--token-in-url t-conda"], global).await?;
-    }
+/// show its 401.
+fn check_url_token(wire: &Wire, token: Option<TokenUrl>) -> Result<()> {
     if token.is_some() && wire.token().split('.').count() == 3 {
         return Err(AkError::Usage(
             "--token-in-url needs an API token, and this is a login session. Create one with \
@@ -129,7 +126,7 @@ pub async fn execute(command: CondaCommand, global: &GlobalArgs) -> Result<()> {
             subdir,
             token_in_url,
         } => {
-            check_url_token(&wire, token_in_url, global).await?;
+            check_url_token(&wire, token_in_url)?;
             let upload = Upload::open(&file)?;
             let request = match &subdir {
                 Some(subdir) => conda_request(
@@ -162,7 +159,7 @@ pub async fn execute(command: CondaCommand, global: &GlobalArgs) -> Result<()> {
             attestation,
             token_in_url,
         } => {
-            check_url_token(&wire, token_in_url, global).await?;
+            check_url_token(&wire, token_in_url)?;
             let body = read_inline_or_file(&attestation, "the attestation")?;
             let reply = wire
                 .send(
@@ -199,7 +196,6 @@ pub async fn execute(command: CondaCommand, global: &GlobalArgs) -> Result<()> {
             if !confirm_action(&format!("Withdraw {filename}?"), yes, global.no_input)? {
                 return Ok(());
             }
-            refuse_flags_before_1_11(&["`ak pkg conda withdraw`"], global).await?;
             let url = wire.url(&["conda", &repo, &subdir, &filename]);
             let mut request = wire.request(Method::DELETE, url);
             if let Some(reason) = reason {

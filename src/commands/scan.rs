@@ -12,8 +12,8 @@ use serde_json::Value;
 use super::client::client_for;
 use super::helpers::{
     PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, confirm_action, emit_mutation_raw,
-    is_proxy_path_not_recorded, new_table, parse_json_arg, parse_uuid, refuse_flags_before_1_11,
-    resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id, sdk_err, short_id,
+    is_proxy_path_not_recorded, new_table, parse_json_arg, parse_uuid, resolve_artifact_id,
+    resolve_optional_repo_id, resolve_repo_id, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -82,7 +82,7 @@ pub enum ScanCommand {
         #[arg(long)]
         cve: Option<String>,
 
-        /// Filter by finding class (needs a 1.11 server)
+        /// Filter by finding class
         #[arg(long)]
         finding_class: Option<String>,
 
@@ -330,7 +330,7 @@ pub enum ScanPolicyCommand {
         max_artifact_age_days: Option<i32>,
 
         /// Conda and origin checks, replacing the current ones: a JSON object as text,
-        /// @file, or @- for stdin (needs a 1.11 server)
+        /// @file, or @- for stdin
         #[arg(long, value_name = "JSON")]
         predicates: Option<String>,
     },
@@ -395,15 +395,12 @@ struct PolicyLimits {
 }
 
 impl PolicyLimits {
-    /// The predicates to send. They need a 1.11 server: an older one answers 200 and
-    /// drops them, leaving a policy weaker than the one asked for.
-    async fn parse_predicates(&self, global: &GlobalArgs) -> Result<Option<PolicyPredicates>> {
+    /// The predicates to send.
+    fn parse_predicates(&self) -> Result<Option<PolicyPredicates>> {
         let Some(predicates) = self.predicates.as_deref() else {
             return Ok(None);
         };
-        let parsed = parse_json_arg(predicates, "--predicates")?;
-        refuse_flags_before_1_11(&["--predicates"], global).await?;
-        Ok(Some(parsed))
+        Ok(Some(parse_json_arg(predicates, "--predicates")?))
     }
 }
 
@@ -541,6 +538,7 @@ impl ScanCommand {
                     update_policy(
                         &id,
                         artifact_keeper_sdk::types::UpdatePolicyRequest {
+                            block_uncataloged: None,
                             name,
                             max_severity,
                             block_on_fail,
@@ -842,11 +840,6 @@ async fn show_findings(
     let client = client_for(global)?;
 
     let id = parse_uuid(scan_id, "scan")?;
-
-    if filters.finding_class.is_some() {
-        // An older server ignores this filter, and every finding looks like a match.
-        refuse_flags_before_1_11(&["--finding-class"], global).await?;
-    }
 
     let spinner = crate::output::spinner("Fetching scan details...");
 
@@ -1181,6 +1174,9 @@ async fn acknowledge_finding(
 
     let body = artifact_keeper_sdk::types::AcknowledgeRequest {
         reason: reason.to_string(),
+        expires_at: None,
+        repository_id: None,
+        scope: None,
     };
 
     let (resp, raw) = capture(client.acknowledge_finding().id(id).body(body).send()).await;
@@ -1294,7 +1290,7 @@ async fn ingest_findings(
             result.findings_ingested,
             short_id(&result.scan_id),
             result.score,
-            result.grade
+            result.grade.as_deref().unwrap_or("-")
         ),
         global,
     );
@@ -1595,7 +1591,7 @@ async fn create_policy(
     limits: PolicyLimits,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let predicates = limits.parse_predicates(global).await?;
+    let predicates = limits.parse_predicates()?;
 
     let client = client_for(global)?;
     let repo_id = resolve_optional_repo_id(&client, repo).await?;
@@ -1612,6 +1608,7 @@ async fn create_policy(
         min_staging_hours: limits.min_staging_hours,
         predicates,
         require_signature: require_signature.then_some(true),
+        block_uncataloged: false,
     };
 
     let (policy, raw) = capture(client.create_policy().body(body).send()).await;
@@ -1643,8 +1640,7 @@ async fn update_policy(
         predicates,
         ..PolicyLimits::default()
     }
-    .parse_predicates(global)
-    .await?;
+    .parse_predicates()?;
 
     let client = client_for(global)?;
 
@@ -1761,7 +1757,11 @@ async fn show_repo_security(repo_key: &str, global: &GlobalArgs) -> Result<()> {
         }
 
         if let Some(s) = &sec.score {
-            lines.push(format!("  Grade: {} (score: {})", s.grade, s.score));
+            lines.push(format!(
+                "  Grade: {} (score: {})",
+                s.grade.as_deref().unwrap_or("-"),
+                s.score
+            ));
             lines.push(format!(
                 "  Findings: C:{} H:{} M:{} L:{}",
                 s.critical_count, s.high_count, s.medium_count, s.low_count
@@ -1799,25 +1799,14 @@ async fn update_repo_security(
         )
         .into());
     }
-    // A 1.10 server stores fail_closed and fail_open, and turns record_only into
-    // fail_open, which is the reverse of keeping a record of what it let through.
-    if settings.proxy_scan_action.as_deref() == Some("record_only")
-        && let Some(version) =
-            crate::commands::helpers::guard_flags("--proxy-scan-action", (1, 11, 0), global).await
-    {
-        return Err(AkError::UnsupportedServer(format!(
-            "--proxy-scan-action record_only needs a server on 1.11 or newer. This one is \
-             {version}, which would store fail_open instead. Nothing was changed."
-        ))
-        .into());
-    }
     let wanted_action = settings.proxy_scan_action.clone();
 
     let client = client_for(global)?;
 
     let spinner = crate::output::spinner("Updating repository security config...");
 
-    let body = artifact_keeper_sdk::types::UpsertScanConfigRequest {
+    let body = artifact_keeper_sdk::types::UpdateRepoSecurityRequest {
+        instance_locked: None,
         scan_enabled: settings.scanning_enabled,
         scan_on_upload: settings.scan_on_upload,
         scan_on_proxy: settings.scan_on_proxy,
@@ -1977,7 +1966,7 @@ fn format_scores_table(items: &[ScoreResponse]) -> (Vec<Value>, String) {
                 .unwrap_or_else(|| "-".to_string());
             table.add_row(vec![
                 &repo_short,
-                &s.grade,
+                s.grade.as_deref().unwrap_or("-"),
                 &format_severity_count(s.critical_count, "CRITICAL"),
                 &format_severity_count(s.high_count, "HIGH"),
                 &format_severity_count(s.medium_count, "MEDIUM"),
@@ -2671,15 +2660,22 @@ mod tests {
             repos_with_scanning: 12,
             repos_grade_a: 8,
             repos_grade_f: 1,
+            proxy_blocked: None,
+            proxy_would_block: None,
+            repos_incomplete: None,
+            repos_rated: None,
+            repos_unrated: None,
         }
     }
 
     fn make_test_score(grade: &str, critical: i32, high: i32) -> ScoreResponse {
         ScoreResponse {
-            has_uncataloged_scan: Some(false),
+            has_uncataloged_scan: false,
+            coverage: None,
+            grade_status: None,
             id: Uuid::nil(),
             repository_id: Uuid::nil(),
-            grade: grade.to_string(),
+            grade: Some(grade.to_string()),
             score: 85,
             critical_count: critical,
             high_count: high,
@@ -2696,6 +2692,7 @@ mod tests {
     fn make_test_scan_policy(name: &str, max_severity: &str) -> PolicyResponse {
         PolicyResponse {
             predicates: Default::default(),
+            block_uncataloged: None,
             id: Uuid::nil(),
             name: name.to_string(),
             max_severity: max_severity.to_string(),
@@ -2743,6 +2740,11 @@ mod tests {
             repos_with_scanning: 5,
             repos_grade_a: 5,
             repos_grade_f: 0,
+            proxy_blocked: None,
+            proxy_would_block: None,
+            repos_incomplete: None,
+            repos_rated: None,
+            repos_unrated: None,
         };
         let (entries, table_str) = format_dashboard(&d);
 
@@ -3604,6 +3606,7 @@ mod tests {
         let result = update_policy(
             policy_id,
             artifact_keeper_sdk::types::UpdatePolicyRequest {
+                block_uncataloged: None,
                 name: Some("updated-name".to_string()),
                 max_severity: Some("CRITICAL".to_string()),
                 block_on_fail: Some(true),

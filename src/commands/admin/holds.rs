@@ -7,7 +7,7 @@ use miette::Result;
 use super::PageArgs;
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for;
-use crate::commands::helpers::{new_table, or_since_1_11, print_page_info};
+use crate::commands::helpers::{new_table, print_page_info, sdk_err};
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -47,8 +47,8 @@ impl HoldsCommand {
                 }
                 let spinner = output::spinner("Fetching quarantine holds...");
                 let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-                let resp = or_since_1_11(resp, "list quarantine holds", "admin holds", global)
-                    .await?
+                let resp = resp
+                    .map_err(|e| sdk_err("list quarantine holds", e))?
                     .into_inner();
                 spinner.finish_and_clear();
 
@@ -120,8 +120,8 @@ impl HoldsCommand {
                 let spinner = output::spinner("Fetching holds summary...");
                 let (resp, raw) =
                     artifact_keeper_sdk::raw::capture(client.holds_summary().send()).await;
-                let summary = or_since_1_11(resp, "get holds summary", "admin holds", global)
-                    .await?
+                let summary = resp
+                    .map_err(|e| sdk_err("get holds summary", e))?
                     .into_inner();
                 spinner.finish_and_clear();
                 if matches!(global.format, OutputFormat::Quiet) {

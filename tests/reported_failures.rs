@@ -27,7 +27,10 @@ fn restore(errors: Value) -> Value {
 fn execution(errors: Value) -> Value {
     json!({
         "policy_id": ID, "policy_name": "p", "dry_run": false, "artifacts_matched": 0,
-        "artifacts_removed": 0, "bytes_freed": 0, "bytes_matched": 0, "errors": errors
+        "artifacts_removed": 0, "bytes_freed": 0, "bytes_matched": 0, "errors": errors,
+        "proxy_cache": {
+            "bytes_freed": 0, "bytes_matched": 0, "entries_matched": 0, "entries_removed": 0
+        }
     })
 }
 

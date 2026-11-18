@@ -148,18 +148,13 @@ fn backup_create_takes_a_scope_and_list_filters() {
     let _ = env.api_delete(&format!("/api/v1/repositories/{repo}"));
 }
 
-/// The server's refusal of an empty key set proves `--static-jwks` reached it. A 1.10
-/// server would drop it and go on trusting the issuer's keys, so `ak` stops first.
+/// The server's refusal of an empty key set proves `--static-jwks` reached it.
 #[test]
 #[ignore = "requires E2E backend"]
-fn ci_oidc_static_keys_reach_the_server_or_are_refused_before_1_11() {
+fn ci_oidc_static_keys_reach_the_server() {
     let env = common::TestEnv::setup();
     let name = format!("e2e-ci-oidc-{}", std::process::id());
-    let expected = if common::server_older_than(1, 11, "CI OIDC static keys") {
-        "1.11"
-    } else {
-        "static_jwks"
-    };
+    let expected = "static_jwks";
     env.ak_cmd()
         .args([
             "admin",

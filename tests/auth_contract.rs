@@ -754,50 +754,6 @@ async fn events_tail_stops_at_the_count_and_prints_each_event() {
     assert_eq!(lines[1]["data"]["type"], "repository.created");
 }
 
-/// 1.10.1 ignores a selector and makes a token with all of your access. 1.10.2
-/// honours it. So the refusal goes by the patch version, and sends nothing.
-#[tokio::test]
-async fn repo_selector_is_refused_only_where_the_server_would_drop_it() {
-    for (version, posts) in [("1.10.1", 0), ("1.10.2", 1), ("1.11.11", 1)] {
-        let mock = Mocked::start().await;
-        mock.respond("GET", "/health", 200, json!({ "version": version }))
-            .await;
-        mock.respond(
-            "POST",
-            "/api/v1/auth/tokens",
-            200,
-            json!({
-                "id": "00000000-0000-0000-0000-000000000001",
-                "name": "n",
-                "token": "t",
-                "policy_applied": false
-            }),
-        )
-        .await;
-
-        let output = mock.ak(&[
-            "auth",
-            "token",
-            "create",
-            "--description",
-            "n",
-            "--repo-selector",
-            r#"{"match_formats":["npm"]}"#,
-        ]);
-
-        let sent = mock
-            .server
-            .received_requests()
-            .await
-            .unwrap()
-            .iter()
-            .filter(|r| r.method.as_str() == "POST")
-            .count();
-        assert_eq!(sent, posts, "{version}");
-        assert_eq!(output.status.success(), posts == 1, "{version}: {output:?}");
-    }
-}
-
 fn empty_session() -> Value {
     let mut session = session();
     session["access_token"] = json!("");
@@ -846,43 +802,4 @@ async fn an_empty_token_is_never_stored() {
             "{args:?}"
         );
     }
-}
-
-/// With no version to go on, the flag goes ahead and the user is told.
-#[tokio::test]
-async fn a_flag_says_so_when_the_version_cant_be_read() {
-    let mock = Mocked::start().await;
-    mock.respond("GET", "/health", 503, json!({})).await;
-    mock.respond(
-        "POST",
-        "/api/v1/auth/tokens",
-        200,
-        json!({
-            "id": "00000000-0000-0000-0000-000000000001",
-            "name": "n",
-            "token": "t",
-            "policy_applied": false
-        }),
-    )
-    .await;
-    let output = mock.ak(&[
-        "auth",
-        "token",
-        "create",
-        "--description",
-        "n",
-        "--repo-selector",
-        r#"{"match_formats":["npm"]}"#,
-        "--format",
-        "json",
-    ]);
-    assert!(output.status.success(), "{output:?}");
-    let stderr = mock::unwrapped(&output.stderr);
-    assert!(
-        stderr.contains("couldn't read this server's version"),
-        "{stderr}"
-    );
-    assert!(stderr.contains("1.10.2"), "{stderr}");
-    // Not on stdout, which a script parses.
-    serde_json::from_slice::<Value>(&output.stdout).expect("JSON on stdout");
 }

@@ -176,7 +176,6 @@ pub async fn execute(command: NpmCommand, global: &GlobalArgs) -> Result<()> {
             )? {
                 return Ok(());
             }
-            const COMMAND: &str = "pkg npm unpublish";
             let rev = current_rev(&wire, &repo, &package).await;
             let package_segments = name_segments(&package, encoded_name);
             let rev_url = |tail: &[&str]| {
@@ -186,28 +185,22 @@ pub async fn execute(command: NpmCommand, global: &GlobalArgs) -> Result<()> {
                 wire.url(&segments)
             };
             let reply = if let Some(tarball) = &tarball {
-                wire.send_since_1_11(
+                wire.send(
                     "remove the tarball",
-                    COMMAND,
-                    global,
                     wire.request(Method::DELETE, rev_url(&["-", tarball, "-rev", &rev])),
                 )
                 .await?
             } else if let Some(version) = &version {
                 let kept = packument_without(&wire, &repo, &package, version).await?;
-                wire.send_since_1_11(
+                wire.send(
                     "remove the version",
-                    COMMAND,
-                    global,
                     wire.request(Method::PUT, rev_url(&["-rev", &rev]))
                         .json(&kept),
                 )
                 .await?
             } else {
-                wire.send_since_1_11(
+                wire.send(
                     "remove the package",
-                    COMMAND,
-                    global,
                     wire.request(Method::DELETE, rev_url(&["-rev", &rev])),
                 )
                 .await?

@@ -8,7 +8,7 @@ use miette::Result;
 
 use crate::cli::GlobalArgs;
 use crate::commands::client::{client_for, client_for_slow};
-use crate::commands::helpers::{confirm_action, new_table, or_since_1_11, sdk_err};
+use crate::commands::helpers::{confirm_action, new_table, sdk_err};
 use crate::output::{self, OutputFormat, format_bytes};
 
 #[derive(Subcommand)]
@@ -136,8 +136,8 @@ async fn run_scrub(body: StorageScrubRequest, yes: bool, global: &GlobalArgs) ->
     let spinner = output::spinner("Scrubbing storage...");
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.run_storage_scrub().body(body).send()).await;
-    let result = or_since_1_11(resp, "run storage scrub", "admin storage-scrub", global)
-        .await?
+    let result = resp
+        .map_err(|e| sdk_err("run storage scrub", e))?
         .into_inner();
     spinner.finish_and_clear();
 
@@ -195,8 +195,8 @@ async fn list_findings(
     }
     let spinner = output::spinner("Fetching scrub findings...");
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-    let findings = or_since_1_11(resp, "list scrub findings", "admin storage-scrub", global)
-        .await?
+    let findings = resp
+        .map_err(|e| sdk_err("list scrub findings", e))?
         .into_inner();
     spinner.finish_and_clear();
 
@@ -279,14 +279,9 @@ pub async fn reindex_storage(args: ReindexStorageArgs, global: &GlobalArgs) -> R
             .send(),
     )
     .await;
-    let result = or_since_1_11(
-        resp,
-        "reindex repository storage",
-        "admin reindex-storage",
-        global,
-    )
-    .await?
-    .into_inner();
+    let result = resp
+        .map_err(|e| sdk_err("reindex repository storage", e))?
+        .into_inner();
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {

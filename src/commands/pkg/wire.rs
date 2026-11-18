@@ -16,7 +16,7 @@ use tokio_util::io::ReaderStream;
 
 use crate::cli::GlobalArgs;
 use crate::commands::client::{raw_http_client, resolve_base_url_and_auth};
-use crate::commands::helpers::{emit_mutation_raw, raw_err, since_1_11_raw};
+use crate::commands::helpers::{Minor, emit_mutation_raw, raw_err, since_raw};
 use crate::error::AkError;
 
 /// The instance, ready for raw requests.
@@ -161,10 +161,12 @@ impl Wire {
 }
 
 impl Wire {
-    /// [`Wire::send`] for a route new in 1.11: a 404 from an older server names that
+    /// [`Wire::send`] for a route new in `minor`: a 404 from an older server names that
     /// as the problem, instead of a package that's really there.
-    pub async fn send_since_1_11(
+    #[allow(dead_code)] // For the routes new in 1.12, which come in their own changes.
+    pub async fn send_since(
         &self,
+        minor: Minor,
         action: &str,
         command: &str,
         global: &GlobalArgs,
@@ -179,7 +181,7 @@ impl Wire {
         let body = response.bytes().await.into_diagnostic()?.to_vec();
         if !status.is_success() {
             let text = String::from_utf8_lossy(&body);
-            return Err(since_1_11_raw(status, &text, action, command, global)
+            return Err(since_raw(minor, status, &text, action, command, global)
                 .await
                 .into());
         }

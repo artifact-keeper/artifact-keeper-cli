@@ -14,7 +14,7 @@ use super::chunked_upload::{self, SessionMetadata, UploadOutcome};
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::{
     confirm_action, emit_mutation, emit_mutation_raw, new_table, read_inline_or_file,
-    refuse_flags_before_1_11, resolve_artifact_id, sdk_err, since_1_11,
+    resolve_artifact_id, sdk_err,
 };
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
@@ -406,9 +406,6 @@ impl ArtifactCommand {
                     || session.artifact_metadata.is_some()
                     || session.artifact_metadata_format.is_some()
                     || session.artifact_metadata_properties.is_some();
-                if session.skip_if_present {
-                    refuse_flags_before_1_11(&["--skip-if-present"], global).await?;
-                }
                 let mode = if multipart {
                     UploadMode::Multipart
                 } else if force_chunked {
@@ -1485,9 +1482,7 @@ async fn package_analysis(id: &str, global: &GlobalArgs) -> Result<()> {
         Ok(resp) => resp,
         Err(e) => {
             let action = "get package analysis";
-            return Err(since_1_11(e, action, "artifact package-analysis", global)
-                .await
-                .into());
+            return Err(sdk_err(action, e).into());
         }
     };
 
@@ -1653,9 +1648,7 @@ async fn missing(
         Ok(resp) => resp,
         Err(e) => {
             let action = "check for missing artifacts";
-            return Err(since_1_11(e, action, "artifact missing", global)
-                .await
-                .into());
+            return Err(sdk_err(action, e).into());
         }
     };
 

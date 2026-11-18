@@ -234,9 +234,6 @@ fn jetbrains_and_vscode_publish() {
         .arg(&extension)
         .assert()
         .success();
-    if common::server_older_than(1, 11, "the gallery query") {
-        return;
-    }
     let query =
         "{\"filters\":[{\"criteria\":[{\"filterType\":10,\"value\":\"demo\"}]}],\"flags\":0}";
     let found = stdout(
@@ -423,17 +420,6 @@ fn conan_upload_and_remove() {
             .assert(),
     );
     assert!(!token.trim().is_empty());
-
-    if common::server_older_than(1, 11, "Conan removal") {
-        let refused = env
-            .ak_cmd()
-            .args(["pkg", "conan", "remove", key, "demo/1.0", "--yes"])
-            .assert()
-            .failure();
-        let stderr = String::from_utf8_lossy(&refused.get_output().stderr).to_string();
-        assert!(stderr.contains("1.11"), "{stderr}");
-        return;
-    }
 
     // A package's files, then all of the revision's packages removed.
     let info = write("conaninfo.txt", "[settings]\n");

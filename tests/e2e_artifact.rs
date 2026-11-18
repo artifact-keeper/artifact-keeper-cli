@@ -579,23 +579,6 @@ fn artifact_session_fields_and_skip_if_present() {
     assert_eq!(info["name"], "named");
     assert_eq!(info["version"], "9.9");
 
-    if common::server_older_than(1, 11, "skip_if_present") {
-        // It would ignore the flag and upload anyway, so the command refuses.
-        env.ak_cmd()
-            .args([
-                "artifact",
-                "push",
-                &repo,
-                file,
-                "--path",
-                "s.bin",
-                "--skip-if-present",
-            ])
-            .assert()
-            .failure()
-            .stderr(predicate::str::contains("needs a server on 1.11"));
-        return;
-    }
     let again = json_stdout(
         env.ak_cmd()
             .args([
@@ -774,15 +757,6 @@ fn artifact_versions_labels_and_pull_by_revision() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn artifact_missing_reports_what_the_repository_lacks() {
-    if common::server_older_than(1, 11, "artifacts-missing") {
-        let env = common::TestEnv::setup();
-        env.ak_cmd()
-            .args(["artifact", "missing", "any", "--item", "a=1"])
-            .assert()
-            .failure()
-            .stderr(predicate::str::contains("needs a server on 1.11"));
-        return;
-    }
     let env = common::TestEnv::setup();
     let repo = format!("e2e-art-mi-{}", std::process::id());
     let _guard = RepoGuard::create(&env, &repo, "generic");
@@ -857,11 +831,7 @@ fn artifact_commands_take_a_repo_and_path() {
         .assert()
         .failure();
     let stderr = String::from_utf8_lossy(&assert.get_output().stderr).into_owned();
-    let expected = if common::server_older_than(1, 11, "package analysis") {
-        "needs a server on 1.11"
-    } else {
-        "404"
-    };
+    let expected = "404";
     assert!(stderr.contains(expected), "{stderr}");
 
     let filtered = json_stdout(

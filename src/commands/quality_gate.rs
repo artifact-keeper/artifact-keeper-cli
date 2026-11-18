@@ -513,6 +513,8 @@ async fn create_gate(
         enforce_on_promotion: thresholds.enforce_on_promotion,
         repository_id,
         required_checks,
+        // The server's default.
+        accepted_grade_status: artifact_keeper_sdk::types::AcceptedGradeStatus::Rated,
     };
 
     let (gate, raw) =
@@ -572,6 +574,7 @@ async fn update_gate(
         min_quality_score: update.thresholds.min_quality_score,
         min_security_score: update.thresholds.min_security_score,
         required_checks: update.required_checks,
+        accepted_grade_status: None,
     };
 
     let (gate, raw) =

@@ -186,7 +186,9 @@ async fn list_packages(
         for p in &resp.items {
             let id_short = short_id(&p.id);
             let size = format_bytes(p.size_bytes);
-            let downloads = p.download_count.to_string();
+            let downloads = p
+                .download_count
+                .map_or_else(|| "-".to_string(), |n| n.to_string());
             let updated = p.updated_at.format("%Y-%m-%d %H:%M").to_string();
             table.add_row(vec![
                 &id_short,
@@ -300,7 +302,9 @@ async fn list_versions(id: &str, global: &GlobalArgs) -> Result<()> {
 
         for v in &resp.versions {
             let size = format_bytes(v.size_bytes);
-            let downloads = v.download_count.to_string();
+            let downloads = v
+                .download_count
+                .map_or_else(|| "-".to_string(), |n| n.to_string());
             let checksum = if v.checksum_sha256.len() >= 12 {
                 &v.checksum_sha256[..12]
             } else {
@@ -459,7 +463,8 @@ fn format_package_detail(pkg: &artifact_keeper_sdk::types::PackageResponse) -> S
         pkg.repository_key,
         pkg.description.as_deref().unwrap_or("-"),
         format_bytes(pkg.size_bytes),
-        pkg.download_count,
+        pkg.download_count
+            .map_or_else(|| "-".to_string(), |n| n.to_string()),
         pkg.created_at.to_rfc3339(),
         pkg.updated_at.to_rfc3339(),
     )

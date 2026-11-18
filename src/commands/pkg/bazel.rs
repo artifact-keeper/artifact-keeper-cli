@@ -48,9 +48,7 @@ pub async fn execute(command: BazelCommand, global: &GlobalArgs) -> Result<()> {
         let request = upload
             .attach(wire.request(Method::PUT, url), "application/octet-stream")
             .await?;
-        let reply = wire
-            .send_since_1_11("upload the file", "pkg bazel publish", global, request)
-            .await?;
+        let reply = wire.send("upload the file", request).await?;
         emit(
             &reply,
             &upload.name,

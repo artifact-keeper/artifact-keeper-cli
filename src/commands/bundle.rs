@@ -10,13 +10,10 @@ use miette::Result;
 use serde_json::Value;
 
 use super::client::{client_for, raw_http_client, resolve_base_url_and_auth};
-use super::helpers::{new_table, or_since_1_11, parse_uuid, since_1_11_raw};
+use super::helpers::{new_table, parse_uuid, raw_err, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat, format_bytes};
-
-/// The group, for the message on a server older than these routes.
-const COMMAND: &str = "bundle";
 
 const MEDIA_PROFILES: [&str; 5] = ["unbounded", "dvd_r", "dvd_r_dl", "bd_r", "bd_r_xl"];
 
@@ -160,8 +157,8 @@ async fn show_format(global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
     let spinner = output::spinner("Fetching bundle format...");
     let (resp, raw) = artifact_keeper_sdk::raw::capture(client.get_bundle_format().send()).await;
-    let format = or_since_1_11(resp, "get bundle format", COMMAND, global)
-        .await?
+    let format = resp
+        .map_err(|e| sdk_err("get bundle format", e))?
         .into_inner();
     spinner.finish_and_clear();
 
@@ -204,15 +201,7 @@ async fn validate_manifest(manifest: &str, global: &GlobalArgs) -> Result<()> {
     spinner.finish_and_clear();
 
     if !status.is_success() {
-        return Err(since_1_11_raw(
-            status,
-            &String::from_utf8_lossy(&body),
-            "Validate manifest",
-            COMMAND,
-            global,
-        )
-        .await
-        .into());
+        return Err(raw_err("Validate manifest", status, &String::from_utf8_lossy(&body)).into());
     }
     let report: ManifestValidationReport = serde_json::from_slice(&body).map_err(|e| {
         AkError::ServerError(format!("Validate manifest: unexpected response: {e}"))
@@ -299,9 +288,7 @@ async fn post_job(
     spinner.finish_and_clear();
 
     if !status.is_success() {
-        return Err(since_1_11_raw(status, &text, action, COMMAND, global)
-            .await
-            .into());
+        return Err(raw_err(action, status, &text).into());
     }
     let value: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
     if matches!(global.format, OutputFormat::Quiet) {
@@ -339,8 +326,8 @@ async fn list_jobs(
         req = req.per_page(per_page);
     }
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-    let list = or_since_1_11(resp, "list bundle jobs", COMMAND, global)
-        .await?
+    let list = resp
+        .map_err(|e| sdk_err("list bundle jobs", e))?
         .into_inner();
     spinner.finish_and_clear();
 
@@ -372,9 +359,7 @@ async fn show_job(id: &str, global: &GlobalArgs) -> Result<()> {
     let spinner = output::spinner("Fetching bundle job...");
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.get_bundle_job().id(job_id).send()).await;
-    let job = or_since_1_11(resp, "get bundle job", COMMAND, global)
-        .await?
-        .into_inner();
+    let job = resp.map_err(|e| sdk_err("get bundle job", e))?.into_inner();
     spinner.finish_and_clear();
 
     if matches!(global.format, OutputFormat::Quiet) {
@@ -409,8 +394,8 @@ async fn list_items(
         req = req.per_page(per_page);
     }
     let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-    let list = or_since_1_11(resp, "list bundle job items", COMMAND, global)
-        .await?
+    let list = resp
+        .map_err(|e| sdk_err("list bundle job items", e))?
         .into_inner();
     spinner.finish_and_clear();
 

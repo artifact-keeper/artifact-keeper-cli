@@ -21,19 +21,6 @@ fn run(env: &common::TestEnv, args: &[&str]) -> Value {
     json_of(env.ak_cmd().args(args).output().unwrap())
 }
 
-/// A command that needs a newer server says so, rather than repeating the
-/// server's "Repository not found".
-fn says_it_needs_1_11(env: &common::TestEnv, args: &[&str]) {
-    let output = env.ak_cmd().args(args).output().unwrap();
-    assert!(!output.status.success(), "{args:?}");
-    let stderr = String::from_utf8_lossy(&output.stderr)
-        .replace('│', " ")
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-    assert!(stderr.contains("1.11 or newer"), "{args:?}: {stderr}");
-}
-
 fn unique(name: &str) -> String {
     format!("e2e-{name}-{}", std::process::id())
 }
@@ -42,10 +29,6 @@ fn unique(name: &str) -> String {
 #[ignore = "requires E2E backend"]
 fn guest_access_can_be_changed_and_put_back() {
     let env = common::TestEnv::setup();
-    if common::server_older_than(1, 11, "admin settings system") {
-        says_it_needs_1_11(&env, &["admin", "settings", "system", "show"]);
-        return;
-    }
     let before = run(&env, &["admin", "settings", "system", "show"]);
     let original = before["guest_access_enabled"].as_bool().unwrap();
     let flipped = (!original).to_string();
@@ -141,10 +124,6 @@ fn totp_policy_refuses_an_admin_with_no_totp_and_shows_why() {
 #[ignore = "requires E2E backend"]
 fn a_deleted_artifact_can_be_restored_from_the_trash() {
     let env = common::TestEnv::setup();
-    if common::server_older_than(1, 11, "admin trash") {
-        says_it_needs_1_11(&env, &["admin", "trash", "list"]);
-        return;
-    }
     let key = unique("trash");
     run(&env, &["repo", "create", &key, "--pkg-format", "generic"]);
     let dir = tempfile::TempDir::new().unwrap();
@@ -184,11 +163,6 @@ fn a_deleted_artifact_can_be_restored_from_the_trash() {
 #[ignore = "requires E2E backend"]
 fn storage_scrub_of_an_intact_repository() {
     let env = common::TestEnv::setup();
-    if common::server_older_than(1, 11, "admin storage-scrub") {
-        says_it_needs_1_11(&env, &["admin", "storage-scrub", "findings"]);
-        says_it_needs_1_11(&env, &["admin", "storage-scrub", "run", "--yes"]);
-        return;
-    }
     let key = unique("scrub");
     run(&env, &["repo", "create", &key, "--pkg-format", "generic"]);
     let dir = tempfile::TempDir::new().unwrap();
@@ -223,12 +197,6 @@ fn storage_scrub_of_an_intact_repository() {
 #[ignore = "requires E2E backend"]
 fn reindex_storage_dry_run_and_its_refusal_for_other_formats() {
     let env = common::TestEnv::setup();
-    if common::server_older_than(1, 11, "admin reindex-storage") {
-        let key = unique("reindex-old");
-        run(&env, &["repo", "create", &key, "--pkg-format", "maven"]);
-        says_it_needs_1_11(&env, &["admin", "reindex-storage", &key, "--dry-run"]);
-        return;
-    }
     let maven = unique("reindex-mvn");
     run(&env, &["repo", "create", &maven, "--pkg-format", "maven"]);
     let result = run(&env, &["admin", "reindex-storage", &maven, "--dry-run"]);

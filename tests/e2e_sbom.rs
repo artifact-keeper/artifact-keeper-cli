@@ -228,18 +228,12 @@ fn a_cve_status_can_be_set_on_a_real_record() {
 
 #[test]
 #[ignore = "requires E2E backend"]
-fn a_lockfile_becomes_an_sbom_on_1_11_and_says_so_on_1_10() {
+fn a_lockfile_becomes_an_sbom() {
     let env = TestEnv::setup();
     let dir = TempDir::new().unwrap();
     let lockfile = dir.path().join("uv.lock");
     std::fs::write(&lockfile, UV_LOCK).unwrap();
     let lockfile = lockfile.to_str().unwrap();
-
-    if common::server_older_than(1, 11, "POST /sbom/environment") {
-        let refused = stderr_of(&env, &["sbom", "environment", lockfile]);
-        assert!(refused.contains("needs a server on 1.11"), "{refused}");
-        return;
-    }
 
     let body = json_of(
         &env,

@@ -570,6 +570,7 @@ async fn create_token(
         repository_ids: repo_ids,
         repo_selector: selector,
         description: description.map(|s| s.to_string()),
+        token: None,
     };
 
     let (resp, raw) =
@@ -648,7 +649,10 @@ async fn preview_selector(selector: &str, global: &GlobalArgs) -> Result<()> {
 
     let spinner = output::spinner("Evaluating selector...");
 
-    let body = artifact_keeper_sdk::types::PreviewRepoSelectorRequest { repo_selector };
+    let body = artifact_keeper_sdk::types::PreviewRepoSelectorRequest {
+        repo_selector,
+        service_account_id: None,
+    };
 
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.preview_repo_selector().body(body).send()).await;

@@ -74,10 +74,8 @@ pub async fn execute(command: VscodeCommand, global: &GlobalArgs) -> Result<()> 
                 .map_err(|e| AkError::Usage(format!("--body isn't JSON: {e}")))?;
             let url = wire.url(&["vscode", &repo, "gallery", "extensionquery"]);
             let reply = wire
-                .send_since_1_11(
+                .send(
                     "send the query",
-                    "pkg vscode query",
-                    global,
                     wire.request(Method::POST, url)
                         .header(
                             reqwest::header::ACCEPT,
