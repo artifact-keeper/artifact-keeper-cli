@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ak repo delete --wait` follows the deletion job through the SDK's typed `GET /api/v1/repository-deletions/{id}`, rather than a hand-built request, and the coverage registry now lists that route under `repo delete` (#182).
 - `ak sso providers --public` works without being logged in. The public provider list doesn't need credentials, but the command refused to run without them (#311).
 - The SDK generator and the route walker work on API 1.12.1. Generation no longer panics on an operation that answers both with a body and without one, or emits code that doesn't compile for an optional nullable header. The walker reads a handler's child modules, routes built in a `for` loop over a list of strings, and constants inside `format!`, so `ROUTES.json` now has the MCP registry routes under `/mcp` (and the real Alpine signing-key path); a loop it can't evaluate is an error rather than a shorter table. `/mcp` and `/agentplugins` count as package-format wire routes in the coverage gate (#312).
+- The route walker no longer writes a wrong table for a route path built from a constant it can't find (`{NAME}` stayed in the path as a fake parameter) or misses a `for` loop it can't evaluate whose body only sets a fallback; both are errors now. A `let` inside a loop body no longer outlives the loop. `ROUTES.json` is unchanged (#319).
 
 ## [1.11.0] - 2026-11-15
 
