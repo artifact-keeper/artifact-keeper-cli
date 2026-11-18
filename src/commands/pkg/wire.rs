@@ -163,7 +163,6 @@ impl Wire {
 impl Wire {
     /// [`Wire::send`] for a route new in `minor`: a 404 from an older server names that
     /// as the problem, instead of a package that's really there.
-    #[allow(dead_code)] // For the routes new in 1.12, which come in their own changes.
     pub async fn send_since(
         &self,
         minor: Minor,

@@ -209,6 +209,9 @@ const CURATION_AFTER_CREATE: &str = "The server refuses anything but the default
 
 const IDP_CALLBACK: &str = "An identity provider sends a browser here with a code or an \
                             assertion. A CLI never starts this request";
+const AGENT_PLUGINS_TOKEN_URL: &str = "The same document with a token in the URL, for an \
+                                       agent that can't send an Authorization header. ak sends \
+                                       the header, so it uses the route without /t/{token}";
 const WASM_PASSTHROUGH: &str = "A WASM plugin defines what this does, so `ak api` is the \
                                 right interface";
 
@@ -4297,6 +4300,92 @@ pub static COMMANDS: &[Op] = &[
         "pkg proto call",
         &[],
     ),
+    covered(
+        "POST",
+        "/proto/{repo_key}/buf.registry.module.v1.DownloadService/Download",
+        "pkg proto call",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/proto/{repo_key}/buf.registry.module.v1.UploadService/Upload",
+        "pkg proto call",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/proto/{repo_key}/buf.registry.owner.v1.OwnerService/GetOwners",
+        "pkg proto call",
+        &[],
+    ),
+    excluded(
+        "POST",
+        "/proto/{repo_key}/{bsr_path}",
+        "Every BSR method without a route of its own. The server only passes a few reads \
+         (ListModules, GetModule, GetCommit, ListLabels and the like) through to the \
+         upstream of a remote or virtual repository, and answers unimplemented for the \
+         rest and for a hosted repository. It's a reverse proxy, not an API of the server's \
+         own: `pkg proto call` sends every method the server implements, and `ak api POST` \
+         sends a passed-through one as it is",
+    ),
+    // ---- agent plugins: the format's wire routes ----
+    covered(
+        "PUT",
+        "/agentplugins/{repo_key}/{name}/{version}/{file}",
+        "agent plugins publish",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/agentplugins/{repo_key}/{name}/index.json",
+        "agent plugins install",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/agentplugins/{repo_key}/{name}/index.json",
+        "agent plugins list",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/agentplugins/{repo_key}/{name}/index.json",
+        "agent plugins update",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/agentplugins/{repo_key}/{name}/{version}/{file}",
+        "agent plugins install",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/agentplugins/{repo_key}/{name}/{version}/{file}",
+        "agent plugins update",
+        &[],
+    ),
+    covered(
+        "GET",
+        "/agentplugins/{repo_key}/{document}",
+        "agent plugins search",
+        &[],
+    ),
+    excluded(
+        "GET",
+        "/agentplugins/t/{token}/{repo_key}/{document}",
+        AGENT_PLUGINS_TOKEN_URL,
+    ),
+    excluded(
+        "GET",
+        "/agentplugins/t/{token}/{repo_key}/{name}/index.json",
+        AGENT_PLUGINS_TOKEN_URL,
+    ),
+    excluded(
+        "GET",
+        "/agentplugins/t/{token}/{repo_key}/{name}/{version}/{file}",
+        AGENT_PLUGINS_TOKEN_URL,
+    ),
     covered("GET", "/v2/_catalog", "pkg oci catalog", &[]),
     covered("GET", "/v2/{name}/tags/list", "pkg oci tags", &[]),
     covered(
@@ -4331,6 +4420,15 @@ pub static COMMANDS: &[Op] = &[
         &[],
     ),
     // ---- excluded: reachable with `ak api` ----
+    excluded(
+        "GET",
+        "/.well-known/terraform.json",
+        "Terraform's own service discovery for the host, which terraform reads before it \
+         resolves a module or provider by hostname. It names no repository: it answers for \
+         TERRAFORM_DEFAULT_REPO, or 404. `ak pkg terraform` publishes by repository key and \
+         never needs it, and `ak api GET /.well-known/terraform.json` shows what the host \
+         advertises",
+    ),
     excluded("GET", "/api/v1/auth/sso/oidc/{id}/callback", IDP_CALLBACK),
     excluded("GET", "/api/v1/auth/sso/oidc/callback", IDP_CALLBACK),
     excluded("POST", "/api/v1/auth/sso/saml/{id}/acs", IDP_CALLBACK),

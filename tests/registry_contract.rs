@@ -216,6 +216,13 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
             json!({"name": "@a/demo", "versions": {"1.0.0": {}, "2.0.0": {}}}),
         ),
         (
+            "GET",
+            "/agentplugins/{repo}/{name}/index.json",
+            200,
+            json!({"latest": "1.0.0", "versions": [{"version": "1.0.0", "sha256": "00",
+                   "harnesses": ["claude"]}]}),
+        ),
+        (
             "POST",
             "/lfs/{repo}/objects/batch",
             200,
@@ -710,6 +717,42 @@ fn hints(
             ],
             vec![],
         ),
+        ("agent plugins publish", ..) => {
+            let dir = home.join("plugin");
+            std::fs::create_dir_all(dir.join(".claude-plugin")).expect("mkdir");
+            std::fs::write(
+                dir.join(".claude-plugin/plugin.json"),
+                r#"{"name":"demo","version":"1.0.0"}"#,
+            )
+            .expect("write");
+            (vec![("dir", dir.to_string_lossy().to_string())], vec![])
+        }
+        ("agent plugins install", ..) => (
+            vec![
+                ("slug", "demo".to_string()),
+                ("harness", "claude".to_string()),
+                ("path", home.join("vendor").to_string_lossy().to_string()),
+            ],
+            vec![],
+        ),
+        // An install ak made, one version behind the index in [`preflight`]. The record
+        // names the rig's instance, which is where these commands ask.
+        ("agent plugins list" | "agent plugins update", ..) => {
+            let dir = home.join("installed");
+            let info = dir.join("demo/.ak");
+            std::fs::create_dir_all(&info).expect("mkdir");
+            let record = json!({"instance": "t", "repo": "plugins", "slug": "demo",
+                "version": "0.1.0", "sha256": "00", "harness": "claude",
+                "installed_at": "2026-01-01T00:00:00Z"});
+            std::fs::write(info.join("plugin-info.json"), record.to_string()).expect("write");
+            let mut args = vec![("path", dir.to_string_lossy().to_string())];
+            if line.command == "agent plugins list" {
+                args.push(("check_updates", String::new()));
+            } else {
+                args.push(("slug", "demo".to_string()));
+            }
+            (args, vec![("AK_INSTANCE", "t")])
+        }
         ("lifecycle create", ..) => (
             vec![
                 ("policy_type", "max_versions".to_string()),
