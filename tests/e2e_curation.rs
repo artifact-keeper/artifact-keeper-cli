@@ -215,14 +215,27 @@ fn search_sync_and_versions_reach_their_routes() {
     );
     assert_eq!(found, serde_json::json!([]));
 
-    let synced = stdout_json(
-        env.ak_cmd()
-            .args(["curation", "sync", &key])
-            .output()
-            .unwrap(),
-    );
-    assert_eq!(synced["repository"], key.as_str());
-    assert_eq!(synced["triggered"], true);
+    let sync = env
+        .ak_cmd()
+        .args(["curation", "sync", &key])
+        .output()
+        .unwrap();
+    if common::server_older_than(1, 12, "a sync without curation enabled") {
+        let synced = stdout_json(sync);
+        assert_eq!(synced["repository"], key.as_str());
+        assert_eq!(synced["triggered"], true);
+    } else {
+        // 1.12 syncs only a repository with curation enabled and a source, which
+        // `ak repo create` can't set yet: the server's refusal shows the route was
+        // reached.
+        assert!(!sync.status.success());
+        let stderr = String::from_utf8_lossy(&sync.stderr)
+            .replace('│', " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(stderr.contains("curation is not enabled"), "{stderr}");
+    }
 
     let no_packages = env
         .ak_cmd()

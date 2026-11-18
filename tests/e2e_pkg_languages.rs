@@ -145,8 +145,10 @@ fn npm_publish_tag_and_unpublish() {
         .success();
     assert!(repo.json(&format!("/npm/{key}/demo"))["dist-tags"]["beta"].is_null());
 
-    // An audit of a hosted repository has nothing to find, and says so as JSON.
-    env.ak_cmd()
+    // An audit of a hosted repository has nothing to find. 1.11 says so as JSON,
+    // and 1.12 refuses it with a 501 that says why.
+    let audit = env
+        .ak_cmd()
         .args([
             "pkg",
             "npm",
@@ -155,8 +157,17 @@ fn npm_publish_tag_and_unpublish() {
             "--body",
             "{\"demo\":[\"1.0.0\"]}",
         ])
-        .assert()
-        .success();
+        .assert();
+    if common::server_older_than(1, 12, "a 501 for a hosted audit") {
+        audit.success();
+    } else {
+        let stderr = String::from_utf8_lossy(&audit.failure().get_output().stderr)
+            .replace('│', " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(stderr.contains("is a hosted repository"), "{stderr}");
+    }
 
     // One version goes, and the other stays.
     env.ak_cmd()
