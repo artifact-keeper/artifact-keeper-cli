@@ -875,3 +875,101 @@ async fn settings_update_refuses_what_the_server_would_not_apply() {
         assert!(posted(&server).await.is_empty(), "{json} was sent");
     }
 }
+
+async fn reports_version(server: &MockServer, version: &str) {
+    Mock::given(method("GET"))
+        .and(path("/health"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .set_body_json(json!({"status": "healthy", "version": version})),
+        )
+        .mount(server)
+        .await;
+}
+
+#[tokio::test]
+async fn settings_update_goes_by_the_server_version() {
+    // A 1.11 server whose body doesn't name allow_anonymous_download still gets the
+    // whole body.
+    let server = settings_server(settings_1_12()).await;
+    reports_version(&server, "1.11.14").await;
+    let mut full = settings_1_12();
+    full["retention_days"] = json!(30);
+    Mock::given(method("POST"))
+        .and(path("/api/v1/admin/settings"))
+        .and(body_json(full.clone()))
+        .respond_with(ResponseTemplate::new(200).set_body_json(full))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let args = [
+        "admin",
+        "settings",
+        "update",
+        "--json",
+        r#"{"retention_days":30}"#,
+    ];
+    let output = ak(&server, &args).await;
+    assert!(output.status.success(), "{output:?}");
+
+    // A 1.12 server that still reports it gets only the change.
+    let server = settings_server(settings_1_11()).await;
+    reports_version(&server, "1.12.1").await;
+    let mut after = settings_1_12();
+    after["retention_days"] = json!(30);
+    Mock::given(method("POST"))
+        .and(path("/api/v1/admin/settings"))
+        .and(body_json(json!({"retention_days": 30})))
+        .respond_with(ResponseTemplate::new(200).set_body_json(after))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(&server, &args).await;
+    assert!(output.status.success(), "{output:?}");
+}
+
+#[tokio::test]
+async fn settings_update_refuses_a_null() {
+    for current in [settings_1_12(), settings_1_11()] {
+        let server = settings_server(current).await;
+        let output = ak(
+            &server,
+            &[
+                "admin",
+                "settings",
+                "update",
+                "--json",
+                r#"{"retention_days":null}"#,
+            ],
+        )
+        .await;
+        assert_eq!(output.status.code(), Some(2), "{output:?}");
+        let stderr = one_line(&output);
+        assert!(stderr.contains("retention_days can't be null"), "{stderr}");
+        assert!(posted(&server).await.is_empty(), "a null was sent");
+    }
+}
+
+#[tokio::test]
+async fn settings_update_compares_read_only_numbers_by_value() {
+    let server = settings_server(settings_1_12()).await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/admin/settings"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(settings_1_12()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "admin",
+            "settings",
+            "update",
+            "--json",
+            r#"{"max_upload_size_bytes":10737418240.0,"retention_days":30}"#,
+        ],
+    )
+    .await;
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(posted(&server).await, vec![json!({"retention_days": 30})]);
+}
