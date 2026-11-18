@@ -1351,6 +1351,73 @@ async fn deletion_accepted(
 /// Consecutive failed polls `--wait` puts up with before giving up on a job.
 const MAX_POLL_FAILURES: u32 = 5;
 
+/// One look at a background job, for [`poll_job`].
+pub(super) enum Polled {
+    /// It ended well enough: its last body.
+    Done(Vec<u8>),
+    /// It's still going.
+    Running,
+    /// No answer that could be read: a network error or a server error.
+    Unreadable,
+}
+
+/// Follow a background job until `poll` says it's done or fails, giving up after
+/// `timeout_secs` or [`MAX_POLL_FAILURES`] unreadable answers in a row. `what` names
+/// the job in lower case ("deletion job <id> for 'r'") and `check` is the command that
+/// reads it by hand.
+pub(super) async fn poll_job<F, Fut>(
+    running: &str,
+    what: &str,
+    check: &str,
+    timeout_secs: u64,
+    mut poll: F,
+) -> Result<Vec<u8>>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<Polled>>,
+{
+    let spinner = output::spinner(running);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
+    let mut failures = 0;
+
+    loop {
+        match poll().await {
+            Ok(Polled::Done(bytes)) => {
+                spinner.finish_and_clear();
+                return Ok(bytes);
+            }
+            Ok(Polled::Running) => failures = 0,
+            Ok(Polled::Unreadable) => {
+                failures += 1;
+                if failures >= MAX_POLL_FAILURES {
+                    spinner.finish_and_clear();
+                    return Err(AkError::ServerError(format!(
+                        "Can't read {what}. It may still be running: {check}"
+                    ))
+                    .into());
+                }
+            }
+            Err(e) => {
+                spinner.finish_and_clear();
+                return Err(e);
+            }
+        }
+
+        if std::time::Instant::now() >= deadline {
+            spinner.finish_and_clear();
+            let mut what = what.to_string();
+            if let Some(first) = what.get_mut(0..1) {
+                first.make_ascii_uppercase();
+            }
+            return Err(AkError::ServerError(format!(
+                "{what} hasn't finished after {timeout_secs}s. It's still running: {check}"
+            ))
+            .into());
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+}
+
 /// Poll a repository deletion job until it ends, returning its last body. A job
 /// that ends `completed_with_errors` deleted the repository but left stored objects
 /// behind, which storage GC retries: that's a warning, not a failure. Any other end
@@ -1362,79 +1429,63 @@ async fn wait_for_deletion(
     global: &GlobalArgs,
 ) -> Result<Vec<u8>> {
     let client = client_for(global)?;
-    let spinner = output::spinner(&format!("Deleting '{key}'..."));
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
-    let mut failures = 0;
-
-    loop {
-        let (result, raw) =
-            artifact_keeper_sdk::raw::capture(client.get_repository_deletion().id(job_id).send())
-                .await;
-        // The job is read from the body as sent, so a 2xx body the SDK's type
-        // doesn't fit still counts.
-        let polled = match result {
-            Ok(_) => raw,
-            Err(e) if e.status().is_some_and(|s| s.is_client_error()) => {
-                spinner.finish_and_clear();
-                return Err(sdk_err(&format!("follow deletion job {job_id}"), e).into());
-            }
-            Err(e) if e.status().is_some_and(|s| s.is_success()) => raw,
-            Err(_) => None,
-        };
-
-        match polled {
-            Some(bytes) => {
-                failures = 0;
-                let job: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_default();
-                match job["status"].as_str() {
-                    Some("completed") => {
-                        spinner.finish_and_clear();
-                        return Ok(bytes);
-                    }
-                    Some("completed_with_errors") => {
-                        spinner.finish_and_clear();
-                        eprintln!("{}", left_behind(key, job_id, &job));
-                        return Ok(bytes);
-                    }
-                    Some(status @ ("failed" | "cancelled")) => {
-                        spinner.finish_and_clear();
-                        let reason = job["error_summary"].as_str().unwrap_or("no reason given");
-                        return Err(AkError::ReportedFailure(format!(
-                            "Deletion job {job_id} for '{key}' {status}: {}",
-                            output::sanitize_terminal(reason)
-                        ))
-                        .into());
-                    }
-                    _ => {}
+    let quiet = matches!(global.format, OutputFormat::Quiet);
+    poll_job(
+        &format!("Deleting '{key}'..."),
+        &format!("deletion job {job_id} for '{key}'"),
+        &format!("ak api GET /api/v1/repository-deletions/{job_id}"),
+        timeout_secs,
+        || async {
+            let (result, raw) = artifact_keeper_sdk::raw::capture(
+                client.get_repository_deletion().id(job_id).send(),
+            )
+            .await;
+            // The job is read from the body as sent, so a 2xx body the SDK's type
+            // doesn't fit still counts.
+            let bytes = match result {
+                Ok(_) => raw,
+                Err(e) if e.status().is_some_and(|s| s.is_client_error()) => {
+                    return Err(sdk_err(&format!("follow deletion job {job_id}"), e).into());
                 }
-            }
-            None => {
-                failures += 1;
-                if failures >= MAX_POLL_FAILURES {
-                    spinner.finish_and_clear();
-                    return Err(AkError::ServerError(format!(
-                        "Can't read deletion job {job_id} for '{key}'. It may still be running: \
-                         ak api GET /api/v1/repository-deletions/{job_id}"
+                Err(e) if e.status().is_some_and(|s| s.is_success()) => raw,
+                Err(_) => None,
+            };
+            let Some(bytes) = bytes else {
+                return Ok(Polled::Unreadable);
+            };
+            let job: serde_json::Value = serde_json::from_slice(&bytes).unwrap_or_default();
+            match job["status"].as_str() {
+                Some("completed") => Ok(Polled::Done(bytes)),
+                Some("completed_with_errors") => {
+                    eprintln!("{}", left_behind(key, job_id, &job, quiet));
+                    Ok(Polled::Done(bytes))
+                }
+                Some(status @ ("failed" | "cancelled")) => {
+                    let reason = job["error_summary"].as_str().unwrap_or("no reason given");
+                    Err(AkError::ReportedFailure(format!(
+                        "Deletion job {job_id} for '{key}' {status}: {}",
+                        one_line(reason)
                     ))
-                    .into());
+                    .into())
                 }
+                _ => Ok(Polled::Running),
             }
-        }
-
-        if std::time::Instant::now() >= deadline {
-            spinner.finish_and_clear();
-            return Err(AkError::ServerError(format!(
-                "Deletion job {job_id} for '{key}' hasn't finished after {timeout_secs}s. It's still \
-                 running: ak api GET /api/v1/repository-deletions/{job_id}"
-            ))
-            .into());
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-    }
+        },
+    )
+    .await
 }
 
-/// The warning for a deletion job that ended `completed_with_errors`.
-fn left_behind(key: &str, job_id: uuid::Uuid, job: &serde_json::Value) -> String {
+/// Server text on one line, safe for a terminal.
+pub(super) fn one_line(text: &str) -> String {
+    output::sanitize_terminal(text)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// The warning for a deletion job that ended `completed_with_errors`, on one line.
+/// `--format quiet` leaves out the server's summary.
+fn left_behind(key: &str, job_id: uuid::Uuid, job: &serde_json::Value, quiet: bool) -> String {
     let failed = job["failed_items"]
         .as_i64()
         .map_or("Some".to_string(), |n| n.to_string());
@@ -1442,8 +1493,8 @@ fn left_behind(key: &str, job_id: uuid::Uuid, job: &serde_json::Value) -> String
         "Warning: repository '{key}' is deleted (job {job_id}), but {failed} of its stored \
          objects couldn't be deleted. Storage garbage collection retries them."
     );
-    if let Some(summary) = job["error_summary"].as_str() {
-        warning.push_str(&format!(" {}", output::sanitize_terminal(summary)));
+    if let Some(summary) = job["error_summary"].as_str().filter(|_| !quiet) {
+        warning.push_str(&format!(" {}", one_line(summary)));
     }
     warning
 }
