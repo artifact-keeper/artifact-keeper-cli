@@ -287,6 +287,27 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
             json!({"id": UUID, "status": "pending"}),
         ),
         (
+            "POST",
+            "/api/v1/repositories/{key}/mcp/sync",
+            202,
+            json!({"repository": "r", "status": "running",
+                   "statusUrl": "/api/v1/repositories/r/mcp/sync"}),
+        ),
+        (
+            "POST",
+            "/api/v1/repositories/{key}/mcp/seed",
+            202,
+            json!({"jobId": UUID, "repository": "r", "status": "pending", "total": 1,
+                   "statusUrl": "x"}),
+        ),
+        (
+            "GET",
+            "/api/v1/repositories/{key}/mcp/seed/{job_id}",
+            200,
+            json!({"jobId": UUID, "repository": "r", "status": "completed", "createdAt": at,
+                   "items": []}),
+        ),
+        (
             "GET",
             "/api/v1/repository-deletions/{id}",
             200,
@@ -832,6 +853,21 @@ fn hints(home: &std::path::Path, line: &Line) -> Hints {
                 vec![],
             )
         }
+        // A server name with one slash goes to the split route, any other URL-encoded.
+        ("mcp catalog show" | "mcp health", _, p) if p.contains("{ns}/{name}") => (
+            vec![("server", "io.github.acme/weather".to_string())],
+            vec![],
+        ),
+        // `--wait` follows the job.
+        ("mcp seed start", method, _) => {
+            let mut args = vec![("servers", "io.github.acme/weather@1.2.0".to_string())];
+            if method == "GET" {
+                args.push(("wait", String::new()));
+            }
+            (args, vec![])
+        }
+        // `--wait` follows the pass.
+        ("mcp sync start", "GET", _) => (vec![("wait", String::new())], vec![]),
         (command, _, _) if command.starts_with("pkg ") => (pkg_hints(home, line), Vec::new()),
         _ => (Vec::new(), Vec::new()),
     }

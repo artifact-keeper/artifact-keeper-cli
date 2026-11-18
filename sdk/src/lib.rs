@@ -30,7 +30,7 @@ pub use generated_sdk::{
     ClientArtifactLabelsExt, ClientArtifactsExt, ClientAttestationsExt, ClientAuthExt,
     ClientBannersExt, ClientBuildsExt, ClientBundlesExt, ClientCurationExt,
     ClientEmailSubscriptionsExt, ClientEnvironmentsExt, ClientGroupsExt, ClientHealthExt,
-    ClientHoldsExt, ClientImageBuildsExt, ClientLifecycleExt, ClientMigrationExt,
+    ClientHoldsExt, ClientImageBuildsExt, ClientLifecycleExt, ClientMcpExt, ClientMigrationExt,
     ClientMonitoringExt, ClientPackagesExt, ClientPeerInstanceLabelsExt, ClientPeersExt,
     ClientPermissionsExt, ClientPluginsExt, ClientProjectsExt, ClientPromotionExt, ClientPypiExt,
     ClientQualityExt, ClientQuarantineExt, ClientRepositoriesExt, ClientRepositoryLabelsExt,

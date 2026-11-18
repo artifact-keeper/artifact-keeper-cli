@@ -29,6 +29,7 @@ pub mod instance;
 pub mod label;
 pub mod license;
 pub mod lifecycle;
+pub mod mcp;
 pub mod migrate;
 pub mod monitoring;
 pub mod packages;

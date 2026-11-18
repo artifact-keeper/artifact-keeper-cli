@@ -1256,3 +1256,128 @@ async fn a_failed_follow_up_names_only_the_flags_it_carried() {
         json!({"release_repository_key": "release"})
     );
 }
+
+// ---- #317: MCP registry settings ----
+
+#[tokio::test]
+async fn create_and_update_send_the_mcp_settings() {
+    let server = server_on("1.12.1").await;
+    Mock::given(method("POST"))
+        .and(path("/api/v1/repositories"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(repository()))
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "create",
+            "mcp-local",
+            "--pkg-format",
+            "mcp",
+            "--mcp-package-policy",
+            "open",
+            "--mcp-package-repo",
+            "npm=npm-local,pypi=pypi-remote",
+            "--mcp-package-repo",
+            "oci=docker-local",
+            "--mcp-namespace-allow",
+            "com.acme,io.github.acme",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+    let body = sent_body(&server).await;
+    assert_eq!(body["mcp_package_policy"], "open");
+    assert_eq!(
+        body["mcp_package_repos"],
+        json!({"npm": "npm-local", "pypi": "pypi-remote", "oci": "docker-local"})
+    );
+    assert_eq!(
+        body["mcp_namespace_allow"],
+        json!(["com.acme", "io.github.acme"])
+    );
+
+    let server = server_on("1.12.1").await;
+    Mock::given(method("PATCH"))
+        .and(path("/api/v1/repositories/mcp-local"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(repository()))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let output = ak(
+        &server,
+        &[
+            "repo",
+            "update",
+            "mcp-local",
+            "--mcp-package-repo",
+            "",
+            "--mcp-namespace-allow",
+            "",
+        ],
+    );
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        sent_body(&server).await,
+        json!({"mcp_package_repos": {}, "mcp_namespace_allow": []}),
+        "an empty value clears the setting"
+    );
+}
+
+#[tokio::test]
+async fn a_package_repo_that_is_not_type_equals_key_is_refused_locally() {
+    for value in ["npm", "=npm-local", "npm=", "npm=a,npm=b"] {
+        let server = server_on("1.12.1").await;
+        let output = ak(
+            &server,
+            &["repo", "update", "mcp-local", "--mcp-package-repo", value],
+        );
+        assert_eq!(output.status.code(), Some(2), "{value}: {output:?}");
+        assert!(one_line(&output).contains("--mcp-package-repo"), "{value}");
+        let requests = server.received_requests().await.expect("recorded");
+        assert!(
+            requests.iter().all(|r| r.url.path() == "/health"),
+            "{value}: {requests:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn the_mcp_settings_are_refused_on_1_11_before_anything_changes() {
+    for (args, flag) in [
+        (
+            vec![
+                "repo",
+                "create",
+                "m",
+                "--pkg-format",
+                "mcp",
+                "--mcp-package-policy",
+                "own-repos",
+            ],
+            "--mcp-package-policy",
+        ),
+        (
+            vec!["repo", "update", "m", "--mcp-package-repo", "npm=npm-local"],
+            "--mcp-package-repo",
+        ),
+        (
+            vec!["repo", "update", "m", "--mcp-namespace-allow", "com.acme"],
+            "--mcp-namespace-allow",
+        ),
+    ] {
+        let server = server_on("1.11.14").await;
+        let output = ak(&server, &args);
+        assert_eq!(output.status.code(), Some(6), "{args:?}: {output:?}");
+        let stderr = one_line(&output);
+        assert!(
+            stderr.contains(&format!("{flag} needs a server on 1.12")),
+            "{stderr}"
+        );
+        let requests = server.received_requests().await.expect("recorded");
+        assert!(
+            requests.iter().all(|r| r.url.path() == "/health"),
+            "{requests:?}"
+        );
+    }
+}

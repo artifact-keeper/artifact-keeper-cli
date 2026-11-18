@@ -527,6 +527,27 @@ pub struct RepoSettingsArgs {
     /// member while a higher one is down, available or strict. Needs a 1.12 server
     #[arg(long = "virtual-member-fallback", value_parser = ["available", "strict"])]
     virtual_member_fallback: Option<String>,
+
+    /// MCP registries: own-repos (every package resolves to a repository on this
+    /// instance) or open (another registry's coordinates are accepted, and still
+    /// resolved, pinned and gated here). Needs a 1.12 server
+    #[arg(long = "mcp-package-policy", value_parser = ["own-repos", "open"])]
+    mcp_package_policy: Option<String>,
+
+    /// MCP registries: the repository a package registry type resolves in, as
+    /// TYPE=KEY (npm=npm-local, oci=docker-remote), repeatable or comma separated.
+    /// Replaces the whole mapping ("" clears it on update). Needs a 1.12 server
+    #[arg(
+        long = "mcp-package-repo",
+        value_delimiter = ',',
+        value_name = "TYPE=KEY"
+    )]
+    mcp_package_repos: Option<Vec<String>>,
+
+    /// MCP registries: namespace prefixes a server name must start with, comma
+    /// separated ("" clears them on update, which admits any name). Needs a 1.12 server
+    #[arg(long = "mcp-namespace-allow", value_delimiter = ',')]
+    mcp_namespace_allow: Option<Vec<String>>,
 }
 
 /// Settings `repo create` takes that `repo update` has under another name or
@@ -664,10 +685,9 @@ macro_rules! with_settings {
                 $settings.virtual_member_fallback,
                 "--virtual-member-fallback",
             )?,
-            // New in 1.12, with no flags yet: `ak mcp` brings them.
-            mcp_namespace_allow: None,
-            mcp_package_policy: None,
-            mcp_package_repos: None,
+            mcp_namespace_allow: list_flag($settings.mcp_namespace_allow),
+            mcp_package_policy: $settings.mcp_package_policy,
+            mcp_package_repos: package_repos($settings.mcp_package_repos)?,
         }
     };
 }
@@ -682,6 +702,9 @@ impl RepoSettingsArgs {
                 "--virtual-member-fallback",
                 self.virtual_member_fallback.is_some(),
             ),
+            ("--mcp-package-policy", self.mcp_package_policy.is_some()),
+            ("--mcp-package-repo", self.mcp_package_repos.is_some()),
+            ("--mcp-namespace-allow", self.mcp_namespace_allow.is_some()),
         ]
         .into_iter()
         .filter_map(|(flag, given)| given.then_some(flag))
@@ -706,6 +729,40 @@ where
 /// A list flag's values, with `""` meaning an empty list.
 fn list_flag(values: Option<Vec<String>>) -> Option<Vec<String>> {
     values.map(|v| v.into_iter().filter(|s| !s.is_empty()).collect())
+}
+
+/// `--mcp-package-repo TYPE=KEY`, as the mapping the server stores. An empty value
+/// on its own sends `{}`, which clears it.
+fn package_repos(
+    values: Option<Vec<String>>,
+) -> Result<Option<std::collections::HashMap<String, String>>> {
+    let Some(values) = values else {
+        return Ok(None);
+    };
+    let mut repos = std::collections::HashMap::new();
+    for value in values.iter().filter(|v| !v.is_empty()) {
+        match value.split_once('=') {
+            Some((kind, key)) if !kind.trim().is_empty() && !key.trim().is_empty() => {
+                if repos
+                    .insert(kind.trim().to_string(), key.trim().to_string())
+                    .is_some()
+                {
+                    return Err(AkError::Usage(format!(
+                        "--mcp-package-repo names {} twice",
+                        kind.trim()
+                    ))
+                    .into());
+                }
+            }
+            _ => {
+                return Err(AkError::Usage(format!(
+                    "--mcp-package-repo takes TYPE=KEY, such as npm=npm-local, not '{value}'"
+                ))
+                .into());
+            }
+        }
+    }
+    Ok(Some(repos))
 }
 
 fn parse_visibility(
