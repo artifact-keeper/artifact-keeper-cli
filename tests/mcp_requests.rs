@@ -1011,3 +1011,92 @@ async fn seed_wait_ends_at_a_status_it_does_not_know() {
     );
     assert_eq!(paths(&mocked).await.len(), 1, "one look, no polling");
 }
+
+/// The server lets go of the sync lock before it records a failed pass, so "not
+/// running" with the previous pass's state isn't the end of this one.
+#[tokio::test]
+async fn sync_wait_waits_for_the_pass_to_be_recorded() {
+    let mocked = on("1.12.1").await;
+    let route = "/api/v1/repositories/mcp-official/mcp/sync";
+    let earlier = "2026-01-15T11:00:00Z";
+    mocked
+        .respond(
+            "POST",
+            route,
+            202,
+            json!({"repository": REPO, "status": "running", "statusUrl": route}),
+        )
+        .await;
+    // Read before the trigger, then once more after it, before the failure lands.
+    Mock::given(method("GET"))
+        .and(path(route))
+        .respond_with(
+            ResponseTemplate::new(200).set_body_json(
+                json!({"running": false, "lastFinishedAt": earlier, "lastError": null}),
+            ),
+        )
+        .up_to_n_times(2)
+        .with_priority(1)
+        .mount(&mocked.server)
+        .await;
+    mocked
+        .respond(
+            "GET",
+            route,
+            200,
+            json!({"running": false, "lastFinishedAt": AT, "lastError": "database: gone"}),
+        )
+        .await;
+
+    let output = mocked.ak(&[
+        "--format", "json", "mcp", "sync", "start", "--repo", REPO, "--wait",
+    ]);
+    assert_eq!(output.status.code(), Some(7), "{output:?}");
+    assert!(
+        unwrapped(&output.stderr).contains("database: gone"),
+        "{output:?}"
+    );
+    let sent = paths(&mocked).await;
+    assert_eq!(
+        sent,
+        vec![
+            format!("GET {route}"),
+            format!("POST {route}"),
+            format!("GET {route}"),
+            format!("GET {route}"),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn health_refuses_a_name_or_version_that_would_reach_another_route() {
+    let mocked = on("1.12.1").await;
+    for (server, version) in [
+        ("../x", "1.0.0"),
+        ("com.acme/..", "1.0.0"),
+        ("com.acme/w%2F", "1.0.0"),
+        ("com.acme/w", ".."),
+    ] {
+        let output = mocked.ak(&["mcp", "health", "--repo", "r", server, version]);
+        assert_eq!(
+            output.status.code(),
+            Some(2),
+            "{server} {version}: {output:?}"
+        );
+    }
+    let output = mocked.ak(&["mcp", "catalog", "show", "--repo", "r", "com.acme/.."]);
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(paths(&mocked).await.is_empty());
+}
+
+#[tokio::test]
+async fn reopen_takes_yes_and_ignores_it() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{CATALOG}/{ID}/reopen");
+    mocked
+        .respond("POST", &route, 200, decision("review", Value::Null))
+        .await;
+    let output = mocked.ak(&["mcp", "catalog", "reopen", "--repo", REPO, ID, "--yes"]);
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(paths(&mocked).await, vec![format!("POST {route}")]);
+}

@@ -159,9 +159,11 @@ pub static CLASS_EXCLUSIONS: &[ClassExclusion] = &[
         except: &[],
         reason: "Writes to one server or version on the registry's own v0.1 API: status, an \
                  administrator's edit, soft delete and purge, MCPB bundle uploads, declared \
-                 capabilities and probe requests. They belong to the publishing side that \
-                 mcp-publisher and the registry's clients use; `ak mcp` keeps to the \
-                 management API under /api/v1 (#317), and `ak api` sends any of these as it is",
+                 capabilities and probe requests. The CLI keeps to the /api/v1 management API \
+                 for MCP registries (#317), and a publisher's uploads are mcp-publisher's. \
+                 An administrator's edit, status change, soft delete, purge and probe are \
+                 reachable through `ak api` until a follow-up adds `ak mcp version \
+                 purge|status`",
     },
     ClassExclusion {
         name: "oci-blob-upload",
