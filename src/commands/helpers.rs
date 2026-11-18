@@ -388,6 +388,15 @@ pub async fn since_any_status(
     sdk_err(action, error)
 }
 
+/// Refuse a command new in `minor` on an older server, before it asks anything. An
+/// unknown version goes ahead, and [`since`] words a failure.
+pub async fn require_since(minor: Minor, command: &str, global: &GlobalArgs) -> Result<()> {
+    match server_older_than(minor, global).await {
+        Some(version) => Err(needs_newer(minor, command, &version).into()),
+        None => Ok(()),
+    }
+}
+
 fn needs_newer((major, minor): Minor, command: &str, version: &str) -> AkError {
     AkError::UnsupportedServer(format!(
         "`ak {command}` needs a server on {major}.{minor} or newer. This one is {version}."

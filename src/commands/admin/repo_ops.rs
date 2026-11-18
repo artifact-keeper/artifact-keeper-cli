@@ -7,7 +7,11 @@ use miette::Result;
 
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for_slow;
-use crate::commands::helpers::{confirm_action, fail_on_errors, or_since, parse_optional_uuid};
+use crate::commands::helpers::{
+    confirm_action, ensure_can_confirm, fail_on_errors, or_since, parse_optional_uuid,
+    require_since,
+};
+use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Subcommand)]
@@ -26,7 +30,7 @@ pub enum RepoCommand {
 
         /// Examine at most this many packages (the server's default is 1000, at most 10000)
         #[arg(long)]
-        limit: Option<i64>,
+        limit: Option<u64>,
 
         /// Continue a walk that stopped at --limit: the `next_after` it printed
         #[arg(long)]
@@ -48,15 +52,23 @@ impl RepoCommand {
             yes,
         } = self;
         let after = parse_optional_uuid(after.as_deref(), "--after")?;
+        let limit = limit
+            .map(i64::try_from)
+            .transpose()
+            .map_err(|_| AkError::Usage("--limit is too large".into()))?;
+        let prompt = format!(
+            "Register the Debian packages repository '{repo}' has no control data for, move \
+             any outside pool/<component>/ under pool/main/, and remove migrated dists/ \
+             copies from its artifact list? --dry-run reports them instead."
+        );
+        // --no-input without --yes sends nothing, not even the version check, and a
+        // 1.11 user isn't asked for what can't run.
         if !dry_run {
-            let prompt = format!(
-                "Register the Debian packages repository '{repo}' has no control data for, move \
-                 any outside pool/<component>/ under pool/main/, and remove migrated dists/ \
-                 copies from its artifact list? --dry-run reports them instead."
-            );
-            if !confirm_action(&prompt, yes, global.no_input)? {
-                return Ok(());
-            }
+            ensure_can_confirm(&prompt, yes, global.no_input)?;
+        }
+        require_since((1, 12), "admin repo backfill-debian", global).await?;
+        if !dry_run && !confirm_action(&prompt, yes, global.no_input)? {
+            return Ok(());
         }
 
         let client = client_for_slow(global)?;

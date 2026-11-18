@@ -8,7 +8,8 @@ use super::PageArgs;
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for;
 use crate::commands::helpers::{
-    confirm_action, emit_mutation_raw, new_table, or_since, parse_uuid, print_page_info, sdk_err,
+    confirm_action, emit_mutation_raw, ensure_can_confirm, new_table, or_since, parse_uuid,
+    print_page_info, require_since, sdk_err,
 };
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -162,14 +163,15 @@ impl TrashCommand {
             }
             Self::Purge { id, yes } => {
                 let artifact_id = parse_uuid(&id, "artifact")?;
-                if !confirm_action(
-                    &format!(
-                        "Permanently delete artifact {artifact_id} from the trash? It can't be \
-                         restored afterwards"
-                    ),
-                    yes,
-                    global.no_input,
-                )? {
+                let prompt = format!(
+                    "Permanently delete artifact {artifact_id} from the trash? It can't be \
+                     restored afterwards"
+                );
+                // --no-input without --yes sends nothing, not even the version check,
+                // and a 1.11 user isn't asked for what can't run.
+                ensure_can_confirm(&prompt, yes, global.no_input)?;
+                require_since((1, 12), "admin trash purge", global).await?;
+                if !confirm_action(&prompt, yes, global.no_input)? {
                     return Ok(());
                 }
                 let spinner = output::spinner("Purging artifact...");
