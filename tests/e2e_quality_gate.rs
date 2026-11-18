@@ -126,3 +126,39 @@ fn create_and_update_keep_every_threshold() {
         .assert()
         .success();
 }
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn a_gate_keeps_its_accepted_grade_status() {
+    if common::server_older_than(1, 12, "accepted_grade_status") {
+        return;
+    }
+    let env = common::TestEnv::setup();
+    let name = format!("e2e-gate-grade-{}", std::process::id());
+    let created = json_of(env.ak_cmd().args([
+        "quality-gate",
+        "create",
+        &name,
+        "--min-security-score",
+        "50",
+        "--accepted-grade-status",
+        "incomplete",
+    ]));
+    let id = created["id"].as_str().unwrap().to_string();
+    assert_eq!(created["accepted_grade_status"], "incomplete", "{created}");
+
+    let updated = json_of(env.ak_cmd().args([
+        "quality-gate",
+        "update",
+        &id,
+        "--accepted-grade-status",
+        "any",
+    ]));
+    assert_eq!(updated["accepted_grade_status"], "any", "{updated}");
+    assert_eq!(updated["min_security_score"], 50, "the rest stays");
+
+    env.ak_cmd()
+        .args(["quality-gate", "delete", &id, "--yes"])
+        .assert()
+        .success();
+}

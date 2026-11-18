@@ -1386,6 +1386,7 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/promotion-rules",
         "promotion rule create",
         &[
+            "accepted_grade_status",
             "allowed_licenses",
             "auto_promote",
             "is_enabled",
@@ -1410,6 +1411,7 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/quality/gates",
         "quality-gate create",
         &[
+            "accepted_grade_status",
             "action",
             "description",
             "enforce_on_download",
@@ -1431,6 +1433,7 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/quality/gates/{id}",
         "quality-gate update",
         &[
+            "accepted_grade_status",
             "action",
             "description",
             "enforce_on_download",
@@ -1500,7 +1503,7 @@ pub static COMMANDS: &[Op] = &[
         "PUT",
         "/api/v1/repositories/{key}/age-gate",
         "age-gate set",
-        &["enabled", "min_age_days", "mode"],
+        &["enabled", "instance_locked", "min_age_days", "mode"],
     ),
     covered(
         "POST",
@@ -1530,7 +1533,7 @@ pub static COMMANDS: &[Op] = &[
         "POST",
         "/api/v1/quarantine/{artifact_id}/quarantine",
         "quarantine hold",
-        &["reason"],
+        &["expected_digest", "reason"],
     ),
     covered(
         "POST",
@@ -1542,7 +1545,7 @@ pub static COMMANDS: &[Op] = &[
         "POST",
         "/api/v1/quarantine/{artifact_id}/reject",
         "quarantine reject",
-        &["reason"],
+        &["expected_digest", "reason"],
     ),
     // ---- curation ----
     covered(
@@ -1698,6 +1701,7 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/security/scans/{id}/findings",
         "scan show",
         &[
+            "artifact_id",
             "severity",
             "source",
             "cve_id",
@@ -1719,13 +1723,50 @@ pub static COMMANDS: &[Op] = &[
         "POST",
         "/api/v1/security/findings/{id}/acknowledge",
         "scan finding ack",
-        &["reason"],
+        &["expires_at", "reason", "repository_id", "scope"],
     ),
     covered(
         "DELETE",
         "/api/v1/security/findings/{id}/acknowledge",
         "scan finding revoke",
+        &["repository_id"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/security/acknowledgements",
+        "scan ack list",
+        &[
+            "repository_id",
+            "checksum_sha256",
+            "advisory",
+            "include_inactive",
+            "page",
+            "per_page",
+        ],
+    ),
+    covered(
+        "DELETE",
+        "/api/v1/security/acknowledgements/{id}",
+        "scan ack revoke",
         &[],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/security/coverage/artifacts",
+        "scan coverage artifacts",
+        &["status", "limit", "offset"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/security/proxy-blocked",
+        "scan proxy-blocked",
+        &[
+            "repository",
+            "min_severity",
+            "would_block",
+            "page",
+            "per_page",
+        ],
     ),
     covered(
         "POST",
@@ -1740,6 +1781,7 @@ pub static COMMANDS: &[Op] = &[
         "scan policy create",
         &[
             "block_on_fail",
+            "block_uncataloged",
             "block_unscanned",
             "max_artifact_age_days",
             "max_severity",
@@ -1762,6 +1804,7 @@ pub static COMMANDS: &[Op] = &[
         "scan policy update",
         &[
             "block_on_fail",
+            "block_uncataloged",
             "block_unscanned",
             "is_enabled",
             "max_artifact_age_days",
@@ -1790,12 +1833,19 @@ pub static COMMANDS: &[Op] = &[
         "scan security update",
         &[
             "block_on_policy_violation",
+            "instance_locked",
             "proxy_scan_action",
             "scan_enabled",
             "scan_on_proxy",
             "scan_on_upload",
             "severity_threshold",
         ],
+    ),
+    covered(
+        "PUT",
+        "/api/v1/repositories/{key}/security/uncataloged-policy",
+        "scan security uncataloged-policy set",
+        &["uncataloged_policy"],
     ),
     covered(
         "GET",
@@ -2138,7 +2188,32 @@ pub static COMMANDS: &[Op] = &[
         "GET",
         "/api/v1/admin/holds/quarantine",
         "admin holds quarantine",
-        &["repository_key", "kind", "page", "per_page"],
+        &["repository_key", "kind", "hold_source", "page", "per_page"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/holds/policy-blocks",
+        "admin holds policy-blocks",
+        &["repository_key", "cursor", "per_page"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/security/findings",
+        "admin security findings",
+        &[
+            "repository_id",
+            "severity",
+            "state",
+            "group_by",
+            "page",
+            "per_page",
+        ],
+    ),
+    covered(
+        "GET",
+        "/api/v1/admin/security/scan-queue",
+        "admin security scan-queue",
+        &["state", "kind", "page", "per_page"],
     ),
     covered(
         "GET",
@@ -2761,6 +2836,36 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/admin/age-gate/reviews",
         "age-gate reviews",
         &["page", "per_page", "repository_key", "status"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/age-gate/reviews",
+        "age-gate repo-reviews list",
+        &["page", "per_page", "status"],
+    ),
+    covered(
+        "GET",
+        "/api/v1/repositories/{key}/age-gate/reviews/{id}",
+        "age-gate repo-reviews show",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/age-gate/reviews/{id}/{decision}",
+        "age-gate repo-reviews approve",
+        &["reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/age-gate/reviews/{id}/{decision}",
+        "age-gate repo-reviews reject",
+        &["reason"],
+    ),
+    covered(
+        "POST",
+        "/api/v1/repositories/{key}/age-gate/reviews/{id}/{decision}",
+        "age-gate repo-reviews reopen",
+        &["reason"],
     ),
     // ---- analytics ----
     covered(
@@ -3461,6 +3566,7 @@ pub static COMMANDS: &[Op] = &[
         "/api/v1/promotion-rules/{id}",
         "promotion rule update",
         &[
+            "accepted_grade_status",
             "allowed_licenses",
             "auto_promote",
             "is_enabled",

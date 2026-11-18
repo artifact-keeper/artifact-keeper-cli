@@ -1,8 +1,8 @@
 use artifact_keeper_sdk::ClientSecurityExt;
 use artifact_keeper_sdk::raw::capture;
 use artifact_keeper_sdk::types::{
-    DashboardResponse, ExternalFindingInput, PolicyPredicates, PolicyResponse, ProxyScanEntry,
-    ScanResponse, ScoreResponse,
+    AcknowledgementResponse, DashboardResponse, ExternalFindingInput, PolicyPredicates,
+    PolicyResponse, ProxyScanEntry, ScanResponse, ScoreResponse,
 };
 use clap::Subcommand;
 use console::style;
@@ -11,13 +11,18 @@ use serde_json::Value;
 
 use super::client::client_for;
 use super::helpers::{
-    PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, confirm_action, emit_mutation_raw,
-    is_proxy_path_not_recorded, new_table, parse_json_arg, parse_uuid, resolve_artifact_id,
-    resolve_optional_repo_id, resolve_repo_id, sdk_err, short_id,
+    Minor, PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, confirm_action, emit_mutation_raw,
+    is_proxy_path_not_recorded, new_table, or_since, parse_json_arg, parse_uuid,
+    refuse_flags_before, resolve_artifact_id, resolve_optional_repo_id, resolve_repo_id, sdk_err,
+    short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
+
+/// The server minor the scoped acknowledgements, coverage and proxy-blocked views
+/// came in.
+const V1_12: Minor = (1, 12);
 
 #[derive(Subcommand)]
 pub enum ScanCommand {
@@ -86,6 +91,12 @@ pub enum ScanCommand {
         #[arg(long)]
         finding_class: Option<String>,
 
+        /// The artifact whose copy of the scan to show, by ID or <repo-key>/<path>. A
+        /// scan reused for identical bytes is listed under its source, so this picks the
+        /// copy and its repository (needs a 1.12 server)
+        #[arg(long, value_name = "ARTIFACT")]
+        artifact_id: Option<String>,
+
         /// Page number
         #[arg(long, default_value = "1")]
         page: i64,
@@ -130,6 +141,44 @@ pub enum ScanCommand {
     Finding {
         #[command(subcommand)]
         command: ScanFindingCommand,
+    },
+
+    /// List and revoke acknowledgement decisions (needs a 1.12 server)
+    Ack {
+        #[command(subcommand)]
+        command: ScanAckCommand,
+    },
+
+    /// See which artifacts a repository's grade status rests on (needs a 1.12 server)
+    Coverage {
+        #[command(subcommand)]
+        command: ScanCoverageCommand,
+    },
+
+    /// List the proxied paths a proxy scan gate refuses now, across repositories
+    /// (needs a 1.12 server)
+    ProxyBlocked {
+        /// Only this repository, by key
+        #[arg(long)]
+        repo: Option<String>,
+
+        /// Only paths whose highest severity is at least this (critical, high, medium,
+        /// low, info)
+        #[arg(long)]
+        min_severity: Option<String>,
+
+        /// Preview what enforcement would refuse, whatever each repository's proxy scan
+        /// action is now, with a summary
+        #[arg(long)]
+        would_block: bool,
+
+        /// Page number
+        #[arg(long)]
+        page: Option<i32>,
+
+        /// Results per page
+        #[arg(long)]
+        per_page: Option<i32>,
     },
 
     /// Manage security policies
@@ -183,6 +232,73 @@ pub enum ScanProxyCommand {
 }
 
 #[derive(Subcommand)]
+pub enum ScanAckCommand {
+    /// List acknowledgement decisions. Expired and revoked ones only with
+    /// --include-inactive
+    List {
+        /// Decisions that apply in this repository, by key or ID, including those for
+        /// every repository
+        #[arg(long)]
+        repo: Option<String>,
+
+        /// Decisions about these bytes: a SHA-256 checksum
+        #[arg(long, value_name = "SHA256")]
+        checksum: Option<String>,
+
+        /// Decisions about this advisory: a CVE ID, or a finding title
+        #[arg(long)]
+        advisory: Option<String>,
+
+        /// Include expired and revoked decisions
+        #[arg(long)]
+        include_inactive: bool,
+
+        /// Page number
+        #[arg(long)]
+        page: Option<i32>,
+
+        /// Results per page
+        #[arg(long)]
+        per_page: Option<i32>,
+    },
+
+    /// Revoke an acknowledgement decision, and the copies promotion made of it. The
+    /// findings it covered count against the gates again
+    Revoke {
+        /// Acknowledgement ID, from `scan ack list`
+        id: String,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum ScanCoverageCommand {
+    /// List a repository's artifacts by coverage status: what each one's latest scans
+    /// assessed
+    Artifacts {
+        /// Repository key
+        repo: String,
+
+        /// Comma-separated statuses: failed, uncataloged, partial, cataloged, unscanned.
+        /// The server's default is failed,uncataloged,partial, the ones that keep the
+        /// repository from rated
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Page size
+        #[arg(long)]
+        limit: Option<i64>,
+
+        /// Rows to skip
+        #[arg(long)]
+        offset: Option<i64>,
+    },
+}
+
+#[derive(Subcommand)]
 pub enum ScanConfigCommand {
     /// List all scan configurations
     List,
@@ -199,6 +315,22 @@ pub enum ScanFindingCommand {
         #[arg(long)]
         reason: String,
 
+        /// Where the decision applies: repository (the server's default, the finding's
+        /// own repository) or all_repositories (these bytes in every repository that
+        /// holds them now or later). Needs a 1.12 server
+        #[arg(long, value_parser = ["repository", "all_repositories"])]
+        scope: Option<String>,
+
+        /// When the decision stops applying, as an RFC 3339 time such as
+        /// 2026-12-31T00:00:00Z. Without it, it lasts until revoked. Needs a 1.12 server
+        #[arg(long, value_name = "TIME")]
+        expires_at: Option<String>,
+
+        /// The repository the decision applies in, by key or ID. The server asks for it
+        /// when the scan has copies in other repositories. Needs a 1.12 server
+        #[arg(long, visible_alias = "repo", value_name = "REPO")]
+        repository_id: Option<String>,
+
         /// Skip the confirmation prompt
         #[arg(long, short = 'y')]
         yes: bool,
@@ -208,6 +340,11 @@ pub enum ScanFindingCommand {
     Revoke {
         /// Finding ID
         id: String,
+
+        /// The repository whose decision to revoke, by key or ID, when the scan has
+        /// copies in other repositories. Needs a 1.12 server
+        #[arg(long, visible_alias = "repo", value_name = "REPO")]
+        repository_id: Option<String>,
 
         /// Skip the confirmation prompt
         #[arg(long, short = 'y')]
@@ -278,6 +415,11 @@ pub enum ScanPolicyCommand {
         #[arg(long)]
         require_signature: bool,
 
+        /// Block artifacts whose latest scan cataloged nothing, so their zero findings
+        /// mean nothing was assessed (needs a 1.12 server)
+        #[arg(long)]
+        block_uncataloged: bool,
+
         /// Block artifacts staged for fewer than this many hours
         #[arg(long)]
         min_staging_hours: Option<i32>,
@@ -320,6 +462,10 @@ pub enum ScanPolicyCommand {
         /// Block artifacts with no signature
         #[arg(long)]
         require_signature: Option<bool>,
+
+        /// Block artifacts whose latest scan cataloged nothing (needs a 1.12 server)
+        #[arg(long)]
+        block_uncataloged: Option<bool>,
 
         /// Block artifacts staged for fewer than this many hours
         #[arg(long)]
@@ -383,6 +529,33 @@ pub enum ScanSecurityCommand {
         /// 1.11 server)
         #[arg(long)]
         proxy_scan_action: Option<String>,
+
+        /// Instance administrators only: false hands the proxy scan policy back to the
+        /// repository's administrators, true keeps it an instance decision. An instance
+        /// administrator's update locks it unless this says false. Needs a 1.12 server
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        instance_locked: Option<bool>,
+    },
+
+    /// Set what an artifact no scanner could catalog does to the repository's grade
+    /// status (needs a 1.12 server)
+    UncatalogedPolicy {
+        #[command(subcommand)]
+        command: UncatalogedPolicyCommand,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum UncatalogedPolicyCommand {
+    /// Set the policy, and show the score recalculated under it
+    Set {
+        /// Repository key
+        repo_key: String,
+
+        /// fail: an uncataloged artifact keeps the repository from rated. warn: it is
+        /// still reported but counts as assessed
+        #[arg(value_parser = ["fail", "warn"])]
+        policy: String,
     },
 }
 
@@ -392,6 +565,7 @@ struct PolicyLimits {
     min_staging_hours: Option<i32>,
     max_artifact_age_days: Option<i32>,
     predicates: Option<String>,
+    block_uncataloged: bool,
 }
 
 impl PolicyLimits {
@@ -413,6 +587,15 @@ struct SecuritySettings {
     block_on_violation: Option<bool>,
     severity_threshold: Option<String>,
     proxy_scan_action: Option<String>,
+    instance_locked: Option<bool>,
+}
+
+/// What `scan finding ack` sends beyond the reason.
+#[derive(Default)]
+struct AckScope {
+    scope: Option<String>,
+    expires_at: Option<String>,
+    repository_id: Option<String>,
 }
 
 impl ScanCommand {
@@ -449,6 +632,7 @@ impl ScanCommand {
                 source,
                 cve,
                 finding_class,
+                artifact_id,
                 page,
                 per_page,
             } => {
@@ -460,6 +644,7 @@ impl ScanCommand {
                         source,
                         cve_id: cve,
                         finding_class,
+                        artifact_id,
                     },
                     page,
                     per_page,
@@ -479,10 +664,32 @@ impl ScanCommand {
                 ScanConfigCommand::List => list_scan_configs(global).await,
             },
             Self::Finding { command } => match command {
-                ScanFindingCommand::Ack { id, reason, yes } => {
-                    acknowledge_finding(&id, &reason, yes, global).await
+                ScanFindingCommand::Ack {
+                    id,
+                    reason,
+                    scope,
+                    expires_at,
+                    repository_id,
+                    yes,
+                } => {
+                    acknowledge_finding(
+                        &id,
+                        &reason,
+                        AckScope {
+                            scope,
+                            expires_at,
+                            repository_id,
+                        },
+                        yes,
+                        global,
+                    )
+                    .await
                 }
-                ScanFindingCommand::Revoke { id, yes } => revoke_finding(&id, yes, global).await,
+                ScanFindingCommand::Revoke {
+                    id,
+                    repository_id,
+                    yes,
+                } => revoke_finding(&id, repository_id.as_deref(), yes, global).await,
                 ScanFindingCommand::Ingest {
                     file,
                     artifact,
@@ -493,6 +700,49 @@ impl ScanCommand {
                     ingest_findings(&file, &artifact, &scanner, scanner_version, yes, global).await
                 }
             },
+            Self::Ack { command } => match command {
+                ScanAckCommand::List {
+                    repo,
+                    checksum,
+                    advisory,
+                    include_inactive,
+                    page,
+                    per_page,
+                } => {
+                    list_acknowledgements(
+                        AckFilters {
+                            repo,
+                            checksum,
+                            advisory,
+                            include_inactive,
+                        },
+                        page,
+                        per_page,
+                        global,
+                    )
+                    .await
+                }
+                ScanAckCommand::Revoke { id, yes } => {
+                    revoke_acknowledgement(&id, yes, global).await
+                }
+            },
+            Self::Coverage { command } => match command {
+                ScanCoverageCommand::Artifacts {
+                    repo,
+                    status,
+                    limit,
+                    offset,
+                } => list_coverage_artifacts(&repo, status, limit, offset, global).await,
+            },
+            Self::ProxyBlocked {
+                repo,
+                min_severity,
+                would_block,
+                page,
+                per_page,
+            } => {
+                list_proxy_blocked(repo, min_severity, would_block, (page, per_page), global).await
+            }
             Self::Policy { command } => match command {
                 ScanPolicyCommand::List => list_policies(global).await,
                 ScanPolicyCommand::Show { id } => show_policy(&id, global).await,
@@ -503,6 +753,7 @@ impl ScanCommand {
                     block_unscanned,
                     repo,
                     require_signature,
+                    block_uncataloged,
                     min_staging_hours,
                     max_artifact_age_days,
                     predicates,
@@ -518,6 +769,7 @@ impl ScanCommand {
                             min_staging_hours,
                             max_artifact_age_days,
                             predicates,
+                            block_uncataloged,
                         },
                         global,
                     )
@@ -531,6 +783,7 @@ impl ScanCommand {
                     block_unscanned,
                     enabled,
                     require_signature,
+                    block_uncataloged,
                     min_staging_hours,
                     max_artifact_age_days,
                     predicates,
@@ -538,7 +791,7 @@ impl ScanCommand {
                     update_policy(
                         &id,
                         artifact_keeper_sdk::types::UpdatePolicyRequest {
-                            block_uncataloged: None,
+                            block_uncataloged,
                             name,
                             max_severity,
                             block_on_fail,
@@ -568,6 +821,7 @@ impl ScanCommand {
                     block_on_violation,
                     severity_threshold,
                     proxy_scan_action,
+                    instance_locked,
                 } => {
                     update_repo_security(
                         &repo_key,
@@ -578,11 +832,17 @@ impl ScanCommand {
                             block_on_violation,
                             severity_threshold,
                             proxy_scan_action,
+                            instance_locked,
                         },
                         global,
                     )
                     .await
                 }
+                ScanSecurityCommand::UncatalogedPolicy { command } => match command {
+                    UncatalogedPolicyCommand::Set { repo_key, policy } => {
+                        set_uncataloged_policy(&repo_key, &policy, global).await
+                    }
+                },
             },
             Self::Proxy { command } => match command {
                 ScanProxyCommand::List {
@@ -827,6 +1087,7 @@ struct FindingFilters {
     source: Option<String>,
     cve_id: Option<String>,
     finding_class: Option<String>,
+    artifact_id: Option<String>,
 }
 
 async fn show_findings(
@@ -840,6 +1101,14 @@ async fn show_findings(
     let client = client_for(global)?;
 
     let id = parse_uuid(scan_id, "scan")?;
+    // An older server would list the scan's source copy instead, as if it were this one.
+    if filters.artifact_id.is_some() {
+        refuse_flags_before(&["--artifact-id"], V1_12, global).await?;
+    }
+    let artifact_id = match filters.artifact_id.as_deref() {
+        Some(artifact) => Some(resolve_artifact_id(&client, artifact).await?),
+        None => None,
+    };
 
     let spinner = crate::output::spinner("Fetching scan details...");
 
@@ -862,6 +1131,9 @@ async fn show_findings(
     }
     if let Some(finding_class) = filters.finding_class {
         req = req.finding_class(finding_class);
+    }
+    if let Some(artifact_id) = artifact_id {
+        req = req.artifact_id(artifact_id);
     }
     let (resp, raw) = capture(req.send()).await;
     let findings = resp.map_err(|e| sdk_err("get findings", e))?;
@@ -1155,28 +1427,63 @@ async fn list_scan_configs(global: &GlobalArgs) -> Result<()> {
 async fn acknowledge_finding(
     finding_id: &str,
     reason: &str,
+    ack: AckScope,
     yes: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
     let id = parse_uuid(finding_id, "finding")?;
+    let expires_at = super::banner::parse_time(ack.expires_at.as_deref(), "--expires-at")?;
+    let scope = ack
+        .scope
+        .as_deref()
+        .map(|s| {
+            s.parse::<artifact_keeper_sdk::types::AcknowledgementScopeParam>()
+                .map_err(|_| AkError::Usage(format!("Invalid --scope: {s}")))
+        })
+        .transpose()?;
 
-    if !confirm_action(
-        &format!("Accept the risk of finding {finding_id}? It stops counting against the gates."),
-        yes,
-        global.no_input,
-    )? {
-        return Ok(());
+    let everywhere = matches!(
+        scope,
+        Some(artifact_keeper_sdk::types::AcknowledgementScopeParam::AllRepositories)
+    );
+    let prompt = if everywhere {
+        format!(
+            "Accept the risk of finding {finding_id} in every repository that holds these bytes, \
+             now or later? It stops counting against the gates."
+        )
+    } else {
+        format!("Accept the risk of finding {finding_id}? It stops counting against the gates.")
+    };
+    super::helpers::ensure_can_confirm(&prompt, yes, global.no_input)?;
+
+    // An older server takes the reason and drops the rest: the decision would apply
+    // wider, or longer, than asked.
+    let mut new_flags = Vec::new();
+    if ack.scope.is_some() {
+        new_flags.push("--scope");
     }
+    if ack.expires_at.is_some() {
+        new_flags.push("--expires-at");
+    }
+    if ack.repository_id.is_some() {
+        new_flags.push("--repository-id");
+    }
+    refuse_flags_before(&new_flags, V1_12, global).await?;
 
     let client = client_for(global)?;
+    let repository_id = resolve_optional_repo_id(&client, ack.repository_id.as_deref()).await?;
+
+    if !confirm_action(&prompt, yes, global.no_input)? {
+        return Ok(());
+    }
 
     let spinner = crate::output::spinner("Acknowledging finding...");
 
     let body = artifact_keeper_sdk::types::AcknowledgeRequest {
         reason: reason.to_string(),
-        expires_at: None,
-        repository_id: None,
-        scope: None,
+        expires_at,
+        repository_id,
+        scope,
     };
 
     let (resp, raw) = capture(client.acknowledge_finding().id(id).body(body).send()).await;
@@ -1197,24 +1504,36 @@ async fn acknowledge_finding(
     Ok(())
 }
 
-async fn revoke_finding(finding_id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
+async fn revoke_finding(
+    finding_id: &str,
+    repository: Option<&str>,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
     let id = parse_uuid(finding_id, "finding")?;
 
-    if !confirm_action(
-        &format!(
-            "Revoke the acknowledgment of finding {finding_id}? It counts against the gates again."
-        ),
-        yes,
-        global.no_input,
-    )? {
-        return Ok(());
+    let prompt = format!(
+        "Revoke the acknowledgment of finding {finding_id}? It counts against the gates again."
+    );
+    super::helpers::ensure_can_confirm(&prompt, yes, global.no_input)?;
+    if repository.is_some() {
+        refuse_flags_before(&["--repository-id"], V1_12, global).await?;
     }
 
     let client = client_for(global)?;
+    let repository_id = resolve_optional_repo_id(&client, repository).await?;
+
+    if !confirm_action(&prompt, yes, global.no_input)? {
+        return Ok(());
+    }
 
     let spinner = crate::output::spinner("Revoking acknowledgment...");
 
-    let (resp, raw) = capture(client.revoke_acknowledgment().id(id).send()).await;
+    let mut req = client.revoke_acknowledgment().id(id);
+    if let Some(repository_id) = repository_id {
+        req = req.repository_id(repository_id);
+    }
+    let (resp, raw) = capture(req.send()).await;
     let finding = resp
         .map_err(|e| sdk_err("revoke acknowledgment", e))?
         .into_inner();
@@ -1545,6 +1864,7 @@ async fn show_policy(policy_id: &str, global: &GlobalArgs) -> Result<()> {
          \x20 Max Severity:        {}\n\
          \x20 Block on Fail:       {}\n\
          \x20 Block Unscanned:     {}\n\
+         \x20 Block Uncataloged:   {}\n\
          \x20 Enabled:             {}\n\
          \x20 Require Signature:   {}\n\
          \x20 Repository:          {}\n\
@@ -1557,6 +1877,9 @@ async fn show_policy(policy_id: &str, global: &GlobalArgs) -> Result<()> {
         p.max_severity,
         p.block_on_fail,
         p.block_unscanned,
+        p.block_uncataloged
+            .map(|b| b.to_string())
+            .unwrap_or_else(|| "-".to_string()),
         p.is_enabled,
         p.require_signature,
         p.repository_id
@@ -1592,6 +1915,10 @@ async fn create_policy(
     global: &GlobalArgs,
 ) -> Result<()> {
     let predicates = limits.parse_predicates()?;
+    // An older server would create the policy without the check.
+    if limits.block_uncataloged {
+        refuse_flags_before(&["--block-uncataloged"], V1_12, global).await?;
+    }
 
     let client = client_for(global)?;
     let repo_id = resolve_optional_repo_id(&client, repo).await?;
@@ -1608,7 +1935,7 @@ async fn create_policy(
         min_staging_hours: limits.min_staging_hours,
         predicates,
         require_signature: require_signature.then_some(true),
-        block_uncataloged: false,
+        block_uncataloged: limits.block_uncataloged,
     };
 
     let (policy, raw) = capture(client.create_policy().body(body).send()).await;
@@ -1641,6 +1968,9 @@ async fn update_policy(
         ..PolicyLimits::default()
     }
     .parse_predicates()?;
+    if body.block_uncataloged.is_some() {
+        refuse_flags_before(&["--block-uncataloged"], V1_12, global).await?;
+    }
 
     let client = client_for(global)?;
 
@@ -1752,8 +2082,15 @@ async fn show_repo_security(repo_key: &str, global: &GlobalArgs) -> Result<()> {
                 "  Proxy Scan Action:       {}",
                 c.proxy_scan_action
             ));
+            if let Some(locked) = c.instance_locked {
+                lines.push(format!("  Instance Locked:         {locked}"));
+            }
         } else {
             lines.push("  No scan configuration.".to_string());
+        }
+
+        if let Some(policy) = &sec.uncataloged_policy {
+            lines.push(format!("  Uncataloged Policy:      {policy}"));
         }
 
         if let Some(s) = &sec.score {
@@ -1762,6 +2099,12 @@ async fn show_repo_security(repo_key: &str, global: &GlobalArgs) -> Result<()> {
                 s.grade.as_deref().unwrap_or("-"),
                 s.score
             ));
+            if let Some(status) = &s.grade_status {
+                lines.push(format!("  Grade Status: {status}"));
+            }
+            if let Some(coverage) = &s.coverage {
+                lines.push(format!("  Coverage: {}", format_coverage(coverage)));
+            }
             lines.push(format!(
                 "  Findings: C:{} H:{} M:{} L:{}",
                 s.critical_count, s.high_count, s.medium_count, s.low_count
@@ -1792,6 +2135,7 @@ async fn update_repo_security(
         && settings.block_on_violation.is_none()
         && settings.severity_threshold.is_none()
         && settings.proxy_scan_action.is_none()
+        && settings.instance_locked.is_none()
     {
         return Err(AkError::Usage(
             "Nothing to update. Pass at least one setting, such as --scanning-enabled true."
@@ -1800,13 +2144,17 @@ async fn update_repo_security(
         .into());
     }
     let wanted_action = settings.proxy_scan_action.clone();
+    // An older server would take the rest and leave the lock as it is.
+    if settings.instance_locked.is_some() {
+        refuse_flags_before(&["--instance-locked"], V1_12, global).await?;
+    }
 
     let client = client_for(global)?;
 
     let spinner = crate::output::spinner("Updating repository security config...");
 
     let body = artifact_keeper_sdk::types::UpdateRepoSecurityRequest {
-        instance_locked: None,
+        instance_locked: settings.instance_locked,
         scan_enabled: settings.scanning_enabled,
         scan_on_upload: settings.scan_on_upload,
         scan_on_proxy: settings.scan_on_proxy,
@@ -1850,6 +2198,444 @@ async fn update_repo_security(
     );
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Acknowledgement decisions, coverage and proxy blocks (1.12)
+// ---------------------------------------------------------------------------
+
+/// The filters of `scan ack list`.
+struct AckFilters {
+    repo: Option<String>,
+    checksum: Option<String>,
+    advisory: Option<String>,
+    include_inactive: bool,
+}
+
+async fn list_acknowledgements(
+    filters: AckFilters,
+    page: Option<i32>,
+    per_page: Option<i32>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let repository_id = resolve_optional_repo_id(&client, filters.repo.as_deref()).await?;
+
+    let spinner = crate::output::spinner("Fetching acknowledgements...");
+
+    let mut req = client.list_acknowledgements();
+    if let Some(id) = repository_id {
+        req = req.repository_id(id);
+    }
+    if let Some(checksum) = filters.checksum {
+        req = req.checksum_sha256(checksum);
+    }
+    if let Some(advisory) = filters.advisory {
+        req = req.advisory(advisory);
+    }
+    if filters.include_inactive {
+        req = req.include_inactive(true);
+    }
+    if let Some(page) = page {
+        req = req.page(page);
+    }
+    if let Some(per_page) = per_page {
+        req = req.per_page(per_page);
+    }
+    let (resp, raw) = capture(req.send()).await;
+    let list = or_since(
+        V1_12,
+        resp,
+        "list acknowledgements",
+        "scan ack list",
+        global,
+    )
+    .await?
+    .into_inner();
+
+    spinner.finish_and_clear();
+
+    if list.items.is_empty() && !output::is_machine_format(&global.format) {
+        eprintln!("No acknowledgements found.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for a in &list.items {
+            println!("{}", a.id);
+        }
+        return Ok(());
+    }
+
+    let table_str = format_acknowledgements_table(&list.items);
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &list, &global.format, Some(table_str))
+    );
+    if list.total > list.items.len() as i64 {
+        eprintln!(
+            "Showing {} of {} acknowledgements.",
+            list.items.len(),
+            list.total
+        );
+    }
+
+    Ok(())
+}
+
+fn format_acknowledgements_table(items: &[AcknowledgementResponse]) -> String {
+    let mut table = new_table(vec![
+        "ID",
+        "ADVISORY",
+        "COMPONENT",
+        "MAX SEV",
+        "REPOSITORY",
+        "STATE",
+        "EXPIRES",
+        "VIA",
+        "REASON",
+    ]);
+    for a in items {
+        let component = match (a.component.as_str(), a.component_version.as_str()) {
+            ("", _) => "-".to_string(),
+            (name, "") => name.to_string(),
+            (name, version) => format!("{name} {version}"),
+        };
+        let repository = a
+            .repository_id
+            .map(|id| short_id(&id))
+            .unwrap_or_else(|| "all".to_string());
+        let expires = a
+            .expires_at
+            .map(|t| t.format("%Y-%m-%d %H:%M").to_string())
+            .unwrap_or_else(|| "-".to_string());
+        table.add_row(vec![
+            a.id.to_string(),
+            truncate(&a.advisory, 40),
+            truncate(&component, 30),
+            a.max_severity.clone(),
+            repository,
+            a.state.clone(),
+            expires,
+            a.created_via.clone(),
+            truncate(a.reason.as_deref().unwrap_or("-"), 40),
+        ]);
+    }
+    table.to_string()
+}
+
+async fn revoke_acknowledgement(ack_id: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
+    let id = parse_uuid(ack_id, "acknowledgement")?;
+
+    if !confirm_action(
+        &format!(
+            "Revoke acknowledgement {ack_id}, and the copies promotion made of it? The findings \
+             it covered count against the gates again."
+        ),
+        yes,
+        global.no_input,
+    )? {
+        return Ok(());
+    }
+
+    let client = client_for(global)?;
+    let spinner = crate::output::spinner("Revoking acknowledgement...");
+
+    let (resp, raw) = capture(client.revoke_acknowledgement_by_id().id(id).send()).await;
+    let revoked = or_since(
+        V1_12,
+        resp,
+        "revoke acknowledgement",
+        "scan ack revoke",
+        global,
+    )
+    .await?
+    .into_inner();
+
+    spinner.finish_and_clear();
+
+    let mut human = format!(
+        "Revoked {} decision{} of acknowledgement {ack_id}.",
+        revoked.revoked,
+        if revoked.revoked == 1 { "" } else { "s" }
+    );
+    if revoked.left_effective > 0 {
+        human.push_str(&format!(
+            " {} other decision{} on this finding still apply: copies in repositories this \
+             credential doesn't cover, or decisions for every repository.",
+            revoked.left_effective,
+            if revoked.left_effective == 1 { "" } else { "s" }
+        ));
+    }
+    emit_mutation_raw(raw.as_deref(), &revoked, ack_id, &human, global);
+
+    Ok(())
+}
+
+async fn list_coverage_artifacts(
+    repo: &str,
+    status: Option<String>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = crate::output::spinner("Fetching coverage...");
+
+    let mut req = client.list_repo_coverage_artifacts().key(repo);
+    if let Some(status) = status {
+        req = req.status(status);
+    }
+    if let Some(limit) = limit {
+        req = req.limit(limit);
+    }
+    if let Some(offset) = offset {
+        req = req.offset(offset);
+    }
+    let (resp, raw) = capture(req.send()).await;
+    let coverage = or_since(
+        V1_12,
+        resp,
+        "list coverage",
+        "scan coverage artifacts",
+        global,
+    )
+    .await?
+    .into_inner();
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for a in &coverage.items {
+            println!("{}", a.artifact_id);
+        }
+        return Ok(());
+    }
+
+    let c = &coverage.counts;
+    let summary = format!(
+        "Failed: {}  Uncataloged: {}  Partial: {}  Cataloged: {}  Unscanned: {}",
+        c.failed, c.uncataloged, c.partial, c.cataloged, c.unscanned
+    );
+    let table_str = if coverage.items.is_empty() {
+        format!("{summary}\nNo artifacts with these statuses.")
+    } else {
+        let mut table = new_table(vec![
+            "ARTIFACT", "NAME", "VERSION", "PATH", "STATUS", "SCANS",
+        ]);
+        for a in &coverage.items {
+            let scans = a
+                .scans
+                .iter()
+                .map(|s| match &s.scan_completeness {
+                    Some(completeness) => format!("{} {} ({completeness})", s.scan_type, s.status),
+                    None => format!("{} {}", s.scan_type, s.status),
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            table.add_row(vec![
+                a.artifact_id.to_string(),
+                a.name.clone(),
+                a.version.clone().unwrap_or_else(|| "-".to_string()),
+                a.path.clone(),
+                a.coverage_status.to_string(),
+                if scans.is_empty() {
+                    "-".to_string()
+                } else {
+                    scans
+                },
+            ]);
+        }
+        format!("{summary}\n{table}")
+    };
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &coverage, &global.format, Some(table_str))
+    );
+    let shown = coverage.offset + coverage.items.len() as i64;
+    if shown < coverage.total {
+        eprintln!(
+            "Showing {}-{} of {} artifacts. Pass --offset {shown} for more.",
+            coverage.offset + 1,
+            shown,
+            coverage.total
+        );
+    }
+
+    Ok(())
+}
+
+async fn list_proxy_blocked(
+    repo: Option<String>,
+    min_severity: Option<String>,
+    would_block: bool,
+    (page, per_page): (Option<i32>, Option<i32>),
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = crate::output::spinner("Fetching blocked proxied paths...");
+
+    let mut req = client.list_proxy_blocked();
+    if let Some(repo) = repo {
+        req = req.repository(repo);
+    }
+    if let Some(min_severity) = min_severity {
+        req = req.min_severity(min_severity);
+    }
+    if would_block {
+        req = req.would_block(true);
+    }
+    if let Some(page) = page {
+        req = req.page(page);
+    }
+    if let Some(per_page) = per_page {
+        req = req.per_page(per_page);
+    }
+    let (resp, raw) = capture(req.send()).await;
+    let blocked = or_since(
+        V1_12,
+        resp,
+        "list blocked proxied paths",
+        "scan proxy-blocked",
+        global,
+    )
+    .await?
+    .into_inner();
+
+    spinner.finish_and_clear();
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for item in &blocked.items {
+            println!("{}/{}", item.repository_key, item.path);
+        }
+        return Ok(());
+    }
+
+    let mut table_str = if blocked.items.is_empty() {
+        "No proxied paths are blocked.".to_string()
+    } else {
+        let mut headers = vec![
+            "REPOSITORY",
+            "PATH",
+            "MAX SEV",
+            "C",
+            "H",
+            "M",
+            "L",
+            "CVES",
+            "SCANNED",
+        ];
+        if would_block {
+            headers.push("ACTION");
+        }
+        let mut table = new_table(headers);
+        for item in &blocked.items {
+            let cves = if item.cve_ids.is_empty() {
+                "-".to_string()
+            } else {
+                truncate(&item.cve_ids.join(", "), 40)
+            };
+            let mut row = vec![
+                item.repository_key.clone(),
+                item.path.clone(),
+                item.max_severity.clone().unwrap_or_else(|| "-".to_string()),
+                item.critical_count.to_string(),
+                item.high_count.to_string(),
+                item.medium_count.to_string(),
+                item.low_count.to_string(),
+                cves,
+                item.scanned_at.format("%Y-%m-%d %H:%M").to_string(),
+            ];
+            if would_block {
+                row.push(
+                    item.proxy_scan_action
+                        .clone()
+                        .unwrap_or_else(|| "-".to_string()),
+                );
+            }
+            table.add_row(row);
+        }
+        table.to_string()
+    };
+    if let Some(summary) = &blocked.would_block_summary {
+        table_str.push_str(&format!(
+            "\nWould block {} digests. No verdict: {}, stale verdict: {}, clean or graded \
+             nothing: {}",
+            summary.would_block_digests,
+            summary.no_verdict,
+            summary.stale_verdict,
+            summary.clean_graded_nothing
+        ));
+    }
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &blocked, &global.format, Some(table_str))
+    );
+    super::helpers::print_page_info(
+        blocked.pagination.page,
+        blocked.pagination.total_pages,
+        blocked.pagination.total,
+        "paths",
+    );
+
+    Ok(())
+}
+
+async fn set_uncataloged_policy(repo_key: &str, policy: &str, global: &GlobalArgs) -> Result<()> {
+    let uncataloged_policy = policy
+        .parse::<artifact_keeper_sdk::types::UncatalogedPolicy>()
+        .map_err(|_| AkError::Usage(format!("Invalid uncataloged policy: {policy}")))?;
+
+    let client = client_for(global)?;
+    let spinner = crate::output::spinner("Setting the uncataloged policy...");
+
+    let body = artifact_keeper_sdk::types::UncatalogedPolicyRequest { uncataloged_policy };
+    let (resp, raw) = capture(
+        client
+            .set_uncataloged_policy()
+            .key(repo_key)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let set = or_since(
+        V1_12,
+        resp,
+        "set the uncataloged policy",
+        "scan security uncataloged-policy set",
+        global,
+    )
+    .await?
+    .into_inner();
+
+    spinner.finish_and_clear();
+
+    let score = &set.score;
+    let mut human = format!(
+        "Uncataloged policy for '{repo_key}' is now {}. Grade {} (score {}), status {}.",
+        set.uncataloged_policy,
+        score.grade.as_deref().unwrap_or("-"),
+        score.score,
+        score.grade_status.as_deref().unwrap_or("-"),
+    );
+    if let Some(coverage) = &score.coverage {
+        human.push_str(&format!(" Coverage: {}.", format_coverage(coverage)));
+    }
+    emit_mutation_raw(raw.as_deref(), &set, repo_key, &human, global);
+
+    Ok(())
+}
+
+/// A repository's coverage counts, in one line.
+fn format_coverage(c: &artifact_keeper_sdk::types::ScoreCoverageResponse) -> String {
+    let pct = c
+        .coverage_pct
+        .map(|p| format!("{p}%, "))
+        .unwrap_or_default();
+    format!(
+        "{pct}{} of {} artifacts scanned ({} cataloged, {} partial, {} failed, {} uncataloged)",
+        c.scanned, c.artifacts, c.cataloged, c.partial, c.failed, c.uncataloged
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -1910,7 +2696,7 @@ fn format_dashboard(d: &DashboardResponse) -> (Vec<Value>, String) {
         "repos_grade_f": d.repos_grade_f,
     });
 
-    let table_str = format!(
+    let mut table_str = format!(
         "Security Dashboard:\n\
          \x20 Total Scans:           {}\n\
          \x20 Total Findings:        {}\n\
@@ -1929,6 +2715,19 @@ fn format_dashboard(d: &DashboardResponse) -> (Vec<Value>, String) {
         d.repos_grade_a,
         d.repos_grade_f,
     );
+    // What a 1.12 server adds.
+    let extra = [
+        ("Proxy Paths Blocked:  ", d.proxy_blocked),
+        ("Proxy Would Block:    ", d.proxy_would_block),
+        ("Rated Repos:          ", d.repos_rated),
+        ("Incomplete Repos:     ", d.repos_incomplete),
+        ("Unrated Repos:        ", d.repos_unrated),
+    ];
+    for (label, value) in extra {
+        if let Some(value) = value {
+            table_str.push_str(&format!("\n  {label} {value}"));
+        }
+    }
 
     (vec![entry], table_str)
 }
@@ -1955,7 +2754,8 @@ fn format_scores_table(items: &[ScoreResponse]) -> (Vec<Value>, String) {
 
     let table_str = {
         let mut table = new_table(vec![
-            "REPO", "GRADE", "CRITICAL", "HIGH", "MEDIUM", "LOW", "SCANNED", "OPEN", "UPDATED",
+            "REPO", "GRADE", "STATUS", "COVERAGE", "CRITICAL", "HIGH", "MEDIUM", "LOW", "SCANNED",
+            "OPEN", "UPDATED",
         ]);
 
         for s in items {
@@ -1964,9 +2764,19 @@ fn format_scores_table(items: &[ScoreResponse]) -> (Vec<Value>, String) {
                 .last_scan_at
                 .map(|t| t.format("%Y-%m-%d").to_string())
                 .unwrap_or_else(|| "-".to_string());
+            let coverage = s
+                .coverage
+                .as_ref()
+                .map(|c| match c.coverage_pct {
+                    Some(pct) => format!("{pct}% ({}/{})", c.cataloged, c.artifacts),
+                    None => format!("{}/{}", c.cataloged, c.artifacts),
+                })
+                .unwrap_or_else(|| "-".to_string());
             table.add_row(vec![
                 &repo_short,
                 s.grade.as_deref().unwrap_or("-"),
+                s.grade_status.as_deref().unwrap_or("-"),
+                &coverage,
                 &format_severity_count(s.critical_count, "CRITICAL"),
                 &format_severity_count(s.high_count, "HIGH"),
                 &format_severity_count(s.medium_count, "MEDIUM"),
@@ -2008,6 +2818,7 @@ fn format_scan_policies_table(items: &[PolicyResponse]) -> (Vec<Value>, String) 
             "MAX SEV",
             "BLOCK FAIL",
             "BLOCK UNSCAN",
+            "BLOCK UNCAT",
             "ENABLED",
             "REPO",
         ]);
@@ -2024,6 +2835,11 @@ fn format_scan_policies_table(items: &[PolicyResponse]) -> (Vec<Value>, String) 
                 &p.max_severity,
                 if p.block_on_fail { "yes" } else { "no" },
                 if p.block_unscanned { "yes" } else { "no" },
+                match p.block_uncataloged {
+                    Some(true) => "yes",
+                    Some(false) => "no",
+                    None => "-",
+                },
                 if p.is_enabled { "yes" } else { "no" },
                 repo.as_str(),
             ]);
@@ -2439,6 +3255,7 @@ mod tests {
                     block_on_violation,
                     severity_threshold,
                     proxy_scan_action,
+                    ..
                 },
         } = cli.command
         {
@@ -3328,6 +4145,7 @@ mod tests {
         let result = acknowledge_finding(
             "00000000-0000-0000-0000-000000000001",
             "Accepted risk",
+            AckScope::default(),
             true,
             &global,
         )
@@ -3363,7 +4181,8 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = revoke_finding("00000000-0000-0000-0000-000000000001", true, &global).await;
+        let result =
+            revoke_finding("00000000-0000-0000-0000-000000000001", None, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

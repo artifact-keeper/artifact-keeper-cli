@@ -36,6 +36,23 @@ pub struct GateThresholds {
     /// Enforce on promotion (true/false)
     #[arg(long)]
     enforce_on_promotion: Option<bool>,
+
+    /// The weakest repository grade status the score thresholds accept: rated (the
+    /// server's default: failed, uncataloged or partial scans fail the gate even at
+    /// 100), incomplete (only a repository with nothing assessed fails) or any (the
+    /// score alone decides). Needs a 1.12 server
+    #[arg(long, value_parser = ["rated", "incomplete", "any"])]
+    accepted_grade_status: Option<String>,
+}
+
+impl GateThresholds {
+    /// `--accepted-grade-status`, refused on a server that would ignore it.
+    async fn accepted_grade_status(
+        &self,
+        global: &GlobalArgs,
+    ) -> Result<Option<artifact_keeper_sdk::types::AcceptedGradeStatus>> {
+        super::helpers::parse_grade_status(self.accepted_grade_status.as_deref(), global).await
+    }
 }
 
 #[derive(Subcommand)]
@@ -423,6 +440,7 @@ async fn show_gate(id: &str, global: &GlobalArgs) -> Result<()> {
         "enforce_on_download": gate.enforce_on_download,
         "enforce_on_promotion": gate.enforce_on_promotion,
         "repository_id": gate.repository_id.map(|u| u.to_string()),
+        "accepted_grade_status": gate.accepted_grade_status.map(|s| s.to_string()),
     });
 
     let table_str = format!(
@@ -437,7 +455,8 @@ async fn show_gate(id: &str, global: &GlobalArgs) -> Result<()> {
          Min Health Score:    {}\n\
          Required Checks:     {}\n\
          Enforce on Download: {}\n\
-         Enforce on Promote:  {}",
+         Enforce on Promote:  {}\n\
+         Grade Status:        {}",
         gate.id,
         gate.name,
         gate.description.as_deref().unwrap_or("-"),
@@ -470,6 +489,9 @@ async fn show_gate(id: &str, global: &GlobalArgs) -> Result<()> {
         } else {
             "no"
         },
+        gate.accepted_grade_status
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "-".to_string()),
     );
 
     println!(
@@ -493,6 +515,7 @@ async fn create_gate(
     thresholds: GateThresholds,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let accepted_grade_status = thresholds.accepted_grade_status(global).await?;
     let client = client_for(global)?;
     let repository_id = resolve_optional_repo_id(&client, repo_id).await?;
 
@@ -513,8 +536,9 @@ async fn create_gate(
         enforce_on_promotion: thresholds.enforce_on_promotion,
         repository_id,
         required_checks,
-        // The server's default.
-        accepted_grade_status: artifact_keeper_sdk::types::AcceptedGradeStatus::Rated,
+        // Left out, the server's default.
+        accepted_grade_status: accepted_grade_status
+            .unwrap_or(artifact_keeper_sdk::types::AcceptedGradeStatus::Rated),
     };
 
     let (gate, raw) =
@@ -555,6 +579,7 @@ async fn update_gate(
     global: &GlobalArgs,
 ) -> Result<()> {
     let gate_id = parse_uuid(id, "quality gate")?;
+    let accepted_grade_status = update.thresholds.accepted_grade_status(global).await?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Updating quality gate...");
@@ -574,7 +599,7 @@ async fn update_gate(
         min_quality_score: update.thresholds.min_quality_score,
         min_security_score: update.thresholds.min_security_score,
         required_checks: update.required_checks,
-        accepted_grade_status: None,
+        accepted_grade_status,
     };
 
     let (gate, raw) =

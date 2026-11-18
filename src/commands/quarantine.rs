@@ -6,7 +6,7 @@ use miette::Result;
 use super::client::client_for;
 use super::helpers::{
     PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, confirm_action, emit_mutation_raw,
-    is_proxy_path_not_recorded, resolve_artifact_id, sdk_err,
+    is_proxy_path_not_recorded, refuse_flags_before, resolve_artifact_id, sdk_err,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -29,6 +29,12 @@ pub enum QuarantineCommand {
         /// (defaults server-side when omitted)
         #[arg(long)]
         reason: Option<String>,
+
+        /// OCI images: the manifest digest (sha256:<hex>) this is meant for. If the tag
+        /// has moved to another image since, that one is held instead and the answer
+        /// names both (needs a 1.12 server)
+        #[arg(long, value_name = "DIGEST")]
+        expected_digest: Option<String>,
 
         /// Skip the confirmation prompt
         #[arg(long, short = 'y')]
@@ -71,6 +77,12 @@ pub enum QuarantineCommand {
         #[arg(long)]
         reason: Option<String>,
 
+        /// OCI images: the manifest digest (sha256:<hex>) this is meant for. If the tag
+        /// has moved to another image since, that one is held instead and the answer
+        /// names both (needs a 1.12 server)
+        #[arg(long, value_name = "DIGEST")]
+        expected_digest: Option<String>,
+
         /// Skip the confirmation prompt
         #[arg(long, short = 'y')]
         yes: bool,
@@ -84,8 +96,9 @@ impl QuarantineCommand {
             Self::Hold {
                 artifact,
                 reason,
+                expected_digest,
                 yes,
-            } => hold(&artifact, reason, yes, global).await,
+            } => hold(&artifact, reason, expected_digest, yes, global).await,
             Self::Release { artifact, yes } => release(&artifact, yes, global).await,
             Self::ReleaseProxy { repo, path, yes } => {
                 release_proxy(&repo, &path, yes, global).await
@@ -93,8 +106,9 @@ impl QuarantineCommand {
             Self::Reject {
                 artifact,
                 reason,
+                expected_digest,
                 yes,
-            } => reject(&artifact, reason, yes, global).await,
+            } => reject(&artifact, reason, expected_digest, yes, global).await,
         }
     }
 }
@@ -135,9 +149,11 @@ async fn status(artifact: &str, global: &GlobalArgs) -> Result<()> {
 async fn hold(
     artifact: &str,
     reason: Option<String>,
+    expected_digest: Option<String>,
     yes: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
+    refuse_digest_before_1_12(&expected_digest, global).await?;
     let client = client_for(global)?;
     let artifact_id = resolve_artifact_id(&client, artifact).await?;
 
@@ -155,7 +171,7 @@ async fn hold(
 
     let body = artifact_keeper_sdk::types::QuarantineNowRequest {
         reason,
-        expected_digest: None,
+        expected_digest,
     };
     let (action, raw) = capture(
         client
@@ -176,8 +192,11 @@ async fn hold(
         &action,
         &action.artifact_id.to_string(),
         &format!(
-            "Quarantined artifact {} (status: {}). {}",
-            action.artifact_id, action.new_status, action.message
+            "Quarantined artifact {} (status: {}). {}{}",
+            action.artifact_id,
+            action.new_status,
+            action.message,
+            moved_note(&action)
         ),
         global,
     );
@@ -330,9 +349,11 @@ async fn release_proxy(repo: &str, path: &str, yes: bool, global: &GlobalArgs) -
 async fn reject(
     artifact: &str,
     reason: Option<String>,
+    expected_digest: Option<String>,
     yes: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
+    refuse_digest_before_1_12(&expected_digest, global).await?;
     let client = client_for(global)?;
     let artifact_id = resolve_artifact_id(&client, artifact).await?;
 
@@ -348,7 +369,7 @@ async fn reject(
 
     let body = artifact_keeper_sdk::types::RejectRequest {
         reason,
-        expected_digest: None,
+        expected_digest,
     };
 
     let (action, raw) = capture(
@@ -370,13 +391,36 @@ async fn reject(
         &action,
         &action.artifact_id.to_string(),
         &format!(
-            "Rejected artifact {} (status: {}). {}",
-            action.artifact_id, action.new_status, action.message
+            "Rejected artifact {} (status: {}). {}{}",
+            action.artifact_id,
+            action.new_status,
+            action.message,
+            moved_note(&action)
         ),
         global,
     );
 
     Ok(())
+}
+
+/// Refuse `--expected-digest` on a server older than 1.12, which would ignore it and
+/// act on whatever image the tag names by then.
+async fn refuse_digest_before_1_12(digest: &Option<String>, global: &GlobalArgs) -> Result<()> {
+    if digest.is_some() {
+        refuse_flags_before(&["--expected-digest"], (1, 12), global).await?;
+    }
+    Ok(())
+}
+
+/// What a 1.12 server says about an OCI tag that moved: the digest it acted on.
+fn moved_note(action: &artifact_keeper_sdk::types::QuarantineActionResponse) -> String {
+    match (&action.held_digest, &action.moved_to_digest) {
+        (Some(held), Some(moved)) => {
+            format!(" The tag now names {moved}; the hold is on {held}.")
+        }
+        (Some(held), None) => format!(" Digest: {held}."),
+        _ => String::new(),
+    }
 }
 
 fn format_status_detail(item: &serde_json::Value) -> String {
@@ -645,7 +689,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = reject(NIL_UUID, Some("Malware".to_string()), true, &global).await;
+        let result = reject(NIL_UUID, Some("Malware".to_string()), None, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -662,7 +706,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = reject(NIL_UUID, None, true, &global).await;
+        let result = reject(NIL_UUID, None, None, true, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -683,7 +727,14 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = hold(NIL_UUID, Some("Failed scan".to_string()), true, &global).await;
+        let result = hold(
+            NIL_UUID,
+            Some("Failed scan".to_string()),
+            None,
+            true,
+            &global,
+        )
+        .await;
         assert!(result.is_ok(), "hold failed: {:?}", result.err());
         crate::test_utils::teardown_env();
     }
@@ -700,7 +751,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = hold(NIL_UUID, None, true, &global).await;
+        let result = hold(NIL_UUID, None, None, true, &global).await;
         assert!(result.is_ok(), "hold failed: {:?}", result.err());
         crate::test_utils::teardown_env();
     }
@@ -708,7 +759,7 @@ mod tests {
     #[tokio::test]
     async fn handler_hold_invalid_uuid() {
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = hold("not-a-uuid", None, true, &global).await;
+        let result = hold("not-a-uuid", None, None, true, &global).await;
         assert!(result.is_err());
     }
 
@@ -726,7 +777,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let err = hold(NIL_UUID, None, true, &global).await.unwrap_err();
+        let err = hold(NIL_UUID, None, None, true, &global).await.unwrap_err();
         let msg = err.to_string();
         assert!(msg.contains("403"), "should carry the status: {msg}");
         assert!(
@@ -751,7 +802,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let err = hold(NIL_UUID, None, true, &global).await.unwrap_err();
+        let err = hold(NIL_UUID, None, None, true, &global).await.unwrap_err();
         let msg = err.to_string();
         assert!(msg.contains("404"), "should carry the status: {msg}");
         assert!(
@@ -776,7 +827,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let err = hold(NIL_UUID, None, true, &global).await.unwrap_err();
+        let err = hold(NIL_UUID, None, None, true, &global).await.unwrap_err();
         let msg = err.to_string();
         assert!(msg.contains("409"), "should carry the status: {msg}");
         crate::test_utils::teardown_env();

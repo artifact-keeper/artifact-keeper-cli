@@ -525,3 +525,274 @@ fn a_cached_path_is_listed_and_a_rescan_reports_the_server_answer() {
         assert!(stderr.contains("503"), "{stderr}");
     }
 }
+
+/// An ingested finding for one artifact: (repo, artifact, scan id, finding id).
+fn ingested_finding(env: &TestEnv, cve: &str) -> (String, String, String, String) {
+    let repo = hosted_repo(env, "d/f.bin");
+    let artifact = format!("{repo}/d/f.bin");
+    let dir = TempDir::new().unwrap();
+    let file = dir.path().join("findings.json");
+    std::fs::write(
+        &file,
+        json!([{"title": "A problem", "severity": "medium", "cve_id": cve,
+                "affected_component": "lib", "affected_version": "1"}])
+        .to_string(),
+    )
+    .unwrap();
+    let ingested = json_of(
+        env,
+        &[
+            "scan",
+            "finding",
+            "ingest",
+            file.to_str().unwrap(),
+            "--artifact",
+            &artifact,
+            "--scanner",
+            "acme",
+            "--yes",
+        ],
+    );
+    let scan = ingested["scan_id"].as_str().unwrap().to_string();
+    let findings = json_of(env, &["scan", "show", &scan, "--artifact-id", &artifact]);
+    let finding = findings["items"][0]["id"].as_str().unwrap().to_string();
+    (repo, artifact, scan, finding)
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn a_scoped_acknowledgement_is_listed_and_revoked() {
+    if common::server_older_than(1, 12, "acknowledgement decisions") {
+        return;
+    }
+    let env = TestEnv::setup();
+    let cve = format!("CVE-2026-{}", 10000 + rand_suffix());
+    let (repo, _, _, finding) = ingested_finding(&env, &cve);
+
+    let acknowledged = json_of(
+        &env,
+        &[
+            "scan",
+            "finding",
+            "ack",
+            &finding,
+            "--reason",
+            "accepted for now",
+            "--repository-id",
+            &repo,
+            "--expires-at",
+            "2099-01-01T00:00:00Z",
+            "--yes",
+        ],
+    );
+    assert_eq!(acknowledged["is_acknowledged"], true, "{acknowledged}");
+
+    let listed = json_of(&env, &["scan", "ack", "list", "--advisory", &cve]);
+    let items = listed["items"].as_array().unwrap();
+    assert_eq!(items.len(), 1, "{listed}");
+    assert_eq!(items[0]["state"], "active");
+    assert_eq!(items[0]["reason"], "accepted for now");
+    assert!(
+        items[0]["expires_at"]
+            .as_str()
+            .unwrap()
+            .starts_with("2099-01-01"),
+        "{listed}"
+    );
+    let id = items[0]["id"].as_str().unwrap().to_string();
+
+    let revoked = json_of(&env, &["scan", "ack", "revoke", &id, "--yes"]);
+    assert_eq!(revoked["revoked"], 1, "{revoked}");
+
+    let active = json_of(&env, &["scan", "ack", "list", "--advisory", &cve]);
+    assert_eq!(active["items"], json!([]), "{active}");
+    let all = json_of(
+        &env,
+        &[
+            "scan",
+            "ack",
+            "list",
+            "--advisory",
+            &cve,
+            "--include-inactive",
+        ],
+    );
+    assert_eq!(all["items"][0]["state"], "revoked", "{all}");
+
+    // The admin view counts the same vulnerability, open again.
+    let open = json_of(
+        &env,
+        &[
+            "admin", "security", "findings", "--repo", &repo, "--state", "open",
+        ],
+    );
+    assert!(
+        open["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["cve_id"] == cve.as_str()),
+        "{open}"
+    );
+    let by_artifact = json_of(
+        &env,
+        &[
+            "admin",
+            "security",
+            "findings",
+            "--repo",
+            &repo,
+            "--group-by",
+            "artifact",
+        ],
+    );
+    assert_eq!(by_artifact["artifacts"][0]["medium"], 1, "{by_artifact}");
+}
+
+fn rand_suffix() -> u32 {
+    uuid::Uuid::new_v4().as_u128() as u32 % 80000
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn coverage_and_the_uncataloged_policy_are_read_and_set() {
+    if common::server_older_than(1, 12, "coverage listings") {
+        return;
+    }
+    let env = TestEnv::setup();
+    let repo = hosted_repo(&env, "f.bin");
+
+    let coverage = json_of(
+        &env,
+        &[
+            "scan",
+            "coverage",
+            "artifacts",
+            &repo,
+            "--status",
+            "unscanned,cataloged",
+        ],
+    );
+    assert!(coverage["counts"].is_object(), "{coverage}");
+    assert_eq!(coverage["offset"], 0);
+
+    let set = json_of(
+        &env,
+        &[
+            "scan",
+            "security",
+            "uncataloged-policy",
+            "set",
+            &repo,
+            "warn",
+        ],
+    );
+    assert_eq!(set["uncataloged_policy"], "warn", "{set}");
+    let shown = json_of(&env, &["scan", "security", "show", &repo]);
+    assert_eq!(shown["uncataloged_policy"], "warn", "{shown}");
+
+    // The E2E admin is an instance administrator, who can hand the policy back.
+    let unlocked = json_of(
+        &env,
+        &[
+            "scan",
+            "security",
+            "update",
+            &repo,
+            "--instance-locked",
+            "false",
+        ],
+    );
+    assert_eq!(unlocked["instance_locked"], false, "{unlocked}");
+    let locked = json_of(
+        &env,
+        &["scan", "security", "update", &repo, "--instance-locked"],
+    );
+    assert_eq!(locked["instance_locked"], true, "{locked}");
+
+    let blocked = json_of(&env, &["scan", "proxy-blocked", "--would-block"]);
+    assert!(blocked["items"].is_array(), "{blocked}");
+    assert!(blocked["would_block_summary"].is_object(), "{blocked}");
+
+    let queue = json_of(
+        &env,
+        &["admin", "security", "scan-queue", "--state", "failed"],
+    );
+    assert!(queue["depth"].is_array(), "{queue}");
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn a_policy_blocks_uncataloged_artifacts() {
+    if common::server_older_than(1, 12, "block_uncataloged") {
+        return;
+    }
+    let env = TestEnv::setup();
+    let repo = hosted_repo(&env, "f.bin");
+    let policy = json_of(
+        &env,
+        &[
+            "scan",
+            "policy",
+            "create",
+            &unique("uncat"),
+            "--max-severity",
+            "critical",
+            "--repo",
+            &repo,
+            "--block-uncataloged",
+        ],
+    );
+    assert_eq!(policy["block_uncataloged"], true, "{policy}");
+    let id = policy["id"].as_str().unwrap().to_string();
+    let updated = json_of(
+        &env,
+        &[
+            "scan",
+            "policy",
+            "update",
+            &id,
+            "--block-uncataloged",
+            "false",
+        ],
+    );
+    assert_eq!(updated["block_uncataloged"], false, "{updated}");
+    env.ak_cmd()
+        .args(["scan", "policy", "delete", &id, "--yes"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn a_1_11_server_refuses_the_new_ack_flags() {
+    if !common::server_older_than(1, 12, "a refusal to test") {
+        eprintln!("Skipping: this server has 1.12's acknowledgements");
+        return;
+    }
+    let env = TestEnv::setup();
+    let id = uuid::Uuid::new_v4().to_string();
+    let stderr = stderr_of(
+        &env,
+        &[
+            "scan",
+            "finding",
+            "ack",
+            &id,
+            "--reason",
+            "r",
+            "--scope",
+            "all_repositories",
+            "--yes",
+        ],
+    );
+    assert!(
+        stderr.contains("--scope needs a server on 1.12 or newer"),
+        "{stderr}"
+    );
+    let stderr = stderr_of(&env, &["scan", "ack", "list"]);
+    assert!(
+        stderr.contains("needs a server on 1.12 or newer"),
+        "{stderr}"
+    );
+}
