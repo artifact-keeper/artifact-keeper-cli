@@ -3,7 +3,7 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/artifact-keeper/artifact-keeper-cli/main/install.sh | sh
 #
 # To choose the release or the directory, pass options after `sh -s --`:
-#   --version <tag>      Install this release, such as v1.11.0 (default: the latest)
+#   --version <tag>      Install this release, such as v1.12.0 (default: the latest)
 #   --install-dir <dir>  Install here (default: /usr/local/bin if writable, else ~/.local/bin)
 set -e
 
