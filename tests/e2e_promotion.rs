@@ -349,6 +349,19 @@ fn a_rule_keeps_every_requirement_and_can_be_evaluated() {
     assert_eq!(updated["is_enabled"], true);
     assert_eq!(updated["min_health_score"], 3);
 
+    if !common::server_older_than(1, 12, "accepted_grade_status") {
+        let graded = json_of(env.ak_cmd().args([
+            "promotion",
+            "rule",
+            "update",
+            &id,
+            "--accepted-grade-status",
+            "any",
+        ]));
+        assert_eq!(graded["accepted_grade_status"], "any", "{graded}");
+        assert_eq!(graded["min_health_score"], 3, "the rest stays");
+    }
+
     // With no scan, signature or licence on record the artifact can't pass.
     let evaluated = json_of(env.ak_cmd().args(["promotion", "rule", "evaluate", &id]));
     assert_eq!(evaluated["total_artifacts"], 1, "{evaluated}");

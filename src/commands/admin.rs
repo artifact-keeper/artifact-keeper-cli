@@ -19,6 +19,7 @@ mod npm_feed;
 mod plugin_install;
 mod proxy_scan_verdict;
 mod runtime_settings;
+mod security;
 mod storage_ops;
 mod trash;
 
@@ -177,6 +178,13 @@ pub enum AdminCommand {
     Holds {
         #[command(subcommand)]
         command: holds::HoldsCommand,
+    },
+
+    /// List open vulnerabilities across the instance and see the scan queue (needs a
+    /// 1.12 server)
+    Security {
+        #[command(subcommand)]
+        command: security::SecurityCommand,
     },
 
     /// Check stored objects against their recorded checksums
@@ -1395,6 +1403,7 @@ impl AdminCommand {
             Self::ProxyScanVerdict { command } => command.execute(global).await,
             Self::NpmFeed { command } => command.execute(global).await,
             Self::Holds { command } => command.execute(global).await,
+            Self::Security { command } => command.execute(global).await,
             Self::StorageScrub { command } => command.execute(global).await,
             Self::ReindexStorage(args) => storage_ops::reindex_storage(args, global).await,
             Self::Trash { command } => command.execute(global).await,

@@ -214,6 +214,45 @@ fn a_quarantine_hold_shows_in_holds() {
     );
     assert_eq!(body["pagination"]["total"], 1, "{body}");
     assert_eq!(body["items"][0]["artifact_id"], id.as_str());
+    if !common::server_older_than(1, 12, "hold sources") {
+        let by_admin = json_of(
+            env.ak_cmd()
+                .args([
+                    "admin",
+                    "holds",
+                    "quarantine",
+                    "--repo",
+                    &key,
+                    "--hold-source",
+                    "admin",
+                ])
+                .output()
+                .unwrap(),
+        );
+        assert_eq!(by_admin["items"][0]["hold_source"], "admin", "{by_admin}");
+        let by_upload = json_of(
+            env.ak_cmd()
+                .args([
+                    "admin",
+                    "holds",
+                    "quarantine",
+                    "--repo",
+                    &key,
+                    "--hold-source",
+                    "upload",
+                ])
+                .output()
+                .unwrap(),
+        );
+        assert_eq!(by_upload["pagination"]["total"], 0, "{by_upload}");
+        let blocks = json_of(
+            env.ak_cmd()
+                .args(["admin", "holds", "policy-blocks", "--repo", &key])
+                .output()
+                .unwrap(),
+        );
+        assert!(blocks["items"].is_array(), "{blocks}");
+    }
     let summary = json_of(
         env.ak_cmd()
             .args(["admin", "holds", "summary"])

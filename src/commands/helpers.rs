@@ -296,10 +296,27 @@ pub async fn refuse_flags_before(flags: &[&str], minor: Minor, global: &GlobalAr
     }
 }
 
+/// `--accepted-grade-status` on a quality gate or promotion rule, refused on a server
+/// older than 1.12: it would ignore it, and the gate would pass on the score alone.
+pub async fn parse_grade_status(
+    value: Option<&str>,
+    global: &GlobalArgs,
+) -> Result<Option<artifact_keeper_sdk::types::AcceptedGradeStatus>> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    let status = value.parse().map_err(|_| {
+        AkError::Usage(format!(
+            "--accepted-grade-status is rated, incomplete or any, not '{value}'"
+        ))
+    })?;
+    refuse_flags_before(&["--accepted-grade-status"], (1, 12), global).await?;
+    Ok(Some(status))
+}
+
 /// The error for a failed call to a route new in `minor`. A server without the route
 /// answers 404 "Repository not found", which names the wrong problem, so a 404 from
 /// an older server says what's really wrong. Any other failure is the server's own.
-#[allow(dead_code)] // For the routes new in 1.12, which come in their own changes.
 pub async fn since(
     minor: Minor,
     error: artifact_keeper_sdk::Error,
@@ -317,7 +334,6 @@ pub async fn since(
 
 /// A result with [`since`] applied to its error, for a command group whose routes are
 /// all new in `minor`.
-#[allow(dead_code)] // For the routes new in 1.12, which come in their own changes.
 pub async fn or_since<T>(
     minor: Minor,
     result: std::result::Result<T, artifact_keeper_sdk::Error>,

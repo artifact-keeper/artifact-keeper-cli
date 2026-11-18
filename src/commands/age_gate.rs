@@ -3,7 +3,10 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{emit_mutation_raw, new_table, parse_uuid, sdk_err, short_id};
+use super::helpers::{
+    Minor, confirm_action, emit_mutation_raw, new_table, or_since, parse_uuid, refuse_flags_before,
+    sdk_err, short_id,
+};
 use crate::cli::GlobalArgs;
 use crate::output::{self, OutputFormat};
 
@@ -36,6 +39,12 @@ pub enum AgeGateCommand {
         /// current mode
         #[arg(long)]
         mode: Option<String>,
+
+        /// Instance administrators only: false hands the policy back to the
+        /// repository's administrators, true locks it. An instance administrator's
+        /// update locks it unless this says false. Needs a 1.12 server
+        #[arg(long, num_args = 0..=1, default_missing_value = "true", value_name = "BOOL")]
+        instance_locked: Option<bool>,
     },
 
     /// List age-gate review requests in the admin queue
@@ -92,7 +101,99 @@ pub enum AgeGateCommand {
         #[arg(long)]
         reason: Option<String>,
     },
+
+    /// Review one repository's queue as its administrator, without instance admin
+    /// (needs a 1.12 server)
+    RepoReviews {
+        #[command(subcommand)]
+        command: RepoReviewsCommand,
+    },
 }
+
+#[derive(Subcommand)]
+pub enum RepoReviewsCommand {
+    /// List a repository's age-gate review requests
+    List {
+        /// Repository key
+        #[arg(long)]
+        repo: String,
+
+        /// Filter by status (pending, approved, rejected), or several, comma-separated
+        #[arg(long)]
+        status: Option<String>,
+
+        /// Page number
+        #[arg(long, default_value = "1")]
+        page: i32,
+
+        /// Results per page
+        #[arg(long, default_value = "20")]
+        per_page: i32,
+    },
+
+    /// Show one of a repository's review requests
+    Show {
+        /// Review ID
+        id: String,
+
+        /// Repository key
+        #[arg(long)]
+        repo: String,
+    },
+
+    /// Approve a pending review request: the package version is served before it's
+    /// old enough
+    Approve {
+        /// Review ID
+        id: String,
+
+        /// Repository key
+        #[arg(long)]
+        repo: String,
+
+        /// Reason for the decision
+        #[arg(long)]
+        reason: Option<String>,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
+
+    /// Reject a pending review request
+    Reject {
+        /// Review ID
+        id: String,
+
+        /// Repository key
+        #[arg(long)]
+        repo: String,
+
+        /// Reason for the decision
+        #[arg(long)]
+        reason: Option<String>,
+
+        /// Skip the confirmation prompt
+        #[arg(long, short = 'y')]
+        yes: bool,
+    },
+
+    /// Put a decided review request back to pending
+    Reopen {
+        /// Review ID
+        id: String,
+
+        /// Repository key
+        #[arg(long)]
+        repo: String,
+
+        /// Why it's being reopened
+        #[arg(long)]
+        reason: Option<String>,
+    },
+}
+
+const V1_12: Minor = (1, 12);
 
 impl AgeGateCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
@@ -104,7 +205,18 @@ impl AgeGateCommand {
                 enabled,
                 disabled,
                 mode,
-            } => set_config(&repo, min_age_days, enabled, disabled, mode, global).await,
+                instance_locked,
+            } => {
+                set_config(
+                    &repo,
+                    min_age_days,
+                    enabled,
+                    disabled,
+                    (mode, instance_locked),
+                    global,
+                )
+                .await
+            }
             Self::Reviews {
                 repo,
                 status,
@@ -121,6 +233,57 @@ impl AgeGateCommand {
             Self::Reopen { id, reason } => {
                 review_decision(&id, reason.as_deref(), Decision::Reopen, global).await
             }
+            Self::RepoReviews { command } => command.execute(global).await,
+        }
+    }
+}
+
+impl RepoReviewsCommand {
+    async fn execute(self, global: &GlobalArgs) -> Result<()> {
+        match self {
+            Self::List {
+                repo,
+                status,
+                page,
+                per_page,
+            } => list_repo_reviews(&repo, status.as_deref(), page, per_page, global).await,
+            Self::Show { id, repo } => show_repo_review(&repo, &id, global).await,
+            Self::Approve {
+                id,
+                repo,
+                reason,
+                yes,
+            } => {
+                decide_repo_review(
+                    &repo,
+                    &id,
+                    reason.as_deref(),
+                    Decision::Approve,
+                    yes,
+                    global,
+                )
+                .await
+            }
+            Self::Reject {
+                id,
+                repo,
+                reason,
+                yes,
+            } => {
+                decide_repo_review(&repo, &id, reason.as_deref(), Decision::Reject, yes, global)
+                    .await
+            }
+            Self::Reopen { id, repo, reason } => {
+                decide_repo_review(
+                    &repo,
+                    &id,
+                    reason.as_deref(),
+                    Decision::Reopen,
+                    true,
+                    global,
+                )
+                .await
+            }
         }
     }
 }
@@ -135,11 +298,7 @@ async fn get_config(repo: &str, global: &GlobalArgs) -> Result<()> {
 
     spinner.finish_and_clear();
 
-    let info = serde_json::json!({
-        "repository_key": config.repository_key,
-        "enabled": config.enabled,
-        "min_age_days": config.min_age_days,
-    });
+    let info = config_info(&config);
 
     let table_str = format_config_detail(&info);
     println!(
@@ -150,16 +309,30 @@ async fn get_config(repo: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+fn config_info(config: &artifact_keeper_sdk::types::AgeGateConfigResponse) -> serde_json::Value {
+    serde_json::json!({
+        "repository_key": config.repository_key,
+        "enabled": config.enabled,
+        "min_age_days": config.min_age_days,
+        "mode": config.mode,
+        "instance_locked": config.instance_locked,
+    })
+}
+
 async fn set_config(
     repo: &str,
     min_age_days: i32,
     enabled: bool,
     disabled: bool,
-    mode: Option<String>,
+    (mode, instance_locked): (Option<String>, Option<bool>),
     global: &GlobalArgs,
 ) -> Result<()> {
     // Default to enabled unless --disabled was explicitly given.
     let is_enabled = !disabled || enabled;
+    // An older server would take the rest and leave the lock as it is.
+    if instance_locked.is_some() {
+        refuse_flags_before(&["--instance-locked"], V1_12, global).await?;
+    }
 
     let client = client_for(global)?;
     let spinner = output::spinner("Updating age-gate configuration...");
@@ -169,7 +342,7 @@ async fn set_config(
         min_age_days,
         // Omitted keeps the repository's current mode.
         mode,
-        instance_locked: None,
+        instance_locked,
     };
 
     let (config, raw) = artifact_keeper_sdk::raw::capture(
@@ -191,11 +364,7 @@ async fn set_config(
         config.min_age_days
     );
 
-    let info = serde_json::json!({
-        "repository_key": config.repository_key,
-        "enabled": config.enabled,
-        "min_age_days": config.min_age_days,
-    });
+    let info = config_info(&config);
 
     let table_str = format_config_detail(&info);
     println!(
@@ -313,6 +482,16 @@ async fn show_review(id: &str, global: &GlobalArgs) -> Result<()> {
 
     spinner.finish_and_clear();
 
+    print_review(&review, raw.as_deref(), global);
+
+    Ok(())
+}
+
+fn print_review(
+    review: &artifact_keeper_sdk::types::AgeGateReviewResponse,
+    raw: Option<&[u8]>,
+    global: &GlobalArgs,
+) {
     let info = serde_json::json!({
         "id": review.id.to_string(),
         "repository_key": review.repository_key,
@@ -323,18 +502,18 @@ async fn show_review(id: &str, global: &GlobalArgs) -> Result<()> {
         "requested_at": review.requested_at.to_rfc3339(),
         "last_requested_at": review.last_requested_at.to_rfc3339(),
         "upstream_published_at": review.upstream_published_at.map(|t| t.to_rfc3339()),
-        "reviewed_by": review.reviewed_by.map(|u| u.to_string()),
+        "reviewed_by": review.reviewed_by_username.clone()
+            .or_else(|| review.reviewed_by.map(|u| u.to_string())),
         "reviewed_at": review.reviewed_at.map(|t| t.to_rfc3339()),
         "review_reason": review.review_reason,
+        "instance_locked": review.instance_locked,
     });
 
     let table_str = format_review_detail(&info);
     println!(
         "{}",
-        output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
+        output::render_raw(raw, &info, &global.format, Some(table_str))
     );
-
-    Ok(())
 }
 
 #[derive(Clone, Copy)]
@@ -403,8 +582,204 @@ async fn review_decision(
     Ok(())
 }
 
+// ---- the repository-scoped queue (1.12) ----
+
+async fn list_repo_reviews(
+    repo: &str,
+    status: Option<&str>,
+    page: i32,
+    per_page: i32,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching age-gate reviews...");
+
+    let mut req = client
+        .list_repo_reviews()
+        .key(repo)
+        .page(page)
+        .per_page(per_page);
+    if let Some(s) = status {
+        req = req.status(s);
+    }
+    let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
+    let resp = or_since(
+        V1_12,
+        resp,
+        "list age-gate reviews",
+        "age-gate repo-reviews list",
+        global,
+    )
+    .await?;
+
+    spinner.finish_and_clear();
+
+    if resp.items.is_empty() && !output::is_machine_format(&global.format) {
+        eprintln!("No age-gate reviews found.");
+        return Ok(());
+    }
+    if matches!(global.format, OutputFormat::Quiet) {
+        for r in &resp.items {
+            println!("{}", r.id);
+        }
+        return Ok(());
+    }
+
+    let mut table = new_table(vec![
+        "ID",
+        "PACKAGE",
+        "VERSION",
+        "STATUS",
+        "REQ",
+        "REQUESTED",
+        "LOCKED",
+    ]);
+    for r in &resp.items {
+        table.add_row(vec![
+            r.id.to_string(),
+            r.package_name.clone(),
+            r.package_version.clone(),
+            r.status.clone(),
+            r.request_count.to_string(),
+            r.requested_at.format("%Y-%m-%d %H:%M").to_string(),
+            match r.instance_locked {
+                Some(true) => "yes",
+                Some(false) => "no",
+                None => "-",
+            }
+            .to_string(),
+        ]);
+    }
+    println!(
+        "{}",
+        output::render_raw(
+            raw.as_deref(),
+            &*resp,
+            &global.format,
+            Some(table.to_string())
+        )
+    );
+    super::helpers::print_page_info(
+        resp.pagination.page,
+        resp.pagination.total_pages,
+        resp.pagination.total,
+        "reviews",
+    );
+
+    Ok(())
+}
+
+async fn show_repo_review(repo: &str, id: &str, global: &GlobalArgs) -> Result<()> {
+    let review_id = parse_uuid(id, "review")?;
+
+    let client = client_for(global)?;
+    let spinner = output::spinner("Fetching age-gate review...");
+
+    let (review, raw) =
+        artifact_keeper_sdk::raw::capture(client.get_repo_review().key(repo).id(review_id).send())
+            .await;
+    let review = or_since(
+        V1_12,
+        review,
+        "get age-gate review",
+        "age-gate repo-reviews show",
+        global,
+    )
+    .await?;
+
+    spinner.finish_and_clear();
+    print_review(&review, raw.as_deref(), global);
+
+    Ok(())
+}
+
+async fn decide_repo_review(
+    repo: &str,
+    id: &str,
+    reason: Option<&str>,
+    decision: Decision,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let review_id = parse_uuid(id, "review")?;
+    let (doing, verb, done, wire) = match decision {
+        Decision::Approve => (
+            "Approving",
+            "approve",
+            "approved",
+            artifact_keeper_sdk::types::ReviewDecision::Approve,
+        ),
+        Decision::Reject => (
+            "Rejecting",
+            "reject",
+            "rejected",
+            artifact_keeper_sdk::types::ReviewDecision::Reject,
+        ),
+        Decision::Reopen => (
+            "Reopening",
+            "reopen",
+            "reopened",
+            artifact_keeper_sdk::types::ReviewDecision::Reopen,
+        ),
+    };
+    let prompt = match decision {
+        Decision::Approve => format!(
+            "Approve review {id} in '{repo}'? That package version is served before it's old \
+             enough."
+        ),
+        Decision::Reject => format!(
+            "Reject review {id} in '{repo}'? That package version stays blocked until it's old \
+             enough."
+        ),
+        Decision::Reopen => String::new(),
+    };
+    if !matches!(decision, Decision::Reopen) && !confirm_action(&prompt, yes, global.no_input)? {
+        return Ok(());
+    }
+
+    let client = client_for(global)?;
+    let spinner = output::spinner(&format!("{doing} age-gate review..."));
+
+    let body = artifact_keeper_sdk::types::ReviewActionRequest {
+        reason: reason.map(|s| s.to_string()),
+    };
+    let (review, raw) = artifact_keeper_sdk::raw::capture(
+        client
+            .decide_repo_review()
+            .key(repo)
+            .id(review_id)
+            .decision(wire)
+            .body(body)
+            .send(),
+    )
+    .await;
+    let review = or_since(
+        V1_12,
+        review,
+        &format!("{verb} age-gate review"),
+        &format!("age-gate repo-reviews {verb}"),
+        global,
+    )
+    .await?
+    .into_inner();
+
+    spinner.finish_and_clear();
+    emit_mutation_raw(
+        raw.as_deref(),
+        &review,
+        &review.id.to_string(),
+        &format!(
+            "Review {} {done} ({} {} in {}).",
+            review.id, review.package_name, review.package_version, review.repository_key
+        ),
+        global,
+    );
+
+    Ok(())
+}
+
 fn format_config_detail(item: &serde_json::Value) -> String {
-    format!(
+    let mut out = format!(
         "Repository:       {}\n\
          Enabled:          {}\n\
          Min Age (days):   {}",
@@ -415,7 +790,17 @@ fn format_config_detail(item: &serde_json::Value) -> String {
             "no"
         },
         item["min_age_days"].as_i64().unwrap_or(0),
-    )
+    );
+    if let Some(mode) = item["mode"].as_str() {
+        out.push_str(&format!("\nMode:             {mode}"));
+    }
+    if let Some(locked) = item["instance_locked"].as_bool() {
+        out.push_str(&format!(
+            "\nInstance Locked:  {}",
+            if locked { "yes" } else { "no" }
+        ));
+    }
+    out
 }
 
 fn format_review_detail(item: &serde_json::Value) -> String {
@@ -431,7 +816,8 @@ fn format_review_detail(item: &serde_json::Value) -> String {
          Upstream Published:{}\n\
          Reviewed By:       {}\n\
          Reviewed At:       {}\n\
-         Reason:            {}",
+         Reason:            {}\n\
+         Instance Locked:   {}",
         item["id"].as_str().unwrap_or("-"),
         item["repository_key"].as_str().unwrap_or("-"),
         item["package_name"].as_str().unwrap_or("-"),
@@ -444,6 +830,11 @@ fn format_review_detail(item: &serde_json::Value) -> String {
         item["reviewed_by"].as_str().unwrap_or("-"),
         item["reviewed_at"].as_str().unwrap_or("-"),
         item["review_reason"].as_str().unwrap_or("-"),
+        match item["instance_locked"].as_bool() {
+            Some(true) => "yes",
+            Some(false) => "no",
+            None => "-",
+        },
     )
 }
 
@@ -785,7 +1176,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
-        let result = set_config("npm-proxy", 7, true, false, None, &global).await;
+        let result = set_config("npm-proxy", 7, true, false, (None, None), &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

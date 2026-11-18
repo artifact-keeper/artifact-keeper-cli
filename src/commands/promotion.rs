@@ -143,6 +143,13 @@ pub struct RuleChecks {
     /// Require a signature (true/false)
     #[arg(long)]
     require_signature: Option<bool>,
+
+    /// The weakest grade status of the source repository the health score accepts:
+    /// rated (the server's default: failed, uncataloged or partial scans fail the
+    /// rule whatever the score), incomplete (only a repository with nothing assessed
+    /// fails) or any (the score alone decides). Needs a 1.12 server
+    #[arg(long, value_parser = ["rated", "incomplete", "any"])]
+    accepted_grade_status: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -221,6 +228,13 @@ pub enum PromotionRuleCommand {
         /// Require artifacts to be signed
         #[arg(long)]
         require_signature: Option<bool>,
+
+        /// The weakest grade status of the source repository the health score accepts:
+        /// rated (the server's default: failed, uncataloged or partial scans fail the
+        /// rule whatever the score), incomplete (only a repository with nothing assessed
+        /// fails) or any (the score alone decides). Needs a 1.12 server
+        #[arg(long, value_parser = ["rated", "incomplete", "any"])]
+        accepted_grade_status: Option<String>,
     },
 
     /// Evaluate a promotion rule against candidate artifacts
@@ -317,6 +331,7 @@ impl PromotionCommand {
                     min_health_score,
                     allowed_licenses,
                     require_signature,
+                    accepted_grade_status,
                 } => {
                     update_rule(
                         &id,
@@ -330,6 +345,7 @@ impl PromotionCommand {
                             min_health_score,
                             allowed_licenses,
                             require_signature,
+                            accepted_grade_status,
                         },
                         global,
                     )
@@ -377,6 +393,7 @@ struct RuleUpdate {
     min_health_score: Option<i32>,
     allowed_licenses: Option<Vec<String>>,
     require_signature: Option<bool>,
+    accepted_grade_status: Option<String>,
 }
 
 async fn promote_artifact(
@@ -553,6 +570,8 @@ async fn create_rule(
     checks: RuleChecks,
     global: &GlobalArgs,
 ) -> Result<()> {
+    let accepted_grade_status =
+        super::helpers::parse_grade_status(checks.accepted_grade_status.as_deref(), global).await?;
     let client = client_for(global)?;
     let source_id = resolve_repo_id(&client, from).await?;
     let target_id = resolve_repo_id(&client, to).await?;
@@ -571,8 +590,9 @@ async fn create_rule(
         min_health_score: checks.min_health_score,
         allowed_licenses: checks.allowed_licenses,
         require_signature: checks.require_signature,
-        // The server's default.
-        accepted_grade_status: artifact_keeper_sdk::types::AcceptedGradeStatus::Rated,
+        // Left out, the server's default.
+        accepted_grade_status: accepted_grade_status
+            .unwrap_or(artifact_keeper_sdk::types::AcceptedGradeStatus::Rated),
     };
 
     let (rule, raw) =
@@ -640,6 +660,7 @@ fn rule_detail(
         "min_health_score": rule.min_health_score,
         "allowed_licenses": rule.allowed_licenses,
         "require_signature": rule.require_signature,
+        "accepted_grade_status": rule.accepted_grade_status.map(|s| s.to_string()),
         "created_at": rule.created_at.to_rfc3339(),
         "updated_at": rule.updated_at.to_rfc3339(),
     });
@@ -664,6 +685,7 @@ fn rule_detail(
          Min health score: {}\n\
          Allowed licenses: {}\n\
          Require signature: {}\n\
+         Grade status:     {}\n\
          Created:          {}\n\
          Updated:          {}",
         rule.id,
@@ -678,6 +700,7 @@ fn rule_detail(
         opt_display(&rule.min_health_score),
         licenses,
         if rule.require_signature { "yes" } else { "no" },
+        opt_display(&rule.accepted_grade_status),
         rule.created_at.format("%Y-%m-%d %H:%M:%S UTC"),
         rule.updated_at.format("%Y-%m-%d %H:%M:%S UTC"),
     );
@@ -713,6 +736,8 @@ async fn get_rule(id: &str, global: &GlobalArgs) -> Result<()> {
 
 async fn update_rule(id: &str, update: RuleUpdate, global: &GlobalArgs) -> Result<()> {
     let rule_id = parse_uuid(id, "rule")?;
+    let accepted_grade_status =
+        super::helpers::parse_grade_status(update.accepted_grade_status.as_deref(), global).await?;
 
     let client = client_for(global)?;
     let spinner = output::spinner("Updating promotion rule...");
@@ -727,7 +752,7 @@ async fn update_rule(id: &str, update: RuleUpdate, global: &GlobalArgs) -> Resul
         min_health_score: update.min_health_score,
         allowed_licenses: update.allowed_licenses,
         require_signature: update.require_signature,
-        accepted_grade_status: None,
+        accepted_grade_status,
     };
 
     let (rule, raw) =
@@ -2104,6 +2129,7 @@ mod tests {
             min_health_score: None,
             allowed_licenses: Some(vec!["MIT".to_string()]),
             require_signature: Some(true),
+            accepted_grade_status: None,
         };
         let result = update_rule(NIL_UUID, update, &global).await;
         assert!(result.is_ok());
