@@ -172,13 +172,32 @@ pub struct FieldOptOut {
     pub reason: &'static str,
 }
 
-pub static FIELD_OPT_OUTS: &[FieldOptOut] = &[FieldOptOut {
-    method: "GET",
-    path: "/api/v1/repositories/{key}/security/scans",
-    field: "repository_id",
-    reason: "The route's key already picks the repository. `scan list --repo <uuid>` sends \
-             this filter to the route that lists every repository's scans",
-}];
+pub static FIELD_OPT_OUTS: &[FieldOptOut] = &[
+    FieldOptOut {
+        method: "GET",
+        path: "/api/v1/repositories/{key}/security/scans",
+        field: "repository_id",
+        reason: "The route's key already picks the repository. `scan list --repo <uuid>` sends \
+                 this filter to the route that lists every repository's scans",
+    },
+    FieldOptOut {
+        method: "POST",
+        path: "/api/v1/repositories",
+        field: "curation_enabled",
+        reason: CURATION_AFTER_CREATE,
+    },
+    FieldOptOut {
+        method: "POST",
+        path: "/api/v1/repositories",
+        field: "curation_default_action",
+        reason: CURATION_AFTER_CREATE,
+    },
+];
+
+const CURATION_AFTER_CREATE: &str = "The server refuses anything but the default on create \
+                                     (#5324). `repo create --curation-enabled` and \
+                                     `--curation-default-action` send it in the PATCH that \
+                                     follows the create";
 
 const IDP_CALLBACK: &str = "An identity provider sends a browser here with a code or an \
                             assertion. A CLI never starts this request";
@@ -207,6 +226,7 @@ macro_rules! repo_body_fields {
             "apt_origin",
             "apt_release_version",
             "curation_allow_unverified",
+            "curation_source_repository_key",
             "custom_user_agent",
             "debian",
             "description",
@@ -439,6 +459,12 @@ pub static COMMANDS: &[Op] = &[
             "upstream_password",
             "upstream_username"
         ),
+    ),
+    covered(
+        "PATCH",
+        "/api/v1/repositories/{key}",
+        "repo create",
+        &["curation_default_action", "curation_enabled"],
     ),
     covered("GET", "/api/v1/repositories/{key}", "repo show", &[]),
     covered(

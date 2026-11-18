@@ -7,7 +7,7 @@ use miette::{IntoDiagnostic, Result};
 use super::client::{client_for, client_for_optional_auth};
 use super::helpers::{
     PromptResult, confirm_action, emit_mutation, emit_mutation_raw, new_table, parse_json_arg,
-    raw_err, read_inline_or_file, resolve_secret, sdk_err,
+    raw_err, read_inline_or_file, refuse_flags_before, resolve_secret, sdk_err,
 };
 use super::repo_settings::{
     self, AllowlistCommand, EgressProxyCommand, NpmScopePolicyCommand, UpstreamFilterCommand,
@@ -129,6 +129,16 @@ pub enum RepoCommand {
         #[arg(long = "upstream-password-stdin", conflicts_with = "upstream_password")]
         upstream_password_stdin: bool,
 
+        /// Enforce curation rules on this repository's proxy paths (true/false). Set
+        /// right after the repository is created, which is when the server takes it
+        #[arg(long = "curation-enabled")]
+        curation_enabled: Option<bool>,
+
+        /// Curation action when no rule matches: allow or review. Set right after
+        /// the repository is created, like --curation-enabled
+        #[arg(long = "curation-default-action", value_parser = ["allow", "review"])]
+        curation_default_action: Option<String>,
+
         #[command(flatten)]
         settings: RepoSettingsArgs,
     },
@@ -220,7 +230,7 @@ pub enum RepoCommand {
         curation_enabled: Option<bool>,
 
         /// Curation action when no rule matches: allow or review
-        #[arg(long = "curation-default-action")]
+        #[arg(long = "curation-default-action", value_parser = ["allow", "review"])]
         curation_default_action: Option<String>,
 
         /// Serve a partial merge when a virtual member's metadata can't be read (true/false)
@@ -426,6 +436,11 @@ pub struct RepoSettingsArgs {
     #[arg(long = "curation-allow-unverified")]
     curation_allow_unverified: Option<bool>,
 
+    /// Staging repositories: the remote repository the curation sync ingests from,
+    /// by key ("" removes it on update). Needs a 1.12 server
+    #[arg(long = "curation-source")]
+    curation_source: Option<String>,
+
     /// Debian remote settings: JSON text, @file or @-
     #[arg(long)]
     debian: Option<String>,
@@ -493,8 +508,8 @@ macro_rules! with_settings {
             npm_allow_unscoped: $settings.npm_allow_unscoped,
             npm_virtual_isolate_hosted_names: $settings.npm_virtual_isolate_hosted_names,
             oci_trusted_bearer_realms: list_flag($settings.oci_trusted_bearer_realms),
+            curation_source_repository_key: $settings.curation_source,
             // New in 1.12, with no flags yet.
-            curation_source_repository_key: None,
             mcp_namespace_allow: None,
             mcp_package_policy: None,
             mcp_package_repos: None,
@@ -502,6 +517,16 @@ macro_rules! with_settings {
             virtual_member_fallback: None,
         }
     };
+}
+
+impl RepoSettingsArgs {
+    /// The flags given that a server before 1.12 would accept and drop.
+    fn new_in_1_12(&self) -> Vec<&'static str> {
+        [("--curation-source", self.curation_source.is_some())]
+            .into_iter()
+            .filter_map(|(flag, given)| given.then_some(flag))
+            .collect()
+    }
 }
 
 /// A list flag's values, with `""` meaning an empty list.
@@ -732,8 +757,11 @@ impl RepoCommand {
                 upstream_username,
                 upstream_password,
                 upstream_password_stdin,
+                curation_enabled,
+                curation_default_action,
                 settings,
             } => {
+                refuse_flags_before(&settings.new_in_1_12(), (1, 12), global).await?;
                 let upstream_password = resolve_secret(
                     upstream_password,
                     upstream_password_stdin,
@@ -751,9 +779,11 @@ impl RepoCommand {
                     .map(|v| parse_json_arg(v, "--debian"))
                     .transpose()?;
                 let body = with_settings!(CreateRepositoryRequest, settings, debian, {
-                    // New in 1.12, with no flags yet.
+                    // The server refuses these on create (#5324): `curation` sets
+                    // them once the repository exists.
                     curation_default_action: None,
                     curation_enabled: None,
+                    // New in 1.12, with no flags yet.
                     egress_proxy: None,
                     quarantine_duration_minutes: None,
                     quarantine_enabled: None,
@@ -780,7 +810,13 @@ impl RepoCommand {
                     upstream_username,
                     upstream_password,
                 });
-                create_repo(body, global).await
+                let curation = (curation_enabled.is_some() || curation_default_action.is_some())
+                    .then(|| artifact_keeper_sdk::types::UpdateRepositoryRequest {
+                        curation_enabled,
+                        curation_default_action,
+                        ..Default::default()
+                    });
+                create_repo(body, curation, global).await
             }
             Self::Delete {
                 key,
@@ -811,6 +847,7 @@ impl RepoCommand {
                 clear_trusted_gpg_key,
                 settings,
             } => {
+                refuse_flags_before(&settings.new_in_1_12(), (1, 12), global).await?;
                 let debian = settings
                     .debian
                     .as_deref()
@@ -1209,8 +1246,11 @@ async fn show_repo(key: &str, global: &GlobalArgs) -> Result<()> {
     Ok(())
 }
 
+/// Create a repository, then set the curation fields, which the server takes only
+/// on an update (#5324). A failed update leaves the repository created, and says so.
 async fn create_repo(
     body: artifact_keeper_sdk::types::CreateRepositoryRequest,
+    curation: Option<artifact_keeper_sdk::types::UpdateRepositoryRequest>,
     global: &GlobalArgs,
 ) -> Result<()> {
     let client = client_for(global)?;
@@ -1218,10 +1258,30 @@ async fn create_repo(
     let (resp, raw) =
         artifact_keeper_sdk::raw::capture(client.create_repository().body(body).send()).await;
     let resp = resp.map_err(|e| crate::commands::helpers::sdk_err("create repository", e))?;
+    let (resp, raw) = match curation {
+        None => (resp.into_inner(), raw),
+        Some(curation) => {
+            let key = resp.key.clone();
+            let (updated, raw) = artifact_keeper_sdk::raw::capture(
+                client.update_repository().key(&key).body(curation).send(),
+            )
+            .await;
+            let updated = updated.map_err(|e| {
+                crate::commands::helpers::classified(
+                    format!(
+                        "Created repository '{key}', but failed to set its curation: {e}. Set \
+                         it with `ak repo update {key}`"
+                    ),
+                    &e,
+                )
+            })?;
+            (updated.into_inner(), raw)
+        }
+    };
 
     emit_mutation_raw(
         raw.as_deref(),
-        &*resp,
+        &resp,
         &resp.key,
         &format!(
             "Created repository '{}' (format: {}, type: {})",
@@ -2877,7 +2937,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = create_repo(create_body(), &global).await;
+        let result = create_repo(create_body(), None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }
@@ -2894,7 +2954,7 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Quiet);
-        let result = create_repo(create_body(), &global).await;
+        let result = create_repo(create_body(), None, &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
     }

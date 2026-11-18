@@ -198,7 +198,7 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
             "GET",
             "/health",
             200,
-            json!({"status": "healthy", "version": "1.11.11", "checks": {}}),
+            json!({"status": "healthy", "version": "1.12.1", "checks": {}}),
         ),
         (
             "GET",
@@ -259,6 +259,21 @@ fn preflight(method: &str, path: &str) -> Option<(u16, Value)> {
             json!({"storage_backend": "x", "storage_path": "x", "allow_anonymous_download": true,
                    "max_upload_size_bytes": 1, "retention_days": 1, "audit_retention_days": 1,
                    "backup_retention_count": 1, "edge_stale_threshold_minutes": 1}),
+        ),
+        // `repo create` reads the key it sends its curation PATCH to.
+        (
+            "POST",
+            "/api/v1/repositories",
+            200,
+            json!({"id": UUID, "key": "r", "name": "r", "format": "rpm", "repo_type": "staging",
+                   "visibility": "private", "is_public": false, "allow_anonymous_access": false,
+                   "promotion_only": false, "versioning_enabled": false, "repodata_depth": 0,
+                   "repodata_depth_editable": false, "storage_backend": "filesystem",
+                   "storage_used_bytes": 0, "has_trusted_gpg_key": false,
+                   "upstream_url_has_credentials": false, "upstream_auth_configured": false,
+                   "public_with_upstream_credentials": false,
+                   "allow_public_with_upstream_credentials": false, "curation_enabled": false,
+                   "curation_default_action": "allow", "created_at": at, "updated_at": at}),
         ),
         (
             "GET",
@@ -691,6 +706,8 @@ fn hints(
             ],
             vec![],
         ),
+        // The curation fields go in the PATCH that follows the create.
+        ("repo create", "PATCH", _) => (vec![("curation_enabled", "true".to_string())], vec![]),
         ("artifact push", _, p) if p.contains("/uploads") => {
             (vec![], vec![("AK_CHUNKED_THRESHOLD", "1")])
         }

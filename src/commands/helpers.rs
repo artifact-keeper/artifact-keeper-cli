@@ -280,7 +280,6 @@ fn warn_unchecked(flags: &str, (major, minor, patch): (u64, u64, u64)) {
 /// Refuse flags that a server older than `minor` would accept and silently drop,
 /// before anything changes: it answers 200, so the command would report what never
 /// happened.
-#[allow(dead_code)] // For the flags new in 1.12, which come in their own changes.
 pub async fn refuse_flags_before(flags: &[&str], minor: Minor, global: &GlobalArgs) -> Result<()> {
     if flags.is_empty() {
         return Ok(());

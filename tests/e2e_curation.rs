@@ -2,10 +2,10 @@
 //!
 //! Requires the E2E backend: ./tests/start-backend.sh
 //!
-//! No API on 1.11.11 links a staging repository to its source, so a repository
-//! made here has nothing to sync and no packages. These tests prove every command
-//! reaches the real route and shows what the server answers. Approving and
-//! publishing a real package isn't covered here.
+//! A staging repository made here has a source (on 1.12; 1.11 has no way to link
+//! one) whose upstream holds nothing, so a sync finds no packages. These tests
+//! prove every command reaches the real route and shows what the server answers.
+//! Approving and publishing a real package isn't covered here.
 
 mod common;
 
@@ -25,20 +25,58 @@ fn unique(prefix: &str) -> String {
     format!("{prefix}-{}", uuid::Uuid::new_v4().simple())
 }
 
-fn staging_repo(env: &TestEnv) -> String {
-    let key = unique("cur");
+fn create_repo(env: &TestEnv, key: &str, args: &[&str]) {
     env.ak_cmd()
-        .args([
-            "repo",
-            "create",
-            &key,
-            "--pkg-format",
-            "rpm",
-            "--repo-type",
-            "staging",
-        ])
+        .args(["repo", "create", key, "--pkg-format", "rpm"])
+        .args(args)
         .assert()
         .success();
+}
+
+/// A staging repository. On 1.12, which syncs only a repository with curation
+/// enabled and a source, it has both: a remote whose upstream is an empty public
+/// local repository of this same backend. That has no signing key, so the staging
+/// repository takes unverified metadata.
+fn staging_repo(env: &TestEnv) -> String {
+    let key = unique("cur");
+    if common::server_older_than(1, 12, "curation sources") {
+        create_repo(env, &key, &["--repo-type", "staging"]);
+        return key;
+    }
+    let local = unique("cur-local");
+    create_repo(env, &local, &["--repo-type", "local", "--public"]);
+    let source = unique("cur-source");
+    let upstream = format!("http://ak-upstream:8080/rpm/{local}");
+    create_repo(
+        env,
+        &source,
+        &["--repo-type", "remote", "--upstream-url", &upstream],
+    );
+    let created = stdout_json(
+        env.ak_cmd()
+            .args([
+                "repo",
+                "create",
+                &key,
+                "--pkg-format",
+                "rpm",
+                "--repo-type",
+                "staging",
+                "--curation-source",
+                &source,
+                "--curation-enabled",
+                "true",
+                "--curation-default-action",
+                "review",
+                "--curation-allow-unverified",
+                "true",
+            ])
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(created["curation_enabled"], true, "{created}");
+    assert_eq!(created["curation_default_action"], "review", "{created}");
+    assert!(created["curation_source_repo_id"].is_string(), "{created}");
     key
 }
 
@@ -220,22 +258,9 @@ fn search_sync_and_versions_reach_their_routes() {
         .args(["curation", "sync", &key])
         .output()
         .unwrap();
-    if common::server_older_than(1, 12, "a sync without curation enabled") {
-        let synced = stdout_json(sync);
-        assert_eq!(synced["repository"], key.as_str());
-        assert_eq!(synced["triggered"], true);
-    } else {
-        // 1.12 syncs only a repository with curation enabled and a source, which
-        // `ak repo create` can't set yet: the server's refusal shows the route was
-        // reached.
-        assert!(!sync.status.success());
-        let stderr = String::from_utf8_lossy(&sync.stderr)
-            .replace('│', " ")
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ");
-        assert!(stderr.contains("curation is not enabled"), "{stderr}");
-    }
+    let synced = stdout_json(sync);
+    assert_eq!(synced["repository"], key.as_str());
+    assert_eq!(synced["triggered"], true);
 
     let no_packages = env
         .ak_cmd()
@@ -260,6 +285,48 @@ fn search_sync_and_versions_reach_their_routes() {
         "{}",
         String::from_utf8_lossy(&no_version.stderr)
     );
+}
+
+#[test]
+#[ignore = "requires E2E backend"]
+fn curation_source_is_refused_before_1_12_and_can_be_removed() {
+    let env = TestEnv::setup();
+    if !common::server_older_than(1, 12, "a refusal of --curation-source") {
+        let key = staging_repo(&env);
+        let updated = stdout_json(
+            env.ak_cmd()
+                .args(["repo", "update", &key, "--curation-source", ""])
+                .output()
+                .unwrap(),
+        );
+        assert_eq!(updated["key"], key.as_str(), "{updated}");
+        let shown = stdout_json(env.ak_cmd().args(["repo", "show", &key]).output().unwrap());
+        assert!(shown["curation_source_repo_id"].is_null(), "{shown}");
+        return;
+    }
+    let key = unique("cur");
+    let refused = env
+        .ak_cmd()
+        .args([
+            "repo",
+            "create",
+            &key,
+            "--pkg-format",
+            "rpm",
+            "--repo-type",
+            "staging",
+            "--curation-source",
+            "elsewhere",
+        ])
+        .output()
+        .unwrap();
+    assert!(!refused.status.success());
+    let stderr = String::from_utf8_lossy(&refused.stderr);
+    assert!(
+        stderr.contains("--curation-source needs a server on 1.12"),
+        "{stderr}"
+    );
+    env.ak_cmd().args(["repo", "show", &key]).assert().failure();
 }
 
 #[test]
