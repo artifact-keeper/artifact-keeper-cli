@@ -49,9 +49,6 @@ fn repo(env: &common::TestEnv, name: &str) -> Cleanup {
 #[test]
 #[ignore = "requires E2E backend"]
 fn environment_lifecycle() {
-    if common::server_older_than(1, 11, "environments") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let suffix = std::process::id();
     let name = format!("e2e-env-{suffix}");
@@ -127,9 +124,6 @@ fn environment_lifecycle() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn lookup_finds_a_component_and_what_pulls_it_in() {
-    if common::server_older_than(1, 11, "environments") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let name = format!("e2e-env-lookup-{}", std::process::id());
     let _guard = repo(&env, &name);
@@ -178,9 +172,6 @@ fn lookup_finds_a_component_and_what_pulls_it_in() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn advisory_transitions_take_every_filter() {
-    if common::server_older_than(1, 11, "environments") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let list = json_output(env.ak_cmd().args([
         "environment",
@@ -208,9 +199,6 @@ fn advisory_transitions_take_every_filter() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn a_lockfile_the_server_cant_parse_shows_its_message() {
-    if common::server_older_than(1, 11, "environments") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let name = format!("e2e-env-bad-{}", std::process::id());
     let _guard = repo(&env, &name);

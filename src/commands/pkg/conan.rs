@@ -199,10 +199,8 @@ pub async fn execute(command: ConanCommand, global: &GlobalArgs) -> Result<()> {
                 return Ok(());
             }
             let reply = wire
-                .send_since_1_11(
+                .send(
                     "remove it",
-                    "pkg conan remove",
-                    global,
                     wire.request(Method::DELETE, wire.url(&segments)),
                 )
                 .await?;

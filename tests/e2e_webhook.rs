@@ -102,11 +102,10 @@ fn create_sets_every_field_and_list_pages() {
 }
 
 /// The plain backend has no signing key, so it refuses `both`. That it says so proves
-/// the field reached it. `hmac` needs no key. A 1.10 server would drop the field and
-/// sign with HMAC whatever was asked for, so `ak` stops first.
+/// the field reached it. `hmac` needs no key.
 #[test]
 #[ignore = "requires E2E backend"]
-fn signing_mode_reaches_the_server_or_is_refused_before_1_11() {
+fn signing_mode_reaches_the_server() {
     let env = common::TestEnv::setup();
     let name = format!("e2e-signing-{}", std::process::id());
     let create = |mode: &str| {
@@ -117,18 +116,6 @@ fn signing_mode_reaches_the_server_or_is_refused_before_1_11() {
             .args(["--signing-mode", mode]);
         cmd
     };
-    if common::server_older_than(1, 11, "webhook signing modes") {
-        create("hmac")
-            .assert()
-            .failure()
-            .stderr(predicate::str::contains("1.11"));
-        env.ak_cmd()
-            .args(["webhook", "jwks"])
-            .assert()
-            .failure()
-            .stderr(predicate::str::contains("1.11"));
-        return;
-    }
     create("both")
         .assert()
         .failure()

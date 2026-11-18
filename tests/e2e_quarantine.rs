@@ -93,22 +93,6 @@ fn a_held_cached_path_is_released_and_its_download_works() {
         .assert()
         .success();
 
-    if common::server_older_than(1, 11, "POST /quarantine/proxy-cache/{repo}/release") {
-        let refused = stderr_of(
-            &env,
-            &[
-                "quarantine",
-                "release-proxy",
-                &remote,
-                "--path",
-                "f.bin",
-                "--yes",
-            ],
-        );
-        assert!(refused.contains("needs a server on 1.11"), "{refused}");
-        return;
-    }
-
     env.ak_cmd()
         .args([
             "repo",
@@ -226,13 +210,8 @@ fn a_hosted_artifact_is_held_and_released() {
 
 #[test]
 #[ignore = "requires E2E backend"]
-fn the_attestation_policy_is_shown_on_1_11_and_says_so_on_1_10() {
+fn the_attestation_policy_is_shown() {
     let env = TestEnv::setup();
-    if common::server_older_than(1, 11, "GET /attestations/policy") {
-        let refused = stderr_of(&env, &["attestation", "policy"]);
-        assert!(refused.contains("needs a server on 1.11"), "{refused}");
-        return;
-    }
     let policy = json_of(&env, &["attestation", "policy"]);
     assert!(policy["require_verified"].is_boolean(), "{policy}");
     assert!(policy["issuers"].is_array(), "{policy}");

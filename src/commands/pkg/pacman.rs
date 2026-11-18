@@ -51,9 +51,7 @@ pub async fn execute(command: PacmanCommand, global: &GlobalArgs) -> Result<()> 
                     CONTENT_TYPE,
                 )
                 .await?;
-            let reply = wire
-                .send_since_1_11("upload the package", "pkg pacman publish", global, request)
-                .await?;
+            let reply = wire.send("upload the package", request).await?;
             emit(
                 &reply,
                 &upload.name,

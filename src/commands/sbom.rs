@@ -9,7 +9,7 @@ use super::client::{client_for, raw_http_client, resolve_base_url_and_auth};
 use super::helpers::{
     PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, confirm_action, emit_mutation_raw,
     is_proxy_path_not_recorded, new_table, parse_uuid, raw_err, resolve_artifact_id,
-    resolve_optional_repo_id, sdk_err, server_before_1_11, short_id,
+    resolve_optional_repo_id, sdk_err, short_id,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -802,17 +802,6 @@ async fn environment_sbom(
     let (resp, raw) = capture(req.send()).await;
     spinner.finish_and_clear();
     if let Err(error) = resp {
-        // A server without the route answers 405 with no message.
-        if matches!(
-            error.status(),
-            Some(reqwest::StatusCode::METHOD_NOT_ALLOWED | reqwest::StatusCode::NOT_FOUND)
-        ) && let Some(version) = server_before_1_11(global).await
-        {
-            return Err(AkError::UnsupportedServer(format!(
-                "`ak sbom environment` needs a server on 1.11 or newer. This one is {version}."
-            ))
-            .into());
-        }
         return Err(sdk_err("generate SBOM from the lockfile", error).into());
     }
 
@@ -1634,6 +1623,7 @@ mod tests {
     fn make_test_cve(cve_id: &str, severity: Option<&str>, cvss: Option<f64>) -> CveHistoryEntry {
         CveHistoryEntry {
             id: Uuid::nil(),
+            acknowledgements_left_effective: None,
             artifact_id: Uuid::nil(),
             cve_id: cve_id.to_string(),
             severity: severity.map(|s| s.to_string()),

@@ -119,9 +119,6 @@ fn six_on_another_server_error() {
         ])),
         6
     );
-    if common::server_older_than(1, 11, "`ak attestation policy` gates on 1.10") {
-        assert_eq!(code(env.ak_cmd().args(["attestation", "policy"])), 6);
-    }
 }
 
 // 7, a failure in a 2xx response, is checked where the failure is set up: `license

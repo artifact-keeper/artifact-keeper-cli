@@ -11,7 +11,6 @@ use crate::commands::client::client_for;
 use crate::commands::helpers::{
     new_table, parse_uuid, print_page_info, resolve_artifact_id, resolve_repo_id, sdk_err,
 };
-use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -38,12 +37,11 @@ pub struct DownloadFilters {
     #[arg(long)]
     artifact: Option<String>,
 
-    /// Only downloads served from this repository, by key or ID. Needs a 1.11
-    /// server
+    /// Only downloads served from this repository, by key or ID
     #[arg(long)]
     repo: Option<String>,
 
-    /// Only hosted downloads or only proxy serves. Needs a 1.11 server
+    /// Only hosted downloads or only proxy serves
     #[arg(long, value_enum)]
     source: Option<SourceArg>,
 
@@ -131,7 +129,6 @@ macro_rules! apply_filters {
 impl DownloadsCommand {
     pub async fn execute(self, global: &GlobalArgs) -> Result<()> {
         let client = client_for(global)?;
-        let narrowed = self.filters().repo.is_some() || self.filters().source.is_some();
         let spinner = output::spinner("Fetching downloads...");
         let (resp, raw) = match self {
             Self::List { user, ip, filters } => {
@@ -166,26 +163,8 @@ impl DownloadsCommand {
         };
         let resp = resp.map_err(|e| sdk_err("list downloads", e))?.into_inner();
         spinner.finish_and_clear();
-        // A server before 1.11 ignores both filters, so it sends downloads they
-        // should have removed. It also leaves out `source`, which is how to tell.
-        if narrowed && resp.downloads.iter().any(|d| d.source.is_none()) {
-            return Err(AkError::UnsupportedServer(
-                "This server ignores --repo and --source, which need a server on 1.11 or \
-                 newer, so its answer isn't filtered. Run this without them."
-                    .into(),
-            )
-            .into());
-        }
         print_downloads(&resp, raw.as_deref(), global);
         Ok(())
-    }
-
-    fn filters(&self) -> &DownloadFilters {
-        match self {
-            Self::List { filters, .. }
-            | Self::ByIp { filters, .. }
-            | Self::ByUser { filters, .. } => filters,
-        }
     }
 }
 
@@ -212,9 +191,7 @@ fn print_downloads(resp: &DownloadListResponse, raw: Option<&[u8]>, global: &Glo
     for d in &resp.downloads {
         table.add_row(vec![
             d.downloaded_at.format("%Y-%m-%d %H:%M:%S").to_string(),
-            d.source
-                .map(|source| source.to_string())
-                .unwrap_or_else(|| "-".into()),
+            d.source.to_string(),
             d.username
                 .clone()
                 .or_else(|| d.user_id.map(|id| id.to_string()))

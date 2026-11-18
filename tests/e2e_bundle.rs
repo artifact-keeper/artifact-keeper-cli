@@ -46,9 +46,6 @@ fn manifest() -> Value {
 #[test]
 #[ignore = "requires E2E backend"]
 fn format_describes_what_the_server_can_do() {
-    if common::server_older_than(1, 11, "bundles") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let format = json_output(env.ak_cmd().args(["bundle", "format"]));
     assert_eq!(format["format"], "akbundle");
@@ -65,9 +62,6 @@ fn format_describes_what_the_server_can_do() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn a_valid_manifest_passes() {
-    if common::server_older_than(1, 11, "bundles") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let file = env.config_dir.path().join("manifest.json");
     std::fs::write(&file, manifest().to_string()).unwrap();
@@ -84,9 +78,6 @@ fn a_valid_manifest_passes() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn an_invalid_manifest_is_reported_and_exits_7() {
-    if common::server_older_than(1, 11, "bundles") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let mut bad = manifest();
     bad["surprise"] = Value::Bool(true);
@@ -125,9 +116,6 @@ fn an_invalid_manifest_is_reported_and_exits_7() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn jobs_list_takes_filters_and_rejects_a_bad_one() {
-    if common::server_older_than(1, 11, "bundles") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let list = json_output(env.ak_cmd().args([
         "bundle",
@@ -155,9 +143,6 @@ fn jobs_list_takes_filters_and_rejects_a_bad_one() {
 #[test]
 #[ignore = "requires E2E backend"]
 fn a_missing_job_is_a_404() {
-    if common::server_older_than(1, 11, "bundles") {
-        return;
-    }
     let env = common::TestEnv::setup();
     let missing = "00000000-0000-0000-0000-000000000001";
     for args in [

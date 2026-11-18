@@ -5,7 +5,7 @@ use clap::Subcommand;
 use miette::Result;
 
 use super::client::client_for;
-use super::helpers::{new_table, since_1_11};
+use super::helpers::{new_table, sdk_err};
 use crate::cli::GlobalArgs;
 use crate::output;
 
@@ -31,11 +31,7 @@ async fn show_policy(global: &GlobalArgs) -> Result<()> {
     let policy = match resp {
         Ok(resp) => resp.into_inner(),
         Err(e) => {
-            return Err(
-                since_1_11(e, "get attestation policy", "attestation policy", global)
-                    .await
-                    .into(),
-            );
+            return Err(sdk_err("get attestation policy", e).into());
         }
     };
 

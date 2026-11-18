@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Regenerated the SDK from the API 1.12.1 spec, the first published 1.12 (there is no 1.12.0 spec), adding the 64 operations and the fields new since 1.11.11. `ROUTES.json` is read from backend 1.12.1, and the fields 1.12.1 requires but 1.11 servers don't send are generated as optional, so a 1.11 server still works (#294, #302, #308).
+- `ak` is now 1.12.0, built for API 1.12.1, and supports servers on 1.12 and 1.11. Commands still send what they sent before: the new 1.12 request fields go out unset until their flags arrive. `ak admin settings show` no longer has an Allow Anonymous Download line, which 1.12 doesn't send, and `ak admin settings update` takes only the fields 1.12 accepts (#319).
+
+### Removed
+
+- Support for servers on 1.10. The checks that refused a flag or command on a 1.10 server, and asked `/health` for the version first, are gone, so those commands make one request fewer (#319).
 
 ### Fixed
 

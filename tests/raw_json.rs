@@ -481,7 +481,7 @@ async fn admin_reads() {
         "GET",
         json!({
             "active_peers": 0, "pending_sync_tasks": 0, "proxy_artifact_count": 0,
-            "proxy_storage_bytes": 0, "total_artifacts": 1, "total_downloads": 2,
+            "proxy_download_count": 0, "proxy_storage_bytes": 0, "total_artifacts": 1, "total_downloads": 2,
             "total_repositories": 3, "total_storage_bytes": 4, "total_users": 5,
             "from_a_newer_server": true
         }),
@@ -1052,7 +1052,7 @@ async fn import_commands() {
         json!({
             "job_id": UUID, "status": "completed", "repositories": [], "users_count": 0,
             "groups_count": 0, "permissions_count": 0, "total_artifacts": 0,
-            "total_size_bytes": 0, "estimated_duration_seconds": 0, "warnings": [],
+            "total_artifacts_exact": true, "total_size_bytes": 0, "estimated_duration_seconds": 0, "warnings": [],
             "blockers": [], "from_a_newer_server": 1
         }),
         &["import", "assess", "result", UUID],

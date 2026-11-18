@@ -8,7 +8,7 @@ use super::PageArgs;
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for;
 use crate::commands::helpers::{
-    confirm_action, emit_mutation_raw, new_table, or_since_1_11, parse_uuid, print_page_info,
+    confirm_action, emit_mutation_raw, new_table, parse_uuid, print_page_info, sdk_err,
 };
 use crate::output::{self, OutputFormat, format_bytes};
 
@@ -50,9 +50,7 @@ impl TrashCommand {
                 }
                 let spinner = output::spinner("Fetching trash...");
                 let (resp, raw) = artifact_keeper_sdk::raw::capture(req.send()).await;
-                let resp = or_since_1_11(resp, "list trash", "admin trash", global)
-                    .await?
-                    .into_inner();
+                let resp = resp.map_err(|e| sdk_err("list trash", e))?.into_inner();
                 spinner.finish_and_clear();
 
                 if resp.items.is_empty() && !output::is_machine_format(&global.format) {
@@ -135,8 +133,8 @@ impl TrashCommand {
                     client.restore_trashed_artifact().id(artifact_id).send(),
                 )
                 .await;
-                let restored = or_since_1_11(resp, "restore artifact", "admin trash", global)
-                    .await?
+                let restored = resp
+                    .map_err(|e| sdk_err("restore artifact", e))?
                     .into_inner();
                 spinner.finish_and_clear();
                 emit_mutation_raw(

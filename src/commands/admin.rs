@@ -167,29 +167,29 @@ pub enum AdminCommand {
         command: proxy_scan_verdict::ProxyScanVerdictCommand,
     },
 
-    /// Check the npm upstream feed consumer. Needs a 1.11 server
+    /// Check the npm upstream feed consumer
     NpmFeed {
         #[command(subcommand)]
         command: npm_feed::NpmFeedCommand,
     },
 
-    /// See what is held back from download. Needs a 1.11 server
+    /// See what is held back from download
     Holds {
         #[command(subcommand)]
         command: holds::HoldsCommand,
     },
 
-    /// Check stored objects against their recorded checksums. Needs a 1.11 server
+    /// Check stored objects against their recorded checksums
     StorageScrub {
         #[command(subcommand)]
         command: storage_ops::StorageScrubCommand,
     },
 
     /// Register objects in a repository's storage that it has no record of. Maven
-    /// and Gradle repositories only. Needs a 1.11 server
+    /// and Gradle repositories only
     ReindexStorage(storage_ops::ReindexStorageArgs),
 
-    /// List and restore soft-deleted artifacts. Needs a 1.11 server
+    /// List and restore soft-deleted artifacts
     Trash {
         #[command(subcommand)]
         command: trash::TrashCommand,
@@ -652,7 +652,7 @@ pub enum SettingsCommand {
         #[arg(long)]
         json: String,
     },
-    /// Show or change runtime settings, such as guest access. Needs a 1.11 server
+    /// Show or change runtime settings, such as guest access
     System {
         #[command(subcommand)]
         command: runtime_settings::SystemCommand,
@@ -814,39 +814,29 @@ pub enum CiOidcCommand {
 /// Where a CI OIDC provider's signing keys come from.
 #[derive(clap::Args)]
 pub struct CiOidcKeyArgs {
-    /// `discovery`, from the issuer, or `static`, from --static-jwks. Needs a 1.11
-    /// server
+    /// `discovery`, from the issuer, or `static`, from --static-jwks
     #[arg(long)]
     key_source: Option<String>,
 
-    /// The keys as a JWKS JSON object: the text, @file or @-. Needs a 1.11 server
+    /// The keys as a JWKS JSON object: the text, @file or @-
     #[arg(long)]
     static_jwks: Option<String>,
 }
 
+/// `key_source` and `static_jwks` as the API takes them.
+type CiOidcKeys = (
+    Option<String>,
+    Option<serde_json::Map<String, serde_json::Value>>,
+);
+
 impl CiOidcKeyArgs {
-    /// The flags as the API's fields. A 1.10 server ignores both and would go on
-    /// trusting the issuer's keys, so it's refused before anything's sent.
-    async fn resolve(
-        self,
-        global: &GlobalArgs,
-    ) -> Result<(
-        Option<String>,
-        Option<serde_json::Map<String, serde_json::Value>>,
-    )> {
+    /// The flags as the API's fields.
+    fn resolve(self) -> Result<CiOidcKeys> {
         let static_jwks = self
             .static_jwks
             .as_deref()
             .map(|value| super::helpers::parse_json_arg(value, "--static-jwks"))
             .transpose()?;
-        let mut flags = Vec::new();
-        if self.key_source.is_some() {
-            flags.push("--key-source");
-        }
-        if static_jwks.is_some() {
-            flags.push("--static-jwks");
-        }
-        super::helpers::refuse_flags_before_1_11(&flags, global).await?;
         Ok((self.key_source, static_jwks))
     }
 }
@@ -882,7 +872,7 @@ pub enum CiOidcMappingCommand {
         #[arg(long)]
         enabled: bool,
 
-        /// Group binding IDs the mapping grants, comma-separated. Needs a 1.11 server
+        /// Group binding IDs the mapping grants, comma-separated
         #[arg(long, value_delimiter = ',')]
         group_binding_ids: Option<Vec<uuid::Uuid>>,
     },
@@ -922,7 +912,7 @@ pub enum CiOidcMappingCommand {
         #[arg(long)]
         enabled: Option<bool>,
 
-        /// New group binding IDs, comma-separated. Needs a 1.11 server
+        /// New group binding IDs, comma-separated
         #[arg(long, value_delimiter = ',')]
         group_binding_ids: Option<Vec<uuid::Uuid>>,
     },
@@ -3236,7 +3226,6 @@ async fn show_settings(global: &GlobalArgs) -> Result<()> {
     spinner.finish_and_clear();
 
     let info = serde_json::json!({
-        "allow_anonymous_download": settings.allow_anonymous_download,
         "audit_retention_days": settings.audit_retention_days,
         "backup_retention_count": settings.backup_retention_count,
         "edge_stale_threshold_minutes": settings.edge_stale_threshold_minutes,
@@ -3245,13 +3234,11 @@ async fn show_settings(global: &GlobalArgs) -> Result<()> {
     });
 
     let table_str = format!(
-        "Allow Anonymous Download:    {}\n\
-         Audit Retention (days):      {}\n\
+        "Audit Retention (days):      {}\n\
          Backup Retention (count):    {}\n\
          Edge Stale Threshold (min):  {}\n\
          Max Upload Size:             {}\n\
          Retention (days):            {}",
-        settings.allow_anonymous_download,
         settings.audit_retention_days,
         settings.backup_retention_count,
         settings.edge_stale_threshold_minutes,
@@ -3270,8 +3257,9 @@ async fn show_settings(global: &GlobalArgs) -> Result<()> {
 async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
     let client = client_for(global)?;
 
-    let body: artifact_keeper_sdk::types::SystemSettings = serde_json::from_str(json_str)
-        .map_err(|e| crate::error::AkError::Usage(format!("Invalid settings JSON: {e}")))?;
+    let body: artifact_keeper_sdk::types::UpdateSystemSettingsRequest =
+        serde_json::from_str(json_str)
+            .map_err(|e| crate::error::AkError::Usage(format!("Invalid settings JSON: {e}")))?;
 
     let spinner = output::spinner("Updating settings...");
 
@@ -3283,7 +3271,6 @@ async fn update_settings(json_str: &str, global: &GlobalArgs) -> Result<()> {
 
     if matches!(global.format, OutputFormat::Json | OutputFormat::Yaml) {
         let info = serde_json::json!({
-            "allow_anonymous_download": settings.allow_anonymous_download,
             "audit_retention_days": settings.audit_retention_days,
             "backup_retention_count": settings.backup_retention_count,
             "edge_stale_threshold_minutes": settings.edge_stale_threshold_minutes,
@@ -3906,7 +3893,7 @@ async fn create_ci_oidc_provider(
     keys: CiOidcKeyArgs,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let (key_source, static_jwks) = keys.resolve(global).await?;
+    let (key_source, static_jwks) = keys.resolve()?;
     let client = client_for(global)?;
     let spinner = output::spinner("Creating CI OIDC provider...");
 
@@ -3918,6 +3905,7 @@ async fn create_ci_oidc_provider(
         is_enabled: enabled.then_some(true),
         key_source,
         static_jwks,
+        token_ttl_secs: None,
     };
 
     let (p, raw) =
@@ -3946,7 +3934,7 @@ async fn update_ci_oidc_provider(
     keys: CiOidcKeyArgs,
     global: &GlobalArgs,
 ) -> Result<()> {
-    let (key_source, static_jwks) = keys.resolve(global).await?;
+    let (key_source, static_jwks) = keys.resolve()?;
     let client = client_for(global)?;
     let id = parse_uuid(provider_id, "provider")?;
     let spinner = output::spinner("Updating CI OIDC provider...");
@@ -3959,6 +3947,7 @@ async fn update_ci_oidc_provider(
         is_enabled: enabled,
         key_source,
         static_jwks,
+        token_ttl_secs: None,
     };
 
     let (p, raw) =
@@ -4188,9 +4177,6 @@ async fn create_ci_oidc_mapping(
     group_binding_ids: Option<Vec<uuid::Uuid>>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    if group_binding_ids.is_some() {
-        super::helpers::refuse_flags_before_1_11(&["--group-binding-ids"], global).await?;
-    }
     let client = client_for(global)?;
     let id = parse_uuid(provider_id, "provider")?;
 
@@ -4236,9 +4222,6 @@ async fn update_ci_oidc_mapping(
     group_binding_ids: Option<Vec<uuid::Uuid>>,
     global: &GlobalArgs,
 ) -> Result<()> {
-    if group_binding_ids.is_some() {
-        super::helpers::refuse_flags_before_1_11(&["--group-binding-ids"], global).await?;
-    }
     let client = client_for(global)?;
     let id = parse_uuid(provider_id, "provider")?;
     let mid = parse_uuid(mapping_id, "mapping")?;
@@ -5609,7 +5592,7 @@ mod tests {
         use artifact_keeper_sdk::types::{FormatHandlerResponse, FormatHandlerType};
 
         let handler = FormatHandlerResponse {
-            scan_on_proxy: Some(artifact_keeper_sdk::types::ScanOnProxySupport::Enforced),
+            scan_on_proxy: artifact_keeper_sdk::types::ScanOnProxySupport::Enforced,
             capabilities: None,
             created_at: "2026-01-01T00:00:00Z".parse().unwrap(),
             description: Some("Maven repositories".to_string()),
@@ -5622,6 +5605,7 @@ mod tests {
             plugin_id: None,
             priority: 10,
             repository_count: Some(3),
+            repository_types: vec!["local".to_string()],
             updated_at: "2026-01-02T00:00:00Z".parse().unwrap(),
         };
 

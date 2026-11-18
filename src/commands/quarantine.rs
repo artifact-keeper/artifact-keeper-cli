@@ -6,7 +6,7 @@ use miette::Result;
 use super::client::client_for;
 use super::helpers::{
     PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, confirm_action, emit_mutation_raw,
-    is_proxy_path_not_recorded, resolve_artifact_id, sdk_err, since_1_11,
+    is_proxy_path_not_recorded, resolve_artifact_id, sdk_err,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -153,7 +153,10 @@ async fn hold(
 
     let spinner = output::spinner("Quarantining artifact...");
 
-    let body = artifact_keeper_sdk::types::QuarantineNowRequest { reason };
+    let body = artifact_keeper_sdk::types::QuarantineNowRequest {
+        reason,
+        expected_digest: None,
+    };
     let (action, raw) = capture(
         client
             .quarantine_artifact_now()
@@ -294,14 +297,7 @@ async fn release_proxy(repo: &str, path: &str, yes: bool, global: &GlobalArgs) -
             is_proxy_path_not_recorded(status, error.server_message().as_deref())
         });
         if !not_recorded {
-            return Err(since_1_11(
-                error,
-                "release cached artifact from quarantine",
-                "quarantine release-proxy",
-                global,
-            )
-            .await
-            .into());
+            return Err(sdk_err("release cached artifact from quarantine", error).into());
         }
         match waits.next() {
             Some(wait) => tokio::time::sleep(*wait).await,
@@ -350,7 +346,10 @@ async fn reject(
 
     let spinner = output::spinner("Rejecting quarantined artifact...");
 
-    let body = artifact_keeper_sdk::types::RejectRequest { reason };
+    let body = artifact_keeper_sdk::types::RejectRequest {
+        reason,
+        expected_digest: None,
+    };
 
     let (action, raw) = capture(
         client

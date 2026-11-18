@@ -295,9 +295,6 @@ impl Drop for PolicyGuard {
 #[test]
 #[ignore = "requires E2E backend"]
 fn a_policy_that_requires_totp_is_met_with_enroll() {
-    if common::server_older_than(1, 11, "TOTP enrollment policy") {
-        return;
-    }
     let admin = User::create("enroll-admin", &["--admin"]);
     admin.enable_totp();
     let guard = PolicyGuard {

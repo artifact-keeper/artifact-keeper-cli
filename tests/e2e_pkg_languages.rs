@@ -158,17 +158,6 @@ fn npm_publish_tag_and_unpublish() {
         .assert()
         .success();
 
-    if common::server_older_than(1, 11, "npm unpublish routes") {
-        let refused = env
-            .ak_cmd()
-            .args(["pkg", "npm", "unpublish", key, "demo", "--yes"])
-            .assert()
-            .failure();
-        let stderr = String::from_utf8_lossy(&refused.get_output().stderr).to_string();
-        assert!(stderr.contains("1.11"), "{stderr}");
-        return;
-    }
-
     // One version goes, and the other stays.
     env.ak_cmd()
         .args([

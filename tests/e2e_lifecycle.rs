@@ -73,15 +73,8 @@ fn matched(env: &common::TestEnv, id: &str) -> i64 {
 
 /// Create a policy that the scheduler won't run. An enabled one gets executed for
 /// real within about a minute, which deletes the artifact a test is about to
-/// preview. A 1.10 server can't create one disabled, so there it starts out
-/// matching nothing, and gets its real config in the update that disables it.
+/// preview.
 fn create_held(env: &common::TestEnv, name: &str, config: &str, scope: &[&str]) -> Value {
-    let older = common::server_older_than(1, 11, "--disabled on create");
-    let initial = if older {
-        r#"{"pattern":"^nothing-has-this-name$"}"#
-    } else {
-        config
-    };
     let mut args = vec![
         "lifecycle",
         "create",
@@ -89,21 +82,11 @@ fn create_held(env: &common::TestEnv, name: &str, config: &str, scope: &[&str]) 
         "--policy-type",
         "tag_pattern_delete",
         "--config",
-        initial,
+        config,
     ];
     args.extend_from_slice(scope);
-    if !older {
-        args.push("--disabled");
-    }
-    let policy = json_output(env.ak_cmd().args(&args));
-    if older {
-        let id = policy["id"].as_str().unwrap();
-        env.ak_cmd()
-            .args(["lifecycle", "update", id, "--disabled", "--config", config])
-            .assert()
-            .success();
-    }
-    policy
+    args.push("--disabled");
+    json_output(env.ak_cmd().args(&args))
 }
 
 /// With no scope given nothing is created, whatever the server would have done
@@ -171,18 +154,10 @@ fn create_with_all_repos_applies_to_all_and_matches() {
     let id = policy["id"].as_str().unwrap().to_string();
     guard.policies.push(id.clone());
 
-    // applies_to_all is new in 1.11. A 1.10 policy with no repository applies to all.
-    let older = common::server_older_than(1, 11, "applies_to_all");
-    if !older {
-        assert_eq!(policy["applies_to_all"], true);
-        let shown = json_output(env.ak_cmd().args(["lifecycle", "show", &id]));
-        assert_eq!(shown["applies_to_all"], true);
-    }
+    assert_eq!(policy["applies_to_all"], true);
+    let shown = json_output(env.ak_cmd().args(["lifecycle", "show", &id]));
+    assert_eq!(shown["applies_to_all"], true);
     assert_eq!(matched(&env, &id), 1);
-
-    if older {
-        return;
-    }
 
     // The dormant policy `ak` used to create doesn't match: this is the bug.
     let dormant: Value = env
@@ -234,13 +209,8 @@ fn create_with_repo_applies_to_that_repo_and_update_keeps_scope() {
     let id = policy["id"].as_str().unwrap().to_string();
     guard.policies.push(id.clone());
 
-    let older = common::server_older_than(1, 11, "applies_to_all");
-    if older {
-        assert_eq!(policy["repository_id"], repo_id);
-    } else {
-        assert_eq!(policy["applies_to_all"], false);
-        assert_eq!(policy["repository_ids"][0], repo_id);
-    }
+    assert_eq!(policy["applies_to_all"], false);
+    assert_eq!(policy["repository_ids"][0], repo_id);
     assert_eq!(matched(&env, &id), 1);
 
     // PATCH goes through the strict SDK method.
@@ -254,17 +224,7 @@ fn create_with_repo_applies_to_that_repo_and_update_keeps_scope() {
     ]));
     assert_eq!(updated["description"], "updated");
     assert_eq!(updated["enabled"], false);
-    let scope = if older {
-        "repository_id"
-    } else {
-        "repository_ids"
-    };
-    let kept = if older {
-        &updated[scope]
-    } else {
-        &updated[scope][0]
-    };
-    assert_eq!(*kept, repo_id);
+    assert_eq!(updated["repository_ids"][0], repo_id);
 }
 
 /// `--disabled` on create is the only way to look at a policy before it can
@@ -291,25 +251,6 @@ fn create_disabled_stays_disabled_or_is_refused() {
         &repo,
         "--disabled",
     ];
-
-    if common::server_older_than(1, 11, "--disabled on create") {
-        env.ak_cmd().args(args).assert().failure();
-        let policies: Value = env
-            .api_client()
-            .get(format!("{}/api/v1/admin/lifecycle", env.url))
-            .bearer_auth(&env.token)
-            .send()
-            .unwrap()
-            .json()
-            .unwrap();
-        let found = policies
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|p| p["name"] == name);
-        assert!(!found, "a refused create left a policy");
-        return;
-    }
 
     let policy = json_output(env.ak_cmd().args(args));
     let id = policy["id"].as_str().unwrap().to_string();
@@ -353,44 +294,6 @@ fn attach_and_detach_change_which_repositories_a_policy_applies_to() {
     let other = format!("e2e-lc-attach2-{suffix}");
     let _other = repo_with_artifact(&env, &other, &artifact);
     let config = format!(r#"{{"pattern":"^{artifact}"}}"#);
-
-    if common::server_older_than(1, 11, "lifecycle attach and detach") {
-        // A 1.10 server would ignore `repository_ids` and make this policy global.
-        env.ak_cmd()
-            .args(["lifecycle", "create", &format!("e2e-never-{suffix}")])
-            .args(["--policy-type", "tag_pattern_delete", "--config", &config])
-            .args(["--repos", &format!("{repo},{other}")])
-            .assert()
-            .failure()
-            .stderr(predicates::str::contains("1.11"));
-        let policy = json_output(env.ak_cmd().args([
-            "lifecycle",
-            "create",
-            &format!("e2e-attach-{suffix}"),
-            "--policy-type",
-            "tag_pattern_delete",
-            "--config",
-            r#"{"pattern":"^nothing-has-this-name$"}"#,
-            "--repo",
-            &repo,
-        ]));
-        let id = policy["id"].as_str().unwrap().to_string();
-        guard.policies.push(id.clone());
-        for args in [
-            vec!["lifecycle", "attach", &id, &other],
-            vec!["lifecycle", "detach", &id, &other],
-            vec!["lifecycle", "update", &id, "--repos", &other],
-            vec!["lifecycle", "update", &id, "--all-repos", "true"],
-            vec!["lifecycle", "capabilities"],
-        ] {
-            env.ak_cmd()
-                .args(&args)
-                .assert()
-                .failure()
-                .stderr(predicates::str::contains("1.11"));
-        }
-        return;
-    }
 
     let capabilities = json_output(env.ak_cmd().args(["lifecycle", "capabilities"]));
     assert_eq!(capabilities["explicit_repository_assignment"], true);

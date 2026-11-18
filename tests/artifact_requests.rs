@@ -439,7 +439,8 @@ async fn copy_to_a_repository_promotes_to_that_repository() {
         "POST",
         PROMOTE,
         ResponseTemplate::new(200).set_body_json(json!({
-            "promoted": true, "source": "s/a.txt", "target": "t/a.txt", "policy_violations": []
+            "promoted": true, "source": "s/a.txt", "target": "t/a.txt", "policy_violations": [],
+            "gate_results": []
         })),
     )
     .await;
@@ -458,7 +459,8 @@ async fn copy_with_the_same_path_sends_only_the_repository() {
         "POST",
         PROMOTE,
         ResponseTemplate::new(200).set_body_json(json!({
-            "promoted": true, "source": "s/a.txt", "target": "t/a.txt", "policy_violations": []
+            "promoted": true, "source": "s/a.txt", "target": "t/a.txt", "policy_violations": [],
+            "gate_results": []
         })),
     )
     .await;
@@ -477,7 +479,8 @@ async fn copy_binds_the_promotion_fields_and_refuses_them_without_a_promotion() 
         "POST",
         PROMOTE,
         ResponseTemplate::new(200).set_body_json(json!({
-            "promoted": true, "source": "s/a.txt", "target": "t/a.txt", "policy_violations": []
+            "promoted": true, "source": "s/a.txt", "target": "t/a.txt", "policy_violations": [],
+            "gate_results": []
         })),
     )
     .await;
@@ -540,7 +543,8 @@ async fn a_promotion_a_policy_refused_is_a_failure() {
         ResponseTemplate::new(200).set_body_json(json!({
             "promoted": false, "source": "s/a.txt", "target": "t/a.txt",
             "message": "blocked",
-            "policy_violations": [{"rule": "r", "severity": "high", "message": "bad licence"}]
+            "policy_violations": [{"rule": "r", "severity": "high", "message": "bad licence"}],
+            "gate_results": []
         })),
     )
     .await;
@@ -750,20 +754,3 @@ async fn list_and_search_send_every_filter() {
 }
 
 // ---- a server before 1.11 ----
-
-/// It would ignore the flag and upload anyway.
-#[tokio::test]
-async fn skip_if_present_is_refused_on_a_server_that_would_ignore_it() {
-    let f = Fixture::new().await;
-    f.answer(
-        "GET",
-        "/health",
-        ResponseTemplate::new(200).set_body_json(json!({"version": "1.10.2"})),
-    )
-    .await;
-    let file = f.file();
-    let output = f.ak(&["artifact", "push", "r", &file, "--skip-if-present"]);
-    assert_eq!(output.status.code(), Some(6), "{output:?}");
-    let requests = f.requests().await;
-    assert!(requests.iter().all(|r| r.url.path() == "/health"));
-}

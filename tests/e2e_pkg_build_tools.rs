@@ -189,17 +189,6 @@ fn bazel_publish_module_files() {
     let key = repo.key.as_str();
     let module = tmp.path().join("MODULE.bazel");
     std::fs::write(&module, "module(name = \"demo\", version = \"1.0\")\n").unwrap();
-    if common::server_older_than(1, 11, "the Bazel publish route") {
-        let refused = env
-            .ak_cmd()
-            .args(["pkg", "bazel", "publish", key, "demo", "1.0"])
-            .arg(&module)
-            .assert()
-            .failure();
-        let stderr = String::from_utf8_lossy(&refused.get_output().stderr).to_string();
-        assert!(stderr.contains("1.11"), "{stderr}");
-        return;
-    }
     let source = tmp.path().join("source.json");
     std::fs::write(
         &source,

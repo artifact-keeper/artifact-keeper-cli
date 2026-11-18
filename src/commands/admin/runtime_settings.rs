@@ -11,7 +11,7 @@ use miette::Result;
 
 use crate::cli::GlobalArgs;
 use crate::commands::client::client_for;
-use crate::commands::helpers::{confirm_action, or_since_1_11, sdk_err};
+use crate::commands::helpers::{confirm_action, sdk_err};
 use crate::error::AkError;
 use crate::output::{self, OutputFormat};
 
@@ -96,30 +96,20 @@ impl SystemCommand {
             Self::Show => {
                 let (resp, raw) =
                     artifact_keeper_sdk::raw::capture(client.get_runtime_settings().send()).await;
-                let resp = or_since_1_11(
-                    resp,
-                    "get runtime settings",
-                    "admin settings system",
-                    global,
-                )
-                .await?;
+                let resp = resp.map_err(|e| sdk_err("get runtime settings", e))?;
                 (resp, raw, None)
             }
             Self::Update { guest_access } => {
                 let body = UpdateRuntimeSettingsRequest {
                     guest_access_enabled: guest_access,
+                    hidden_nav_items: None,
+                    upstream_jobs_paused: None,
                 };
                 let (resp, raw) = artifact_keeper_sdk::raw::capture(
                     client.update_runtime_settings().body(body).send(),
                 )
                 .await;
-                let resp = or_since_1_11(
-                    resp,
-                    "update runtime settings",
-                    "admin settings system",
-                    global,
-                )
-                .await?;
+                let resp = resp.map_err(|e| sdk_err("update runtime settings", e))?;
                 (resp, raw, Some("Runtime settings updated."))
             }
         };

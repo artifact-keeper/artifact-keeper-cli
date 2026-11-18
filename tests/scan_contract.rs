@@ -26,7 +26,7 @@ fn policy() -> Value {
     json!({
         "id": ID, "name": "p", "max_severity": "high", "block_on_fail": true,
         "block_unscanned": false, "is_enabled": true, "require_signature": true,
-        "created_at": "2026-01-15T12:00:00Z", "updated_at": "2026-01-15T12:00:00Z",
+        "predicates": {}, "created_at": "2026-01-15T12:00:00Z", "updated_at": "2026-01-15T12:00:00Z",
         "new_on_the_server": 1
     })
 }
@@ -203,8 +203,10 @@ async fn a_whole_repository_scan_sends_its_id() {
                    "is_public": false, "allow_anonymous_access": false, "promotion_only": false,
                    "versioning_enabled": false, "storage_used_bytes": 0, "has_trusted_gpg_key": false,
                    "upstream_auth_configured": false, "curation_enabled": false,
-                   "curation_default_action": "allow", "created_at": "2026-01-15T12:00:00Z",
-                   "updated_at": "2026-01-15T12:00:00Z"}),
+                   "curation_default_action": "allow", "repodata_depth": 0,
+                   "repodata_depth_editable": false, "storage_backend": "filesystem",
+                   "upstream_url_has_credentials": false, "visibility": "private",
+                   "created_at": "2026-01-15T12:00:00Z", "updated_at": "2026-01-15T12:00:00Z"}),
         )
         .await;
     let body = json!({"message": "queued", "artifacts_queued": 3, "new_on_the_server": 1});

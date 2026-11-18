@@ -528,26 +528,6 @@ fn one_line(output: &Output) -> String {
 }
 
 #[tokio::test]
-async fn a_route_new_in_1_11_says_so_on_an_older_server() {
-    let server = server_without_the_route("1.10.2").await;
-    for args in [
-        vec!["admin", "holds", "summary"],
-        vec!["admin", "holds", "quarantine"],
-        vec!["admin", "npm-feed", "status"],
-    ] {
-        let output = ak(&server, &args).await;
-        assert!(!output.status.success());
-        let stderr = one_line(&output);
-        assert!(
-            stderr.contains("needs a server on 1.11 or newer"),
-            "{stderr}"
-        );
-        assert!(stderr.contains("1.10.2"), "{stderr}");
-        assert!(!stderr.contains("Repository not found"), "{stderr}");
-    }
-}
-
-#[tokio::test]
 async fn a_404_from_a_current_server_stays_the_servers_own() {
     let server = server_without_the_route("1.11.10").await;
     let output = ak(&server, &["admin", "holds", "summary"]).await;
@@ -557,11 +537,8 @@ async fn a_404_from_a_current_server_stays_the_servers_own() {
     assert!(!stderr.contains("1.11 or newer"), "{stderr}");
 }
 
-fn a_download(source: Option<&str>) -> Value {
-    let mut record = json!({"downloaded_at": "2026-01-15T12:00:00Z", "path": "a"});
-    if let Some(source) = source {
-        record["source"] = json!(source);
-    }
+fn a_download(source: &str) -> Value {
+    let record = json!({"downloaded_at": "2026-01-15T12:00:00Z", "path": "a", "source": source});
     json!({"downloads": [record], "total": 1, "page": 1, "per_page": 20})
 }
 
@@ -578,24 +555,7 @@ async fn downloads_answering(body: Value, args: &[&str]) -> Output {
 }
 
 #[tokio::test]
-async fn an_unfiltered_answer_to_a_filter_is_an_error_not_a_list() {
-    for flags in [["--source", "proxy"], ["--repo", UUID]] {
-        let output = downloads_answering(a_download(None), &flags).await;
-        assert!(!output.status.success(), "{flags:?}");
-        assert!(output.stdout.is_empty(), "{flags:?}");
-        let stderr = one_line(&output);
-        assert!(stderr.contains("1.11 or newer"), "{stderr}");
-    }
-}
-
-#[tokio::test]
-async fn downloads_without_those_filters_work_on_an_older_server() {
-    let output = downloads_answering(a_download(None), &["--ip", "10.0.0.1"]).await;
-    assert!(output.status.success(), "{}", one_line(&output));
-}
-
-#[tokio::test]
 async fn a_filtered_answer_from_a_current_server_is_shown() {
-    let output = downloads_answering(a_download(Some("hosted")), &["--source", "hosted"]).await;
+    let output = downloads_answering(a_download("hosted"), &["--source", "hosted"]).await;
     assert!(output.status.success(), "{}", one_line(&output));
 }

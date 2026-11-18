@@ -154,13 +154,8 @@ async fn an_existing_output_file_isnt_a_configuration_error() {
 }
 
 #[tokio::test]
-async fn a_version_gate_isnt_a_server_error() {
+async fn a_missing_server_feature_isnt_a_server_error() {
     let server = MockServer::start().await;
-    Mock::given(method("GET"))
-        .and(path_regex("^/health$"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"version": "1.10.2"})))
-        .mount(&server)
-        .await;
     Mock::given(method("GET"))
         .and(path_regex(".*"))
         .respond_with(
@@ -169,8 +164,8 @@ async fn a_version_gate_isnt_a_server_error() {
         .mount(&server)
         .await;
     let dir = TempDir::new().expect("temp dir");
-    let text = flat(&ak(&server.uri(), &dir, &["attestation", "policy"]));
+    let text = flat(&ak(&server.uri(), &dir, &["admin", "diag", "memory"]));
     assert!(text.contains("ak::unsupported_server"), "{text}");
-    assert!(text.contains("needs a server on 1.11"), "{text}");
+    assert!(text.contains("profiling"), "{text}");
     assert!(!text.contains("Server error"), "{text}");
 }
