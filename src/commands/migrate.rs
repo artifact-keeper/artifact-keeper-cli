@@ -1,9 +1,10 @@
 use artifact_keeper_sdk::ClientRepositoriesExt;
 use comfy_table::{ContentArrangement, Table, presets::UTF8_FULL_CONDENSED};
 use futures::StreamExt;
-use miette::{IntoDiagnostic, Result};
+use miette::Result;
 
 use super::client::{build_client, build_reading_client};
+use super::helpers::PromptResult;
 use crate::cli::GlobalArgs;
 use crate::config::AppConfig;
 use crate::output::{self, OutputFormat, format_bytes};
@@ -122,7 +123,7 @@ pub async fn execute(
             ))
             .default(false)
             .interact()
-            .into_diagnostic()?;
+            .prompt_diagnostic()?;
 
         if !confirmed {
             eprintln!("Cancelled.");
