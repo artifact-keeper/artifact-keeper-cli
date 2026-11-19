@@ -1,5 +1,5 @@
 {
-  "backend_version": "1.12.1",
+  "backend_version": "1.12.2",
   "routes": [
     {"method": "GET", "path": "/.well-known/terraform.json", "handler": "routes"},
     {"method": "GET", "path": "/agentplugins/t/{token}/{repo_key}/{document}", "handler": "agent_plugins"},
