@@ -545,9 +545,10 @@ pub enum Command {
     },
 
     /// Manage MCP Registry repositories: namespace proofs, a Remote registry's catalog
-    /// and approvals, its sync and seed jobs, and server health
+    /// and approvals, its sync and seed jobs, one version's status and purge, and server
+    /// health
     #[command(
-        after_help = "Examples:\n  ak mcp pending\n  ak mcp catalog list --repo mcp-official --queue\n  ak mcp catalog approve --repo mcp-official <id> --reason \"Vetted\"\n  ak mcp catalog bulk-approve --repo mcp-official 'io.github.acme/*' --dry-run\n  ak mcp seed start --repo mcp-official io.github.acme/weather@1.2.0 --wait\n  ak mcp sync start --repo mcp-official --wait\n  ak mcp health --repo mcp-local com.acme/weather 1.2.0\n  ak mcp namespace-proof create com.acme --method dns\n\nPublishing servers is mcp-publisher's job: it speaks the registry's /mcp/<repo>/v0.1 API."
+        after_help = "Examples:\n  ak mcp pending\n  ak mcp catalog list --repo mcp-official --queue\n  ak mcp catalog approve --repo mcp-official <id> --reason \"Vetted\"\n  ak mcp catalog bulk-approve --repo mcp-official 'io.github.acme/*' --dry-run\n  ak mcp seed start --repo mcp-official io.github.acme/weather@1.2.0 --wait\n  ak mcp sync start --repo mcp-official --wait\n  ak mcp health --repo mcp-local com.acme/weather 1.2.0\n  ak mcp version purge --repo mcp-local com.acme/weather 1.0.0 --yes\n  ak mcp namespace-proof create com.acme --method dns\n\nPublishing servers is mcp-publisher's job: it speaks the registry's /mcp/<repo>/v0.1 API."
     )]
     Mcp {
         #[command(subcommand)]

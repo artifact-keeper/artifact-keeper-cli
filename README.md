@@ -161,7 +161,7 @@ Core
   ak api           Send any HTTP request to the instance, with its auth and TLS settings
   ak pkg           Publish packages and use format APIs without the format's own client
   ak agent         Publish and install AI coding-agent plugins (Claude Code, Cursor, Codex, Copilot)
-  ak mcp           MCP Registry repositories: catalog approvals, sync and seed, server health
+  ak mcp           MCP Registry repositories: catalog approvals, sync and seed, versions, health
   ak setup         Auto-configure npm, pip, cargo, docker, maven, gradle, go, helm, nuget, and more
   ak doctor        Diagnose configuration and connectivity issues. Exits 1 if a check fails
   ak config        Get/set CLI configuration values
@@ -271,6 +271,12 @@ ak repo create mcp-local --pkg-format mcp --repo-type local \
   --mcp-package-repo npm=npm-local,oci=docker-local --mcp-namespace-allow com.acme
 ak mcp health --repo mcp-local com.acme/weather 1.2.0
 
+# One version: deprecate it, take a bad one down and purge it, re-probe its tools
+ak mcp version status --repo mcp-local com.acme/weather 1.1.0 --status deprecated --message "Use 1.2"
+ak mcp version delete --repo mcp-local com.acme/weather 1.0.0 --message "Malicious" --yes
+ak mcp version purge --repo mcp-local com.acme/weather 1.0.0 --yes
+ak mcp version probe --repo mcp-local com.acme/weather 1.2.0
+
 # A Remote registry: an allowlist filled from its upstream
 ak repo create mcp-official --pkg-format mcp --repo-type remote \
   --upstream-url https://registry.modelcontextprotocol.io
@@ -286,7 +292,8 @@ ak mcp namespace-proof create com.acme --method dns
 ak mcp namespace-proof verify <id>
 ```
 
-Approvals, blocks, pins, seeds and bulk decisions take `--yes`, as deletes do.
+Approvals, blocks, pins, seeds, bulk decisions and `ak mcp version purge` take
+`--yes`, as deletes do.
 
 ## Output Formats
 

@@ -1100,3 +1100,495 @@ async fn reopen_takes_yes_and_ignores_it() {
     assert!(output.status.success(), "{output:?}");
     assert_eq!(paths(&mocked).await, vec![format!("POST {route}")]);
 }
+
+// ---- one version on the registry's own routes ----
+
+const SERVERS: &str = "/mcp/mcp-local/v0.1/servers";
+
+/// A served entry, as the registry's write routes answer.
+fn entry(name: &str, version: &str, status: &str) -> Value {
+    json!({
+        "server": {"name": name, "version": version, "description": "d"},
+        "_meta": {
+            "io.modelcontextprotocol.registry/official": {"status": status, "isLatest": false},
+            "com.artifactkeeper.registry/source": {"repository": "mcp-local"}
+        },
+        "x_new_field": "kept"
+    })
+}
+
+#[tokio::test]
+async fn version_status_sends_the_status_and_message() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/io.github.acme/weather/versions/1.0.0/status");
+    mocked
+        .respond(
+            "PATCH",
+            &route,
+            200,
+            entry("io.github.acme/weather", "1.0.0", "deprecated"),
+        )
+        .await;
+
+    let printed = mocked.json(&[
+        "mcp",
+        "version",
+        "status",
+        "--repo",
+        "mcp-local",
+        "io.github.acme/weather",
+        "1.0.0",
+        "--status",
+        "deprecated",
+        "--message",
+        "use 2.x",
+    ]);
+    assert_eq!(printed["x_new_field"], "kept", "the body as sent");
+    let (_, body) = mocked.last("PATCH").await;
+    assert_eq!(
+        body,
+        json!({"status": "deprecated", "statusMessage": "use 2.x"})
+    );
+
+    let output = mocked.ak(&[
+        "--format",
+        "table",
+        "mcp",
+        "version",
+        "status",
+        "--repo",
+        "mcp-local",
+        "io.github.acme/weather",
+        "1.0.0",
+        "--status",
+        "deprecated",
+    ]);
+    assert!(output.status.success(), "{output:?}");
+    assert!(
+        unwrapped(&output.stderr)
+            .contains("io.github.acme/weather@1.0.0 in 'mcp-local' is now deprecated."),
+        "{output:?}"
+    );
+    let (_, body) = mocked.last("PATCH").await;
+    assert_eq!(
+        body,
+        json!({"status": "deprecated"}),
+        "no message unless given"
+    );
+}
+
+#[tokio::test]
+async fn version_status_without_a_version_changes_the_whole_server() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/io.github.acme/weather/status");
+    mocked
+        .respond(
+            "PATCH",
+            &route,
+            200,
+            json!({"updatedCount": 2, "servers": [
+                entry("io.github.acme/weather", "1.0.0", "deprecated"),
+                entry("io.github.acme/weather", "1.2.0", "deprecated"),
+            ]}),
+        )
+        .await;
+
+    let output = mocked.ak(&[
+        "--format",
+        "quiet",
+        "mcp",
+        "version",
+        "status",
+        "--repo",
+        "mcp-local",
+        "io.github.acme/weather",
+        "--status",
+        "deprecated",
+    ]);
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "io.github.acme/weather@1.0.0\nio.github.acme/weather@1.2.0\n"
+    );
+    assert_eq!(paths(&mocked).await, vec![format!("PATCH {route}")]);
+}
+
+#[tokio::test]
+async fn version_status_deleted_needs_yes_and_active_takes_no_message() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/weather/versions/1.0.0/status");
+    mocked
+        .respond("PATCH", &route, 200, entry("weather", "1.0.0", "deleted"))
+        .await;
+    let base = [
+        "mcp",
+        "version",
+        "status",
+        "--repo",
+        "mcp-local",
+        "weather",
+        "1.0.0",
+    ];
+
+    let output = mocked.ak(&[&base[..], &["--status", "deleted"]].concat());
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(unwrapped(&output.stderr).contains("--yes"), "{output:?}");
+    assert!(paths(&mocked).await.is_empty());
+
+    let output = mocked.ak(&[&base[..], &["--status", "active", "--message", "m"]].concat());
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(paths(&mocked).await.is_empty());
+
+    mocked.json(&[&base[..], &["--status", "deleted", "--yes"]].concat());
+    assert_eq!(
+        paths(&mocked).await,
+        vec![format!("PATCH {route}")],
+        "a name with no slash goes as one segment"
+    );
+}
+
+#[tokio::test]
+async fn version_delete_needs_yes_and_sends_the_message() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/io.github.acme/weather/versions/1.0.0");
+    mocked
+        .respond(
+            "DELETE",
+            &route,
+            200,
+            entry("io.github.acme/weather", "1.0.0", "deleted"),
+        )
+        .await;
+    let base = [
+        "mcp",
+        "version",
+        "delete",
+        "--repo",
+        "mcp-local",
+        "io.github.acme/weather",
+        "1.0.0",
+    ];
+
+    let output = mocked.ak(&base);
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(unwrapped(&output.stderr).contains("--yes"));
+    assert!(paths(&mocked).await.is_empty());
+
+    let output = mocked.ak(&[&base[..], &["--message", "malicious", "-y", "-q"]].concat());
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        "io.github.acme/weather@1.0.0\n"
+    );
+    let (_, body) = mocked.last("DELETE").await;
+    assert_eq!(body, json!({"statusMessage": "malicious"}));
+    assert_eq!(paths(&mocked).await, vec![format!("DELETE {route}")]);
+}
+
+#[tokio::test]
+async fn version_purge_needs_yes_and_says_what_stays_pinned() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/io.github.acme/weather/versions/1.0.0/purge");
+    mocked
+        .respond(
+            "POST",
+            &route,
+            200,
+            json!({
+                "server": "io.github.acme/weather", "version": "1.0.0", "purged": true,
+                "trashed": ["servers/io.github.acme/weather/1.0.0/server.json"],
+                "releasedDigests": [{"repository_id": ID, "image": "acme/weather",
+                    "digest": "sha256:aa", "still_pinned": true}]
+            }),
+        )
+        .await;
+    let base = [
+        "mcp",
+        "version",
+        "purge",
+        "--repo",
+        "mcp-local",
+        "io.github.acme/weather",
+        "1.0.0",
+    ];
+
+    let output = mocked.ak(&base);
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    let stderr = unwrapped(&output.stderr);
+    assert!(stderr.contains("--yes"), "{stderr}");
+    assert!(stderr.contains("confirmation_refused"), "{stderr}");
+    assert!(paths(&mocked).await.is_empty(), "nothing is sent");
+
+    let printed = mocked.json(&[&base[..], &["--yes"]].concat());
+    assert_eq!(printed["purged"], true);
+    let body = mocked.last_body("POST").await;
+    assert!(body.is_empty(), "a purge sends no body");
+
+    let output = mocked.ak(&[&["--format", "table"], &base[..], &["--yes"]].concat());
+    assert!(output.status.success(), "{output:?}");
+    let stderr = unwrapped(&output.stderr);
+    assert!(
+        stderr.contains("Purged io.github.acme/weather@1.0.0 from 'mcp-local': 1 file(s)"),
+        "{stderr}"
+    );
+    assert!(stderr.contains("sha256:aa is still pinned"), "{stderr}");
+}
+
+/// A refusal as the registry's routes write one (`problem_body`): the code in
+/// `error`, the explanation in `detail`.
+fn problem(status: u16, title: &str, code: &str, detail: &str) -> Value {
+    json!({"type": "about:blank", "title": title, "status": status, "detail": detail,
+           "error": code})
+}
+
+#[tokio::test]
+async fn a_purge_the_server_refuses_shows_its_explanation() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/io.github.acme/weather/versions/1.0.0/purge");
+    let detail = "Only a deleted server version can be purged: delete it first with \
+                  DELETE .../servers/{serverName}/versions/{version}";
+    let mut body = problem(409, "Conflict", "mcp_version_not_deleted", detail);
+    body["status_now"] = json!("active");
+    mocked.respond("POST", &route, 409, body).await;
+    let output = mocked.ak(&[
+        "mcp",
+        "version",
+        "purge",
+        "--repo",
+        "mcp-local",
+        "io.github.acme/weather",
+        "1.0.0",
+        "--yes",
+    ]);
+    let stderr = failed(&output);
+    assert!(
+        stderr.contains(
+            "mcp_version_not_deleted: Only a deleted server version can be purged: delete it \
+             first"
+        ),
+        "{stderr}"
+    );
+}
+
+#[tokio::test]
+async fn a_probe_with_introspection_off_says_why() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/io.github.acme/weather/versions/1.0.0/capabilities/probe");
+    mocked
+        .respond(
+            "POST",
+            &route,
+            409,
+            problem(
+                409,
+                "Conflict",
+                "mcp_introspection_disabled",
+                "Introspection is off for this repository (mcp_probe_remotes, \
+                 mcp_sandbox_introspection)",
+            ),
+        )
+        .await;
+    let output = mocked.ak(&[
+        "mcp",
+        "version",
+        "probe",
+        "--repo",
+        "mcp-local",
+        "io.github.acme/weather",
+        "1.0.0",
+    ]);
+    let stderr = failed(&output);
+    assert!(
+        stderr.contains("mcp_introspection_disabled: Introspection is off for this repository"),
+        "{stderr}"
+    );
+}
+
+#[tokio::test]
+async fn a_version_a_1_12_server_does_not_have_is_not_found() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/io.github.acme/weather/versions/9.9.9/purge");
+    mocked
+        .respond(
+            "POST",
+            &route,
+            404,
+            json!({"detail": "Server not found", "status": 404, "title": "Not Found",
+                   "type": "about:blank"}),
+        )
+        .await;
+    let output = mocked.ak(&[
+        "mcp",
+        "version",
+        "purge",
+        "--repo",
+        "mcp-local",
+        "io.github.acme/weather",
+        "9.9.9",
+        "--yes",
+    ]);
+    assert_eq!(output.status.code(), Some(5), "{output:?}");
+    let stderr = failed(&output);
+    assert!(stderr.contains("Server not found"), "{stderr}");
+    assert!(!stderr.contains("needs a server on"), "{stderr}");
+}
+
+#[tokio::test]
+async fn a_name_without_one_slash_goes_as_one_encoded_segment() {
+    let mocked = on("1.12.1").await;
+    let delete = format!("{SERVERS}/a%2Fb%2Fc/versions/1.0.0");
+    let probe = format!("{SERVERS}/weather/versions/1.0.0/capabilities/probe");
+    mocked
+        .respond("DELETE", &delete, 200, entry("a/b/c", "1.0.0", "deleted"))
+        .await;
+    mocked
+        .respond("POST", &probe, 202, json!({"queued": [], "jobs": []}))
+        .await;
+
+    let output = mocked.ak(&[
+        "-q",
+        "mcp",
+        "version",
+        "delete",
+        "--repo",
+        "mcp-local",
+        "a/b/c",
+        "1.0.0",
+        "--yes",
+    ]);
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "a/b/c@1.0.0\n");
+    mocked.json(&[
+        "mcp",
+        "version",
+        "probe",
+        "--repo",
+        "mcp-local",
+        "weather",
+        "1.0.0",
+    ]);
+    assert_eq!(
+        paths(&mocked).await,
+        vec![format!("DELETE {delete}"), format!("POST {probe}")]
+    );
+}
+
+#[tokio::test]
+async fn version_edit_puts_the_document_at_its_own_name() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/io.github.acme/weather/versions/1.2.0");
+    mocked
+        .respond(
+            "PUT",
+            &route,
+            200,
+            entry("io.github.acme/weather", "1.2.0", "active"),
+        )
+        .await;
+    let doc = r#"{"name":"io.github.acme/weather","version":"1.2.0","description":"new"}"#;
+    let dir = tempfile::TempDir::new().expect("temp dir");
+    let file = dir.path().join("server.json");
+    std::fs::write(&file, doc).expect("write");
+    let at_file = format!("@{}", file.display());
+
+    let printed = mocked.json(&[
+        "mcp",
+        "version",
+        "edit",
+        "--repo",
+        "mcp-local",
+        "--document",
+        &at_file,
+    ]);
+    assert_eq!(printed["x_new_field"], "kept");
+    assert_eq!(
+        mocked.last_body("PUT").await,
+        doc.as_bytes(),
+        "the document as given"
+    );
+    assert_eq!(paths(&mocked).await, vec![format!("PUT {route}")]);
+
+    let output = mocked.ak(&[
+        "mcp",
+        "version",
+        "edit",
+        "--repo",
+        "mcp-local",
+        "--document",
+        r#"{"name":"io.github.acme/weather"}"#,
+    ]);
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(
+        unwrapped(&output.stderr).contains("no \"version\" string"),
+        "{output:?}"
+    );
+}
+
+#[tokio::test]
+async fn version_probe_lists_the_queued_jobs() {
+    let mocked = on("1.12.1").await;
+    let route = format!("{SERVERS}/io.github.acme/weather/versions/1.0.0/capabilities/probe");
+    mocked
+        .respond(
+            "POST",
+            &route,
+            202,
+            json!({"queued": [JOB], "jobs": [{
+                "id": JOB, "kind": "remote_probe", "target": "https://weather.example/mcp",
+                "status": "pending", "attempts": 0, "maxAttempts": 3}]}),
+        )
+        .await;
+    let base = [
+        "mcp",
+        "version",
+        "probe",
+        "--repo",
+        "mcp-local",
+        "io.github.acme/weather",
+        "1.0.0",
+    ];
+
+    let output = mocked.ak(&[&["-q"], &base[..]].concat());
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(String::from_utf8_lossy(&output.stdout), format!("{JOB}\n"));
+
+    let output = mocked.ak(&[&["--format", "table"], &base[..]].concat());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("Queued 1 introspection job(s) for io.github.acme/weather@1.0.0."),
+        "{stdout}"
+    );
+    assert!(stdout.contains("remote_probe"), "{stdout}");
+}
+
+#[tokio::test]
+async fn on_1_11_each_version_command_says_it_needs_1_12() {
+    let mocked = on("1.11.14").await;
+    let doc = r#"{"name":"io.github.acme/weather","version":"1.0.0"}"#;
+    let cases: &[(&str, &[&str])] = &[
+        (
+            "status",
+            &["io.github.acme/weather", "1.0.0", "--status", "deprecated"],
+        ),
+        ("delete", &["io.github.acme/weather", "1.0.0", "--yes"]),
+        ("purge", &["io.github.acme/weather", "1.0.0", "--yes"]),
+        ("edit", &["--document", doc]),
+        ("probe", &["io.github.acme/weather", "1.0.0"]),
+    ];
+    for (command, rest) in cases {
+        let args = [
+            &["mcp", "version", command, "--repo", "mcp-local"][..],
+            rest,
+        ]
+        .concat();
+        let output = mocked.ak(&args);
+        assert_eq!(output.status.code(), Some(6), "{args:?}: {output:?}");
+        let stderr = failed(&output);
+        assert!(
+            stderr.contains(&format!(
+                "`ak mcp version {command}` needs a server on 1.12 or newer. This one is 1.11.14"
+            )),
+            "{args:?}: {stderr}"
+        );
+    }
+}

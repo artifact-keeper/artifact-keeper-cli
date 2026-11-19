@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `ak mcp version` changes one server version on a Local or Staging MCP registry, through the registry's own `/mcp/<repo>/v0.1` routes. `ak mcp version status --status active|deprecated|deleted [--message]` sets one version's status, or every version's when no version is given. `ak mcp version delete` soft deletes a version, and `ak mcp version purge` then removes a deleted one for good (instance administrators): its server.json and bundles go to the trash, what it pinned is released, and the version number stays taken. `ak mcp version edit --document @server.json` replaces a version's document, named by its own `name` and `version`, and `ak mcp version probe` queues the repository's introspection jobs for a version now. Purge, delete and `--status deleted` need `--yes`. On a 1.11 server each says it needs 1.12. The coverage gate now counts these routes as covered, and excludes only a publisher's bundle uploads and capability reports on `/v0.1`, and every write on the registry's `/v0` alias. A refusal from these routes shows the server's explanation next to its code, such as `mcp_version_not_deleted: Only a deleted server version can be purged` (#329).
+
 ## [1.12.0] - 2026-11-19
 
 This release is built for API 1.12.1 and supports servers on 1.12 and 1.11. It
