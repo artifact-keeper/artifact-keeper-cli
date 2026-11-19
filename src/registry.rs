@@ -154,16 +154,32 @@ pub static CLASS_EXCLUSIONS: &[ClassExclusion] = &[
     },
     ClassExclusion {
         name: "mcp-server-writes",
+        methods: &["POST", "PUT"],
+        prefixes: &[
+            "/mcp/{repo_key}/v0.1/servers/{ns}/versions/{version}/bundles",
+            "/mcp/{repo_key}/v0.1/servers/{ns}/{name}/versions/{version}/bundles",
+            "/mcp/{repo_key}/v0.1/servers/{ns}/versions/{version}/capabilities",
+            "/mcp/{repo_key}/v0.1/servers/{ns}/{name}/versions/{version}/capabilities",
+        ],
+        except: &[
+            "/mcp/{repo_key}/v0.1/servers/{ns}/versions/{version}/capabilities/probe",
+            "/mcp/{repo_key}/v0.1/servers/{ns}/{name}/versions/{version}/capabilities/probe",
+        ],
+        reason: "A publisher's MCPB bundle uploads and capability reports on the registry's \
+                 own v0.1 API, which mcp-publisher and the clients that report what a server \
+                 declares send. `ak mcp` is the management side (#317, #329), and `ak api` \
+                 sends either one as it is. The v0 aliases are in mcp-v0-writes",
+    },
+    ClassExclusion {
+        name: "mcp-v0-writes",
         methods: &["POST", "PUT", "PATCH", "DELETE"],
-        prefixes: &["/mcp/{repo_key}/v0.1/servers", "/mcp/{repo_key}/v0/servers"],
+        prefixes: &["/mcp/{repo_key}/v0/servers"],
         except: &[],
-        reason: "Writes to one server or version on the registry's own v0.1 API: status, an \
-                 administrator's edit, soft delete and purge, MCPB bundle uploads, declared \
-                 capabilities and probe requests. The CLI keeps to the /api/v1 management API \
-                 for MCP registries (#317), and a publisher's uploads are mcp-publisher's. \
-                 An administrator's edit, status change, soft delete, purge and probe are \
-                 reachable through `ak api` until a follow-up adds `ak mcp version \
-                 purge|status`",
+        reason: "Every write on the registry's v0 API, an alias of v0.1: the same handlers on \
+                 another prefix. `ak mcp version` sends the v0.1 route of each status change, \
+                 delete, purge, edit and probe, and a publisher's bundle uploads and capability \
+                 reports are mcp-publisher's on either prefix. `ak api` sends any of these as \
+                 it is (#329)",
     },
     ClassExclusion {
         name: "oci-blob-upload",
@@ -4100,6 +4116,80 @@ pub static COMMANDS: &[Op] = &[
         &["include_deleted"],
     ),
     covered("GET", "/api/v1/mcp/pending-summary", "mcp pending", &[]),
+    // The registry's own v0.1 routes, not in the spec. A name with one slash goes
+    // split, any other URL-encoded.
+    covered(
+        "PATCH",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/{name}/versions/{version}/status",
+        "mcp version status",
+        &[],
+    ),
+    covered(
+        "PATCH",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/{name}/status",
+        "mcp version status",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/{name}/versions/{version}",
+        "mcp version delete",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/{name}/versions/{version}/purge",
+        "mcp version purge",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/{name}/versions/{version}",
+        "mcp version edit",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/{name}/versions/{version}/capabilities/probe",
+        "mcp version probe",
+        &[],
+    ),
+    covered(
+        "PATCH",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/versions/{version}/status",
+        "mcp version status",
+        &[],
+    ),
+    covered(
+        "PATCH",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/status",
+        "mcp version status",
+        &[],
+    ),
+    covered(
+        "DELETE",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/versions/{version}",
+        "mcp version delete",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/versions/{version}/purge",
+        "mcp version purge",
+        &[],
+    ),
+    covered(
+        "PUT",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/versions/{version}",
+        "mcp version edit",
+        &[],
+    ),
+    covered(
+        "POST",
+        "/mcp/{repo_key}/v0.1/servers/{ns}/versions/{version}/capabilities/probe",
+        "mcp version probe",
+        &[],
+    ),
     excluded(
         "POST",
         "/api/v1/mcp/introspection/jobs/claim",

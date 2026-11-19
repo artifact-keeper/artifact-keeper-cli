@@ -868,6 +868,32 @@ fn hints(home: &std::path::Path, line: &Line) -> Hints {
         }
         // `--wait` follows the pass.
         ("mcp sync start", "GET", _) => (vec![("wait", String::new())], vec![]),
+        // The registry's own routes: a name with one slash goes split, any other
+        // URL-encoded, and `status` without a version changes the whole server.
+        ("mcp version edit", _, p) => {
+            let name = if p.contains("{ns}/{name}") {
+                "io.github.acme/weather"
+            } else {
+                "weather"
+            };
+            let doc = json!({"name": name, "version": "1.0.0"});
+            (vec![("document", doc.to_string())], vec![])
+        }
+        (command, _, p) if command.starts_with("mcp version ") => {
+            let mut args = vec![(
+                "server",
+                if p.contains("{ns}/{name}") {
+                    "io.github.acme/weather"
+                } else {
+                    "weather"
+                }
+                .to_string(),
+            )];
+            if p.contains("/versions/") {
+                args.push(("version", "1.0.0".to_string()));
+            }
+            (args, vec![])
+        }
         (command, _, _) if command.starts_with("pkg ") => (pkg_hints(home, line), Vec::new()),
         _ => (Vec::new(), Vec::new()),
     }
@@ -1393,7 +1419,8 @@ async fn a_registry_line_that_lies_is_caught() {
 }
 
 /// These ask only with a particular flag, so `tests/non_interactive.rs` checks them.
-const ASK_ONLY_SOMETIMES: &[&str] = &["lifecycle create", "lifecycle update"];
+/// `mcp version status` asks only for `--status deleted`.
+const ASK_ONLY_SOMETIMES: &[&str] = &["lifecycle create", "lifecycle update", "mcp version status"];
 
 /// `--no-input` turns prompts off and isn't a yes. Every command with `--yes`, run the
 /// way that reaches its route but without the flag, has to fail, say so, and send

@@ -186,6 +186,11 @@ const NEED_YES: &[&[&str]] = &[
         "--all-repos",
     ],
     &["pkg", "helm", "delete", "r", "chart", "1.0.0"],
+    &[
+        "mcp", "version", "status", "--repo", "r", "a/b", "--status", "deleted",
+    ],
+    &["mcp", "version", "delete", "--repo", "r", "a/b", "1.0.0"],
+    &["mcp", "version", "purge", "--repo", "r", "a/b", "1.0.0"],
 ];
 
 fn ak(dir: &TempDir, env_no_input: Option<&str>, args: &[&str]) -> std::process::Output {
@@ -288,8 +293,19 @@ async fn only_the_wide_forms_ask() {
         .await;
     let dir = TempDir::new().unwrap();
     config(&dir, &server.uri());
-    let commands: [&[&str]; 4] = [
+    let commands: [&[&str]; 5] = [
         &["--no-input", "admin", "storage-gc", "run", "--dry-run"],
+        &[
+            "--no-input",
+            "mcp",
+            "version",
+            "status",
+            "--repo",
+            "r",
+            "a/b",
+            "--status",
+            "deprecated",
+        ],
         &["--no-input", "lifecycle", "update", ID, "--priority", "1"],
         &[
             "--no-input",

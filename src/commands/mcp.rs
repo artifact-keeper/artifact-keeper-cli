@@ -3,7 +3,9 @@
 //! seed jobs, a server version's health, and the approval queue across registries.
 //!
 //! Publishing and installing MCP servers isn't here: `mcp-publisher` speaks the
-//! registry's own `/mcp/{repo}/v0.1` API, and the clients read it directly.
+//! registry's own `/mcp/{repo}/v0.1` API, and the clients read it directly. An
+//! administrator's writes to one version on that API are `ak mcp version`, in
+//! `mcp_version.rs`.
 
 use artifact_keeper_sdk::ClientMcpExt;
 use artifact_keeper_sdk::raw::capture;
@@ -66,6 +68,11 @@ pub enum McpCommand {
 
     /// Count the approval queue across every Remote MCP registry you can read
     Pending,
+
+    /// Change one server version on a Local or Staging registry: its status, a soft
+    /// delete and purge, an administrator's edit, and a probe of its tools
+    #[command(subcommand)]
+    Version(super::mcp_version::VersionCommand),
 }
 
 #[derive(Subcommand)]
@@ -412,6 +419,7 @@ impl McpCommand {
                 include_deleted,
             } => health(&repo, &server, &version, include_deleted, global).await,
             Self::Pending => pending(global).await,
+            Self::Version(command) => command.execute(global).await,
         }
     }
 }
@@ -568,7 +576,7 @@ impl SeedCommand {
 
 // ---- small helpers ----
 
-fn text(value: &Value) -> String {
+pub(super) fn text(value: &Value) -> String {
     match value {
         Value::Null => "-".to_string(),
         Value::String(s) if s.is_empty() => "-".to_string(),
@@ -591,7 +599,7 @@ fn opt(value: Option<&str>) -> String {
 /// A server name as the two path segments of the split routes, when it has the
 /// usual one slash. A name sent that way survives a proxy in front of the server
 /// that refuses an encoded slash. Any other name goes URL-encoded, as one segment.
-fn split_name(server: &str) -> Option<(&str, &str)> {
+pub(super) fn split_name(server: &str) -> Option<(&str, &str)> {
     let (ns, name) = server.split_once('/')?;
     (!ns.is_empty() && !name.is_empty() && !name.contains('/')).then_some((ns, name))
 }
@@ -599,7 +607,7 @@ fn split_name(server: &str) -> Option<(&str, &str)> {
 /// Refuse a server name or version the request path can't carry as given: the
 /// generated client doesn't escape `%`, and an empty, `.` or `..` segment would
 /// reach another route.
-fn check_path_parts(server: &str, version: Option<&str>) -> Result<()> {
+pub(super) fn check_path_parts(server: &str, version: Option<&str>) -> Result<()> {
     let bad = |part: &str| part.is_empty() || part == "." || part == ".." || part.contains('%');
     let parts: Vec<&str> = match split_name(server) {
         Some((ns, name)) => vec![ns, name],
