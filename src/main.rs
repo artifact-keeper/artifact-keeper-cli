@@ -1,3 +1,10 @@
+// Handler tests hold `test_utils::setup_env`'s guard on ENV_LOCK, a std Mutex, for
+// the whole test so no other test changes AK_CONFIG_DIR/AK_TOKEN under it. Each
+// #[tokio::test] runs on its own thread and runtime, and wiremock serves from its
+// own threads, so blocking on that lock can't deadlock. The `ak` binary target is
+// still linted for this.
+#![cfg_attr(test, allow(clippy::await_holding_lock))]
+
 use std::process::ExitCode;
 
 mod cli;
