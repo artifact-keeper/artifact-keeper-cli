@@ -28,7 +28,8 @@ trap 'rm -rf "$WORK"' EXIT
 
 export AK_CONFIG_DIR="$WORK/ak" AK_CREDENTIAL_STORE=file AK_NO_INPUT=true NO_COLOR=1
 mkdir -p "$AK_CONFIG_DIR"
-printf 'default_instance = "t"\n[instances.t]\nurl = "%s"\napi_version = "v1"\n' "$BASE" >"$AK_CONFIG_DIR/config.toml"
+# BASE can be plain HTTP on another host, so ak is allowed to send it the token.
+printf 'default_instance = "t"\n[instances.t]\nurl = "%s"\napi_version = "v1"\nallow_insecure_http = true\n' "$BASE" >"$AK_CONFIG_DIR/config.toml"
 export AK_TOKEN
 AK_TOKEN="$(curl -s -X POST -H 'content-type: application/json' \
   -d "{\"username\":\"admin\",\"password\":\"${AK_PASSWORD:-TestRunner!2026secure}\"}" \

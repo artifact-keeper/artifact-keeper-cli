@@ -376,6 +376,9 @@ fn save_new_instance(target: &LoginTarget) -> Result<()> {
 
 async fn login(args: &LoginArgs, global: &GlobalArgs) -> Result<()> {
     let target = resolve_login_target(args.url.as_deref(), global)?;
+    // Before choosing a method, so the refusal isn't followed by a fallback that
+    // would be refused too.
+    transport::require_secure_transport(&target.name, &target.instance)?;
     let at_terminal = std::io::IsTerminal::is_terminal(&std::io::stdin());
     match login_method(args, global.no_input, at_terminal) {
         LoginMethod::Device => device_login(&target, args, global, true).await?,
@@ -547,6 +550,9 @@ async fn login_to(
     args: &LoginArgs,
     global: &GlobalArgs,
 ) -> Result<()> {
+    // Every way in sends a secret: a password, a token or a one-time code. Refuse
+    // plain HTTP to a remote host before asking for any of them.
+    transport::require_secure_transport(instance_name, instance)?;
     if let Some(sso) = &args.sso {
         return match parse_sso(sso)? {
             (SsoKind::Ldap, id) => login_with_ldap(instance_name, instance, id, args, global).await,
@@ -582,9 +588,6 @@ async fn login_to(
 
     // Interactive: let user choose how to authenticate
     eprintln!("Logging in to '{}' ({})\n", instance_name, instance.url);
-
-    // Surface the cleartext risk before the user types anything.
-    transport::warn_if_insecure(instance_name, instance);
 
     let methods = &[
         "Login with username and password",
@@ -637,16 +640,14 @@ async fn store_token(instance_name: &str, instance: &InstanceConfig, token: Stri
 }
 
 /// A password sent over plaintext HTTP to a non-loopback host is readable by any
-/// on-path observer. Refuse unless the user explicitly opted in (`ak instance add
+/// on-path observer. Refuse unless the user explicitly opted in (`ak instance add|update
 /// --insecure-http` or AK_ALLOW_INSECURE_HTTP=1). Loopback (localhost/127.0.0.1/::1)
 /// is exempt: plain HTTP is the normal local development setup.
-fn refuse_cleartext_password(instance: &InstanceConfig) -> Result<()> {
-    if transport::classify_url(&instance.url) == transport::TransportSecurity::HttpRemote
-        && !transport::insecure_http_allowed(instance)
-    {
-        return Err(AkError::InsecureTransport(instance.url.clone()).into());
-    }
-    Ok(())
+fn refuse_cleartext_password(instance_name: &str, instance: &InstanceConfig) -> Result<()> {
+    Ok(transport::require_secure_transport(
+        instance_name,
+        instance,
+    )?)
 }
 
 /// The username and password for a login, from the flags or by asking.
@@ -686,7 +687,7 @@ async fn login_with_password(
     args: &LoginArgs,
     global: &GlobalArgs,
 ) -> Result<()> {
-    refuse_cleartext_password(instance)?;
+    refuse_cleartext_password(instance_name, instance)?;
     let (username, password) = login_credentials(args, global)?;
 
     let anon_client = anon_client(&instance.url)?;
@@ -899,7 +900,7 @@ async fn login_with_ldap(
     args: &LoginArgs,
     global: &GlobalArgs,
 ) -> Result<()> {
-    refuse_cleartext_password(instance)?;
+    refuse_cleartext_password(instance_name, instance)?;
     let (username, password) = login_credentials(args, global)?;
 
     // Not the SDK, which drops this route's response. The body holds a password, and a
@@ -1077,6 +1078,8 @@ async fn exchange_and_store(
     instance: &InstanceConfig,
     code: &str,
 ) -> Result<()> {
+    // The code redeems for a session, so it's a credential too.
+    transport::require_secure_transport(instance_name, instance)?;
     // The binding cookie from `ak auth login --sso`, which a 1.12 server needs to
     // redeem the code. None from older servers, and then no Cookie is sent.
     let mut headers = reqwest::header::HeaderMap::new();
@@ -1230,6 +1233,8 @@ async fn complete_totp(
     code: &str,
     totp_token: &str,
 ) -> Result<()> {
+    // The ticket and code redeem for a session.
+    transport::require_secure_transport(instance_name, instance)?;
     let anon_client = anon_client(&instance.url)?;
     let body = artifact_keeper_sdk::types::TotpVerifyRequest {
         code: code.to_string(),

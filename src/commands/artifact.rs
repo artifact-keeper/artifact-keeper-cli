@@ -2110,10 +2110,11 @@ async fn transfer_copy(
         config.resolve_instance(from_instance.or(global.instance.as_deref()))?;
     let (dst_name, dst_instance) =
         config.resolve_instance(to_instance.or(global.instance.as_deref()))?;
-    crate::transport::warn_if_insecure(src_name, src_instance);
-    crate::transport::warn_if_insecure(dst_name, dst_instance);
     let src_auth = format!("Bearer {}", get_credential(src_name)?.access_token);
     let dst_auth = format!("Bearer {}", get_credential(dst_name)?.access_token);
+    // Both, before either is sent anything.
+    crate::transport::require_secure_transport(src_name, src_instance)?;
+    crate::transport::require_secure_transport(dst_name, dst_instance)?;
 
     let spinner = output::spinner(&format!(
         "Downloading from {src_name}:{src_repo}/{src_path}..."

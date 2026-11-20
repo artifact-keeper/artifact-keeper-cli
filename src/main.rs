@@ -193,6 +193,13 @@ mod exit_code_tests {
             (AkError::InstanceNotFound("x".into()), 2),
             (AkError::NoTerminal, 2),
             (AkError::ConfirmationRefused("x".into()), 2),
+            (
+                AkError::InsecureTransport {
+                    url: "http://x".into(),
+                    help: "x".into(),
+                },
+                2,
+            ),
             (AkError::NetworkError("x".into()), 3),
             (AkError::NotAuthenticated("x".into()), 4),
             (AkError::Forbidden("x".into()), 4),

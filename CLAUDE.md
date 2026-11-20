@@ -58,7 +58,7 @@ src/                   # CLI binary (artifact-keeper-cli, bin: ak)
   main.rs              # Entry point (tokio async)
   cli.rs               # clap derive: Cli struct, Command enum, GlobalArgs
   error.rs             # miette diagnostics (AkError enum)
-  transport.rs         # Plain-HTTP instance URL checks and warnings
+  transport.rs         # Plain-HTTP checks: require_secure_transport before sending any credential
   registry.rs          # Which command covers which server route. Add a line for each route a new command calls
   output/mod.rs        # OutputFormat (table/json/yaml/quiet), render helpers
   config/
@@ -119,6 +119,7 @@ The first two numbers of the CLI version are the server version it's built for. 
 - **Error handling**: `miette::Result` throughout, `AkError` with diagnostic codes and help text. `AkError::exit_code` maps each variant to the exit code in `ak --help`, and `main` applies it. `ak api` keeps its own table. `Usage` is what the user typed, `Local` a failure on this machine, `ConfigError` ak's own configuration
 - **Async**: All commands are async via tokio
 - **`ak api`**: `src/commands/api.rs` sends any request. The instance's token goes only to the instance's own origin. A new route is reachable through it from day one, before it has a command
+- **Credentials and plain HTTP**: anything that attaches the instance's credentials calls `transport::require_secure_transport` first, which refuses plain HTTP to a non-loopback host unless the instance's `allow_insecure_http` or `AK_ALLOW_INSECURE_HTTP` allows it. `build_client` and `resolve_base_url_and_auth` already do: a new raw path should go through them
 - **`ak pkg`**: `src/commands/pkg/`, one file per format. A format's wire protocol isn't in the spec, so these use `pkg::wire::Wire` over raw HTTP and build what that format's client sends. Plain GETs have no helper: they're `ak api`
 - **SDK errors**: `sdk/src/error.rs`, swapped into generated code by xtask. `{e}` gives `<status>: <server message>` and can't print a header. Use `sdk_err` for SDK calls and `helpers::raw_err` for raw HTTP
 - **Raw JSON**: `--format json` and `yaml` must print the response as received. Wrap the SDK call in `artifact_keeper_sdk::raw::capture` and print with `output::render_raw`, or `helpers::emit_mutation_raw` for a mutation. New commands use these rather than `output::render`
@@ -138,6 +139,7 @@ The first two numbers of the CLI version are the server version it's built for. 
 | `AK_TOKEN` | API token (alternative to keychain) |
 | `AK_CREDENTIAL_STORE` | `file` skips the OS keychain and uses the credentials file only |
 | `AK_CA_CERT` | Path to a PEM file with additional root CA certificate(s) to trust (same as `--ca-cert`) |
+| `AK_ALLOW_INSECURE_HTTP` | Send credentials over plain HTTP to a non-loopback host for this command. The per-instance setting is `allow_insecure_http` (`ak instance add|update --insecure-http`) |
 | `NO_COLOR` | Standard no-color flag |
 
 ## Git Conventions

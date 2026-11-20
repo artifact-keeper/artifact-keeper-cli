@@ -366,7 +366,7 @@ fn resolve_target(args: &ApiArgs, global: &GlobalArgs, headers: &HeaderMap) -> R
         let (name, inst) = instance.as_ref().expect("on_instance implies an instance");
         match get_credential(name) {
             Ok(cred) => {
-                transport::warn_if_insecure(name, inst);
+                transport::require_secure_transport(name, inst)?;
                 Some(cred.access_token)
             }
             Err(e) => {

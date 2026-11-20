@@ -227,7 +227,10 @@ fn build_diag_client_with_auth(
 async fn check_instance(name: &str, instance: &InstanceConfig, diag: &mut DiagResult) {
     // With credentials the count means something: without them, the server only
     // counts public repositories, which read as "0 repos" on a private instance.
-    let cred = get_credential(name).ok();
+    // None go to a plain-HTTP instance the user hasn't allowed.
+    let cred = get_credential(name)
+        .ok()
+        .filter(|_| crate::transport::credentials_allowed(instance));
     let built = match &cred {
         Some(cred) => build_diag_client_with_auth(instance, cred),
         None => build_diag_client(instance),
@@ -374,8 +377,51 @@ fn classify_connection_error(err: &str) -> String {
 // Authentication
 // ---------------------------------------------------------------------------
 
+/// Say whether the instance is on plain HTTP to a remote host, and whether `ak` sends
+/// it credentials. Returns whether it may. Silent for https and loopback.
+fn check_transport(
+    name: &str,
+    instance: &InstanceConfig,
+    logged_in: bool,
+    diag: &mut DiagResult,
+) -> bool {
+    use crate::transport::{TransportSecurity, classify_url, insecure_http_allowed_by_env};
+    if classify_url(&instance.url) != TransportSecurity::HttpRemote {
+        return true;
+    }
+    if instance.allow_insecure_http || insecure_http_allowed_by_env() {
+        let by = if instance.allow_insecure_http {
+            "its allow_insecure_http setting"
+        } else {
+            "AK_ALLOW_INSECURE_HTTP"
+        };
+        diag.warn(&format!(
+            "{name} -- unencrypted HTTP ({}): credentials are sent in cleartext, allowed by {by}",
+            instance.url
+        ));
+        return true;
+    }
+    let message = format!(
+        "{name} -- unencrypted HTTP ({}): ak won't send it credentials (allow it with \
+         {}, or AK_ALLOW_INSECURE_HTTP=1 for one command)",
+        instance.url,
+        crate::transport::record_opt_in_command(name, &instance.url),
+    );
+    // Logged in, every command that needs the login fails until it's allowed.
+    if logged_in {
+        diag.fail(&message);
+    } else {
+        diag.warn(&message);
+    }
+    false
+}
+
 async fn check_auth(name: &str, instance: &InstanceConfig, diag: &mut DiagResult) {
-    let cred = match get_credential(name) {
+    let cred = get_credential(name);
+    if !check_transport(name, instance, cred.is_ok(), diag) {
+        return;
+    }
+    let cred = match cred {
         Ok(c) => c,
         Err(_) => {
             diag.skip(&format!(

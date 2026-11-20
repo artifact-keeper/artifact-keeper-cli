@@ -342,6 +342,28 @@ The certificate(s) are **added** to the default trust store; TLS verification
 always remains enabled. There is intentionally no option to disable
 certificate verification — use `--ca-cert` to trust your private CA instead.
 
+## Plain HTTP Instances
+
+`ak` won't send credentials (a login, an API token, a password) over plain
+`http://` to a host that isn't this machine, since anyone on the network path
+could read them. It stops before sending anything, with exit code 2 (3 for
+`ak api`). Loopback (`localhost`, `127.0.0.0/8`, `::1`) is always allowed.
+
+If your server only has plain HTTP, such as on a home or lab network, allow it
+for that instance, once, and `ak` keeps the setting in its config:
+
+```bash
+ak instance add nas http://192.168.1.20:8080 --insecure-http
+# or, for an instance you already have
+ak instance update nas --insecure-http
+# and to take it back
+ak instance update nas --insecure-http=false
+```
+
+`AK_ALLOW_INSECURE_HTTP=1` allows it for one command. `ak instance info` and
+`ak doctor` say when an instance is on plain HTTP, and whether `ak` sends it
+credentials.
+
 ## Shell Completions
 
 ```bash
@@ -405,6 +427,7 @@ See the [CI/CD Integration Guide](https://artifactkeeper.com/docs/guides/ci-cd/)
 | `AK_TOKEN` | API token (alternative to keychain) |
 | `AK_NO_INPUT` | Never prompt, as `--no-input` does: `1`, `true` or `yes`. `0`, `false`, `no` or empty leave it off. Destructive and security-decision commands then need `--yes` |
 | `AK_CA_CERT` | Path to a PEM file with additional root CA certificate(s) to trust (same as `--ca-cert`) |
+| `AK_ALLOW_INSECURE_HTTP` | `1`, `true` or `yes` lets this command send credentials over plain HTTP to a host that isn't this machine. See [Plain HTTP Instances](#plain-http-instances) |
 | `AK_COLOR` | Color mode (`auto`, `always`, `never`) |
 | `AK_CONFIG_DIR` | Override config directory |
 | `NO_COLOR` | Standard no-color flag |

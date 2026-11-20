@@ -70,8 +70,11 @@ async fn print_raw(route: &str, global: &GlobalArgs) -> Result<()> {
     let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
     let mut request =
         raw_http_client()?.get(format!("{}{route}", instance.url.trim_end_matches('/')));
-    // These answer without a login, so being logged out isn't an error.
-    if let Ok(credential) = get_credential(name) {
+    // These answer without a login, so being logged out isn't an error, and a login
+    // held back from a plain-HTTP instance isn't either: the request goes without it.
+    if let Ok(credential) = get_credential(name)
+        && crate::transport::credentials_allowed(instance)
+    {
         request = request.header(
             reqwest::header::AUTHORIZATION,
             format!("Bearer {}", credential.access_token),

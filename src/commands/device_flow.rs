@@ -622,12 +622,7 @@ pub(crate) async fn start(
     // The device code is a bearer-like secret: it redeems for a refreshable
     // session. Refuse plaintext HTTP to a remote host for the same reason
     // password login does.
-    if transport::classify_url(&instance.url) == transport::TransportSecurity::HttpRemote
-        && !transport::insecure_http_allowed(instance)
-    {
-        return Err(AkError::InsecureTransport(instance.url.clone()).into());
-    }
-    transport::warn_if_insecure(instance_name, instance);
+    transport::require_secure_transport(instance_name, instance)?;
 
     let scopes = normalize_scopes(requested_scopes)?;
     let scope = scopes.join(" ");
