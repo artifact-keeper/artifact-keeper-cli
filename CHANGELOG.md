@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - CI's Clippy job now lints the tests too (`cargo clippy --workspace --all-targets -- -D warnings`), and the warnings that had built up in them are fixed (#336).
 
+### Security
+
+- `ak auth ci-exchange` no longer prints the whole access token in table output, where a CI step that runs it without `-q` or `--format json` put a live token in the job log. The table shows only its first four characters, such as `eyJh…`, and says that `-q` prints only the token and `--format json` the whole response, which both still do. On a pipe without `--format`, `ak` prints JSON, which holds the token, so on GitHub Actions (`GITHUB_ACTIONS=true`) it also sends the runner an `::add-mask::` line on stderr first with `-q`, `--format json` or `yaml`, which masks the token in the rest of the job's log (#334).
+
 ## [1.12.0] - 2026-11-19
 
 This release is built for API 1.12.1 and supports servers on 1.12 and 1.11. It
