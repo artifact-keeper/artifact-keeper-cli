@@ -1501,6 +1501,83 @@ fn format_optional_date(date: Option<chrono::DateTime<chrono::Utc>>, fmt: &str) 
         .unwrap_or_else(|| "never".into())
 }
 
+async fn token_list(global: &GlobalArgs) -> Result<()> {
+    let client = client_for(global)?;
+
+    let user = client
+        .get_current_user()
+        .send()
+        .await
+        .map_err(|e| crate::commands::helpers::sdk_err("get user info", e))?;
+
+    let (tokens, raw) =
+        artifact_keeper_sdk::raw::capture(client.list_user_tokens().id(user.id).send()).await;
+    let tokens = tokens.map_err(|e| crate::commands::helpers::sdk_err("list tokens", e))?;
+
+    if tokens.items.is_empty() && !output::is_machine_format(&global.format) {
+        eprintln!("No API tokens found. Run `ak auth token create` to create one.");
+        return Ok(());
+    }
+
+    if matches!(global.format, OutputFormat::Quiet) {
+        for t in &tokens.items {
+            println!("{}", t.id);
+        }
+        return Ok(());
+    }
+
+    let entries: Vec<_> = tokens
+        .items
+        .iter()
+        .map(|t| {
+            serde_json::json!({
+                "id": t.id.to_string(),
+                "name": t.name,
+                "prefix": t.token_prefix,
+                "scopes": t.scopes.join(", "),
+                "created_at": t.created_at.to_rfc3339(),
+                "expires_at": format_optional_date(t.expires_at, "%+"),
+                "last_used": format_optional_date(t.last_used_at, "%+"),
+            })
+        })
+        .collect();
+
+    let mut table = Table::new();
+    table
+        .load_style(UTF8_FULL_CONDENSED)
+        .set_content_arrangement(ContentArrangement::Dynamic)
+        .set_header(vec![
+            "ID",
+            "NAME",
+            "PREFIX",
+            "SCOPES",
+            "CREATED",
+            "EXPIRES",
+            "LAST USED",
+        ]);
+
+    for t in &tokens.items {
+        table.add_row(vec![
+            &t.id.to_string()[..8],
+            &t.name,
+            &t.token_prefix,
+            &t.scopes.join(", "),
+            &t.created_at.format("%Y-%m-%d").to_string(),
+            &format_optional_date(t.expires_at, "%Y-%m-%d"),
+            &format_optional_date(t.last_used_at, "%Y-%m-%d"),
+        ]);
+    }
+
+    let table_str = table.to_string();
+
+    println!(
+        "{}",
+        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
+    );
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2468,81 +2545,4 @@ mod tests {
         let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
         insta::assert_yaml_snapshot!("auth_token_list_json", parsed);
     }
-}
-
-async fn token_list(global: &GlobalArgs) -> Result<()> {
-    let client = client_for(global)?;
-
-    let user = client
-        .get_current_user()
-        .send()
-        .await
-        .map_err(|e| crate::commands::helpers::sdk_err("get user info", e))?;
-
-    let (tokens, raw) =
-        artifact_keeper_sdk::raw::capture(client.list_user_tokens().id(user.id).send()).await;
-    let tokens = tokens.map_err(|e| crate::commands::helpers::sdk_err("list tokens", e))?;
-
-    if tokens.items.is_empty() && !output::is_machine_format(&global.format) {
-        eprintln!("No API tokens found. Run `ak auth token create` to create one.");
-        return Ok(());
-    }
-
-    if matches!(global.format, OutputFormat::Quiet) {
-        for t in &tokens.items {
-            println!("{}", t.id);
-        }
-        return Ok(());
-    }
-
-    let entries: Vec<_> = tokens
-        .items
-        .iter()
-        .map(|t| {
-            serde_json::json!({
-                "id": t.id.to_string(),
-                "name": t.name,
-                "prefix": t.token_prefix,
-                "scopes": t.scopes.join(", "),
-                "created_at": t.created_at.to_rfc3339(),
-                "expires_at": format_optional_date(t.expires_at, "%+"),
-                "last_used": format_optional_date(t.last_used_at, "%+"),
-            })
-        })
-        .collect();
-
-    let mut table = Table::new();
-    table
-        .load_style(UTF8_FULL_CONDENSED)
-        .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec![
-            "ID",
-            "NAME",
-            "PREFIX",
-            "SCOPES",
-            "CREATED",
-            "EXPIRES",
-            "LAST USED",
-        ]);
-
-    for t in &tokens.items {
-        table.add_row(vec![
-            &t.id.to_string()[..8],
-            &t.name,
-            &t.token_prefix,
-            &t.scopes.join(", "),
-            &t.created_at.format("%Y-%m-%d").to_string(),
-            &format_optional_date(t.expires_at, "%Y-%m-%d"),
-            &format_optional_date(t.last_used_at, "%Y-%m-%d"),
-        ]);
-    }
-
-    let table_str = table.to_string();
-
-    println!(
-        "{}",
-        output::render_raw(raw.as_deref(), &entries, &global.format, Some(table_str))
-    );
-
-    Ok(())
 }
