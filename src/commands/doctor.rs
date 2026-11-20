@@ -1107,17 +1107,21 @@ mod tests {
 
     #[test]
     fn print_summary_all_pass() {
-        let mut diag = DiagResult::default();
-        diag.passes = 5;
+        let diag = DiagResult {
+            passes: 5,
+            ..Default::default()
+        };
         // Just verify it doesn't panic
         print_summary(&diag);
     }
 
     #[test]
     fn print_summary_with_failures() {
-        let mut diag = DiagResult::default();
-        diag.failures = 2;
-        diag.warnings = 1;
+        let diag = DiagResult {
+            failures: 2,
+            warnings: 1,
+            ..Default::default()
+        };
         print_summary(&diag);
     }
 }
