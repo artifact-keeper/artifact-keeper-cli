@@ -917,16 +917,19 @@ async fn age_gate_set_hands_the_policy_back() {
 
 // ---- quarantine, gates and rules ----
 
+const OLD: &str = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const NEW: &str = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
 #[tokio::test]
 async fn quarantine_names_the_digest_it_means() {
     let mocked = on("1.12.1").await;
-    // The tag moved from sha256:aaa to sha256:bbb before the hold landed: the server
+    // The tag moved from {OLD} to {NEW} before the hold landed: the server
     // held the old image's row, {HELD}, and left the new one alone.
     let action = json!({
         "artifact_id": ID, "new_status": "quarantined",
-        "message": "The tag moved to sha256:bbb before the action landed",
-        "held_artifact_id": HELD, "held_digest": "sha256:aaa",
-        "moved_to_digest": "sha256:bbb"
+        "message": format!("The tag moved to {NEW} before the action landed"),
+        "held_artifact_id": HELD, "held_digest": OLD,
+        "moved_to_digest": NEW
     });
     mocked
         .respond(
@@ -953,7 +956,7 @@ async fn quarantine_names_the_digest_it_means() {
         "--reason",
         "r",
         "--expected-digest",
-        "sha256:aaa",
+        OLD,
         "--yes",
         "--format",
         "table",
@@ -961,12 +964,12 @@ async fn quarantine_names_the_digest_it_means() {
     assert!(output.status.success(), "{output:?}");
     let stderr = unwrapped(&output.stderr);
     assert!(
-        stderr.contains(&format!("Quarantined artifact {HELD} (sha256:aaa)")),
+        stderr.contains(&format!("Quarantined artifact {HELD} ({OLD})")),
         "{stderr}"
     );
     assert!(!stderr.contains(&format!("artifact {ID}")), "{stderr}");
     let (_, body) = mocked.last("POST").await;
-    assert_eq!(body["expected_digest"], "sha256:aaa");
+    assert_eq!(body["expected_digest"], OLD);
 
     // Quiet prints the ID that was held, so piping it to `release` frees that image.
     let quiet = mocked.ak(&[
@@ -976,7 +979,7 @@ async fn quarantine_names_the_digest_it_means() {
         "--reason",
         "r",
         "--expected-digest",
-        "sha256:aaa",
+        OLD,
         "--yes",
         "--format",
         "quiet",
@@ -988,19 +991,19 @@ async fn quarantine_names_the_digest_it_means() {
         "reject",
         ID,
         "--expected-digest",
-        "sha256:aaa",
+        OLD,
         "--yes",
     ]);
     assert_eq!(shown["held_artifact_id"], HELD);
-    assert_eq!(shown["held_digest"], "sha256:aaa");
+    assert_eq!(shown["held_digest"], OLD);
     let (_, body) = mocked.last("POST").await;
-    assert_eq!(body["expected_digest"], "sha256:aaa");
+    assert_eq!(body["expected_digest"], OLD);
     let quiet = mocked.ak(&[
         "quarantine",
         "reject",
         ID,
         "--expected-digest",
-        "sha256:aaa",
+        OLD,
         "--yes",
         "--format",
         "quiet",
@@ -1016,11 +1019,62 @@ async fn expected_digest_is_refused_on_1_11() {
         "reject",
         ID,
         "--expected-digest",
-        "sha256:aaa",
+        OLD,
         "--yes",
     ]);
     assert!(failed(&output).contains("--expected-digest needs a server on 1.12"));
     assert_eq!(paths(&mocked).await, vec!["GET /health"]);
+}
+
+/// A release bound to a digest needs 1.12.4: 1.12.3 drops the body unread.
+#[tokio::test]
+async fn release_expected_digest_needs_1_12_4() {
+    let digest = format!("sha256:{}", "a".repeat(64));
+    let release = [
+        "quarantine",
+        "release",
+        ID,
+        "--expected-digest",
+        &digest,
+        "--yes",
+    ];
+
+    let old = on("1.12.3").await;
+    let output = old.ak(&release);
+    assert_eq!(output.status.code(), Some(6), "{output:?}");
+    assert!(failed(&output).contains("--expected-digest needs a server on 1.12.4 or newer"));
+    assert_eq!(paths(&old).await, vec!["GET /health"]);
+
+    let mocked = on("1.12.4").await;
+    mocked
+        .respond(
+            "POST",
+            &format!("/api/v1/quarantine/{ID}/release"),
+            200,
+            json!({
+                "artifact_id": ID, "new_status": "released",
+                "message": "The tag moved before the action landed",
+                "held_artifact_id": HELD, "held_digest": OLD,
+                "moved_to_digest": NEW
+            }),
+        )
+        .await;
+    let quiet = mocked.ak(&[&release[..], &["--format", "quiet"]].concat());
+    assert!(quiet.status.success(), "{quiet:?}");
+    assert_eq!(String::from_utf8_lossy(&quiet.stdout).trim(), HELD);
+    let (_, body) = mocked.last("POST").await;
+    assert_eq!(body, json!({ "expected_digest": OLD }));
+
+    let table = mocked.ak(&[&release[..], &["--format", "table"]].concat());
+    assert!(table.status.success(), "{table:?}");
+    let stderr = unwrapped(&table.stderr);
+    assert!(
+        stderr.contains(&format!("Released artifact {HELD} ({OLD})")),
+        "{stderr}"
+    );
+    let shown = mocked.json(&release);
+    assert_eq!(shown["held_artifact_id"], HELD);
+    assert_eq!(shown["moved_to_digest"], NEW);
 }
 
 #[tokio::test]

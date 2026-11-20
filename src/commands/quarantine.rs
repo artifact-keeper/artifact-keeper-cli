@@ -5,8 +5,9 @@ use miette::Result;
 
 use super::client::client_for;
 use super::helpers::{
-    PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, confirm_action, emit_mutation_raw,
-    is_proxy_path_not_recorded, refuse_flags_before, resolve_artifact_id, sdk_err,
+    PROXY_NOT_RECORDED_HINT, PROXY_RECORD_WAITS, bad_response, confirm_action, emit_mutation_raw,
+    is_proxy_path_not_recorded, raw_json_call, refuse_flags_before, refuse_flags_before_release,
+    resolve_artifact_id, sdk_err,
 };
 use crate::cli::GlobalArgs;
 use crate::error::AkError;
@@ -45,6 +46,12 @@ pub enum QuarantineCommand {
     Release {
         /// Artifact ID, or <repo-key>/<path>
         artifact: String,
+
+        /// OCI images: the manifest digest (sha256:<hex>) the release was decided for.
+        /// If the tag has moved to another image since, that image's hold stays: only
+        /// this digest is released, and the answer names both (needs a 1.12.4 server)
+        #[arg(long, value_name = "DIGEST")]
+        expected_digest: Option<String>,
 
         /// Skip the confirmation prompt
         #[arg(long, short = 'y')]
@@ -99,7 +106,11 @@ impl QuarantineCommand {
                 expected_digest,
                 yes,
             } => hold(&artifact, reason, expected_digest, yes, global).await,
-            Self::Release { artifact, yes } => release(&artifact, yes, global).await,
+            Self::Release {
+                artifact,
+                expected_digest,
+                yes,
+            } => release(&artifact, expected_digest, yes, global).await,
             Self::ReleaseProxy { repo, path, yes } => {
                 release_proxy(&repo, &path, yes, global).await
             }
@@ -153,6 +164,7 @@ async fn hold(
     yes: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
+    check_digest(&expected_digest)?;
     refuse_digest_before_1_12(&expected_digest, global).await?;
     let client = client_for(global)?;
     let artifact_id = resolve_artifact_id(&client, artifact).await?;
@@ -242,7 +254,18 @@ async fn check_existing_hold(
     .into())
 }
 
-async fn release(artifact: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
+async fn release(
+    artifact: &str,
+    expected_digest: Option<String>,
+    yes: bool,
+    global: &GlobalArgs,
+) -> Result<()> {
+    check_digest(&expected_digest)?;
+    // A server before 1.12.4 takes no body on this route and drops it unread, so it
+    // would release whatever image the tag names by then.
+    if expected_digest.is_some() {
+        refuse_flags_before_release(&["--expected-digest"], (1, 12, 4), global).await?;
+    }
     let client = client_for(global)?;
     let artifact_id = resolve_artifact_id(&client, artifact).await?;
 
@@ -256,20 +279,43 @@ async fn release(artifact: &str, yes: bool, global: &GlobalArgs) -> Result<()> {
 
     let spinner = output::spinner("Releasing artifact from quarantine...");
 
-    let (action, raw) = capture(client.release_artifact().artifact_id(artifact_id).send()).await;
-    let action = action
-        .map_err(|e| sdk_err("release artifact from quarantine", e))?
-        .into_inner();
+    const ACTION: &str = "release artifact from quarantine";
+    let (action, raw) = match expected_digest {
+        // The SDK, from API 1.12.3, sends this route no body.
+        Some(digest) => {
+            let id = artifact_id.to_string();
+            let bytes = raw_json_call(
+                reqwest::Method::POST,
+                &["quarantine", &id, "release"],
+                Some(&serde_json::json!({ "expected_digest": digest })),
+                ACTION,
+                global,
+            )
+            .await?;
+            let action: artifact_keeper_sdk::types::QuarantineActionResponse =
+                serde_json::from_slice(&bytes).map_err(|e| bad_response(ACTION, e))?;
+            (action, Some(bytes))
+        }
+        None => {
+            let (action, raw) =
+                capture(client.release_artifact().artifact_id(artifact_id).send()).await;
+            let action = action.map_err(|e| sdk_err(ACTION, e))?.into_inner();
+            (action, raw)
+        }
+    };
 
     spinner.finish_and_clear();
 
     emit_mutation_raw(
         raw.as_deref(),
         &action,
-        &action.artifact_id.to_string(),
+        &acted_on(&action).to_string(),
         &format!(
-            "Released artifact {} (status: {}). {}",
-            action.artifact_id, action.new_status, action.message
+            "Released artifact {}{} (status: {}). {}",
+            acted_on(&action),
+            held_digest(&action),
+            action.new_status,
+            action.message
         ),
         global,
     );
@@ -353,6 +399,7 @@ async fn reject(
     yes: bool,
     global: &GlobalArgs,
 ) -> Result<()> {
+    check_digest(&expected_digest)?;
     refuse_digest_before_1_12(&expected_digest, global).await?;
     let client = client_for(global)?;
     let artifact_id = resolve_artifact_id(&client, artifact).await?;
@@ -412,9 +459,29 @@ async fn refuse_digest_before_1_12(digest: &Option<String>, global: &GlobalArgs)
     Ok(())
 }
 
+/// `--expected-digest` must be `sha256:` and 64 hex digits, as the server checks it,
+/// so a typo fails here, before a version check or a prompt, with nothing sent.
+fn check_digest(digest: &Option<String>) -> Result<()> {
+    let Some(digest) = digest else {
+        return Ok(());
+    };
+    let valid = digest
+        .strip_prefix("sha256:")
+        .is_some_and(|hex| hex.len() == 64 && hex.bytes().all(|b| b.is_ascii_hexdigit()));
+    if valid {
+        return Ok(());
+    }
+    Err(AkError::Usage(format!(
+        "--expected-digest must be a sha256 digest, sha256:<64 hex digits>, not '{}'",
+        output::sanitize_terminal(digest)
+    ))
+    .into())
+}
+
 /// The artifact the action landed on. When an OCI tag moved before it landed, a 1.12
-/// server acts on the row of the image the tag named when read, `held_artifact_id`,
-/// not on the tag's row, so that's the ID to print and to pipe to `release`. The
+/// server acts on the row of the image the tag named when read (or, for a release
+/// with `--expected-digest`, the row of that digest), `held_artifact_id`, not on the
+/// tag's row, so that's the ID to print and to pipe to `release`. The
 /// server's message already says the tag moved.
 fn acted_on(action: &artifact_keeper_sdk::types::QuarantineActionResponse) -> uuid::Uuid {
     action.held_artifact_id.unwrap_or(action.artifact_id)
@@ -493,6 +560,57 @@ mod tests {
         match cli.command {
             QuarantineCommand::Release { artifact, .. } => assert_eq!(artifact, "some-id"),
             _ => panic!("expected Release"),
+        }
+    }
+
+    #[test]
+    fn parse_release_expected_digest() {
+        let cli = parse(&[
+            "test",
+            "release",
+            "some-id",
+            "--expected-digest",
+            DIGEST,
+            "-y",
+        ]);
+        match cli.command {
+            QuarantineCommand::Release {
+                expected_digest,
+                yes,
+                ..
+            } => {
+                assert_eq!(expected_digest.as_deref(), Some(DIGEST));
+                assert!(yes);
+            }
+            _ => panic!("expected Release"),
+        }
+        match parse(&["test", "release", "some-id"]).command {
+            QuarantineCommand::Release {
+                expected_digest, ..
+            } => assert_eq!(expected_digest, None),
+            _ => panic!("expected Release"),
+        }
+    }
+
+    #[test]
+    fn check_digest_matches_the_server() {
+        assert!(check_digest(&None).is_ok());
+        assert!(check_digest(&Some(DIGEST.to_string())).is_ok());
+        assert!(check_digest(&Some(format!("sha256:{}", "AB".repeat(32)))).is_ok());
+        for bad in [
+            "",
+            "sha256:",
+            "abab",
+            &"ab".repeat(32),
+            &format!("sha512:{}", "ab".repeat(32)),
+            &format!("sha256:{}", "ab".repeat(31)),
+            &format!("sha256:{}a", "ab".repeat(32)),
+            &format!("sha256:{}zz", "ab".repeat(31)),
+            &format!(" {DIGEST}"),
+        ] {
+            let err = check_digest(&Some(bad.to_string())).unwrap_err();
+            assert_eq!(exit_code(&err), crate::error::EXIT_USAGE, "{bad}");
+            assert!(err.to_string().contains("sha256:<64 hex digits>"), "{err}");
         }
     }
 
@@ -624,6 +742,35 @@ mod tests {
     use wiremock::{Mock, ResponseTemplate};
 
     static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
+    const DIGEST: &str = "sha256:abababababababababababababababababababababababababababababababab";
+    const MOVED_TO: &str =
+        "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd";
+
+    fn exit_code(err: &miette::Report) -> u8 {
+        err.downcast_ref::<AkError>()
+            .expect("an AkError")
+            .exit_code()
+    }
+
+    /// The instance's `/health` reports `version`.
+    async fn health(server: &wiremock::MockServer, version: &str) {
+        Mock::given(method("GET"))
+            .and(path("/health"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "version": version })))
+            .mount(server)
+            .await;
+    }
+
+    /// The requests that reached the release route.
+    async fn releases(server: &wiremock::MockServer) -> Vec<wiremock::Request> {
+        server
+            .received_requests()
+            .await
+            .expect("recording on")
+            .into_iter()
+            .filter(|r| r.method == wiremock::http::Method::POST)
+            .collect()
+    }
 
     fn status_json() -> serde_json::Value {
         json!({
@@ -678,8 +825,184 @@ mod tests {
             .await;
 
         let global = crate::test_utils::test_global(OutputFormat::Json);
-        let result = release(NIL_UUID, true, &global).await;
+        let result = release(NIL_UUID, None, true, &global).await;
         assert!(result.is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    /// Without the flag the release sends no body, as before, on any server.
+    #[tokio::test]
+    async fn handler_release_without_digest_sends_no_body() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.12.3").await;
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/quarantine/{NIL_UUID}/release")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(action_json("released")))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        release(NIL_UUID, None, true, &global).await.unwrap();
+        let sent = releases(&server).await;
+        assert_eq!(sent.len(), 1);
+        assert!(sent[0].body.is_empty(), "{:?}", sent[0].body);
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_release_sends_expected_digest() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.12.4").await;
+
+        let held = "00000000-0000-0000-0000-000000000002";
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/quarantine/{NIL_UUID}/release")))
+            .and(wiremock::matchers::body_json(
+                json!({ "expected_digest": DIGEST }),
+            ))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "artifact_id": NIL_UUID,
+                "new_status": "released",
+                "message": "The tag moved",
+                "held_artifact_id": held,
+                "held_digest": DIGEST,
+                "moved_to_digest": MOVED_TO,
+            })))
+            .expect(3)
+            .mount(&server)
+            .await;
+
+        for format in [OutputFormat::Json, OutputFormat::Quiet, OutputFormat::Table] {
+            let global = crate::test_utils::test_global(format);
+            release(NIL_UUID, Some(DIGEST.to_string()), true, &global)
+                .await
+                .unwrap();
+        }
+        let sent = releases(&server).await;
+        assert_eq!(
+            sent[0].headers.get("content-type").map(|v| v.as_bytes()),
+            Some(&b"application/json"[..])
+        );
+        assert!(sent[0].headers.contains_key("authorization"));
+        crate::test_utils::teardown_env();
+    }
+
+    /// 1.12.3 drops the body unread and would release whatever the tag names now.
+    #[tokio::test]
+    async fn handler_release_digest_refused_before_1_12_4() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+
+        for version in ["1.12.3", "1.11.14"] {
+            server.reset().await;
+            health(&server, version).await;
+            let global = crate::test_utils::test_global(OutputFormat::Json);
+            let err = release(NIL_UUID, Some(DIGEST.to_string()), true, &global)
+                .await
+                .unwrap_err();
+            assert_eq!(exit_code(&err), crate::error::EXIT_SERVER, "{version}");
+            let msg = err.to_string();
+            assert!(
+                msg.contains("--expected-digest needs a server on 1.12.4 or newer"),
+                "{msg}"
+            );
+            assert!(msg.contains(&format!("This one is {version}")), "{msg}");
+            assert!(msg.contains("Nothing was changed"), "{msg}");
+            assert!(
+                releases(&server).await.is_empty(),
+                "{version}: sent a request"
+            );
+        }
+        crate::test_utils::teardown_env();
+    }
+
+    /// A malformed digest fails before the version check, with nothing sent.
+    #[tokio::test]
+    async fn handler_release_malformed_digest_is_a_usage_error() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.12.4").await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let err = release(NIL_UUID, Some("sha256:abc".to_string()), true, &global)
+            .await
+            .unwrap_err();
+        assert_eq!(exit_code(&err), crate::error::EXIT_USAGE);
+        assert!(err.to_string().contains("--expected-digest"), "{err}");
+        let sent = server.received_requests().await.expect("recording on");
+        assert!(sent.is_empty(), "nothing should be sent");
+        crate::test_utils::teardown_env();
+    }
+
+    /// The server's refusal of a digest that no longer has a held row, word for word.
+    #[tokio::test]
+    async fn handler_release_digest_mismatch_shows_server_detail() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.12.4").await;
+
+        let detail = format!(
+            "The tag moved to {MOVED_TO} before the hold was applied, and {DIGEST} has no row \
+             left to hold; nothing was changed"
+        );
+        Mock::given(method("POST"))
+            .and(path(format!("/api/v1/quarantine/{NIL_UUID}/release")))
+            .respond_with(
+                ResponseTemplate::new(409)
+                    .set_body_json(json!({ "code": "CONFLICT", "message": detail })),
+            )
+            .mount(&server)
+            .await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let err = release(NIL_UUID, Some(DIGEST.to_string()), true, &global)
+            .await
+            .unwrap_err();
+        assert_eq!(exit_code(&err), crate::error::EXIT_SERVER);
+        let msg = err.to_string();
+        assert!(msg.contains("409"), "{msg}");
+        assert!(msg.contains(&detail), "{msg}");
+        assert!(msg.contains("release artifact from quarantine"), "{msg}");
+        crate::test_utils::teardown_env();
+    }
+
+    /// `--no-input` without `--yes` still refuses, with nothing sent.
+    #[tokio::test]
+    async fn handler_release_digest_needs_yes_without_input() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        health(&server, "1.12.4").await;
+
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        assert!(global.no_input);
+        let err = release(NIL_UUID, Some(DIGEST.to_string()), false, &global)
+            .await
+            .unwrap_err();
+        assert_eq!(exit_code(&err), crate::error::EXIT_USAGE);
+        assert!(releases(&server).await.is_empty());
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn handler_hold_and_reject_check_the_digest() {
+        let (server, tmp) = crate::test_utils::mock_setup().await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        let global = crate::test_utils::test_global(OutputFormat::Json);
+        let bad = || Some("sha256:nothex".to_string());
+        let err = hold(NIL_UUID, None, bad(), true, &global)
+            .await
+            .unwrap_err();
+        assert_eq!(exit_code(&err), crate::error::EXIT_USAGE);
+        let err = reject(NIL_UUID, None, bad(), true, &global)
+            .await
+            .unwrap_err();
+        assert_eq!(exit_code(&err), crate::error::EXIT_USAGE);
+        let sent = server.received_requests().await.expect("recording on");
+        assert!(sent.is_empty(), "nothing should be sent");
         crate::test_utils::teardown_env();
     }
 
