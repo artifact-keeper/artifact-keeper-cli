@@ -139,7 +139,8 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --workspace -- -D warnings
+      # --all-targets, so the tests and tests/*.rs are linted too, not just `ak`.
+      - run: cargo clippy --workspace --all-targets -- -D warnings
 
   # Fails on any RUSTSEC advisory affecting Cargo.lock (vulnerabilities only;
   # informational warnings such as unmaintained/unsound do not fail the job).
