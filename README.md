@@ -368,6 +368,14 @@ export AK_NO_INPUT=1
 ak artifact push my-repo ./build/output.tar.gz
 ```
 
+To swap a CI provider's OIDC token for an Artifact Keeper token, capture it
+with `-q`, which prints only the token: `AK_TOKEN=$(ak auth ci-exchange
+--provider-id <id> --jwt-stdin -q < jwt)`. The table output shows only the start
+of the token, so it's safe in a job log. JSON, which `ak` prints on a pipe
+without `--format`, holds the whole token. On GitHub Actions `ak` also tells the
+runner to mask the token, with an `::add-mask::` line on stderr, whenever it
+prints the token.
+
 `AK_NO_INPUT` and `--no-input` mean never prompt. They don't answer a prompt: `--yes` (`-y`) is the only consent. A destructive or security-decision command, such as `ak repo delete` or `ak quarantine release`, fails without it, with exit code 2, and sends nothing. Everything else runs without asking.
 
 See the [CI/CD Integration Guide](https://artifactkeeper.com/docs/guides/ci-cd/) for GitHub Actions, GitLab CI, and Jenkins examples.

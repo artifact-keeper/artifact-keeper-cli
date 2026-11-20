@@ -803,3 +803,81 @@ async fn an_empty_token_is_never_stored() {
         );
     }
 }
+
+const MINTED: &str = "eyJhbGciOiJIUzI1NiJ9.the-minted-ci-access-token";
+
+async fn ci_exchange(format: &[&str], github_actions: &str) -> std::process::Output {
+    let m = Mocked::start().await;
+    m.respond(
+        "POST",
+        "/api/v1/auth/ci/token",
+        200,
+        json!({
+            "access_token": MINTED, "token_type": "Bearer",
+            "expires_in": 900, "username": "ci-runner"
+        }),
+    )
+    .await;
+    let mut args = vec!["auth", "ci-exchange", "--provider-id", ID, "--jwt-stdin"];
+    args.extend(format);
+    m.ak_anon(&args, "ey.ci.jwt", &[("GITHUB_ACTIONS", github_actions)])
+}
+
+#[tokio::test]
+async fn ci_exchange_table_output_hides_the_token() {
+    let output = ci_exchange(&["--format", "table"], "false").await;
+    assert!(output.status.success(), "{}", printed(&output));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(!printed(&output).contains(MINTED), "{stdout}");
+    assert!(
+        stdout.contains("Access token: eyJh… (hidden: -q prints only the token, --format json the whole response)"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("user: ci-runner"), "{stdout}");
+    assert!(!printed(&output).contains("::add-mask::"));
+}
+
+#[tokio::test]
+async fn ci_exchange_quiet_and_json_print_the_whole_token() {
+    let output = ci_exchange(&["-q"], "false").await;
+    assert!(output.status.success(), "{}", printed(&output));
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        format!("{MINTED}\n")
+    );
+
+    let output = ci_exchange(&["--format", "json"], "false").await;
+    assert!(output.status.success(), "{}", printed(&output));
+    let body: Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(body["access_token"], MINTED);
+}
+
+/// On GitHub Actions the runner is told to mask the token, on stderr, before it's
+/// printed, so stdout stays exactly what a script captures. Table output doesn't
+/// print it, so it isn't written out there at all.
+#[tokio::test]
+async fn ci_exchange_masks_the_token_on_github_actions() {
+    let output = ci_exchange(&["--format", "table"], "true").await;
+    assert!(output.status.success(), "{}", printed(&output));
+    assert!(!printed(&output).contains(MINTED), "{}", printed(&output));
+    for format in [&["-q"][..], &["--format", "json"], &["--format", "yaml"]] {
+        let output = ci_exchange(format, "true").await;
+        assert!(output.status.success(), "{}", printed(&output));
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr
+                .lines()
+                .any(|line| line == format!("::add-mask::{MINTED}")),
+            "{format:?}: {stderr}"
+        );
+        assert!(
+            !String::from_utf8_lossy(&output.stdout).contains("::add-mask::"),
+            "{format:?}"
+        );
+    }
+    let output = ci_exchange(&["-q"], "true").await;
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout),
+        format!("{MINTED}\n")
+    );
+}

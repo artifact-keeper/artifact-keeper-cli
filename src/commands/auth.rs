@@ -1323,6 +1323,18 @@ async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) 
         crate::commands::helpers::classified(format!("CI token exchange failed: {e}"), &e)
     })?;
 
+    // On GitHub Actions, have the runner mask the token in everything the job prints
+    // from here on, in any format. A pipe with no --format gets JSON, which holds it.
+    // Table output doesn't print it, so it isn't written out there at all.
+    if !matches!(global.format, OutputFormat::Table)
+        && let Some(command) = github_mask_command(&resp.access_token)
+    {
+        use std::io::Write;
+        let mut stderr = std::io::stderr().lock();
+        let _ = writeln!(stderr, "{command}");
+        let _ = stderr.flush();
+    }
+
     if matches!(global.format, OutputFormat::Quiet) {
         println!("{}", resp.access_token);
         return Ok(());
@@ -1335,12 +1347,11 @@ async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) 
         "username": resp.username,
     });
 
-    let table_str = format!(
-        "Exchanged CI OIDC token for an access token (user: {}).\n\
-         Token type:   {}\n\
-         Expires in:   {} seconds\n\
-         Access token: {}",
-        resp.username, resp.token_type, resp.expires_in, resp.access_token,
+    let table_str = ci_exchange_table(
+        &resp.username,
+        &resp.token_type,
+        resp.expires_in,
+        &resp.access_token,
     );
 
     println!(
@@ -1348,6 +1359,50 @@ async fn ci_exchange(provider_id: &str, jwt: Option<&str>, global: &GlobalArgs) 
         output::render_raw(raw.as_deref(), &info, &global.format, Some(table_str))
     );
     Ok(())
+}
+
+/// The table `ak auth ci-exchange` prints. It shows only the start of the token: a
+/// CI step that runs the exchange without `-q` or `--format json` is showing it to the
+/// job log, not capturing it.
+fn ci_exchange_table(username: &str, token_type: &str, expires_in: i64, token: &str) -> String {
+    format!(
+        "Exchanged CI OIDC token for an access token (user: {username}).\n\
+         Token type:   {token_type}\n\
+         Expires in:   {expires_in} seconds\n\
+         Access token: {} (hidden: -q prints only the token, --format json the whole response)",
+        masked_token(token),
+    )
+}
+
+/// The first four characters of a token and an ellipsis, or only the ellipsis for a
+/// token too short to show any of.
+fn masked_token(token: &str) -> String {
+    const SHOWN: usize = 4;
+    if token.chars().count() <= SHOWN * 3 {
+        return "…".to_string();
+    }
+    let start: String = token.chars().take(SHOWN).collect();
+    format!("{start}…")
+}
+
+/// The `::add-mask::` workflow command for a token, when running on GitHub Actions.
+/// It goes to stderr, which the runner reads commands from too, so `-q` and JSON
+/// output on stdout stay as they were.
+fn github_mask_command(token: &str) -> Option<String> {
+    let on_github = std::env::var("GITHUB_ACTIONS").is_ok_and(|v| v == "true");
+    github_mask_command_for(token, on_github)
+}
+
+fn github_mask_command_for(token: &str, on_github: bool) -> Option<String> {
+    if !on_github || token.is_empty() {
+        return None;
+    }
+    // The runner unescapes these in a command's value.
+    let escaped = token
+        .replace('%', "%25")
+        .replace('\r', "%0D")
+        .replace('\n', "%0A");
+    Some(format!("::add-mask::{escaped}"))
 }
 
 async fn setup_status(global: &GlobalArgs) -> Result<()> {
@@ -2451,6 +2506,8 @@ mod tests {
     async fn handler_ci_exchange() {
         let (server, tmp) = crate::test_utils::mock_setup().await;
         let _guard = crate::test_utils::setup_env(&tmp);
+        // Not an ::add-mask:: line in this repo's own CI log.
+        unsafe { std::env::remove_var("GITHUB_ACTIONS") };
 
         Mock::given(method("POST"))
             .and(path("/api/v1/auth/ci/token"))
@@ -2467,6 +2524,46 @@ mod tests {
         let result = ci_exchange(NIL_UUID, Some("ey.jwt.here"), &global).await;
         assert!(result.is_ok());
         crate::test_utils::teardown_env();
+    }
+
+    #[test]
+    fn ci_exchange_table_shows_only_the_start_of_the_token() {
+        let table = ci_exchange_table(
+            "ci-runner",
+            "Bearer",
+            900,
+            "eyJhbGciOiJIUzI1NiJ9.payload.sig",
+        );
+        assert!(!table.contains("eyJhbGciOiJIUzI1NiJ9"), "{table}");
+        assert!(
+            table.contains("Access token: eyJh… (hidden: -q prints"),
+            "{table}"
+        );
+        assert!(table.contains("--format json"), "{table}");
+    }
+
+    #[test]
+    fn masked_token_shows_four_characters_of_a_long_token_and_none_of_a_short_one() {
+        assert_eq!(masked_token("abcdefghijklmnop"), "abcd…");
+        assert_eq!(masked_token("abcdefghijkl"), "…");
+        assert_eq!(masked_token(""), "…");
+        // Characters, not bytes.
+        assert_eq!(masked_token("ééééééééééééé"), "éééé…");
+    }
+
+    #[test]
+    fn github_mask_command_only_on_github_actions() {
+        assert_eq!(github_mask_command_for("tok", false), None);
+        assert_eq!(github_mask_command_for("", true), None);
+        assert_eq!(
+            github_mask_command_for("tok", true).as_deref(),
+            Some("::add-mask::tok")
+        );
+        // The runner unescapes these, so the mask matches the token as printed.
+        assert_eq!(
+            github_mask_command_for("a%b\r\nc", true).as_deref(),
+            Some("::add-mask::a%25b%0D%0Ac")
+        );
     }
 
     #[tokio::test]
