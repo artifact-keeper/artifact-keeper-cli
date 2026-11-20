@@ -22,10 +22,29 @@ pub enum InstanceCommand {
         #[arg(long, default_value = "v1")]
         api_version: String,
 
-        /// Acknowledge that this instance uses unencrypted HTTP to a
-        /// non-loopback host (credentials will be sent in cleartext)
-        #[arg(long)]
+        /// Allow sending credentials to this instance over unencrypted HTTP to a
+        /// host that isn't this machine. Without it, ak refuses to. Recorded in the
+        /// config as allow_insecure_http
+        #[arg(long, alias = "allow-insecure-http")]
         insecure_http: bool,
+    },
+
+    /// Change a configured instance's settings
+    Update {
+        /// Instance name
+        name: String,
+
+        /// Allow sending credentials to this instance over unencrypted HTTP to a
+        /// host that isn't this machine. `--insecure-http=false` takes it back
+        #[arg(
+            long,
+            alias = "allow-insecure-http",
+            num_args = 0..=1,
+            require_equals = true,
+            default_missing_value = "true",
+            value_name = "BOOL"
+        )]
+        insecure_http: Option<bool>,
     },
 
     /// Remove a configured instance
@@ -63,6 +82,10 @@ impl InstanceCommand {
                 api_version,
                 insecure_http,
             } => add_instance(&name, &url, &api_version, insecure_http),
+            Self::Update {
+                name,
+                insecure_http,
+            } => update_instance(&name, insecure_http),
             Self::Remove { name, yes } => remove_instance(&name, yes, global.no_input),
             Self::List => list_instances(&global.format),
             Self::Use { name } => use_instance(&name),
@@ -101,6 +124,49 @@ fn add_instance(name: &str, url: &str, api_version: &str, insecure_http: bool) -
     }
 
     config.save()?;
+    Ok(())
+}
+
+fn update_instance(name: &str, insecure_http: Option<bool>) -> Result<()> {
+    let Some(allow) = insecure_http else {
+        return Err(AkError::Usage(
+            "Nothing to change. Pass --insecure-http or --insecure-http=false.".into(),
+        )
+        .into());
+    };
+    let mut config = AppConfig::load()?;
+    let instance = config
+        .instances
+        .get_mut(name)
+        .ok_or_else(|| AkError::InstanceNotFound(name.to_string()))?;
+    instance.allow_insecure_http = allow;
+    let instance = instance.clone();
+    config.save()?;
+
+    let plain_remote =
+        transport::classify_url(&instance.url) == transport::TransportSecurity::HttpRemote;
+    match (allow, plain_remote) {
+        (true, true) => eprintln!(
+            "Instance '{name}' ({}) may now be sent credentials over unencrypted HTTP.",
+            instance.url
+        ),
+        (true, false) => eprintln!(
+            "Instance '{name}' ({}) isn't plain HTTP to another host, so this changes \
+             nothing until its URL does.",
+            instance.url
+        ),
+        (false, _) => {
+            if !transport::warn_if_insecure(name, &instance) {
+                eprintln!("Instance '{name}' won't be sent credentials over unencrypted HTTP.");
+                if plain_remote && transport::insecure_http_allowed_by_env() {
+                    eprintln!(
+                        "AK_ALLOW_INSECURE_HTTP is set in this shell, which still allows it \
+                         for commands run with it."
+                    );
+                }
+            }
+        }
+    }
     Ok(())
 }
 
@@ -157,6 +223,7 @@ fn list_instances(format: &OutputFormat) -> Result<()> {
                 "url": inst.url,
                 "api_version": inst.api_version,
                 "default": is_default(name),
+                "allow_insecure_http": inst.allow_insecure_http,
             })
         })
         .collect();
@@ -206,15 +273,26 @@ fn info_instance(name: Option<&str>, global: &GlobalArgs) -> Result<()> {
         "url": instance.url,
         "api_version": instance.api_version,
         "default": is_default,
+        "allow_insecure_http": instance.allow_insecure_http,
     });
 
-    let table_str = format!(
+    let mut table_str = format!(
         "Name:        {}\nURL:         {}\nAPI Version: {}\nDefault:     {}",
         resolved_name,
         instance.url,
         instance.api_version,
         if is_default { "yes" } else { "no" },
     );
+    if transport::classify_url(&instance.url) == transport::TransportSecurity::HttpRemote {
+        if transport::insecure_http_allowed(instance) {
+            table_str.push_str("\nPlain HTTP:  credentials are sent unencrypted (allowed)");
+        } else {
+            table_str.push_str(&format!(
+                "\nPlain HTTP:  credentials aren't sent ({} allows it)",
+                transport::record_opt_in_command(resolved_name, &instance.url)
+            ));
+        }
+    }
 
     println!("{}", output::render(&info, &global.format, Some(table_str)));
 

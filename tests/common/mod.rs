@@ -153,9 +153,11 @@ impl TestEnv {
         let token = get_auth_token().to_string();
         let config_dir = tempfile::TempDir::new().expect("Failed to create temp config dir");
 
-        // Write config pointing at the test backend
+        // Write config pointing at the test backend. E2E_BACKEND_URL can be plain
+        // HTTP on another host, so the token is allowed to go there.
         let config = format!(
-            "default_instance = \"e2e\"\n\n[instances.e2e]\nurl = \"{url}\"\napi_version = \"v1\"\n"
+            "default_instance = \"e2e\"\n\n[instances.e2e]\nurl = \"{url}\"\napi_version = \"v1\"\n\
+             allow_insecure_http = true\n"
         );
         std::fs::write(config_dir.path().join("config.toml"), config)
             .expect("Failed to write test config");

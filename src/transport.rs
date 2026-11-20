@@ -1,11 +1,12 @@
 //! Transport-security classification for instance URLs.
 //!
-//! The CLI sends bearer tokens (and, on interactive login, passwords) to the
-//! configured instance URL. Over plain `http://` those credentials travel in
-//! cleartext, so non-loopback HTTP instances get a loud warning — and
-//! interactive password login refuses outright — unless the user explicitly
-//! opts in. Loopback hosts (localhost / 127.0.0.0/8 / ::1) are exempt because
-//! plain HTTP is the normal local development setup.
+//! The CLI sends bearer tokens (and, on login, passwords and one-time codes) to
+//! the configured instance URL. Over plain `http://` those credentials travel in
+//! cleartext, so `ak` refuses to send any of them to a non-loopback HTTP URL
+//! unless the user opted in: for good with the instance's `allow_insecure_http`
+//! setting (`ak instance add|update --insecure-http`), or for one command with
+//! `AK_ALLOW_INSECURE_HTTP=1`. Loopback hosts (localhost / 127.0.0.0/8 / ::1)
+//! are exempt because plain HTTP is the normal local development setup.
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -176,32 +177,81 @@ pub fn insecure_http_allowed_by_env() -> bool {
 }
 
 /// Whether the user has opted in to plaintext HTTP for this instance, either
-/// persistently (`ak instance add --insecure-http`) or for this invocation
-/// (`AK_ALLOW_INSECURE_HTTP=1`).
+/// persistently (`ak instance add|update --insecure-http`) or for this
+/// invocation (`AK_ALLOW_INSECURE_HTTP=1`).
 pub fn insecure_http_allowed(instance: &InstanceConfig) -> bool {
     instance.allow_insecure_http || insecure_http_allowed_by_env()
 }
 
-/// Emit the standard cleartext-credential warning to stderr if (and only if)
-/// the instance uses plaintext HTTP to a non-loopback host without an opt-in.
+/// Whether credentials may go to this instance: anything but plain HTTP to a
+/// non-loopback host without an opt-in.
+pub fn credentials_allowed(instance: &InstanceConfig) -> bool {
+    classify_url(&instance.url) != TransportSecurity::HttpRemote || insecure_http_allowed(instance)
+}
+
+/// Refuse, before anything is sent, to attach credentials (a bearer token, a
+/// password, a one-time code) to a request for an instance on plain HTTP to a
+/// non-loopback host, unless the user opted in. Every path that sends the
+/// instance's credentials calls this first.
+pub fn require_secure_transport(
+    instance_name: &str,
+    instance: &InstanceConfig,
+) -> Result<(), AkError> {
+    if credentials_allowed(instance) {
+        Ok(())
+    } else {
+        Err(AkError::InsecureTransport {
+            url: instance.url.clone(),
+            help: opt_in_help(instance_name, &instance.url),
+        })
+    }
+}
+
+/// The command that records the opt-in for good: `ak instance update` for a
+/// configured instance, `ak instance add` for a URL that isn't one yet.
+pub fn record_opt_in_command(instance_name: &str, url: &str) -> String {
+    let is_url = crate::config::is_instance_url(instance_name);
+    let configured = !is_url
+        && crate::config::AppConfig::load()
+            .is_ok_and(|config| config.instances.contains_key(instance_name));
+    if configured {
+        format!("`ak instance update {instance_name} --insecure-http`")
+    } else if is_url {
+        format!("`ak instance add <name> {url} --insecure-http`")
+    } else {
+        format!("`ak instance add {instance_name} {url} --insecure-http`")
+    }
+}
+
+/// How to opt in to plain HTTP for this instance: a command that records it in
+/// the config, and the variable for one command.
+fn opt_in_help(instance_name: &str, url: &str) -> String {
+    let record = record_opt_in_command(instance_name, url);
+    format!(
+        "Anyone on the network path can read what is sent over plain http://. Use an \
+         https:// URL if the server has one. To send credentials to this server anyway, \
+         allow it for good with {record}, or for one command with \
+         {ALLOW_INSECURE_HTTP_ENV}=1."
+    )
+}
+
+/// Say on stderr that `ak` won't send credentials to this instance, if it's on
+/// plain HTTP to a non-loopback host without an opt-in, as when it's added.
 ///
 /// Returns `true` if the warning was emitted.
 pub fn warn_if_insecure(instance_name: &str, instance: &InstanceConfig) -> bool {
-    if classify_url(&instance.url) == TransportSecurity::HttpRemote
-        && !insecure_http_allowed(instance)
-    {
-        eprintln!(
-            "Warning: instance '{instance_name}' uses unencrypted HTTP ({}).\n\
-             Credentials (bearer tokens) are sent in cleartext and can be read by anyone \
-             on the network path.\n\
-             Use an https:// URL, or acknowledge the risk with \
-             `ak instance add --insecure-http` or {ALLOW_INSECURE_HTTP_ENV}=1.",
-            instance.url
-        );
-        true
-    } else {
-        false
+    if credentials_allowed(instance) {
+        return false;
     }
+    eprintln!(
+        "Warning: instance '{instance_name}' uses unencrypted HTTP ({}), so ak won't send \
+         it your credentials, which anyone on the network path could read.\n\
+         Use an https:// URL, or allow it with {} (or {ALLOW_INSECURE_HTTP_ENV}=1 for \
+         one command).",
+        instance.url,
+        record_opt_in_command(instance_name, &instance.url),
+    );
+    true
 }
 
 /// Self-signed throwaway CA certificates shared by transport and client tests.
@@ -360,6 +410,113 @@ mod tests {
             "http://example.com",
             false
         )));
+    }
+
+    // ---- require_secure_transport ----
+
+    fn refused(name: &str, url: &str, allow: bool) -> Option<String> {
+        match require_secure_transport(name, &instance(url, allow)) {
+            Ok(()) => None,
+            Err(AkError::InsecureTransport { url: shown, help }) => {
+                assert_eq!(shown, url);
+                Some(help)
+            }
+            Err(other) => panic!("unexpected error: {other}"),
+        }
+    }
+
+    #[test]
+    fn remote_http_is_refused_without_an_opt_in() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var(ALLOW_INSECURE_HTTP_ENV) };
+        for url in [
+            "http://registry.example.com",
+            "http://192.168.1.10:8080",
+            "http://[2001:db8::1]:8080",
+            "http://0.0.0.0:8080",
+        ] {
+            assert!(refused("t", url, false).is_some(), "{url}");
+        }
+    }
+
+    #[test]
+    fn the_config_setting_allows_remote_http() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var(ALLOW_INSECURE_HTTP_ENV) };
+        assert!(refused("t", "http://registry.example.com", true).is_none());
+    }
+
+    #[test]
+    fn the_env_var_allows_remote_http_for_one_command() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::set_var(ALLOW_INSECURE_HTTP_ENV, "1") };
+        let allowed = refused("t", "http://registry.example.com", false).is_none();
+        unsafe { std::env::remove_var(ALLOW_INSECURE_HTTP_ENV) };
+        assert!(allowed);
+    }
+
+    #[test]
+    fn loopback_and_https_are_never_refused() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var(ALLOW_INSECURE_HTTP_ENV) };
+        for url in [
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
+            "http://127.4.5.6",
+            "http://[::1]:8080",
+            "https://registry.example.com",
+            "https://192.168.1.10:8443",
+        ] {
+            assert!(refused("t", url, false).is_none(), "{url}");
+        }
+    }
+
+    #[test]
+    fn the_refusal_says_how_to_opt_in() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        unsafe { std::env::remove_var(ALLOW_INSECURE_HTTP_ENV) };
+        let dir = tempfile::TempDir::new().unwrap();
+        std::fs::write(
+            dir.path().join("config.toml"),
+            "[instances.nas]\nurl = \"http://192.168.1.20:8080\"\n",
+        )
+        .unwrap();
+        unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
+
+        let url = "http://192.168.1.20:8080";
+        let configured = refused("nas", url, false).unwrap();
+        let new = refused("other", url, false).unwrap();
+        let by_url = refused(url, url, false).unwrap();
+        unsafe { std::env::remove_var("AK_CONFIG_DIR") };
+
+        assert!(
+            configured.contains("`ak instance update nas --insecure-http`"),
+            "{configured}"
+        );
+        assert!(
+            new.contains(&format!("`ak instance add other {url} --insecure-http`")),
+            "{new}"
+        );
+        assert!(
+            by_url.contains(&format!("`ak instance add <name> {url} --insecure-http`")),
+            "{by_url}"
+        );
+        for help in [&configured, &new, &by_url] {
+            assert!(help.contains("AK_ALLOW_INSECURE_HTTP=1"), "{help}");
+        }
+    }
+
+    #[test]
+    fn the_refusal_is_a_usage_error() {
+        let err = AkError::InsecureTransport {
+            url: "http://x".into(),
+            help: String::new(),
+        };
+        assert_eq!(err.exit_code(), crate::error::EXIT_USAGE);
+        assert_eq!(
+            err.to_string(),
+            "Refusing to send credentials over unencrypted HTTP to http://x"
+        );
     }
 
     // ---- warn_if_insecure ----

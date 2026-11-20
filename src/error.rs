@@ -103,16 +103,11 @@ pub enum AkError {
     )]
     CaCert(String),
 
-    #[error("Refusing to send a password over unencrypted HTTP to '{0}'")]
-    #[diagnostic(
-        code(ak::insecure_transport),
-        help(
-            "Anyone on the network path can read credentials sent over plain http://. \
-             Use an https:// URL, or explicitly accept the risk by re-adding the instance \
-             with `ak instance add --insecure-http` or setting AK_ALLOW_INSECURE_HTTP=1."
-        )
-    )]
-    InsecureTransport(String),
+    /// Credentials, about to go to a non-loopback plain-http URL without an opt-in.
+    /// Nothing has been sent. `help` names the opt-ins for this instance.
+    #[error("Refusing to send credentials over unencrypted HTTP to {url}")]
+    #[diagnostic(code(ak::insecure_transport), help("{help}"))]
+    InsecureTransport { url: String, help: String },
 
     #[error("This needs an answer at a prompt, and there's no terminal to ask on")]
     #[diagnostic(
@@ -201,7 +196,7 @@ impl AkError {
             | Self::InstanceNotFound(_)
             | Self::Usage(_)
             | Self::CaCert(_)
-            | Self::InsecureTransport(_)
+            | Self::InsecureTransport { .. }
             | Self::NoTerminal
             | Self::ConfirmationRefused(_) => EXIT_USAGE,
             Self::NetworkError(_) => EXIT_NETWORK,

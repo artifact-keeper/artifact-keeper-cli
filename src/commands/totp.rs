@@ -335,7 +335,9 @@ pub(crate) async fn enroll_complete_request(
 
 async fn enroll_setup(ticket: &str, global: &GlobalArgs) -> Result<()> {
     let config = AppConfig::load()?;
-    let (_, instance) = config.resolve_instance(global.instance.as_deref())?;
+    let (instance_name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    // The ticket stands in for the password that got it.
+    crate::transport::require_secure_transport(instance_name, instance)?;
     let client = anon_client(&instance.url)?;
     let (result, raw) =
         artifact_keeper_sdk::raw::capture(enroll_setup_request(&client, ticket)).await;
@@ -364,6 +366,7 @@ async fn enroll_setup(ticket: &str, global: &GlobalArgs) -> Result<()> {
 async fn enroll_complete(ticket: &str, code: &str, global: &GlobalArgs) -> Result<()> {
     let config = AppConfig::load()?;
     let (instance_name, instance) = config.resolve_instance(global.instance.as_deref())?;
+    crate::transport::require_secure_transport(instance_name, instance)?;
     let done = enroll_complete_request(&anon_client(&instance.url)?, ticket, code).await?;
 
     store_credential(

@@ -190,7 +190,7 @@ fn a_password_over_plain_http_is_still_refused_for_a_new_url() {
     );
     assert_eq!(output.status.code(), Some(2), "{output:?}");
     let text = stderr(&output);
-    assert!(text.contains("Refusing to send a password"), "{text}");
+    assert!(text.contains("Refusing to send credentials"), "{text}");
     assert!(!text.contains("sentinel-password"), "{text}");
     assert!(config_text(&dir).is_empty());
 }

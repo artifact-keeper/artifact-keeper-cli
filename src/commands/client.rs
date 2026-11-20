@@ -147,9 +147,9 @@ fn build_client_with_timeout(
         }
     };
 
-    // Sending a bearer token over plaintext HTTP to a non-loopback host
-    // exposes it to on-path observers; warn unless the user opted in.
-    transport::warn_if_insecure(instance_name, instance);
+    // A bearer token sent over plaintext HTTP to a non-loopback host can be read
+    // by anyone on the path: refuse unless the user opted in.
+    transport::require_secure_transport(instance_name, instance)?;
 
     let auth_value = format!("Bearer {}", cred.access_token);
     let mut headers = HeaderMap::new();
@@ -289,8 +289,8 @@ pub fn client_for_timeout(
 pub fn resolve_base_url_and_auth(global: &GlobalArgs) -> Result<(String, String)> {
     let config = AppConfig::load()?;
     let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
-    transport::warn_if_insecure(name, instance);
     let cred = get_credential(name)?;
+    transport::require_secure_transport(name, instance)?;
     let auth_header = format!("Bearer {}", cred.access_token);
     Ok((instance.url.clone(), auth_header))
 }
@@ -303,9 +303,12 @@ pub fn client_for_optional_auth(global: &GlobalArgs) -> Result<artifact_keeper_s
     let config = AppConfig::load()?;
     let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
 
-    // Try authenticated first, fall back to unauthenticated
-    if let Ok(client) = build_client(name, instance, None) {
-        return Ok(client);
+    // Try authenticated first, fall back to unauthenticated. A login that can't be
+    // sent over plain HTTP is an error, not a reason to show the public view.
+    match build_client(name, instance, None) {
+        Ok(client) => return Ok(client),
+        Err(e) if is_insecure_transport(&e) => return Err(e),
+        Err(_) => {}
     }
 
     // An empty list reads as "there's nothing", when it can mean "nothing you can see".
@@ -313,8 +316,17 @@ pub fn client_for_optional_auth(global: &GlobalArgs) -> Result<artifact_keeper_s
     anon_client(&instance.url)
 }
 
+/// Whether an error is the refusal to send credentials over plain HTTP.
+fn is_insecure_transport(error: &miette::Report) -> bool {
+    matches!(
+        error.downcast_ref::<AkError>(),
+        Some(AkError::InsecureTransport { .. })
+    )
+}
+
 /// [`client_for_optional_auth`] for what's the same whoever asks, such as a server's
-/// health, so not being logged in isn't worth mentioning.
+/// health, so not being logged in isn't worth mentioning. Nor is a login held back
+/// from a plain-HTTP instance: the request goes without it.
 pub fn client_for_public(global: &GlobalArgs) -> Result<artifact_keeper_sdk::Client> {
     let config = AppConfig::load()?;
     let (name, instance) = config.resolve_instance(global.instance.as_deref())?;
@@ -395,6 +407,75 @@ mod tests {
 
         crate::test_utils::teardown_env();
         server.verify().await;
+    }
+
+    /// A config whose default instance is plain HTTP on a remote host, with a token
+    /// in AK_TOKEN. Nothing listens there: a refused request is never sent.
+    fn remote_http_env(allow: bool) -> (tempfile::TempDir, std::sync::MutexGuard<'static, ()>) {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let mut config = "default_instance = \"test\"\n[instances.test]\n\
+                          url = \"http://192.0.2.1:9\"\n"
+            .to_string();
+        if allow {
+            config.push_str("allow_insecure_http = true\n");
+        }
+        std::fs::write(tmp.path().join("config.toml"), config).unwrap();
+        let guard = crate::test_utils::setup_env(&tmp);
+        unsafe { std::env::remove_var(transport::ALLOW_INSECURE_HTTP_ENV) };
+        (tmp, guard)
+    }
+
+    fn is_refusal<T>(result: Result<T>) -> bool {
+        matches!(
+            result
+                .err()
+                .as_ref()
+                .and_then(|e| e.downcast_ref::<AkError>()),
+            Some(AkError::InsecureTransport { .. })
+        )
+    }
+
+    /// The SDK clients and the raw paths (`Wire`, chunked uploads, events, imports)
+    /// all get the token through these, and none hands it out for plain HTTP.
+    #[test]
+    fn no_client_gets_the_token_for_remote_plain_http() {
+        let (_tmp, _guard) = remote_http_env(false);
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        assert!(is_refusal(client_for(&global)));
+        assert!(is_refusal(authenticated_client(&global)));
+        assert!(is_refusal(client_for_slow(&global)));
+        assert!(is_refusal(client_for_timeout(
+            &global,
+            Duration::from_secs(1)
+        )));
+        assert!(is_refusal(resolve_base_url_and_auth(&global)));
+        // Logged in, the public view would be wrong: say why instead.
+        assert!(is_refusal(client_for_optional_auth(&global)));
+        // The same answer whoever asks: it goes without the token.
+        assert!(client_for_public(&global).is_ok());
+        crate::test_utils::teardown_env();
+    }
+
+    #[test]
+    fn the_instance_setting_lets_the_token_go_to_remote_plain_http() {
+        let (_tmp, _guard) = remote_http_env(true);
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        assert!(client_for(&global).is_ok());
+        let (url, auth) = resolve_base_url_and_auth(&global).unwrap();
+        assert_eq!(url, "http://192.0.2.1:9");
+        assert_eq!(auth, "Bearer test-token");
+        crate::test_utils::teardown_env();
+    }
+
+    #[test]
+    fn the_env_var_lets_the_token_go_to_remote_plain_http() {
+        let (_tmp, _guard) = remote_http_env(false);
+        unsafe { std::env::set_var(transport::ALLOW_INSECURE_HTTP_ENV, "1") };
+        let global = crate::test_utils::test_global(crate::output::OutputFormat::Json);
+        let built = client_for(&global).is_ok() && resolve_base_url_and_auth(&global).is_ok();
+        unsafe { std::env::remove_var(transport::ALLOW_INSECURE_HTTP_ENV) };
+        crate::test_utils::teardown_env();
+        assert!(built);
     }
 
     fn urls(chain: &[&str]) -> Vec<Url> {
