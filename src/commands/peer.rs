@@ -3510,7 +3510,7 @@ mod tests {
             assert_eq!(id, "peer-id");
             assert_eq!(repo_id, "repo-id");
             assert_eq!(mode.unwrap(), "pull");
-            assert_eq!(sync_enabled.unwrap(), true);
+            assert!(sync_enabled.unwrap());
         } else {
             panic!("Expected Subscription::Assign");
         }

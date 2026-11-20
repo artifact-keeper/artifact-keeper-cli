@@ -14,7 +14,8 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 const BODY: &str = r#"{"version":"1.11.11","status":"healthy","demo_mode":false,"checks":{"storage":{"status":"healthy"},"database":{"status":"healthy"}}}"#;
 
 struct Rig {
-    server: MockServer,
+    /// Held so the mock server keeps running while `ak` talks to it.
+    _server: MockServer,
     dir: TempDir,
 }
 
@@ -37,7 +38,10 @@ impl Rig {
             ),
         )
         .unwrap();
-        Self { server, dir }
+        Self {
+            _server: server,
+            dir,
+        }
     }
 
     fn ak(&self, envs: &[(&str, &str)], args: &[&str]) -> Output {

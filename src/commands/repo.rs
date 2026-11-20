@@ -2716,7 +2716,7 @@ mod tests {
             assert_eq!(repo_type, "local"); // default
             assert!(upstream_url.is_none());
             assert!(description.is_none());
-            assert_eq!(public, false)
+            assert!(!public)
         } else {
             panic!("Expected RepoCommand::Create");
         }
@@ -2753,7 +2753,7 @@ mod tests {
             assert_eq!(repo_type, "remote");
             assert_eq!(upstream_url.as_deref(), Some("https://pypi.org/simple"));
             assert_eq!(description.as_deref(), Some("Python packages mirror"));
-            assert_eq!(public, true)
+            assert!(public)
         } else {
             panic!("Expected RepoCommand::Create");
         }

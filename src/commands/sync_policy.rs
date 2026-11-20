@@ -916,7 +916,7 @@ mod tests {
             assert_eq!(mode.unwrap(), "mirror");
             assert_eq!(description.unwrap(), "Full replication");
             assert_eq!(priority.unwrap(), 10);
-            assert_eq!(enabled.unwrap(), true);
+            assert!(enabled.unwrap());
             assert!(repo_selector.is_some());
             assert!(peer_selector.is_some());
             assert!(artifact_filter.is_some());

@@ -182,11 +182,12 @@ mod tests {
     use crate::test_utils::ENV_LOCK;
 
     fn make_config(default_instance: Option<&str>, output_format: &str, color: &str) -> AppConfig {
-        let mut cfg = AppConfig::default();
-        cfg.default_instance = default_instance.map(|s| s.to_string());
-        cfg.output_format = output_format.to_string();
-        cfg.color = color.to_string();
-        cfg
+        AppConfig {
+            default_instance: default_instance.map(|s| s.to_string()),
+            output_format: output_format.to_string(),
+            color: color.to_string(),
+            ..Default::default()
+        }
     }
 
     // ---- get_value ----
@@ -361,8 +362,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         unsafe { std::env::set_var("AK_CONFIG_DIR", dir.path()) };
 
-        let mut cfg = AppConfig::default();
-        cfg.default_instance = Some("old".into());
+        let cfg = AppConfig {
+            default_instance: Some("old".into()),
+            ..Default::default()
+        };
         cfg.save().unwrap();
 
         config_set("default_instance", "(not set)").unwrap();

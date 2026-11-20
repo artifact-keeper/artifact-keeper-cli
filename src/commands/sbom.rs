@@ -1783,8 +1783,6 @@ mod tests {
     use wiremock::matchers::{method, path, path_regex};
     use wiremock::{Mock, ResponseTemplate};
 
-    /// Set up env vars for handler tests; returns a guard that must be held.
-
     static NIL_UUID: &str = "00000000-0000-0000-0000-000000000000";
 
     #[tokio::test]

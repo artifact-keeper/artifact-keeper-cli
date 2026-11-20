@@ -899,7 +899,7 @@ mod tests {
         let cli = parse(&["test", "list", "--enabled", "true"]);
         if let WebhookCommand::List { repo, enabled, .. } = cli.command {
             assert!(repo.is_none());
-            assert_eq!(enabled.unwrap(), true);
+            assert!(enabled.unwrap());
         } else {
             panic!("Expected List with --enabled");
         }
@@ -917,7 +917,7 @@ mod tests {
         ]);
         if let WebhookCommand::List { repo, enabled, .. } = cli.command {
             assert!(repo.is_some());
-            assert_eq!(enabled.unwrap(), false);
+            assert!(!enabled.unwrap());
         } else {
             panic!("Expected List with both filters");
         }

@@ -312,10 +312,12 @@ mod tests {
 
     #[test]
     fn serialize_deserialize_roundtrip() {
-        let mut config = AppConfig::default();
-        config.default_instance = Some("prod".into());
-        config.output_format = "json".into();
-        config.color = "always".into();
+        let mut config = AppConfig {
+            default_instance: Some("prod".into()),
+            output_format: "json".into(),
+            color: "always".into(),
+            ..Default::default()
+        };
         config.instances.insert(
             "prod".into(),
             InstanceConfig {
@@ -373,8 +375,10 @@ url = "https://test.com"
 
     #[test]
     fn resolve_instance_uses_default() {
-        let mut config = AppConfig::default();
-        config.default_instance = Some("staging".into());
+        let mut config = AppConfig {
+            default_instance: Some("staging".into()),
+            ..Default::default()
+        };
         config.instances.insert(
             "staging".into(),
             InstanceConfig {
@@ -390,8 +394,10 @@ url = "https://test.com"
 
     #[test]
     fn resolve_instance_override_trumps_default() {
-        let mut config = AppConfig::default();
-        config.default_instance = Some("staging".into());
+        let mut config = AppConfig {
+            default_instance: Some("staging".into()),
+            ..Default::default()
+        };
         config.instances.insert(
             "staging".into(),
             InstanceConfig {
@@ -422,8 +428,10 @@ url = "https://test.com"
 
     #[test]
     fn resolve_instance_default_not_in_map() {
-        let mut config = AppConfig::default();
-        config.default_instance = Some("deleted".into());
+        let config = AppConfig {
+            default_instance: Some("deleted".into()),
+            ..Default::default()
+        };
         let result = config.resolve_instance(None);
         assert!(result.is_err());
     }
@@ -473,9 +481,11 @@ url = "https://test.com"
     #[test]
     fn save_and_load_roundtrip() {
         with_temp_config(|| {
-            let mut config = AppConfig::default();
-            config.default_instance = Some("test".into());
-            config.output_format = "yaml".into();
+            let mut config = AppConfig {
+                default_instance: Some("test".into()),
+                output_format: "yaml".into(),
+                ..Default::default()
+            };
             config.instances.insert(
                 "test".into(),
                 InstanceConfig {
@@ -509,8 +519,10 @@ url = "https://test.com"
     #[test]
     fn save_overwrites_existing() {
         with_temp_config(|| {
-            let mut config = AppConfig::default();
-            config.output_format = "json".into();
+            let config = AppConfig {
+                output_format: "json".into(),
+                ..Default::default()
+            };
             config.save().unwrap();
 
             let mut config2 = AppConfig::load().unwrap();
@@ -595,8 +607,10 @@ url = "https://test.com"
     #[test]
     fn multiple_instances_roundtrip() {
         with_temp_config(|| {
-            let mut config = AppConfig::default();
-            config.default_instance = Some("prod".into());
+            let mut config = AppConfig {
+                default_instance: Some("prod".into()),
+                ..Default::default()
+            };
             for name in &["prod", "staging", "dev"] {
                 config.instances.insert(
                     name.to_string(),
