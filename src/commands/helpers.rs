@@ -248,7 +248,7 @@ async fn read_server_version(global: &GlobalArgs) -> Option<String> {
 }
 
 /// A version as (major, minor, patch), if it has all three.
-fn full_version(version: &str) -> Option<(u64, u64, u64)> {
+fn full_version(version: &str) -> Option<Release> {
     let (major, minor) = super::doctor::major_minor(version)?;
     let patch = version
         .trim()
@@ -266,11 +266,7 @@ fn full_version(version: &str) -> Option<(u64, u64, u64)> {
 /// version, if it's older than `wanted`. With no version to go on, the flag goes
 /// ahead, because the server may well support it, but the user is told. `/health` can
 /// be blocked or slow, and then nothing checked it.
-pub async fn guard_flags(
-    flags: &str,
-    wanted: (u64, u64, u64),
-    global: &GlobalArgs,
-) -> Option<String> {
+pub async fn guard_flags(flags: &str, wanted: Release, global: &GlobalArgs) -> Option<String> {
     let Some(version) = read_server_version(global).await else {
         warn_unchecked(flags, wanted);
         return None;
@@ -282,7 +278,7 @@ pub async fn guard_flags(
     (found < wanted).then_some(version)
 }
 
-fn warn_unchecked(flags: &str, (major, minor, patch): (u64, u64, u64)) {
+fn warn_unchecked(flags: &str, (major, minor, patch): Release) {
     eprintln!(
         "Warning: couldn't read this server's version to check {flags}. A server older than \
          {major}.{minor}.{patch} would ignore it."
@@ -293,13 +289,43 @@ fn warn_unchecked(flags: &str, (major, minor, patch): (u64, u64, u64)) {
 /// before anything changes: it answers 200, so the command would report what never
 /// happened.
 pub async fn refuse_flags_before(flags: &[&str], minor: Minor, global: &GlobalArgs) -> Result<()> {
+    let (major, minor) = minor;
+    refuse_flags_below(
+        flags,
+        (major, minor, 0),
+        &format!("{major}.{minor}"),
+        global,
+    )
+    .await
+}
+
+/// A server release, `(major, minor, patch)`: for a guard on what a patch release
+/// brought, where [`Minor`] is too coarse.
+pub type Release = (u64, u64, u64);
+
+/// [`refuse_flags_before`] for a flag a patch release brought: `(1, 12, 4)` refuses it
+/// on 1.12.3 and on 1.11, and lets 1.12.4 and newer through.
+pub async fn refuse_flags_before_release(
+    flags: &[&str],
+    release: Release,
+    global: &GlobalArgs,
+) -> Result<()> {
+    let (major, minor, patch) = release;
+    refuse_flags_below(flags, release, &format!("{major}.{minor}.{patch}"), global).await
+}
+
+async fn refuse_flags_below(
+    flags: &[&str],
+    wanted: Release,
+    named: &str,
+    global: &GlobalArgs,
+) -> Result<()> {
     if flags.is_empty() {
         return Ok(());
     }
-    let (major, minor) = minor;
-    match guard_flags(&flags.join(", "), (major, minor, 0), global).await {
+    match guard_flags(&flags.join(", "), wanted, global).await {
         Some(version) => Err(AkError::UnsupportedServer(format!(
-            "{} needs a server on {major}.{minor} or newer. This one is {version}, which would \
+            "{} needs a server on {named} or newer. This one is {version}, which would \
              ignore it. Nothing was changed.",
             flags.join(", ")
         ))
@@ -1146,6 +1172,57 @@ mod tests {
             Some("1.11.14")
         );
         assert_eq!(server_older_than((1, 11), &global).await, None);
+        crate::test_utils::teardown_env();
+    }
+
+    #[tokio::test]
+    async fn refuse_flags_before_release_compares_the_patch() {
+        for (version, refused) in [
+            ("1.11.14", true),
+            ("1.12.0", true),
+            ("1.12.3", true),
+            ("v1.12.3", true),
+            ("1.12.4", false),
+            ("1.12.4-rc.1", false),
+            ("1.12.10", false),
+            ("1.13.0", false),
+            ("2.0.0", false),
+        ] {
+            let (_server, tmp) = server_on(version).await;
+            let _guard = crate::test_utils::setup_env(&tmp);
+            let global = crate::test_utils::test_global(OutputFormat::Quiet);
+
+            let result = refuse_flags_before_release(&["--new"], (1, 12, 4), &global).await;
+            assert_eq!(result.is_err(), refused, "{version}: {result:?}");
+            if let Err(err) = result {
+                let err = err.to_string();
+                assert!(
+                    err.contains("--new needs a server on 1.12.4 or newer"),
+                    "{err}"
+                );
+                assert!(err.contains(&format!("This one is {version}")), "{err}");
+                assert!(err.contains("Nothing was changed"), "{err}");
+            }
+            assert!(
+                refuse_flags_before_release(&[], (1, 12, 4), &global)
+                    .await
+                    .is_ok()
+            );
+            crate::test_utils::teardown_env();
+        }
+    }
+
+    /// The minor guard still lets every patch of its minor through, 1.12.0 included.
+    #[tokio::test]
+    async fn refuse_flags_before_ignores_the_patch() {
+        let (_server, tmp) = server_on("1.12.0").await;
+        let _guard = crate::test_utils::setup_env(&tmp);
+        let global = crate::test_utils::test_global(OutputFormat::Quiet);
+        assert!(
+            refuse_flags_before(&["--new"], (1, 12), &global)
+                .await
+                .is_ok()
+        );
         crate::test_utils::teardown_env();
     }
 
