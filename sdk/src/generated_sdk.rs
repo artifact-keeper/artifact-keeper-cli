@@ -10661,7 +10661,7 @@ pub mod types {
     #[doc = "      \"type\": \"string\""]
     #[doc = "    },"]
     #[doc = "    \"repo_selector\": {"]
-    #[doc = "      \"description\": \"Restrict the token to the repositories this selector matches (#4219).\\nSame shape and storage as a service-account token's `repo_selector`:\\nit is resolved at authentication time, so a repository created later\\nthat matches is picked up, and it only narrows the owner's own\\nrepository permissions, never widens them. Omit it for a token with the\\nowner's full access; a selector with no criteria is refused.\","]
+    #[doc = "      \"description\": \"Restrict the token to the repositories this selector matches (#4219).\\nSame shape and storage as a service-account token's `repo_selector`:\\nit is resolved at authentication time and only narrows the owner's own\\nrepository permissions, never widens them. A repository created later\\nthat matches is picked up once the token's cached authentication\\nexpires, up to 5 minutes after the repository was created (#5643).\\nOmit it for a token with the owner's full access; a selector with no\\ncriteria is refused.\","]
     #[doc = "      \"type\": ["]
     #[doc = "        \"object\","]
     #[doc = "        \"null\""]
@@ -10684,7 +10684,7 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub expires_in_days: ::std::option::Option<i64>,
         pub name: ::std::string::String,
-        #[doc = "Restrict the token to the repositories this selector matches (#4219).\nSame shape and storage as a service-account token's `repo_selector`:\nit is resolved at authentication time, so a repository created later\nthat matches is picked up, and it only narrows the owner's own\nrepository permissions, never widens them. Omit it for a token with the\nowner's full access; a selector with no criteria is refused."]
+        #[doc = "Restrict the token to the repositories this selector matches (#4219).\nSame shape and storage as a service-account token's `repo_selector`:\nit is resolved at authentication time and only narrows the owner's own\nrepository permissions, never widens them. A repository created later\nthat matches is picked up once the token's cached authentication\nexpires, up to 5 minutes after the repository was created (#5643).\nOmit it for a token with the owner's full access; a selector with no\ncriteria is refused."]
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub repo_selector:
             ::std::option::Option<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
@@ -13602,13 +13602,13 @@ pub mod types {
             Default::default()
         }
     }
-    #[doc = "Unknown fields are refused (400) rather than dropped (#4226): this endpoint\ntakes no repository restriction, and a client sending one must learn that\ninstead of receiving a broader token than it asked for."]
+    #[doc = "Unknown fields are refused (400) rather than dropped (#4226), so a client\nthat misspells a restriction learns that instead of receiving a broader\ntoken than it asked for."]
     #[doc = r""]
     #[doc = r" <details><summary>JSON schema</summary>"]
     #[doc = r""]
     #[doc = r" ```json"]
     #[doc = "{"]
-    #[doc = "  \"description\": \"Unknown fields are refused (400) rather than dropped (#4226): this endpoint\\ntakes no repository restriction, and a client sending one must learn that\\ninstead of receiving a broader token than it asked for.\","]
+    #[doc = "  \"description\": \"Unknown fields are refused (400) rather than dropped (#4226), so a client\\nthat misspells a restriction learns that instead of receiving a broader\\ntoken than it asked for.\","]
     #[doc = "  \"type\": \"object\","]
     #[doc = "  \"required\": ["]
     #[doc = "    \"name\","]
@@ -13624,6 +13624,13 @@ pub mod types {
     #[doc = "    },"]
     #[doc = "    \"name\": {"]
     #[doc = "      \"type\": \"string\""]
+    #[doc = "    },"]
+    #[doc = "    \"repo_selector\": {"]
+    #[doc = "      \"description\": \"Restrict the token to the repositories this selector matches, as on\\n`POST /api/v1/auth/tokens` (#5643, #4219): the same shape and storage\\nas a service-account token's `repo_selector`, resolved when the token\\nauthenticates. It only narrows the owner's own repository permissions,\\nnever widens them. Omit it for a token with the owner's full access; a\\nselector with no criteria is refused. A repository created later that\\nmatches is picked up once the token's cached authentication expires\\n(up to 5 minutes).\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"object\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
     #[doc = "    },"]
     #[doc = "    \"scopes\": {"]
     #[doc = "      \"type\": \"array\","]
@@ -13642,6 +13649,10 @@ pub mod types {
         #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
         pub expires_in_days: ::std::option::Option<i64>,
         pub name: ::std::string::String,
+        #[doc = "Restrict the token to the repositories this selector matches, as on\n`POST /api/v1/auth/tokens` (#5643, #4219): the same shape and storage\nas a service-account token's `repo_selector`, resolved when the token\nauthenticates. It only narrows the owner's own repository permissions,\nnever widens them. Omit it for a token with the owner's full access; a\nselector with no criteria is refused. A repository created later that\nmatches is picked up once the token's cached authentication expires\n(up to 5 minutes)."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub repo_selector:
+            ::std::option::Option<::serde_json::Map<::std::string::String, ::serde_json::Value>>,
         pub scopes: ::std::vec::Vec<::std::string::String>,
     }
     impl CreateUserApiTokenRequest {
@@ -32085,6 +32096,43 @@ pub mod types {
     }
     impl ReleaseProxyCacheRequest {
         pub fn builder() -> builder::ReleaseProxyCacheRequest {
+            Default::default()
+        }
+    }
+    #[doc = "`ReleaseRequest`"]
+    #[doc = r""]
+    #[doc = r" <details><summary>JSON schema</summary>"]
+    #[doc = r""]
+    #[doc = r" ```json"]
+    #[doc = "{"]
+    #[doc = "  \"type\": \"object\","]
+    #[doc = "  \"properties\": {"]
+    #[doc = "    \"expected_digest\": {"]
+    #[doc = "      \"description\": \"OCI images (#5766): the manifest digest (`sha256:<hex>`) the release\\nwas decided for. When the tag row now names another image, that\\ndigest's held row is released instead and the response names both;\\nthe new image's hold is left in place. Defaults to the digest the row\\nnames when the request is handled.\","]
+    #[doc = "      \"type\": ["]
+    #[doc = "        \"string\","]
+    #[doc = "        \"null\""]
+    #[doc = "      ]"]
+    #[doc = "    }"]
+    #[doc = "  }"]
+    #[doc = "}"]
+    #[doc = r" ```"]
+    #[doc = r" </details>"]
+    #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+    pub struct ReleaseRequest {
+        #[doc = "OCI images (#5766): the manifest digest (`sha256:<hex>`) the release\nwas decided for. When the tag row now names another image, that\ndigest's held row is released instead and the response names both;\nthe new image's hold is left in place. Defaults to the digest the row\nnames when the request is handled."]
+        #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+        pub expected_digest: ::std::option::Option<::std::string::String>,
+    }
+    impl ::std::default::Default for ReleaseRequest {
+        fn default() -> Self {
+            Self {
+                expected_digest: Default::default(),
+            }
+        }
+    }
+    impl ReleaseRequest {
+        pub fn builder() -> builder::ReleaseRequest {
             Default::default()
         }
     }
@@ -70141,6 +70189,12 @@ pub mod types {
             expires_in_days:
                 ::std::result::Result<::std::option::Option<i64>, ::std::string::String>,
             name: ::std::result::Result<::std::string::String, ::std::string::String>,
+            repo_selector: ::std::result::Result<
+                ::std::option::Option<
+                    ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                >,
+                ::std::string::String,
+            >,
             scopes: ::std::result::Result<
                 ::std::vec::Vec<::std::string::String>,
                 ::std::string::String,
@@ -70151,6 +70205,7 @@ pub mod types {
                 Self {
                     expires_in_days: Ok(Default::default()),
                     name: Err("no value supplied for name".to_string()),
+                    repo_selector: Ok(Default::default()),
                     scopes: Err("no value supplied for scopes".to_string()),
                 }
             }
@@ -70176,6 +70231,20 @@ pub mod types {
                     .map_err(|e| format!("error converting supplied value for name: {e}"));
                 self
             }
+            pub fn repo_selector<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<
+                        ::std::option::Option<
+                            ::serde_json::Map<::std::string::String, ::serde_json::Value>,
+                        >,
+                    >,
+                T::Error: ::std::fmt::Display,
+            {
+                self.repo_selector = value
+                    .try_into()
+                    .map_err(|e| format!("error converting supplied value for repo_selector: {e}"));
+                self
+            }
             pub fn scopes<T>(mut self, value: T) -> Self
             where
                 T: ::std::convert::TryInto<::std::vec::Vec<::std::string::String>>,
@@ -70195,6 +70264,7 @@ pub mod types {
                 Ok(Self {
                     expires_in_days: value.expires_in_days?,
                     name: value.name?,
+                    repo_selector: value.repo_selector?,
                     scopes: value.scopes?,
                 })
             }
@@ -70204,6 +70274,7 @@ pub mod types {
                 Self {
                     expires_in_days: Ok(value.expires_in_days),
                     name: Ok(value.name),
+                    repo_selector: Ok(value.repo_selector),
                     scopes: Ok(value.scopes),
                 }
             }
@@ -100474,6 +100545,49 @@ pub mod types {
             }
         }
         #[derive(Clone, Debug)]
+        pub struct ReleaseRequest {
+            expected_digest: ::std::result::Result<
+                ::std::option::Option<::std::string::String>,
+                ::std::string::String,
+            >,
+        }
+        impl ::std::default::Default for ReleaseRequest {
+            fn default() -> Self {
+                Self {
+                    expected_digest: Ok(Default::default()),
+                }
+            }
+        }
+        impl ReleaseRequest {
+            pub fn expected_digest<T>(mut self, value: T) -> Self
+            where
+                T: ::std::convert::TryInto<::std::option::Option<::std::string::String>>,
+                T::Error: ::std::fmt::Display,
+            {
+                self.expected_digest = value.try_into().map_err(|e| {
+                    format!("error converting supplied value for expected_digest: {e}")
+                });
+                self
+            }
+        }
+        impl ::std::convert::TryFrom<ReleaseRequest> for super::ReleaseRequest {
+            type Error = super::error::ConversionError;
+            fn try_from(
+                value: ReleaseRequest,
+            ) -> ::std::result::Result<Self, super::error::ConversionError> {
+                Ok(Self {
+                    expected_digest: value.expected_digest?,
+                })
+            }
+        }
+        impl ::std::convert::From<super::ReleaseRequest> for ReleaseRequest {
+            fn from(value: super::ReleaseRequest) -> Self {
+                Self {
+                    expected_digest: Ok(value.expected_digest),
+                }
+            }
+        }
+        #[derive(Clone, Debug)]
         pub struct ReleaseTargetResponse {
             linked: ::std::result::Result<bool, ::std::string::String>,
             release_repository_id:
@@ -124535,7 +124649,7 @@ pub mod types {
     }
 }
 #[derive(Clone, Debug)]
-#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. The one `/api/v1` route that shares this contract is the repository download route, `GET /api/v1/repositories/{key}/download/{path}`: it serves the same bytes as the format endpoints, so it accepts the API token as the Basic password and answers an anonymous request on a non-public repository with `401` and a `WWW-Authenticate` challenge, like they do. Every other `/api/v1/*` route refuses the Basic-with-token fallback.\n\nVersion: 1.12.3"]
+#[doc = "Client for Artifact Keeper API\n\nEnterprise artifact registry supporting 45+ package formats.\n\n## Authentication\n\nThe JSON management API under `/api/v1/*` accepts **API tokens only as `Authorization: Bearer <token>`**. This is the canonical scheme for programmatic access; JWTs issued by the login flow also use `Bearer`. HTTP Basic credentials on `/api/v1/*` are validated *only* as a real `username:password` login — the password half is **not** retried as an API token. A request to `/api/v1/*` that sends an API token in the password field of Basic auth therefore returns `401 AUTH_ERROR`; switch to `Authorization: Bearer <token>`.\n\nFormat (package-manager) endpoints such as `/v2/*` (OCI), `/incus/*`, `/debian/*`, and the language registries are intentionally more permissive for client compatibility: in addition to Bearer, they accept HTTP **Basic** auth with the API token supplied in the *password* field (any username), matching the `pip` netrc / Artifactory-style `token:<api_token>` convention used by package managers that cannot send a Bearer header. The one `/api/v1` route that shares this contract is the repository download route, `GET /api/v1/repositories/{key}/download/{path}`: it serves the same bytes as the format endpoints, so it accepts the API token as the Basic password and answers an anonymous request on a non-public repository with `401` and a `WWW-Authenticate` challenge, like they do. Every other `/api/v1/*` route refuses the Basic-with-token fallback.\n\nVersion: 1.12.4"]
 pub struct Client {
     pub(crate) baseurl: String,
     pub(crate) client: reqwest::Client,
@@ -124573,7 +124687,7 @@ impl Client {
 }
 impl ClientInfo<()> for Client {
     fn api_version() -> &'static str {
-        "1.12.3"
+        "1.12.4"
     }
     fn baseurl(&self) -> &str {
         self.baseurl.as_str()
@@ -126501,7 +126615,7 @@ pub trait ClientQuarantineExt {
     fn quarantine_artifact_now(&self) -> builder::QuarantineArtifactNow<'_>;
     #[doc = "Reject a quarantined artifact (admin only)\n\nSends a `POST` request to `/api/v1/quarantine/{artifact_id}/reject`\n\nArguments:\n- `artifact_id`: Artifact ID\n- `body`\n```ignore\nlet response = client.reject_quarantined_artifact()\n    .artifact_id(artifact_id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn reject_quarantined_artifact(&self) -> builder::RejectQuarantinedArtifact<'_>;
-    #[doc = "Release an artifact from quarantine (admin only)\n\nSends a `POST` request to `/api/v1/quarantine/{artifact_id}/release`\n\nArguments:\n- `artifact_id`: Artifact ID\n```ignore\nlet response = client.release_artifact()\n    .artifact_id(artifact_id)\n    .send()\n    .await;\n```"]
+    #[doc = "Release an artifact from quarantine (admin only)\n\nSends a `POST` request to `/api/v1/quarantine/{artifact_id}/release`\n\nArguments:\n- `artifact_id`: Artifact ID\n- `body`: Optional; an empty body releases the row as it reads now\n```ignore\nlet response = client.release_artifact()\n    .artifact_id(artifact_id)\n    .body(body)\n    .send()\n    .await;\n```"]
     fn release_artifact(&self) -> builder::ReleaseArtifact<'_>;
 }
 impl ClientQuarantineExt for Client {
@@ -153565,12 +153679,14 @@ pub mod builder {
     pub struct ReleaseArtifact<'a> {
         client: &'a super::Client,
         artifact_id: Result<::uuid::Uuid, String>,
+        body: Result<types::builder::ReleaseRequest, String>,
     }
     impl<'a> ReleaseArtifact<'a> {
         pub fn new(client: &'a super::Client) -> Self {
             Self {
                 client: client,
                 artifact_id: Err("artifact_id was not initialized".to_string()),
+                body: Ok(::std::default::Default::default()),
             }
         }
         pub fn artifact_id<V>(mut self, value: V) -> Self
@@ -153582,13 +153698,35 @@ pub mod builder {
                 .map_err(|_| "conversion to `:: uuid :: Uuid` for artifact_id failed".to_string());
             self
         }
+        pub fn body<V>(mut self, value: V) -> Self
+        where
+            V: std::convert::TryInto<types::ReleaseRequest>,
+            <V as std::convert::TryInto<types::ReleaseRequest>>::Error: std::fmt::Display,
+        {
+            self.body = value
+                .try_into()
+                .map(From::from)
+                .map_err(|s| format!("conversion to `ReleaseRequest` for body failed: {}", s));
+            self
+        }
+        pub fn body_map<F>(mut self, f: F) -> Self
+        where
+            F: std::ops::FnOnce(types::builder::ReleaseRequest) -> types::builder::ReleaseRequest,
+        {
+            self.body = self.body.map(f);
+            self
+        }
         #[doc = "Sends a `POST` request to `/api/v1/quarantine/{artifact_id}/release`"]
         pub async fn send(self) -> Result<ResponseValue<types::QuarantineActionResponse>, Error> {
             let Self {
                 client,
                 artifact_id,
+                body,
             } = self;
             let artifact_id = artifact_id.map_err(Error::InvalidRequest)?;
+            let body = body
+                .and_then(|v| types::ReleaseRequest::try_from(v).map_err(|e| e.to_string()))
+                .map_err(Error::InvalidRequest)?;
             let url = format!(
                 "{}/api/v1/quarantine/{}/release",
                 client.baseurl,
@@ -153607,6 +153745,7 @@ pub mod builder {
                     ::reqwest::header::ACCEPT,
                     ::reqwest::header::HeaderValue::from_static("application/json"),
                 )
+                .json(&body)
                 .headers(header_map)
                 .build()?;
             let info = OperationInfo {
@@ -153618,6 +153757,7 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => crate::raw::parse_response(response).await,
+                400u16 => Err(Error::from_response(response).await),
                 401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 404u16 => Err(Error::from_response(response).await),
@@ -169315,6 +169455,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => crate::raw::parse_response(response).await,
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
@@ -170138,6 +170280,8 @@ pub mod builder {
             let response = result?;
             match response.status().as_u16() {
                 200u16 => crate::raw::parse_response(response).await,
+                400u16 => Err(Error::from_response(response).await),
+                401u16 => Err(Error::from_response(response).await),
                 403u16 => Err(Error::from_response(response).await),
                 _ => Err(Error::from_response(response).await),
             }
