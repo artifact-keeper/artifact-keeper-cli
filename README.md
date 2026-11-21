@@ -4,6 +4,8 @@
   <img alt="Artifact Keeper" src="https://raw.githubusercontent.com/artifact-keeper/.github/main/brand/banners/github-readme_1600x600.png" width="100%">
 </p>
 
+[![Discord](https://img.shields.io/discord/1527760136456900748?label=Discord&logo=discord&logoColor=white)](https://discord.gg/8T7NW2PeS2)
+
 The official CLI/TUI for [Artifact Keeper](https://artifactkeeper.com), an enterprise artifact registry supporting 45+ package formats. Browse repositories, upload and download artifacts, run security scans, configure package managers, and more, all from your terminal.
 
 ## Installation
@@ -438,6 +440,13 @@ See the [CI/CD Integration Guide](https://artifactkeeper.com/docs/guides/ci-cd/)
 - [Quick Start Guide](https://artifactkeeper.com/docs/guides/cli-quickstart/)
 - [CI/CD Integration](https://artifactkeeper.com/docs/guides/ci-cd/)
 - [Full Documentation](https://artifactkeeper.com/docs/)
+
+## Community
+
+- **Discord**: chat, quick help and per-ecosystem channels at [discord.gg/8T7NW2PeS2](https://discord.gg/8T7NW2PeS2)
+- **GitHub Discussions**: [ideas and Q&A](https://github.com/artifact-keeper/artifact-keeper/discussions)
+- **Issues**: confirmed bugs go in the [issue tracker](https://github.com/artifact-keeper/artifact-keeper-cli/issues)
+- **Security**: report vulnerabilities privately as described in [SECURITY.md](https://github.com/artifact-keeper/artifact-keeper/blob/main/SECURITY.md), never in Discord or public issues
 
 ## License
 
