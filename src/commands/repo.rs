@@ -1500,6 +1500,38 @@ fn after_create(
     Some((update, flags))
 }
 
+/// Turn the create response into the repository body, accepting both the
+/// pinned SDK's `200` and the `201` that 1.14.0 starts returning. The generated
+/// operation reports `201` as an unexpected status, but it keeps the body on
+/// the error, so a successful create is still usable.
+fn created_repository(
+    result: std::result::Result<
+        artifact_keeper_sdk::ResponseValue<artifact_keeper_sdk::types::RepositoryResponse>,
+        artifact_keeper_sdk::Error,
+    >,
+    captured: Option<Vec<u8>>,
+) -> Result<(
+    artifact_keeper_sdk::types::RepositoryResponse,
+    Option<Vec<u8>>,
+)> {
+    match result {
+        Ok(resp) => Ok((resp.into_inner(), captured)),
+        Err(e) if e.status().is_some_and(|status| status.is_success()) => {
+            let status = e.status().expect("success status checked above");
+            let body = e.body().ok_or_else(|| {
+                AkError::ServerError(format!("Create repository answered {status} with no body"))
+            })?;
+            let repo = serde_json::from_slice(body).map_err(|error| {
+                AkError::ServerError(format!(
+                    "Create repository answered {status} with an unusable body: {error}"
+                ))
+            })?;
+            Ok((repo, Some(body.to_vec())))
+        }
+        Err(e) => Err(sdk_err("create repository", e).into()),
+    }
+}
+
 /// Create a repository, then set what [`after_create`] holds back. A failed update
 /// leaves the repository created, and says so.
 async fn create_repo(
@@ -1512,11 +1544,11 @@ async fn create_repo(
 ) -> Result<()> {
     let client = client_for(global)?;
 
-    let (resp, raw) =
+    let (result, captured) =
         artifact_keeper_sdk::raw::capture(client.create_repository().body(body).send()).await;
-    let resp = resp.map_err(|e| crate::commands::helpers::sdk_err("create repository", e))?;
+    let (resp, raw) = created_repository(result, captured)?;
     let (resp, raw) = match after {
-        None => (resp.into_inner(), raw),
+        None => (resp, raw),
         Some((update, flags)) => {
             let key = resp.key.clone();
             let (updated, raw) = artifact_keeper_sdk::raw::capture(
@@ -2571,6 +2603,56 @@ mod tests {
 
     fn try_parse(args: &[&str]) -> Result<TestCli, clap::Error> {
         TestCli::try_parse_from(args)
+    }
+
+    #[test]
+    fn created_repository_accepts_201_from_the_backend() {
+        let bytes = json!({
+            "id": "00000000-0000-4000-8000-000000000001",
+            "key": "r",
+            "name": "r",
+            "format": "generic",
+            "repo_type": "local",
+            "visibility": "private",
+            "is_public": false,
+            "allow_anonymous_access": false,
+            "promotion_only": false,
+            "versioning_enabled": false,
+            "repodata_depth": 0,
+            "repodata_depth_editable": false,
+            "storage_backend": "filesystem",
+            "storage_used_bytes": 0,
+            "has_trusted_gpg_key": false,
+            "upstream_url_has_credentials": false,
+            "upstream_auth_configured": false,
+            "public_with_upstream_credentials": false,
+            "allow_public_with_upstream_credentials": false,
+            "curation_enabled": false,
+            "curation_default_action": "allow",
+            "created_at": "2026-01-01T00:00:00Z",
+            "updated_at": "2026-01-01T00:00:00Z"
+        })
+        .to_string()
+        .into_bytes();
+        let result = Err(artifact_keeper_sdk::Error::Response {
+            status: reqwest::StatusCode::CREATED,
+            body: bytes.clone(),
+        });
+
+        let (repo, raw) = created_repository(result, None).expect("201 is a successful create");
+
+        assert_eq!(repo.key, "r");
+        assert_eq!(raw.as_deref(), Some(bytes.as_slice()));
+    }
+
+    #[test]
+    fn created_repository_still_reports_a_real_error() {
+        let result = Err(artifact_keeper_sdk::Error::Response {
+            status: reqwest::StatusCode::BAD_REQUEST,
+            body: br#"{"message":"bad request"}"#.to_vec(),
+        });
+
+        assert!(created_repository(result, None).is_err());
     }
 
     // ---- List subcommand parsing ----
