@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `ak repo create` accepts both `200 OK` from older servers and `201 Created` from backend 1.14.0, where the bundled SDK still documents only `200`. A successful create is no longer reported as an error, and the returned repository body still drives the output and any follow-up settings (artifact-keeper/artifact-keeper#5744).
 - CI's Clippy job now lints the tests too (`cargo clippy --workspace --all-targets -- -D warnings`), and the warnings that had built up in them are fixed (#336).
 
 ### Security
